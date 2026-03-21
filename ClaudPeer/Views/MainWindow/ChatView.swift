@@ -500,6 +500,7 @@ struct ChatView: View {
     }
 
     private func collectResponse(errorMessage: String? = nil) {
+        guard isProcessing else { return }
         let sessionId = conversationId.uuidString
         guard let convo = conversation else { return }
 
@@ -523,11 +524,9 @@ struct ChatView: View {
         convo.messages.append(response)
         modelContext.insert(response)
         try? modelContext.save()
+        appState.streamingText.removeValue(forKey: sessionId)
+        appState.lastSessionEvent.removeValue(forKey: sessionId)
         isProcessing = false
-        Task { @MainActor in
-            appState.streamingText.removeValue(forKey: sessionId)
-            appState.lastSessionEvent.removeValue(forKey: sessionId)
-        }
     }
 
     // MARK: - Actions
