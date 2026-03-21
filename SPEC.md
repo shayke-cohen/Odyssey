@@ -61,16 +61,17 @@ Users create and manage reusable agent templates.
 | FR-2.7: Set instance policy (spawn/singleton/pool) | Done (model) |
 | FR-2.8: Set default working directory | Done |
 | FR-2.9: Link GitHub repo and default branch | Done |
-| FR-2.10: Set icon and color | Done |
+| FR-2.10: Set icon and color (9 colors: blue, red, green, purple, orange, teal, pink, indigo, gray) | Done |
 | FR-2.11: Agent library grid view | Done |
-| FR-2.12: Agent editor view | Done |
+| FR-2.12: Agent editor view with sheet(item:) presentation for editing | Done |
 | FR-2.13: Persist agents in SwiftData | Done |
+| FR-2.14: Built-in agents loaded from bundled JSON (7 agents) | Done |
 
 ### FR-3: Session Lifecycle
 
 **Status:** Implemented
 
-Sessions are running instances of agents.
+Sessions are running instances of agents. The sidecar routes sessions to one of two backends based on config complexity.
 
 | Requirement | Status |
 |---|---|
@@ -88,6 +89,9 @@ Sessions are running instances of agents.
 | FR-3.12: Pause/abort running sessions | Done |
 | FR-3.13: Track session status (active/paused/completed/failed) | Done |
 | FR-3.14: Instance policy enforcement (singleton/pool routing) | Not started |
+| FR-3.15: Simple chat via `claude --print` for sessions with no tools/MCPs/skills | Done |
+| FR-3.16: Auto-route to ChatHandler (lightweight) vs Agent SDK (full) based on config | Done |
+| FR-3.17: Response polling in Swift to capture agent replies and save to SwiftData | Done |
 
 ### FR-4: Conversation Model
 
@@ -404,6 +408,25 @@ flowchart TD
     Interact -->|Copy message| CopyAll["Full message text\ncopied to clipboard"]
 ```
 
+### Flow 6: Simple Chat vs Agent SDK Routing
+
+```mermaid
+flowchart TD
+    Create([session.create received]) --> Check{"Config has tools,\nMCPs, or skills?"}
+    Check -->|No| Simple["ChatHandler registered\n(lightweight path)"]
+    Check -->|Yes| Agent["SessionManager uses\nAgent SDK query()"]
+    Simple --> Msg["session.message received"]
+    Agent --> Msg2["session.message received"]
+    Msg --> Claude["Spawn claude --print\nStdin: prompt\nStdout: stream tokens"]
+    Msg2 --> SDK["Agent SDK query()\nFull tool/MCP support"]
+    Claude --> Tokens["stream.token events\nback to Swift"]
+    SDK --> Tokens2["stream.token + toolCall\nevents back to Swift"]
+    Tokens --> Result["session.result\n(no cost tracking)"]
+    Tokens2 --> Result2["session.result\n(with cost from SDK)"]
+    Result --> Save["Swift polls lastSessionEvent\nSaves response to SwiftData"]
+    Result2 --> Save
+```
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -424,6 +447,7 @@ flowchart TD
 
 | Date | Change | Affected |
 |---|---|---|
+| 2026-03-21 | Lightweight ChatHandler for simple sessions: routes sessions without tools/MCPs/skills to `claude --print` instead of full Agent SDK. Response polling in Swift saves agent replies to SwiftData. Fixed AgentLibrary sheet presentation, added indigo/gray agent colors, built-in agent loading. | FR-2.10, FR-2.14, FR-3.15-3.17, Flow 6 |
 | 2026-03-21 | Rich markdown chat: MarkdownUI rendering for agent messages, code blocks with copy button, live streaming text, hover copy/timestamp, clickable links. Settings screen: three-tab preferences (General/Connection/Advanced) with dark mode, port/path overrides, reset. SidecarManager accepts configurable settings. | FR-5.18-5.25, FR-9, US-8, US-9, Flow 4, Flow 5 |
 | 2026-03-21 | UX improvements: smart naming, conversation management (rename/pin/close/delete/duplicate), New Session sheet, sidebar polish (timestamps, previews, pinned section, empty state, agent icons, swipe actions), chat header enhancements (rename, close/resume, clear, model pill, cost), inspector actions (pause/resume/stop, editable topic, open in editor), agent card Start button | FR-5, FR-6, US-6, US-7, Flow 1, Flow 3 |
 | 2026-03-21 | Initial spec created from implemented codebase | All sections |
