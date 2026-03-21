@@ -14,6 +14,7 @@ struct AttachmentThumbnail: View {
             }
         }
         .contentShape(Rectangle())
+        .accessibilityIdentifier("attachmentThumbnail.\(attachment.id.uuidString)")
         .accessibilityLabel(attachment.isImage ? "Image attachment" : "File: \(attachment.fileName)")
         .task {
             if attachment.isImage {

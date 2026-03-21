@@ -143,6 +143,14 @@ Dot-separated `viewName.elementName` in camelCase:
 | StatusBadge | `statusBadge.*` |
 | StreamingIndicator | `streamingIndicator` |
 | InfoRow | `infoRow.*` |
+| CatalogBrowserView | `catalog.*` |
+| CatalogDetailView | `catalogDetail.*` |
+| MCPEditorView | `mcpEditor.*` |
+| MCPLibraryView | `mcpLibrary.*` |
+| MCPCatalogSheet | `mcpCatalogSheet.*` |
+| SkillEditorView | `skillEditor.*` |
+| SkillLibraryView | `skillLibrary.*` |
+| AttachmentThumbnail | `attachmentThumbnail.*` |
 
 When adding new views, pick a unique camelCase prefix and annotate every interactive element.
 

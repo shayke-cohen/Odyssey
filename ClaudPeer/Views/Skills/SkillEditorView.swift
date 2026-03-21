@@ -68,24 +68,31 @@ struct SkillEditorView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Close")
+                .accessibilityIdentifier("skillEditor.closeButton")
+                .accessibilityLabel("Close")
             }
             .padding()
 
             Form {
                 Section("Basic Info") {
                     TextField("Name", text: $name)
+                        .accessibilityIdentifier("skillEditor.nameField")
                     TextField("Description", text: $skillDescription, axis: .vertical)
                         .lineLimit(3...8)
+                        .accessibilityIdentifier("skillEditor.descriptionField")
                     Picker("Category", selection: $category) {
                         ForEach(categoriesForPicker, id: \.self) { c in
                             Text(c).tag(c)
                         }
                     }
+                    .accessibilityIdentifier("skillEditor.categoryPicker")
                     TextField("Version", text: $version)
+                        .accessibilityIdentifier("skillEditor.versionField")
                 }
 
                 Section {
                     TextField("Triggers (comma-separated)", text: $triggersText)
+                        .accessibilityIdentifier("skillEditor.triggersField")
                 } header: {
                     Text("Triggers")
                 } footer: {
@@ -108,10 +115,12 @@ struct SkillEditorView: View {
                             Text("\(content.count) chars")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("skillEditor.charCount")
                         }
                         TextEditor(text: $content)
                             .font(.system(.body, design: .monospaced))
                             .frame(minHeight: 160)
+                            .accessibilityIdentifier("skillEditor.contentEditor")
                     }
                 }
             }
@@ -124,11 +133,13 @@ struct SkillEditorView: View {
                 Button("Cancel") {
                     dismiss()
                 }
+                .accessibilityIdentifier("skillEditor.cancelButton")
                 Button("Save") {
                     saveSkill()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityIdentifier("skillEditor.saveButton")
             }
             .padding()
         }
@@ -158,9 +169,12 @@ struct SkillEditorView: View {
                             }
                             .buttonStyle(.borderless)
                             .help("Remove MCP server")
+                            .accessibilityIdentifier("skillEditor.mcps.removeButton.\(mcp.id.uuidString)")
+                            .accessibilityLabel("Remove \(mcp.name)")
                         }
                     }
                 }
+                .accessibilityIdentifier("skillEditor.mcps.selectedList")
             }
             .frame(maxWidth: .infinity)
 
@@ -187,9 +201,12 @@ struct SkillEditorView: View {
                             }
                             .buttonStyle(.borderless)
                             .help("Add MCP server")
+                            .accessibilityIdentifier("skillEditor.mcps.addButton.\(mcp.id.uuidString)")
+                            .accessibilityLabel("Add \(mcp.name)")
                         }
                     }
                 }
+                .accessibilityIdentifier("skillEditor.mcps.availableList")
             }
             .frame(maxWidth: .infinity)
         }

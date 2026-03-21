@@ -37,22 +37,27 @@ struct SkillLibraryView: View {
                     LazyVGrid(columns: gridColumns, spacing: 16) {
                         ForEach(filteredSkills) { skill in
                             skillCard(skill)
+                                .accessibilityIdentifier("skillLibrary.skillCard.\(skill.id.uuidString)")
                                 .contextMenu {
                                     Button("Edit") {
                                         editingSkill = skill
                                     }
+                                    .accessibilityIdentifier("skillLibrary.contextMenu.edit.\(skill.id.uuidString)")
                                     Button("Duplicate") {
                                         duplicateSkill(skill)
                                     }
+                                    .accessibilityIdentifier("skillLibrary.contextMenu.duplicate.\(skill.id.uuidString)")
                                     Divider()
                                     Button("Delete", role: .destructive) {
                                         skillToDelete = skill
                                     }
+                                    .accessibilityIdentifier("skillLibrary.contextMenu.delete.\(skill.id.uuidString)")
                                 }
                         }
                     }
                     .padding()
                 }
+                .accessibilityIdentifier("skillLibrary.skillGrid")
             }
         }
         .sheet(item: $editingSkill) { skill in
@@ -106,17 +111,20 @@ struct SkillLibraryView: View {
             TextField("Search...", text: $searchText)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 200)
+                .accessibilityIdentifier("skillLibrary.searchField")
             Button {
                 showingNewSkill = true
             } label: {
                 Label("New", systemImage: "plus")
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("skillLibrary.newButton")
             Button {
                 showCatalog = true
             } label: {
                 Label("Catalog", systemImage: "square.grid.2x2")
             }
+            .accessibilityIdentifier("skillLibrary.catalogButton")
             Button {
                 dismiss()
             } label: {
@@ -125,6 +133,8 @@ struct SkillLibraryView: View {
             }
             .buttonStyle(.borderless)
             .help("Close")
+            .accessibilityIdentifier("skillLibrary.closeButton")
+            .accessibilityLabel("Close")
         }
         .padding()
     }
@@ -145,6 +155,7 @@ struct SkillLibraryView: View {
                 Text("Browse Catalog")
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("skillLibrary.emptyState.browseButton")
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -27,6 +27,7 @@ struct CatalogDetailView: View {
                 }
                 .padding()
             }
+            .accessibilityIdentifier("catalogDetail.scrollView")
             Divider()
             footer
         }
@@ -54,6 +55,8 @@ struct CatalogDetailView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
+            .accessibilityIdentifier("catalogDetail.closeButton")
+            .accessibilityLabel("Close")
         }
         .padding()
     }
@@ -175,6 +178,7 @@ struct CatalogDetailView: View {
         if !agent.systemPrompt.isEmpty {
             detailSection("System Prompt") {
                 DisclosureGroup(isExpanded: $showSystemPrompt) {
+
                     Text(agent.systemPrompt)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -188,6 +192,7 @@ struct CatalogDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityIdentifier("catalogDetail.systemPromptDisclosure")
             }
         }
     }
@@ -267,6 +272,7 @@ struct CatalogDetailView: View {
                     Link(mcp.homepage, destination: URL(string: mcp.homepage) ?? URL(string: "https://example.com")!)
                         .font(.callout)
                         .lineLimit(1)
+                        .accessibilityIdentifier("catalogDetail.homepageLink")
                 }
             }
         }
@@ -302,6 +308,7 @@ struct CatalogDetailView: View {
                 Text("Uninstall")
             }
             .controlSize(.regular)
+            .accessibilityIdentifier("catalogDetail.uninstallButton")
         } else {
             Button {
                 install()
@@ -311,6 +318,7 @@ struct CatalogDetailView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.regular)
+            .accessibilityIdentifier("catalogDetail.installButton")
         }
     }
 

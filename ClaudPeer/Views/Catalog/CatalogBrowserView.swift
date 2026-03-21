@@ -39,6 +39,7 @@ struct CatalogBrowserView: View {
                 TextField("Search...", text: $searchText)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 180)
+                    .accessibilityIdentifier("catalog.searchField")
                 Button {
                     dismiss()
                 } label: {
@@ -46,6 +47,8 @@ struct CatalogBrowserView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
+                .accessibilityIdentifier("catalog.closeButton")
+                .accessibilityLabel("Close")
             }
             .padding()
 
@@ -56,6 +59,7 @@ struct CatalogBrowserView: View {
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
+            .accessibilityIdentifier("catalog.tabPicker")
 
             categoryChipsRow
                 .padding(.vertical, 10)
@@ -73,23 +77,27 @@ struct CatalogBrowserView: View {
                             agentCard(agent)
                                 .contentShape(Rectangle())
                                 .onTapGesture { selectedItem = .agent(agent) }
+                                .accessibilityIdentifier("catalog.agentCard.\(agent.catalogId)")
                         }
                     case .skills:
                         ForEach(filteredSkills) { skill in
                             skillCard(skill)
                                 .contentShape(Rectangle())
                                 .onTapGesture { selectedItem = .skill(skill) }
+                                .accessibilityIdentifier("catalog.skillCard.\(skill.catalogId)")
                         }
                     case .mcps:
                         ForEach(filteredMCPs) { mcp in
                             mcpCard(mcp)
                                 .contentShape(Rectangle())
                                 .onTapGesture { selectedItem = .mcp(mcp) }
+                                .accessibilityIdentifier("catalog.mcpCard.\(mcp.catalogId)")
                         }
                     }
                 }
                 .padding()
             }
+            .accessibilityIdentifier("catalog.cardGrid")
         }
         // Present as .sheet with e.g. .frame(minWidth: 700, minHeight: 550) on the sheet content if needed.
         .alert(agentInstallAlertTitle, isPresented: $showAgentInstallConfirmation) {
@@ -157,6 +165,7 @@ struct CatalogBrowserView: View {
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("catalog.categoryChip.\(title)")
     }
 
     private var filteredAgents: [CatalogAgent] {
@@ -242,10 +251,12 @@ struct CatalogBrowserView: View {
                     try? modelContext.save()
                     listRevision += 1
                 }
+                .accessibilityIdentifier("catalog.contextMenu.uninstall.\(agent.catalogId)")
             } else {
                 Button("Install") {
                     beginAgentInstall(agent)
                 }
+                .accessibilityIdentifier("catalog.contextMenu.install.\(agent.catalogId)")
             }
         }
     }
@@ -295,12 +306,14 @@ struct CatalogBrowserView: View {
                     try? modelContext.save()
                     listRevision += 1
                 }
+                .accessibilityIdentifier("catalog.contextMenu.uninstall.\(skill.catalogId)")
             } else {
                 Button("Install") {
                     CatalogService.shared.installSkill(skill.catalogId, into: modelContext)
                     try? modelContext.save()
                     listRevision += 1
                 }
+                .accessibilityIdentifier("catalog.contextMenu.install.\(skill.catalogId)")
             }
         }
     }
@@ -358,12 +371,14 @@ struct CatalogBrowserView: View {
                     try? modelContext.save()
                     listRevision += 1
                 }
+                .accessibilityIdentifier("catalog.contextMenu.uninstall.\(mcp.catalogId)")
             } else {
                 Button("Install") {
                     CatalogService.shared.installMCP(mcp.catalogId, into: modelContext)
                     try? modelContext.save()
                     listRevision += 1
                 }
+                .accessibilityIdentifier("catalog.contextMenu.install.\(mcp.catalogId)")
             }
         }
     }
@@ -383,6 +398,7 @@ struct CatalogBrowserView: View {
             Button("Install", action: install)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .accessibilityIdentifier("catalog.installButton")
         }
     }
 

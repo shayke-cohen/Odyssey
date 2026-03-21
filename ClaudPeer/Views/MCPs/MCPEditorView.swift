@@ -70,14 +70,18 @@ struct MCPEditorView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Close")
+                .accessibilityIdentifier("mcpEditor.closeButton")
+                .accessibilityLabel("Close")
             }
             .padding()
 
             Form {
                 Section("Basic Info") {
                     TextField("Name", text: $name)
+                        .accessibilityIdentifier("mcpEditor.nameField")
                     TextField("Description", text: $serverDescription, axis: .vertical)
                         .lineLimit(3...8)
+                        .accessibilityIdentifier("mcpEditor.descriptionField")
                 }
 
                 Section("Transport") {
@@ -86,18 +90,23 @@ struct MCPEditorView: View {
                         Text("http").tag(1)
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier("mcpEditor.transportPicker")
                 }
 
                 if transportType == 0 {
                     Section("stdio Configuration") {
                         TextField("Command", text: $command)
+                            .accessibilityIdentifier("mcpEditor.commandField")
                         TextField("Arguments (comma-separated)", text: $argsText)
+                            .accessibilityIdentifier("mcpEditor.argsField")
                     }
                     Section("Environment Variables") {
                         ForEach($envPairs) { $pair in
                             HStack(alignment: .firstTextBaseline) {
                                 TextField("Key", text: $pair.key)
+                                    .accessibilityIdentifier("mcpEditor.envKey.\(pair.id.uuidString)")
                                 TextField("Value", text: $pair.value)
+                                    .accessibilityIdentifier("mcpEditor.envValue.\(pair.id.uuidString)")
                                 Button {
                                     envPairs.removeAll { $0.id == pair.id }
                                 } label: {
@@ -105,6 +114,8 @@ struct MCPEditorView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 .buttonStyle(.borderless)
+                                .accessibilityIdentifier("mcpEditor.envRemoveButton.\(pair.id.uuidString)")
+                                .accessibilityLabel("Remove environment variable")
                             }
                         }
                         Button {
@@ -112,16 +123,20 @@ struct MCPEditorView: View {
                         } label: {
                             Label("Add", systemImage: "plus.circle")
                         }
+                        .accessibilityIdentifier("mcpEditor.addEnvButton")
                     }
                 } else {
                     Section("HTTP Configuration") {
                         TextField("URL", text: $httpUrl)
+                            .accessibilityIdentifier("mcpEditor.urlField")
                     }
                     Section("Headers") {
                         ForEach($headerPairs) { $pair in
                             HStack(alignment: .firstTextBaseline) {
                                 TextField("Key", text: $pair.key)
+                                    .accessibilityIdentifier("mcpEditor.headerKey.\(pair.id.uuidString)")
                                 TextField("Value", text: $pair.value)
+                                    .accessibilityIdentifier("mcpEditor.headerValue.\(pair.id.uuidString)")
                                 Button {
                                     headerPairs.removeAll { $0.id == pair.id }
                                 } label: {
@@ -129,6 +144,8 @@ struct MCPEditorView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 .buttonStyle(.borderless)
+                                .accessibilityIdentifier("mcpEditor.headerRemoveButton.\(pair.id.uuidString)")
+                                .accessibilityLabel("Remove header")
                             }
                         }
                         Button {
@@ -136,6 +153,7 @@ struct MCPEditorView: View {
                         } label: {
                             Label("Add", systemImage: "plus.circle")
                         }
+                        .accessibilityIdentifier("mcpEditor.addHeaderButton")
                     }
                 }
             }
@@ -144,9 +162,11 @@ struct MCPEditorView: View {
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }
+                    .accessibilityIdentifier("mcpEditor.cancelButton")
                 Button("Save") { save() }
                     .buttonStyle(.borderedProminent)
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("mcpEditor.saveButton")
             }
             .padding()
         }
