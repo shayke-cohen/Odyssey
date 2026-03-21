@@ -130,6 +130,14 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | FR-5.15: Close and delete conversations via context menu | Done |
 | FR-5.16: New Session sheet with agent/model/mode/mission/working-dir picker | Done |
 | FR-5.17: Chat header actions (close, resume, clear, rename, model pill, live cost) | Done |
+| FR-5.18: Rich markdown rendering for agent messages (MarkdownUI) | Done |
+| FR-5.19: Code blocks with language label and copy-to-clipboard button | Done |
+| FR-5.20: Live streaming text bubble (shows streamed text as it arrives, not just dots) | Done |
+| FR-5.21: Hover-to-reveal copy button on any message | Done |
+| FR-5.22: Hover-to-reveal timestamp (reduces visual noise) | Done |
+| FR-5.23: Clickable links in agent responses (opens in default browser) | Done |
+| FR-5.24: Inline images rendered via MarkdownUI | Done |
+| FR-5.25: Custom MarkdownUI theme (.claudPeer) with styled headings, blockquotes, tables, code | Done |
 
 ### FR-6: Main Window Layout
 
@@ -187,6 +195,32 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | FR-8.10: Working dir: GitHub clone path | Done |
 | FR-8.11: Working dir: agent default | Done |
 | FR-8.12: Working dir: ephemeral sandbox fallback | Done |
+
+### FR-9: Application Preferences (Settings)
+
+**Status:** Implemented
+
+Configurable application preferences accessible via Cmd+, (standard macOS Settings scene).
+
+| Requirement | Status |
+|---|---|
+| FR-9.1: Three-tab settings window (General, Connection, Advanced) | Done |
+| FR-9.2: Appearance picker (System/Light/Dark) applied app-wide via preferredColorScheme | Done |
+| FR-9.3: Default model picker (sonnet/opus/haiku) | Done |
+| FR-9.4: Default max turns stepper (1-100) | Done |
+| FR-9.5: Default max budget field | Done |
+| FR-9.6: Auto-connect sidecar toggle | Done |
+| FR-9.7: WebSocket port override (default 9849) | Done |
+| FR-9.8: HTTP API port override (default 9850) | Done |
+| FR-9.9: Bun path override with file picker | Done |
+| FR-9.10: Sidecar project path override with folder picker | Done |
+| FR-9.11: Data directory path with folder picker | Done |
+| FR-9.12: Log level picker (debug/info/warning/error) | Done |
+| FR-9.13: Reset All Settings button with confirmation | Done |
+| FR-9.14: Open Data Directory in Finder button | Done |
+| FR-9.15: Settings persisted via @AppStorage (UserDefaults) | Done |
+| FR-9.16: SidecarManager accepts configured ports and path overrides from settings | Done |
+| FR-9.17: Centralized AppSettings enum with all keys and defaults | Done |
 
 ---
 
@@ -260,6 +294,31 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 - [x] Working directory picker with folder browser
 - [x] Quick Chat shortcut (Cmd+Shift+N) for freeform sessions
 
+### US-8: Configure Application Preferences
+**As a** developer, **I want to** customize the app appearance, default model, and sidecar connection settings, **so that** I can tailor ClaudPeer to my environment and preferences.
+
+**Acceptance criteria:**
+- [x] Can switch between System, Light, and Dark appearance
+- [x] Appearance change applies immediately to all windows
+- [x] Can set default model, max turns, and budget for new sessions
+- [x] Can override WebSocket/HTTP ports for sidecar
+- [x] Can override Bun and sidecar paths with file/folder pickers
+- [x] Can toggle auto-connect on launch
+- [x] Can reset all settings to defaults
+- [x] Settings persist across app restarts
+
+### US-9: Read Rich Markdown Responses
+**As a** developer, **I want to** see Claude's responses rendered with proper markdown formatting, **so that** code blocks, links, headers, and lists are easy to read and interact with.
+
+**Acceptance criteria:**
+- [x] Agent messages render headings, lists, bold, italic, blockquotes, tables
+- [x] Code blocks display with language label and monospaced font
+- [x] Code blocks have a Copy button that copies contents to clipboard
+- [x] Links are clickable and open in the default browser
+- [x] User messages remain plain text (not rendered as markdown)
+- [x] Streaming text appears live as it arrives (not just animated dots)
+- [x] Can copy any message via hover copy button
+
 ---
 
 ## 4. User Flows
@@ -312,6 +371,39 @@ flowchart TD
     Menu -->|Duplicate| DupeConvo["Copy agent config\ninto new Conversation"]
 ```
 
+### Flow 4: Configure Settings
+
+```mermaid
+flowchart TD
+    Open([User presses Cmd+,]) --> Settings["Settings window opens"]
+    Settings --> Tabs{"Select tab"}
+    Tabs -->|General| General["Appearance picker\nDefault model/turns/budget\nAuto-connect toggle"]
+    Tabs -->|Connection| Connection["WS/HTTP port fields\nBun path override + Browse\nSidecar path override + Browse"]
+    Tabs -->|Advanced| Advanced["Data directory + Browse\nLog level picker\nReset All / Open Data Dir"]
+    General --> Apply["Changes saved to UserDefaults\nApplied immediately"]
+    Connection --> Apply
+    Advanced --> Apply
+    Apply --> Reconnect{"Port or path changed?"}
+    Reconnect -->|Yes| Restart["Reconnect sidecar\nwith new config"]
+    Reconnect -->|No| Done([Done])
+    Restart --> Done
+```
+
+### Flow 5: Read a Markdown Response
+
+```mermaid
+flowchart TD
+    Send([User sends message]) --> Stream["Sidecar streams tokens"]
+    Stream --> Live["Live streaming bubble shows\ntext as it arrives with\nMarkdownUI rendering"]
+    Live --> Complete["Response complete\nSaved as ConversationMessage"]
+    Complete --> Render["MarkdownContent renders:\nheadings, lists, code blocks,\nlinks, images, tables"]
+    Render --> Interact{"User interaction?"}
+    Interact -->|Click link| Browser["Opens in default browser"]
+    Interact -->|Copy code| Clipboard["Code copied to clipboard\nButton shows checkmark"]
+    Interact -->|Hover message| Actions["Copy button + timestamp revealed"]
+    Interact -->|Copy message| CopyAll["Full message text\ncopied to clipboard"]
+```
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -332,5 +424,6 @@ flowchart TD
 
 | Date | Change | Affected |
 |---|---|---|
+| 2026-03-21 | Rich markdown chat: MarkdownUI rendering for agent messages, code blocks with copy button, live streaming text, hover copy/timestamp, clickable links. Settings screen: three-tab preferences (General/Connection/Advanced) with dark mode, port/path overrides, reset. SidecarManager accepts configurable settings. | FR-5.18-5.25, FR-9, US-8, US-9, Flow 4, Flow 5 |
 | 2026-03-21 | UX improvements: smart naming, conversation management (rename/pin/close/delete/duplicate), New Session sheet, sidebar polish (timestamps, previews, pinned section, empty state, agent icons, swipe actions), chat header enhancements (rename, close/resume, clear, model pill, cost), inspector actions (pause/resume/stop, editable topic, open in editor), agent card Start button | FR-5, FR-6, US-6, US-7, Flow 1, Flow 3 |
 | 2026-03-21 | Initial spec created from implemented codebase | All sections |
