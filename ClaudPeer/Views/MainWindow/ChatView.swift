@@ -47,8 +47,12 @@ struct ChatView: View {
             Divider()
             inputArea
         }
-        .onReceive(appState.$lastSessionEvent) { _ in
-            checkForCompletion()
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            checkForPendingResponse()
+        }
+        .onReceive(appState.$lastSessionEvent) { events in
+            checkForCompletion(events: events)
         }
         .onReceive(appState.$streamingText) { texts in
             let sessionId = conversationId.uuidString
@@ -59,6 +63,11 @@ struct ChatView: View {
         .onReceive(appState.$sidecarStatus) { status in
             if status != .connected && isProcessing {
                 isProcessing = false
+            }
+        }
+        .onChange(of: sortedMessages.count) { oldCount, newCount in
+            if oldCount == 0, newCount > 0 {
+                checkForPendingResponse()
             }
         }
         .task(id: isProcessing) {
@@ -460,9 +469,27 @@ struct ChatView: View {
 
     // MARK: - Session Events
 
-    private func checkForCompletion() {
+    private func checkForPendingResponse() {
         let sessionId = conversationId.uuidString
-        guard let event = appState.lastSessionEvent[sessionId] else { return }
+        if let event = appState.lastSessionEvent[sessionId] {
+            switch event {
+            case .result:
+                collectResponse()
+            case .error(let msg):
+                collectResponse(errorMessage: msg)
+            }
+            return
+        }
+
+        if let text = appState.streamingText[sessionId], !text.isEmpty, !isProcessing {
+            isProcessing = true
+        }
+    }
+
+    private func checkForCompletion(events: [String: AppState.SessionEventKind]? = nil) {
+        let sessionId = conversationId.uuidString
+        let source = events ?? appState.lastSessionEvent
+        guard let event = source[sessionId] else { return }
 
         switch event {
         case .result:
@@ -477,6 +504,10 @@ struct ChatView: View {
         guard let convo = conversation else { return }
 
         let streamedText = appState.streamingText[sessionId] ?? ""
+        guard !streamedText.isEmpty || errorMessage != nil else {
+            isProcessing = false
+            return
+        }
         let responseText = !streamedText.isEmpty ? streamedText : (errorMessage ?? "(no response)")
 
         let agentParticipant = convo.participants.first {
@@ -492,9 +523,11 @@ struct ChatView: View {
         convo.messages.append(response)
         modelContext.insert(response)
         try? modelContext.save()
-        appState.streamingText.removeValue(forKey: sessionId)
-        appState.lastSessionEvent.removeValue(forKey: sessionId)
         isProcessing = false
+        Task { @MainActor in
+            appState.streamingText.removeValue(forKey: sessionId)
+            appState.lastSessionEvent.removeValue(forKey: sessionId)
+        }
     }
 
     // MARK: - Actions
