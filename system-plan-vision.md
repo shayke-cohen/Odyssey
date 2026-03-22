@@ -177,6 +177,8 @@ The WebSocket protocol uses JSON messages:
 - `messages: [ConversationMessage]` -- ordered: `{ sender, text, timestamp, type }`
 - `parentConversation: UUID?` -- if spawned from another conversation (enables tree view)
 - `status: ConversationStatus` -- `.active`, `.closed`
+- `isPinned: Bool` -- pinned to top of sidebar
+- `isArchived: Bool` -- hidden from main sections, shown in collapsible Archived section (orthogonal to status)
 - `summary: String?` -- optional summary written on close
 - `startedAt: Date`, `closedAt: Date?`
 

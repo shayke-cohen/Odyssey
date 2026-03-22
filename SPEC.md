@@ -138,6 +138,7 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | FR-5.12: Auto-name conversations from first user message | Done |
 | FR-5.13: Rename conversations via context menu, chat header, or inspector | Done |
 | FR-5.14: Pin/unpin conversations in sidebar | Done |
+| FR-5.14a: Archive/unarchive conversations via context menu and swipe | Done |
 | FR-5.15: Close and delete conversations via context menu | Done |
 | FR-5.16: New Session sheet with agent/model/mode/mission/working-dir picker | Done |
 | FR-5.17: Chat header actions (close, resume, clear, rename, model pill, live cost) | Done |
@@ -184,7 +185,8 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | FR-6.7: Default window size 1200x800 | Done |
 | FR-6.8: Sidebar rows show relative timestamps, message preview, and agent icon | Done |
 | FR-6.9: Sidebar has Pinned section above Active | Done |
-| FR-6.10: Sidebar conversation context menu (rename, pin, close, delete, duplicate) | Done |
+| FR-6.9a: Sidebar has collapsible Archived section below Recent | Done |
+| FR-6.10: Sidebar conversation context menu (rename, pin, archive, close, delete, duplicate) | Done |
 | FR-6.11: Sidebar empty state when no conversations exist | Done |
 | FR-6.12: Inspector with usage section (tokens, cost, turns progress bar) and workspace section | Done |
 | FR-6.13: Agent card Start button launches session and dismisses library | Done |
@@ -594,11 +596,12 @@ Backend services supporting the file explorer.
 - [x] Health check endpoint available
 
 ### US-6: Manage Conversations
-**As a** developer, **I want to** organize my conversations by renaming, pinning, closing, and deleting them, **so that** I can keep my workspace clean and quickly find important sessions.
+**As a** developer, **I want to** organize my conversations by renaming, pinning, archiving, closing, and deleting them, **so that** I can keep my workspace clean and quickly find important sessions.
 
 **Acceptance criteria:**
 - [x] Can rename conversations via context menu, chat header, or inspector
 - [x] Can pin/unpin conversations to keep them at the top
+- [x] Can archive/unarchive conversations to hide them in a collapsible Archived section
 - [x] Can close active sessions from sidebar, header, or inspector
 - [x] Can delete conversations with confirmation
 - [x] Can duplicate conversations with their agent config
@@ -811,6 +814,8 @@ flowchart TD
     RightClick(["Right-click conversation\nin sidebar"]) --> Menu["Context menu appears"]
     Menu -->|Rename| RenamePopover["Text field alert\nEdit topic, press Enter"]
     Menu -->|Pin| TogglePin["Toggle isPinned\nMove to/from Pinned section"]
+    Menu -->|Archive| ArchiveConvo["Set isArchived = true\nAuto-unpin\nMove to Archived section"]
+    Menu -->|Unarchive| UnarchiveConvo["Set isArchived = false\nReturn to natural section"]
     Menu -->|Close| CloseConvo["Set status = closed\nSend sessionPause to sidecar\nMove to Recent section"]
     Menu -->|Delete| Confirm["Confirmation alert"]
     Confirm -->|Confirm| DeleteConvo["Delete from SwiftData"]

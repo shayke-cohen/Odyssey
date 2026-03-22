@@ -251,8 +251,8 @@ See [`system-plan-vision.md` Section 11](system-plan-vision.md#11-built-in-ecosy
 - Working directory resolution (explicit, GitHub clone, agent default, ephemeral)
 - New Session sheet with agent picker, model/mode/mission/directory options (Cmd+N)
 - Smart conversation auto-naming from first message
-- Conversation management: rename, pin, close, delete, duplicate via context menus
-- Sidebar polish: pinned section, relative timestamps, message previews, agent icons, swipe actions, empty state
+- Conversation management: rename, pin, archive, close, delete, duplicate via context menus
+- Sidebar polish: pinned section, archived section (collapsible), relative timestamps, message previews, agent icons, swipe actions, empty state
 - Chat header: inline rename, close/resume, clear, model pill, live cost display
 - Inspector actions: pause/resume/stop buttons, editable topic, "Open in Editor" link
 - Group chat: shared transcript per session, sequential user-turn replies, automatic peer notify (`Group chat: peer message`) with bounded extra turns
