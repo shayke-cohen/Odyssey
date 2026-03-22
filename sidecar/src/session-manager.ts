@@ -8,6 +8,33 @@ import type { SessionRegistry } from "./stores/session-registry.js";
 import type { ToolContext } from "./tools/tool-context.js";
 import { createPeerBusServer } from "./tools/peerbus-server.js";
 
+const FILE_PATH_REGEX = /(?:^|\s)(\/[\w.\-/]+\.(?:png|jpe?g|gif|webp|svg|ico|html?|pdf))(?:\s|$|[.,;)}\]])/gi;
+
+export function extractFilePaths(text: string): { path: string; type: "image" | "html" | "pdf" }[] {
+  const results: { path: string; type: "image" | "html" | "pdf" }[] = [];
+  for (const match of text.matchAll(FILE_PATH_REGEX)) {
+    const path = match[1];
+    const ext = path.split(".").pop()?.toLowerCase() ?? "";
+    if (["png", "jpg", "jpeg", "gif", "webp", "svg", "ico"].includes(ext)) {
+      results.push({ path, type: "image" });
+    } else if (["html", "htm"].includes(ext)) {
+      results.push({ path, type: "html" });
+    } else if (ext === "pdf") {
+      results.push({ path, type: "pdf" });
+    }
+  }
+  return results;
+}
+
+function extensionToMediaType(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "png";
+  const map: Record<string, string> = {
+    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+    gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", ico: "image/x-icon",
+  };
+  return map[ext] ?? "image/png";
+}
+
 type EventEmitter = (event: SidecarEvent) => void;
 
 export class SessionManager {
@@ -72,7 +99,7 @@ export class SessionManager {
 
       for await (const message of stream) {
         if (abortController.signal.aborted) break;
-        this.handleSDKMessage(sessionId, message, (t) => { resultText += t; });
+        await this.handleSDKMessage(sessionId, message, (t) => { resultText += t; });
       }
 
       console.log(`[session] query() done for ${sessionId} (${resultText.length} chars)`);
@@ -344,11 +371,11 @@ export class SessionManager {
     return append;
   }
 
-  private handleSDKMessage(
+  private async handleSDKMessage(
     sessionId: string,
     message: any,
     collectText: (text: string) => void,
-  ): void {
+  ): Promise<void> {
     switch (message.type) {
       case "assistant":
         if (message.message?.content) {
@@ -358,6 +385,13 @@ export class SessionManager {
             } else if (block.type === "text" && block.text) {
               collectText(block.text);
               this.emit({ type: "stream.token", sessionId, text: block.text });
+            } else if (block.type === "image" && block.source?.type === "base64") {
+              this.emit({
+                type: "stream.image",
+                sessionId,
+                imageData: block.source.data,
+                mediaType: block.source.media_type ?? "image/png",
+              });
             }
           }
         }
@@ -383,6 +417,39 @@ export class SessionManager {
             ? message.content
             : JSON.stringify(message.content ?? {}),
         });
+        // Scan tool result for image/file paths
+        const resultText = typeof message.content === "string"
+          ? message.content
+          : JSON.stringify(message.content ?? "");
+        const files = extractFilePaths(resultText);
+        for (const file of files) {
+          try {
+            if (file.type === "image") {
+              const fileObj = Bun.file(file.path);
+              if (await fileObj.exists()) {
+                const data = await fileObj.arrayBuffer();
+                const base64 = Buffer.from(data).toString("base64");
+                if (base64.length < 10_000_000) {
+                  this.emit({
+                    type: "stream.image",
+                    sessionId,
+                    imageData: base64,
+                    mediaType: extensionToMediaType(file.path),
+                    fileName: file.path.split("/").pop(),
+                  });
+                }
+              }
+            } else {
+              this.emit({
+                type: "stream.fileCard",
+                sessionId,
+                filePath: file.path,
+                fileType: file.type,
+                fileName: file.path.split("/").pop() ?? "file",
+              });
+            }
+          } catch { /* file doesn't exist or unreadable — skip */ }
+        }
         break;
 
       case "result":

@@ -1389,6 +1389,34 @@ struct ChatView: View {
         convo.messages.append(response)
         modelContext.insert(response)
         GroupPromptBuilder.advanceWatermark(session: session, assistantMessage: response)
+
+        // Finalize accumulated agent images into MessageAttachment records
+        if let images = appState.streamingImages[sidecarKey] {
+            for img in images {
+                guard let data = Data(base64Encoded: img.data) else { continue }
+                let ext = img.mediaType.components(separatedBy: "/").last ?? "png"
+                let name = "agent-image-\(UUID().uuidString.prefix(8)).\(ext)"
+                let attachment = AttachmentStore.save(data: data, mediaType: img.mediaType, fileName: name)
+                attachment.message = response
+                modelContext.insert(attachment)
+                response.attachments.append(attachment)
+            }
+            appState.streamingImages.removeValue(forKey: sidecarKey)
+        }
+
+        // Finalize accumulated file cards into MessageAttachment records
+        if let cards = appState.streamingFileCards[sidecarKey] {
+            for card in cards {
+                let mt = card.type == "html" ? "text/html" : "application/pdf"
+                let attachment = MessageAttachment(mediaType: mt, fileName: card.name, fileSize: 0)
+                attachment.localFilePath = card.path
+                attachment.message = response
+                modelContext.insert(attachment)
+                response.attachments.append(attachment)
+            }
+            appState.streamingFileCards.removeValue(forKey: sidecarKey)
+        }
+
         try? modelContext.save()
         appState.streamingText.removeValue(forKey: sidecarKey)
         appState.thinkingText.removeValue(forKey: sidecarKey)

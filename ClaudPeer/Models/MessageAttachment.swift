@@ -7,6 +7,7 @@ final class MessageAttachment {
     var mediaType: String
     var fileName: String
     var fileSize: Int
+    var localFilePath: String?
     var message: ConversationMessage?
 
     init(mediaType: String, fileName: String, fileSize: Int, message: ConversationMessage? = nil) {

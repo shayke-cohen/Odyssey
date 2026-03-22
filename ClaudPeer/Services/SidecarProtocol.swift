@@ -142,6 +142,8 @@ enum SidecarEvent: Sendable {
     case peerDelegate(from: String, to: String, task: String)
     case blackboardUpdate(key: String, value: String, writtenBy: String)
     case sessionForked(parentSessionId: String, childSessionId: String)
+    case streamImage(sessionId: String, imageData: String, mediaType: String, fileName: String?)
+    case streamFileCard(sessionId: String, filePath: String, fileType: String, fileName: String)
     case connected
     case disconnected
 }
@@ -167,6 +169,11 @@ struct IncomingWireMessage: Codable, Sendable {
     let writtenBy: String?
     let parentSessionId: String?
     let childSessionId: String?
+    let imageData: String?
+    let mediaType: String?
+    let filePath: String?
+    let fileType: String?
+    let fileName: String?
 
     func toEvent() -> SidecarEvent? {
         switch type {
@@ -200,6 +207,12 @@ struct IncomingWireMessage: Codable, Sendable {
         case "session.forked":
             guard let p = parentSessionId, let c = childSessionId else { return nil }
             return .sessionForked(parentSessionId: p, childSessionId: c)
+        case "stream.image":
+            guard let sid = sessionId, let img = imageData, let mt = mediaType else { return nil }
+            return .streamImage(sessionId: sid, imageData: img, mediaType: mt, fileName: fileName)
+        case "stream.fileCard":
+            guard let sid = sessionId, let fp = filePath, let ft = fileType, let fn = fileName else { return nil }
+            return .streamFileCard(sessionId: sid, filePath: fp, fileType: ft, fileName: fn)
         default:
             return nil
         }

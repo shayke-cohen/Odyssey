@@ -60,6 +60,8 @@ export type SidecarEvent =
   | { type: "peer.chat"; channelId: string; from: string; message: string }
   | { type: "peer.delegate"; from: string; to: string; task: string }
   | { type: "blackboard.update"; key: string; value: string; writtenBy: string }
+  | { type: "stream.image"; sessionId: string; imageData: string; mediaType: string; fileName?: string }
+  | { type: "stream.fileCard"; sessionId: string; filePath: string; fileType: "html" | "pdf"; fileName: string }
   | { type: "sidecar.ready"; port: number; version: string };
 
 // Session state

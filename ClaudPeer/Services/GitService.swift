@@ -29,7 +29,7 @@ enum GitService {
     }
 
     static func status(in directory: URL) -> [String: GitFileStatus] {
-        guard let output = runGit(["status", "--porcelain", "-uall"], in: directory) else {
+        guard let output = runGit(["status", "--porcelain", "-u"], in: directory) else {
             return [:]
         }
 
@@ -125,14 +125,17 @@ enum GitService {
 
         do {
             try process.run()
-            process.waitUntilExit()
         } catch {
             return nil
         }
 
-        guard process.terminationStatus == 0 else { return nil }
-
+        // Read output BEFORE waitUntilExit to avoid pipe buffer deadlock.
+        // If git output exceeds the 64KB pipe buffer and nobody is reading,
+        // git blocks on write and waitUntilExit() blocks forever.
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else { return nil }
         return String(data: data, encoding: .utf8)
     }
 

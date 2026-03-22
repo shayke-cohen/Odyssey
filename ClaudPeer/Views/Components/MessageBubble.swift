@@ -56,45 +56,48 @@ struct MessageBubble: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("messageBubble.senderLabel.\(message.id.uuidString)")
-
-                    if isHovered {
-                        Text(message.timestamp.formatted(.dateTime.hour().minute()))
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .transition(.opacity)
-                    }
                 }
 
-                HStack(alignment: .top, spacing: 4) {
-                    VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
-                        if !isUser, let thinking = message.thinkingText, !thinking.isEmpty {
-                            thinkingSection(thinking)
-                        }
-                        if !message.attachments.isEmpty {
-                            attachmentGrid
-                        }
-                        if !message.text.isEmpty {
-                            messageContent
-                        }
+                VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
+                    if !isUser, let thinking = message.thinkingText, !thinking.isEmpty {
+                        thinkingSection(thinking)
                     }
-                    .padding(.horizontal, isUser ? 12 : 0)
-                    .padding(.vertical, isUser ? 8 : 0)
-                    .background(isUser ? Color.accentColor.opacity(0.15) : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-
+                    if !message.attachments.isEmpty {
+                        attachmentGrid
+                    }
+                    if !message.text.isEmpty {
+                        messageContent
+                    }
+                }
+                .padding(.horizontal, isUser ? 12 : 0)
+                .padding(.vertical, isUser ? 8 : 0)
+                .background(isUser ? Color.accentColor.opacity(0.15) : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(alignment: .topTrailing) {
                     if isHovered {
-                        Button {
-                            copyMessage()
-                        } label: {
-                            Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
+                        HStack(spacing: 4) {
+                            Text(message.timestamp.formatted(.dateTime.hour().minute()))
                                 .font(.caption2)
-                                .foregroundStyle(isCopied ? .green : .secondary)
-                                .frame(width: 20, height: 20)
+                                .foregroundStyle(.tertiary)
+
+                            Button {
+                                copyMessage()
+                            } label: {
+                                Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
+                                    .font(.caption2)
+                                    .foregroundStyle(isCopied ? .green : .secondary)
+                                    .frame(width: 20, height: 20)
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Copy message")
+                            .accessibilityIdentifier("messageBubble.copyButton.\(message.id.uuidString)")
+                            .accessibilityLabel("Copy message")
                         }
-                        .buttonStyle(.borderless)
-                        .help("Copy message")
-                        .accessibilityIdentifier("messageBubble.copyButton.\(message.id.uuidString)")
-                        .accessibilityLabel("Copy message")
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .offset(x: 4, y: -12)
                         .transition(.opacity)
                     }
                 }

@@ -20,9 +20,10 @@ struct MainWindowView: View {
                             .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
                             .layoutPriority(1)
                         inspectorPane
-                            .frame(minWidth: 200, idealWidth: 260, maxWidth: 720, maxHeight: .infinity)
+                            .frame(minWidth: 220, idealWidth: 380, maxWidth: 720, maxHeight: .infinity)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(SplitViewConfigurator(autosaveName: "claudpeer.chatInspectorSplit"))
                     .accessibilityIdentifier("mainWindow.chatInspectorSplit")
                 } else {
                     mainDetailPane
@@ -270,6 +271,49 @@ struct MainWindowView: View {
         modelContext.insert(conversation)
         try? modelContext.save()
         appState.selectedConversationId = conversation.id
+    }
+}
+
+/// Finds the nearest NSSplitView ancestor and sets its autosaveName so macOS
+/// persists the divider position between app launches.
+private struct SplitViewConfigurator: NSViewRepresentable {
+    let autosaveName: String
+
+    func makeNSView(context: Context) -> NSView {
+        let view = SplitViewFinderView(name: autosaveName)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class SplitViewFinderView: NSView {
+        let name: String
+        init(name: String) {
+            self.name = name
+            super.init(frame: .zero)
+        }
+        @available(*, unavailable)
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            DispatchQueue.main.async { [weak self] in
+                self?.configureSplitView()
+            }
+        }
+
+        private func configureSplitView() {
+            var current: NSView? = superview
+            while let view = current {
+                if let splitView = view as? NSSplitView {
+                    if splitView.autosaveName == nil || splitView.autosaveName!.isEmpty {
+                        splitView.autosaveName = name
+                    }
+                    return
+                }
+                current = view.superview
+            }
+        }
     }
 }
 

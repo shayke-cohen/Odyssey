@@ -17,6 +17,9 @@ enum AppSettings {
     // MARK: - Instance
     static let instanceWorkingDirectoryKey = "claudpeer.instanceWorkingDirectory"
 
+    // MARK: - Layout
+    static let inspectorWidthKey = "claudpeer.inspectorWidth"
+
     // MARK: - Advanced
     static let dataDirectoryKey = "claudpeer.dataDirectory"
     static let logLevelKey = "claudpeer.logLevel"

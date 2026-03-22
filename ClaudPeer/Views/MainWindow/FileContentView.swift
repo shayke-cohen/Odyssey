@@ -153,24 +153,22 @@ struct FileContentView: View {
 
     @ViewBuilder
     private var contentArea: some View {
-        Group {
-            if isLoading {
-                ProgressView()
-                    .accessibilityIdentifier("inspector.fileContent.loading")
-            } else if isBinary {
-                binaryPlaceholder
-            } else {
-                switch viewMode {
-                case .preview:
-                    markdownPreview
-                case .source:
-                    sourceView
-                case .diff:
-                    diffView
-                }
+        if isLoading {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("inspector.fileContent.loading")
+        } else if isBinary {
+            binaryPlaceholder
+        } else {
+            switch viewMode {
+            case .preview:
+                markdownPreview
+            case .source:
+                sourceView
+            case .diff:
+                diffView
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -192,7 +190,7 @@ struct FileContentView: View {
         if let content = fileContent {
             let lang = FileSystemService.languageForExtension(node.fileExtension)
             HighlightedCodeView(code: content, language: lang, showLineNumbers: true)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 80, maxHeight: .infinity)
                 .accessibilityIdentifier("inspector.fileContent.sourceView")
         } else {
             emptyContentPlaceholder
@@ -202,19 +200,11 @@ struct FileContentView: View {
     @ViewBuilder
     private var diffView: some View {
         if let diff = diffContent, !diff.isEmpty {
-            ScrollView([.horizontal, .vertical]) {
-                DiffTextView(diffText: diff)
-                    .padding(8)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .accessibilityIdentifier("inspector.fileContent.diffView")
+            DiffTextView(diffText: diff)
+                .accessibilityIdentifier("inspector.fileContent.diffView")
         } else if node.gitStatus == .untracked, let content = fileContent {
-            ScrollView([.horizontal, .vertical]) {
-                DiffTextView(diffText: allAddedDiff(content))
-                    .padding(8)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .accessibilityIdentifier("inspector.fileContent.diffView")
+            DiffTextView(diffText: allAddedDiff(content))
+                .accessibilityIdentifier("inspector.fileContent.diffView")
         } else {
             ContentUnavailableView("No Changes", systemImage: "checkmark.circle", description: Text("This file has no uncommitted changes."))
         }
@@ -346,72 +336,68 @@ struct FileContentView: View {
 
 // MARK: - Diff Text View
 
-struct DiffTextView: NSViewRepresentable {
+struct DiffTextView: View {
     let diffText: String
-    @Environment(\.colorScheme) private var colorScheme
 
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = true
-        scrollView.drawsBackground = false
-
-        let textView = NSTextView()
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 6, height: 6)
-        textView.textContainer?.widthTracksTextView = false
-        textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-
-        scrollView.documentView = textView
-        context.coordinator.textView = textView
-
-        applyDiff(to: textView)
-        return scrollView
+    private var lines: [(index: Int, text: String)] {
+        diffText.components(separatedBy: "\n").enumerated().map { ($0.offset, $0.element) }
     }
 
-    func updateNSView(_ nsView: NSScrollView, context: Context) {
-        guard let textView = context.coordinator.textView else { return }
-        if diffText != context.coordinator.lastDiff {
-            applyDiff(to: textView)
-            context.coordinator.lastDiff = diffText
+    var body: some View {
+        ScrollView([.horizontal, .vertical]) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(lines, id: \.index) { item in
+                    DiffLine(text: item.text)
+                }
+            }
+            .padding(8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct DiffLine: View {
+    let text: String
+
+    private var style: DiffLineStyle {
+        if text.hasPrefix("+") && !text.hasPrefix("+++") { return .added }
+        if text.hasPrefix("-") && !text.hasPrefix("---") { return .removed }
+        if text.hasPrefix("@@") { return .hunk }
+        if text.hasPrefix("diff ") || text.hasPrefix("index ") || text.hasPrefix("---") || text.hasPrefix("+++") { return .header }
+        return .context
+    }
+
+    var body: some View {
+        Text(text.isEmpty ? " " : text)
+            .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(style.foreground)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 0.5)
+            .background(style.background)
+    }
+}
+
+private enum DiffLineStyle {
+    case added, removed, hunk, header, context
+
+    var background: Color {
+        switch self {
+        case .added:   return Color.green.opacity(0.15)
+        case .removed: return Color.red.opacity(0.15)
+        case .hunk:    return Color.blue.opacity(0.08)
+        case .header:  return .clear
+        case .context: return .clear
         }
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    private func applyDiff(to textView: NSTextView) {
-        let result = NSMutableAttributedString()
-        let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        let lines = diffText.components(separatedBy: "\n")
-
-        for (i, line) in lines.enumerated() {
-            var attrs: [NSAttributedString.Key: Any] = [.font: font]
-
-            if line.hasPrefix("+") && !line.hasPrefix("+++") {
-                attrs[.backgroundColor] = NSColor.systemGreen.withAlphaComponent(0.15)
-            } else if line.hasPrefix("-") && !line.hasPrefix("---") {
-                attrs[.backgroundColor] = NSColor.systemRed.withAlphaComponent(0.15)
-            } else if line.hasPrefix("@@") {
-                attrs[.backgroundColor] = NSColor.systemBlue.withAlphaComponent(0.08)
-                attrs[.foregroundColor] = NSColor.secondaryLabelColor
-            } else if line.hasPrefix("diff ") || line.hasPrefix("index ") || line.hasPrefix("---") || line.hasPrefix("+++") {
-                attrs[.foregroundColor] = NSColor.secondaryLabelColor
-            }
-
-            result.append(NSAttributedString(string: line, attributes: attrs))
-            if i < lines.count - 1 {
-                result.append(NSAttributedString(string: "\n", attributes: [.font: font]))
-            }
+    var foreground: Color {
+        switch self {
+        case .added:   return .primary
+        case .removed: return .primary
+        case .hunk:    return .secondary
+        case .header:  return .secondary
+        case .context: return .primary
         }
-
-        textView.textStorage?.setAttributedString(result)
-    }
-
-    final class Coordinator {
-        var textView: NSTextView?
-        var lastDiff: String?
     }
 }

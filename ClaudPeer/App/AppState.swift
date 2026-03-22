@@ -22,6 +22,8 @@ final class AppState: ObservableObject {
     @Published var activeSessions: [UUID: SessionInfo] = [:]
     @Published var streamingText: [String: String] = [:]
     @Published var thinkingText: [String: String] = [:]
+    @Published var streamingImages: [String: [(data: String, mediaType: String)]] = [:]
+    @Published var streamingFileCards: [String: [(path: String, type: String, name: String)]] = [:]
     @Published var lastSessionEvent: [String: SessionEventKind] = [:]
     @Published private(set) var allocatedWsPort: Int = 0
     @Published private(set) var allocatedHttpPort: Int = 0
@@ -223,6 +225,8 @@ final class AppState: ObservableObject {
             activeSessions[UUID(uuidString: sessionId) ?? UUID()]?.isStreaming = false
             lastSessionEvent[sessionId] = .error(error)
             thinkingText.removeValue(forKey: sessionId)
+            streamingImages.removeValue(forKey: sessionId)
+            streamingFileCards.removeValue(forKey: sessionId)
             print("[AppState] Session \(sessionId) error: \(error)")
 
         case .peerChat(let channelId, let from, let message):
@@ -248,6 +252,12 @@ final class AppState: ObservableObject {
 
         case .sessionForked(let parentSessionId, let childSessionId):
             print("[AppState] session.forked parent=\(parentSessionId) child=\(childSessionId)")
+
+        case .streamImage(let sessionId, let imageData, let mediaType, _):
+            streamingImages[sessionId, default: []].append((data: imageData, mediaType: mediaType))
+
+        case .streamFileCard(let sessionId, let filePath, let fileType, let fileName):
+            streamingFileCards[sessionId, default: []].append((path: filePath, type: fileType, name: fileName))
 
         case .connected:
             sidecarStatus = .connected

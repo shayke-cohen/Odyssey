@@ -9,24 +9,26 @@ struct HighlightedCodeView: NSViewRepresentable {
     @Environment(\.colorScheme) private var colorScheme
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
+        let scrollView = NSTextView.scrollableTextView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
+        scrollView.contentView.drawsBackground = false
 
-        let textView = NSTextView()
+        let textView = scrollView.documentView as! NSTextView
         textView.isEditable = false
         textView.isSelectable = true
         textView.drawsBackground = false
+        textView.backgroundColor = .clear
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.isHorizontallyResizable = true
         textView.textContainer?.widthTracksTextView = false
         textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
 
-        scrollView.documentView = textView
         scrollView.setAccessibilityIdentifier("highlightedCode.scrollView")
         textView.setAccessibilityIdentifier("highlightedCode.textView")
         context.coordinator.textView = textView
