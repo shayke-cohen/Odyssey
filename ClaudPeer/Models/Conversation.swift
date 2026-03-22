@@ -14,6 +14,7 @@ final class Conversation {
     var status: ConversationStatus
     var summary: String?
     var isPinned: Bool = false
+    var isArchived: Bool = false
     var startedAt: Date
     var closedAt: Date?
 
@@ -31,6 +32,7 @@ final class Conversation {
         self.topic = topic
         self.status = .active
         self.isPinned = false
+        self.isArchived = false
         self.startedAt = Date()
         self.sessions = sessions
     }

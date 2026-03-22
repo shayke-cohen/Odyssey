@@ -213,8 +213,9 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Agent row: Start Session | `sidebar.agentRow.startSession.{uuid}` | — | `@testId("sidebar.agentRow.startSession.{uuid}")` |
 | Conversation row | `sidebar.conversationRow.{uuid}` | — | `@testId("sidebar.conversationRow.{uuid}")` |
 | Active dot | — | `Active` | `@label("Active")` |
+| Archived section | `sidebar.archivedSection` | — | `@testId("sidebar.archivedSection")` |
 
-**Context menu on conversation rows** (Rename, Pin/Unpin, Close, Duplicate, Delete) and **swipe actions** do not have explicit identifiers.
+**Context menu on conversation rows** (Rename, Pin/Unpin, Close, Duplicate, Archive/Unarchive, Delete) and **swipe actions** do not have explicit identifiers.
 
 ---
 
