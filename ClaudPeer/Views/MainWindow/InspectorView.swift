@@ -240,6 +240,17 @@ struct InspectorView: View {
                     .controlSize(.small)
                     .help("Open working directory in Terminal")
                     .accessibilityIdentifier("inspector.openTerminalButton")
+
+                    Button {
+                        revealSandboxesRootInFinder()
+                    } label: {
+                        Label("Sandboxes", systemImage: "archivebox")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Open ~/.claudpeer/sandboxes in Finder")
+                    .accessibilityIdentifier("inspector.openSandboxesFinderButton")
                 }
             }
         }
@@ -361,6 +372,13 @@ struct InspectorView: View {
     }
 
     private func revealInFinder(_ path: String) {
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
+    }
+
+    /// Opens `~/.claudpeer/sandboxes` (conversation sandboxes and other ephemeral dirs live here).
+    private func revealSandboxesRootInFinder() {
+        let path = "\(NSHomeDirectory())/.claudpeer/sandboxes"
+        try? FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 

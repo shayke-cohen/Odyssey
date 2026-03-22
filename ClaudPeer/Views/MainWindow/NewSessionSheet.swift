@@ -402,6 +402,8 @@ struct NewSessionSheet: View {
             let wd: String
             if !dirText.isEmpty {
                 wd = dirText
+            } else if selectedList.count > 1 {
+                wd = ""
             } else {
                 wd = agent.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? ""
             }
@@ -425,6 +427,13 @@ struct NewSessionSheet: View {
         }
 
         modelContext.insert(conversation)
+        if selectedList.count > 1, dirText.isEmpty {
+            GroupWorkingDirectory.ensureShared(
+                for: conversation,
+                instanceDefault: appState.instanceWorkingDirectory,
+                modelContext: modelContext
+            )
+        }
         try? modelContext.save()
         appState.selectedConversationId = conversation.id
         dismiss()

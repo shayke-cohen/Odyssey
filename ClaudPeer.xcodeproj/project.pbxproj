@@ -10,6 +10,7 @@
 		01AAD2051A1F0A0C17B66401 /* ChatSendRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67CA64CFC033D4351EBD4E65 /* ChatSendRouting.swift */; };
 		02A87E73A8C0410B81E72055 /* SidecarProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B540F835EF29413ABD93A63 /* SidecarProtocol.swift */; };
 		055741AF6E514728DCB92B4E /* Agent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55ECCF0C41C805426469FB1F /* Agent.swift */; };
+		0E013D24E0C1BA94688FDAD1 /* GroupWorkingDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D743EEC73CD94CD9BB8F8E5 /* GroupWorkingDirectory.swift */; };
 		0E04AD12F853FD94FD789F88 /* ClaudPeerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9951FFFD1B701984B418041 /* ClaudPeerApp.swift */; };
 		0E1C572F81FA8CA327BBCBFC /* AgentLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F274BA95A407C22081C2C7 /* AgentLibraryView.swift */; };
 		14D861CF5B13293CAD511152 /* Highlightr in Frameworks */ = {isa = PBXBuildFile; productRef = 8AEED4FD32C0679D7D6687BB /* Highlightr */; };
@@ -157,6 +158,7 @@
 		93A4A2675FD0B802EB09CAD7 /* StreamingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingIndicator.swift; sourceTree = "<group>"; };
 		948463B26EF5D45E42CEBE8E /* SkillEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillEditorView.swift; sourceTree = "<group>"; };
 		992A76147316E10E0359165B /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
+		9D743EEC73CD94CD9BB8F8E5 /* GroupWorkingDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupWorkingDirectory.swift; sourceTree = "<group>"; };
 		A0AB6CD263088A951CC825BB /* ClaudPeer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudPeer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A833D155DC0AD3A824197429 /* FileNodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNodeTests.swift; sourceTree = "<group>"; };
 		A85EED55825AD6491C2C4B52 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
@@ -394,6 +396,7 @@
 				02C3A772FC5229DDFA5E9D34 /* GitService.swift */,
 				C65F909FC976452DE4674CD6 /* GroupPeerFanOutContext.swift */,
 				1871CA94CE6B3042A9E9F46F /* GroupPromptBuilder.swift */,
+				9D743EEC73CD94CD9BB8F8E5 /* GroupWorkingDirectory.swift */,
 				0B628CFF45E38C8F19D627D0 /* RecentDirectories.swift */,
 				B23E27BEA98A5FD69D9CE0CC /* SidecarManager.swift */,
 				2B540F835EF29413ABD93A63 /* SidecarProtocol.swift */,
@@ -591,6 +594,7 @@
 				5EA1436B4AECC7C7C7F8E205 /* GitService.swift in Sources */,
 				70DD119ED5D46386112FE3ED /* GroupPeerFanOutContext.swift in Sources */,
 				B562E734E0EDE27FAC6173E9 /* GroupPromptBuilder.swift in Sources */,
+				0E013D24E0C1BA94688FDAD1 /* GroupWorkingDirectory.swift in Sources */,
 				474BB6C9622B4C00C6210BCE /* HighlightedCodeView.swift in Sources */,
 				3B3341708474F23CC3EF52E6 /* ImagePreviewOverlay.swift in Sources */,
 				BB6DD316D281B45635C1FFA4 /* InspectorView.swift in Sources */,

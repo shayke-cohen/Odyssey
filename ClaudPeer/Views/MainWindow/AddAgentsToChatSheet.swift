@@ -79,17 +79,13 @@ struct AddAgentsToChatSheet: View {
             dismiss()
             return
         }
-        let baseDir = convo.primarySession?.workingDirectory ?? appState.instanceWorkingDirectory ?? ""
+        let primaryWd = (convo.primarySession?.workingDirectory ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         let mission = convo.primarySession?.mission
         let mode = convo.primarySession?.mode ?? .interactive
 
         for agent in agents where selectedIds.contains(agent.id) {
-            let wd: String
-            if !baseDir.isEmpty {
-                wd = baseDir
-            } else {
-                wd = agent.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? ""
-            }
+            let wd = !primaryWd.isEmpty ? primaryWd : ""
             let session = Session(
                 agent: agent,
                 mission: mission,
@@ -109,6 +105,11 @@ struct AddAgentsToChatSheet: View {
             modelContext.insert(session)
         }
 
+        GroupWorkingDirectory.ensureShared(
+            for: convo,
+            instanceDefault: appState.instanceWorkingDirectory,
+            modelContext: modelContext
+        )
         try? modelContext.save()
         dismiss()
     }

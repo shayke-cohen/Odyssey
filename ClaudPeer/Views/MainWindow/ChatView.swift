@@ -900,8 +900,9 @@ struct ChatView: View {
 
         for ag in resolvedMentionAgents {
             if convo.sessions.contains(where: { $0.agent?.id == ag.id }) { continue }
-            let baseDir = convo.primarySession?.workingDirectory ?? appState.instanceWorkingDirectory ?? ""
-            let wd = !baseDir.isEmpty ? baseDir : (ag.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? "")
+            let primaryWd = (convo.primarySession?.workingDirectory ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let wd = !primaryWd.isEmpty ? primaryWd : ""
             let session = Session(
                 agent: ag,
                 mission: convo.primarySession?.mission,
@@ -916,6 +917,11 @@ struct ChatView: View {
             modelContext.insert(session)
             modelContext.insert(p)
         }
+        GroupWorkingDirectory.ensureShared(
+            for: convo,
+            instanceDefault: appState.instanceWorkingDirectory,
+            modelContext: modelContext
+        )
         try? modelContext.save()
 
         var targetSessions: [Session] = convo.sessions.sorted(by: { $0.startedAt < $1.startedAt })
@@ -1000,6 +1006,11 @@ struct ChatView: View {
         wireAttachments: [WireAttachment],
         manager: SidecarManager
     ) async {
+        GroupWorkingDirectory.ensureShared(
+            for: convo,
+            instanceDefault: appState.instanceWorkingDirectory,
+            modelContext: modelContext
+        )
         let participants = convo.participants
         let provisioner = AgentProvisioner(modelContext: modelContext)
         let fanOutContext = GroupPeerFanOutContext()
@@ -1016,7 +1027,11 @@ struct ChatView: View {
             var createConfig: AgentConfig?
             if !appState.createdSessions.contains(sidecarKey) {
                 if let agent = session.agent {
-                    let (cfg, _) = provisioner.provision(agent: agent, mission: session.mission)
+                    let (cfg, _) = provisioner.provision(
+                        agent: agent,
+                        mission: session.mission,
+                        workingDirOverride: session.workingDirectory
+                    )
                     createConfig = cfg
                 } else {
                     createConfig = makeFreeformAgentConfig()
@@ -1132,7 +1147,11 @@ struct ChatView: View {
             var createConfig: AgentConfig?
             if !appState.createdSessions.contains(key) {
                 if let agent = other.agent {
-                    let (cfg, _) = provisioner.provision(agent: agent, mission: other.mission)
+                    let (cfg, _) = provisioner.provision(
+                        agent: agent,
+                        mission: other.mission,
+                        workingDirOverride: other.workingDirectory
+                    )
                     createConfig = cfg
                 } else {
                     createConfig = makeFreeformAgentConfig()
