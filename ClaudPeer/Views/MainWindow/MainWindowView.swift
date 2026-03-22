@@ -3,6 +3,7 @@ import SwiftData
 
 struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var p2pNetworkManager: P2PNetworkManager
     @Environment(\.modelContext) private var modelContext
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     @State private var showStatusPopover = false
@@ -88,6 +89,17 @@ struct MainWindowView: View {
 
             ToolbarItem(placement: .automatic) {
                 Button {
+                    appState.showPeerNetwork = true
+                } label: {
+                    Label("Peer Network", systemImage: "network")
+                }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+                .help("Peer network (⌘⇧P)")
+                .accessibilityIdentifier("mainWindow.peerNetworkButton")
+            }
+
+            ToolbarItem(placement: .automatic) {
+                Button {
                     inspectorVisible.toggle()
                 } label: {
                     Label(
@@ -111,6 +123,11 @@ struct MainWindowView: View {
             AgentCommsView()
                 .environmentObject(appState)
                 .frame(minWidth: 600, minHeight: 400)
+        }
+        .sheet(isPresented: $appState.showPeerNetwork) {
+            PeerNetworkView()
+                .environmentObject(p2pNetworkManager)
+                .environment(\.modelContext, modelContext)
         }
         .onAppear {
             appState.connectSidecar()

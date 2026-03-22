@@ -29,6 +29,8 @@ struct ChatView: View {
     @State private var showMentionError = false
     @State private var mentionErrorDetail = ""
     @State private var showAddAgentsSheet = false
+    /// Retained while the system share sheet is visible so temp export files can be cleaned up.
+    @State private var shareCoordinator: ShareTempFileCoordinator?
     @FocusState private var topicFieldFocused: Bool
 
     @Query private var allConversations: [Conversation]
@@ -93,6 +95,31 @@ struct ChatView: View {
         guard let c = conversation, c.sessions.count > 1 else { return nil }
         let names = c.sessions.compactMap { $0.agent?.name ?? "Assistant" }
         return "Group — " + names.joined(separator: ", ") + " · peer replies reach everyone"
+    }
+
+    private var streamingAppendix: ChatTranscriptStreamingAppendix? {
+        guard isProcessing else { return nil }
+        let key = streamSessionKeyForUI ?? ""
+        let text = appState.streamingText[key] ?? ""
+        let thinking = appState.thinkingText[key] ?? ""
+        let app = ChatTranscriptStreamingAppendix(text: text, thinking: thinking, displayName: streamingDisplayName)
+        return app.isEmpty ? nil : app
+    }
+
+    private var canExportChat: Bool {
+        !sortedMessages.isEmpty || streamingAppendix != nil
+    }
+
+    private func chatExportSnapshot() -> ChatTranscriptSnapshot? {
+        guard let convo = conversation else { return nil }
+        let appendix = streamingAppendix
+        if sortedMessages.isEmpty, appendix == nil { return nil }
+        return ChatTranscriptExport.snapshot(
+            conversation: convo,
+            messages: sortedMessages,
+            participants: convo.participants,
+            streamingAppendix: appendix
+        )
     }
 
     var body: some View {
@@ -362,6 +389,63 @@ struct ChatView: View {
                     Label("Duplicate", systemImage: "doc.on.doc")
                 }
                 .accessibilityIdentifier("chat.moreOptions.duplicate")
+                Divider()
+                Menu {
+                    Button {
+                        Task { await exportChatTranscript(kind: .markdown, destination: .save) }
+                    } label: {
+                        Label("Markdown…", systemImage: "doc.richtext")
+                    }
+                    .disabled(!canExportChat)
+                    .accessibilityIdentifier("chat.export.markdown")
+                    Button {
+                        Task { await exportChatTranscript(kind: .html, destination: .save) }
+                    } label: {
+                        Label("HTML…", systemImage: "doc.richtext")
+                    }
+                    .disabled(!canExportChat)
+                    .accessibilityIdentifier("chat.export.html")
+                    Button {
+                        Task { await exportChatTranscript(kind: .pdf, destination: .save) }
+                    } label: {
+                        Label("PDF…", systemImage: "doc.fill")
+                    }
+                    .disabled(!canExportChat)
+                    .accessibilityIdentifier("chat.export.pdf")
+                } label: {
+                    Label("Export", systemImage: "square.and.arrow.down")
+                }
+                .disabled(!canExportChat)
+                .accessibilityIdentifier("chat.exportSubmenu")
+                .accessibilityLabel("Export chat")
+                Menu {
+                    Button {
+                        Task { await exportChatTranscript(kind: .markdown, destination: .share) }
+                    } label: {
+                        Label("Markdown", systemImage: "doc.richtext")
+                    }
+                    .disabled(!canExportChat)
+                    .accessibilityIdentifier("chat.share.markdown")
+                    Button {
+                        Task { await exportChatTranscript(kind: .html, destination: .share) }
+                    } label: {
+                        Label("HTML", systemImage: "doc.richtext")
+                    }
+                    .disabled(!canExportChat)
+                    .accessibilityIdentifier("chat.share.html")
+                    Button {
+                        Task { await exportChatTranscript(kind: .pdf, destination: .share) }
+                    } label: {
+                        Label("PDF", systemImage: "doc.fill")
+                    }
+                    .disabled(!canExportChat)
+                    .accessibilityIdentifier("chat.share.pdf")
+                } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                .disabled(!canExportChat)
+                .accessibilityIdentifier("chat.shareSubmenu")
+                .accessibilityLabel("Share chat")
                 Divider()
                 Button { showClearConfirmation = true } label: {
                     Label("Clear Messages", systemImage: "trash")
@@ -1011,6 +1095,17 @@ struct ChatView: View {
             instanceDefault: appState.instanceWorkingDirectory,
             modelContext: modelContext
         )
+        for session in targetSessions {
+            do {
+                try await GitWorkspacePreparer.prepareIfNeeded(session: session, modelContext: modelContext)
+            } catch {
+                isProcessing = false
+                activeStreamSessionKey = nil
+                let key = session.id.uuidString
+                appState.lastSessionEvent[key] = .error("Workspace: \(error.localizedDescription)")
+                return
+            }
+        }
         let participants = convo.participants
         let provisioner = AgentProvisioner(modelContext: modelContext)
         let fanOutContext = GroupPeerFanOutContext()
@@ -1303,6 +1398,93 @@ struct ChatView: View {
     }
 
     // MARK: - Actions
+
+    private enum ChatTranscriptExportKind {
+        case markdown, html, pdf
+    }
+
+    private enum ChatTranscriptExportDestination {
+        case save, share
+    }
+
+    private func exportChatTranscript(kind: ChatTranscriptExportKind, destination: ChatTranscriptExportDestination) async {
+        guard let snap = chatExportSnapshot() else { return }
+        let base = ChatTranscriptExport.suggestedBaseFileName(for: snap)
+        switch (kind, destination) {
+        case (.markdown, .save):
+            let md = ChatTranscriptExport.markdown(snap)
+            guard let url = await ChatExportPresenters.runSavePanel(
+                suggestedFileName: "\(base).md",
+                allowedTypes: [ChatExportPresenters.markdownType]
+            ) else { return }
+            do {
+                try Data(md.utf8).write(to: url, options: .atomic)
+            } catch {
+                print("[ChatView] Export markdown failed: \(error)")
+            }
+        case (.html, .save):
+            let html = ChatTranscriptExport.html(snap)
+            guard let url = await ChatExportPresenters.runSavePanel(
+                suggestedFileName: "\(base).html",
+                allowedTypes: [.html]
+            ) else { return }
+            do {
+                try Data(html.utf8).write(to: url, options: .atomic)
+            } catch {
+                print("[ChatView] Export HTML failed: \(error)")
+            }
+        case (.pdf, .save):
+            let html = ChatTranscriptExport.html(snap)
+            let renderer = ChatTranscriptPDFRenderer()
+            do {
+                let data = try await renderer.renderPDF(html: html)
+                guard let url = await ChatExportPresenters.runSavePanel(
+                    suggestedFileName: "\(base).pdf",
+                    allowedTypes: [.pdf]
+                ) else { return }
+                try data.write(to: url, options: .atomic)
+            } catch {
+                print("[ChatView] Export PDF failed: \(error)")
+            }
+        case (.markdown, .share):
+            let md = ChatTranscriptExport.markdown(snap)
+            let data = Data(md.utf8)
+            let temp = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).md")
+            do {
+                try data.write(to: temp, options: .atomic)
+                let coord = ShareTempFileCoordinator(url: temp) { self.shareCoordinator = nil }
+                shareCoordinator = coord
+                ChatExportPresenters.presentSharePicker(for: temp, coordinator: coord)
+            } catch {
+                print("[ChatView] Share markdown failed: \(error)")
+            }
+        case (.html, .share):
+            let html = ChatTranscriptExport.html(snap)
+            let data = Data(html.utf8)
+            let temp = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).html")
+            do {
+                try data.write(to: temp, options: .atomic)
+                let coord = ShareTempFileCoordinator(url: temp) { self.shareCoordinator = nil }
+                shareCoordinator = coord
+                ChatExportPresenters.presentSharePicker(for: temp, coordinator: coord)
+            } catch {
+                print("[ChatView] Share HTML failed: \(error)")
+            }
+        case (.pdf, .share):
+            let html = ChatTranscriptExport.html(snap)
+            let renderer = ChatTranscriptPDFRenderer()
+            do {
+                let data = try await renderer.renderPDF(html: html)
+                let temp = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).pdf")
+                try data.write(to: temp, options: .atomic)
+                let coord = ShareTempFileCoordinator(url: temp) { self.shareCoordinator = nil }
+                shareCoordinator = coord
+                ChatExportPresenters.presentSharePicker(for: temp, coordinator: coord)
+            } catch {
+                print("[ChatView] Share PDF failed: \(error)")
+            }
+        }
+    }
 
     private func forkConversation() {
         guard let newConvo = cloneConversationForFork(from: conversation, throughMessage: nil),

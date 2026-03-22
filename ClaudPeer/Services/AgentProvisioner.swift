@@ -84,8 +84,7 @@ final class AgentProvisioner {
     private func resolveWorkingDirectory(agent: Agent, override: String?) -> String {
         if let explicit = override, !explicit.isEmpty { return explicit }
         if let repo = agent.githubRepo, !repo.isEmpty {
-            let repoName = repo.split(separator: "/").suffix(2).joined(separator: "-")
-            return "\(NSHomeDirectory())/.claudpeer/repos/\(repoName)"
+            return WorkspaceResolver.cloneDestinationPath(repoInput: repo)
         }
         if let defaultDir = agent.defaultWorkingDirectory, !defaultDir.isEmpty { return defaultDir }
         let sandboxPath = "\(NSHomeDirectory())/.claudpeer/sandboxes/\(UUID().uuidString)"

@@ -136,6 +136,7 @@ Dot-separated `viewName.elementName` in camelCase:
 | AgentLibraryView | `agentLibrary.*` |
 | AgentEditorView | `agentEditor.*` |
 | AgentCommsView | `agentComms.*` |
+| PeerNetworkView | `peerNetwork.*` |
 | SettingsView | `settings.{general,connection,developer}.*` |
 | AgentCardView | `agentCard.*` |
 | MessageBubble | `messageBubble.*` |

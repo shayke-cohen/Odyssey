@@ -30,6 +30,9 @@ struct AgentEditorView: View {
     @State private var systemPrompt: String
     @State private var showSkillLibrary = false
     @State private var showMCPLibrary = false
+    @State private var githubWorkspaceBusy = false
+    @State private var githubWorkspaceMessage = ""
+    @State private var githubWorkspaceSucceeded = false
     @State private var skillsExpanded = true
     @State private var mcpsExpanded = true
     @State private var permissionsExpanded = false
@@ -199,6 +202,36 @@ struct AgentEditorView: View {
                     .accessibilityIdentifier("agentEditor.githubRepoField")
                 TextField("Branch", text: $githubBranch)
                     .accessibilityIdentifier("agentEditor.githubBranchField")
+
+                let repoTrim = githubRepo.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !repoTrim.isEmpty {
+                    let clonePath = WorkspaceResolver.cloneDestinationPath(repoInput: repoTrim)
+                    LabeledContent("Clone path") {
+                        Text(clonePath)
+                            .font(.caption)
+                            .textSelection(.enabled)
+                    }
+                    .accessibilityIdentifier("agentEditor.githubClonePathLabel")
+                    HStack {
+                        if githubWorkspaceBusy {
+                            ProgressView().scaleEffect(0.75)
+                        }
+                        Button("Validate / update clone") {
+                            Task { await runGithubWorkspacePrep() }
+                        }
+                        .disabled(githubWorkspaceBusy)
+                        .accessibilityIdentifier("agentEditor.githubValidateButton")
+                    }
+                    if !githubWorkspaceMessage.isEmpty {
+                        Text(githubWorkspaceMessage)
+                            .font(.caption)
+                            .foregroundStyle(githubWorkspaceSucceeded ? Color.secondary : Color.red)
+                            .accessibilityIdentifier("agentEditor.githubWorkspaceMessage")
+                    }
+                    Text("Next session start will re-run clone resolution if the repo or branch changes.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
         .formStyle(.grouped)
@@ -553,6 +586,25 @@ struct AgentEditorView: View {
             }
         }
         .padding()
+    }
+
+    private func runGithubWorkspacePrep() async {
+        let repo = githubRepo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !repo.isEmpty else { return }
+        githubWorkspaceBusy = true
+        githubWorkspaceMessage = ""
+        defer { githubWorkspaceBusy = false }
+        let path = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
+        let b = githubBranch.trimmingCharacters(in: .whitespacesAndNewlines)
+        let branch = b.isEmpty ? "main" : b
+        do {
+            try await GitHubIntegration.ensureClone(repoInput: repo, branch: branch, destinationPath: path)
+            githubWorkspaceSucceeded = true
+            githubWorkspaceMessage = "Clone is ready at the path above."
+        } catch {
+            githubWorkspaceSucceeded = false
+            githubWorkspaceMessage = error.localizedDescription
+        }
     }
 
     // MARK: - Save

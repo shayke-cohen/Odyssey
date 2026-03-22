@@ -7,6 +7,7 @@ import AppXray
 @main
 struct ClaudPeerApp: App {
     @StateObject private var appState = AppState()
+    @StateObject private var p2pNetworkManager = P2PNetworkManager()
     @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
     @AppStorage(AppSettings.autoConnectSidecarKey, store: AppSettings.store) private var autoConnectSidecar = true
 
@@ -71,6 +72,7 @@ struct ClaudPeerApp: App {
                 }
             }
             .environmentObject(appState)
+            .environmentObject(p2pNetworkManager)
             .preferredColorScheme(resolvedColorScheme)
             .onAppear {
                 appState.modelContext = modelContainer.mainContext

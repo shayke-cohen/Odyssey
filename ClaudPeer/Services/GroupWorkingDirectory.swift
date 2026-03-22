@@ -66,7 +66,6 @@ enum GroupWorkingDirectory {
     }
 
     private static func repoClonePath(repo: String) -> String {
-        let repoName = repo.split(separator: "/").suffix(2).joined(separator: "-")
-        return "\(NSHomeDirectory())/.claudpeer/repos/\(repoName)"
+        WorkspaceResolver.cloneDestinationPath(repoInput: repo)
     }
 }

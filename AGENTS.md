@@ -42,20 +42,26 @@ All are SwiftData `@Model` classes. Relationships use UUID references (not Swift
 | `SidecarManager.swift` | Process + WebSocket lifecycle | `start()`, `stop()`, `send()`, `events` (AsyncStream) |
 | `SidecarProtocol.swift` | Wire types | `SidecarCommand` (enum), `SidecarEvent` (enum), `AgentConfig` (struct), `IncomingWireMessage` |
 | `AgentProvisioner.swift` | Config builder | `provision(agent:mission:)` → (AgentConfig, Session) |
+| `WorkspaceResolver.swift` | GitHub paths + URLs | `cloneDestinationPath`, `shouldManageGitHubClone` |
+| `GitHubIntegration.swift` | `git` operations | `ensureClone` |
+| `GitWorkspacePreparer.swift` | Pre-sidecar clone | `prepareIfNeeded` |
+| `P2PNetworkManager.swift` | LAN peer sync | Bonjour browse/advertise, `fetchAgents` |
+| `PeerCatalogServer.swift` | Peer HTTP | `GET /claudpeer/v1/agents` |
+| `PeerAgentImporter.swift` | Import from wire DTO | `importFromWire` |
 
 **SidecarManager** finds Bun at `/opt/homebrew/bin/bun`, `/usr/local/bin/bun`, or `~/.bun/bin/bun`. Finds sidecar at: bundle resources, cwd, `~/ClaudPeer/sidecar/`, or `UserDefaults["claudpeer.projectPath"]`.
 
-**AgentProvisioner** resolves working directory by priority: explicit override → GitHub clone path → agent default → ephemeral sandbox. Appends PeerBus tool names to allowedTools (forward-looking; tools not yet implemented in sidecar).
+**AgentProvisioner** resolves working directory by priority: explicit override → GitHub clone path → agent default → ephemeral sandbox. Appends PeerBus tool names to allowedTools (injected via in-process MCP in the sidecar). **GitWorkspacePreparer** runs before the first sidecar message when the session is GitHub-backed so the clone exists on disk.
 
 #### Views (`Views/`)
 
 | Directory | Files | Purpose |
 |---|---|---|
-| `MainWindow/` | MainWindowView, SidebarView, ChatView, InspectorView, NewSessionSheet | Three-panel layout + session creation |
+| `MainWindow/` | MainWindowView, SidebarView, ChatView, InspectorView, NewSessionSheet, PeerNetworkView | Three-panel layout + session creation + LAN peers |
 | `AgentLibrary/` | AgentLibraryView, AgentEditorView | Agent CRUD |
 | `Components/` | MessageBubble, ToolCallView, ConversationTreeNode, StatusBadge, StreamingIndicator, AgentCardView | Reusable UI |
 
-**MainWindowView** is a `NavigationSplitView` with sidebar (conversation list + agents), detail (ChatView), and trailing column (InspectorView). Toolbar has New Session (Cmd+N, opens `NewSessionSheet`), Quick Chat (Cmd+Shift+N), Agent Library, Peer Network, and sidecar status.
+**MainWindowView** is a `NavigationSplitView` with sidebar (conversation list + agents), detail (ChatView), and trailing column (InspectorView). Toolbar has New Session (Cmd+N, opens `NewSessionSheet`), Quick Chat (Cmd+Shift+N), Agent Comms (⌘⇧A), Peer Network (⌘⇧P, `PeerNetworkView` sheet), inspector toggle, and sidecar status.
 
 **NewSessionSheet** presents an agent picker grid (all agents + freeform option), model override dropdown, session mode picker (interactive/autonomous/worker), mission text field, and working directory picker with folder browser.
 
@@ -134,18 +140,17 @@ Query options include: model (default `claude-sonnet-4-6`), maxTurns (30), syste
 
 ## Known Gaps (Vision vs Implementation)
 
-These are specified in `system-plan-vision.md` but not yet in code:
+These items from `system-plan-vision.md` are still ahead of the current app (see `SPEC.md` for what is implemented):
 
 | Area | What's Missing |
 |---|---|
-| PeerBus tools | `tools/peer-*.ts`, `tools/blackboard.ts`, `tools/workspace.ts` — custom SDK tools |
-| Hook engine | `hooks/ui-hooks.ts`, `hooks/peer-hooks.ts` — PreToolUse/PostToolUse callbacks |
-| Agent-to-agent | Blocking chat, delegation routing, instance policy enforcement |
-| WorkspaceResolver | `Services/WorkspaceResolver.swift` — full resolution with GitHub clone |
-| GitHubIntegration | `Services/GitHubIntegration.swift` — repo clone, branch management |
-| P2P | `Services/P2PNetworkManager.swift` — Bonjour, WebSocket relay |
-| Views | AgentCommsView, PeerNetworkView, SkillPoolView, MCPPoolView |
-| Sidecar provisioner | `sidecar/src/agent-provisioner.ts` — TS-side config builder |
+| Hook engine (SDK) | Optional depth: `PreToolUse` / `PostToolUse` in the sidecar beyond streaming message handling |
+| P2P v2 | `peer.registry.update`, `route.remote`, cross-machine PeerBus relay, Swift bridge |
+| Blackboard as MCP | External MCP server exposing ClaudPeer blackboard (vision §11.3) |
+| Pool views | SkillPoolView / MCPPoolView as first-class management UIs (catalog covers install) |
+| Sidecar provisioner | `sidecar/src/agent-provisioner.ts` — TS-side config builder (optional mirror of Swift) |
+
+**Implemented in Phase 9 (not gaps):** PeerBus tools (in-process MCP in sidecar), `WorkspaceResolver` / `GitHubIntegration` / clone before tools, `P2PNetworkManager` + `PeerNetworkView` for LAN agent export/import over Bonjour + HTTP, AgentCommsView.
 
 ## Testing
 
@@ -153,7 +158,7 @@ See `TESTING.md` for the full testing guide — screen-by-screen control referen
 
 ### Quick Reference
 
-**Swift unit tests** (9 test files in `ClaudPeerTests/`):
+**Swift unit tests** (`ClaudPeerTests/`, run with `xcodebuild test`):
 ```bash
 xcodebuild test -project ClaudPeer.xcodeproj -scheme ClaudPeer -destination 'platform=macOS'
 ```

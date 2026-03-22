@@ -181,6 +181,7 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Toolbar: New Session | `mainWindow.newSessionButton` | — | `@testId("mainWindow.newSessionButton")` |
 | Toolbar: Quick Chat | `mainWindow.quickChatButton` | — | `@testId("mainWindow.quickChatButton")` |
 | Toolbar: Agent Comms | `mainWindow.agentCommsButton` | — | `@testId("mainWindow.agentCommsButton")` |
+| Toolbar: Peer Network | `mainWindow.peerNetworkButton` | — | `@testId("mainWindow.peerNetworkButton")` |
 | Toolbar: Inspector toggle | `mainWindow.inspectorToggle` | — | `@testId("mainWindow.inspectorToggle")` |
 | Sidecar status pill | `mainWindow.sidecarStatusPill` | `Sidecar {status}` | `@testId("mainWindow.sidecarStatusPill")` |
 | Status popover | `mainWindow.statusPopover` | — | `@testId("mainWindow.statusPopover")` |
@@ -238,6 +239,14 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Menu: Fork | `chat.moreOptions.fork` | — | `@testId("chat.moreOptions.fork")` |
 | Menu: Rename | `chat.moreOptions.rename` | — | `@testId("chat.moreOptions.rename")` |
 | Menu: Duplicate | `chat.moreOptions.duplicate` | — | `@testId("chat.moreOptions.duplicate")` |
+| Menu: Export (submenu) | `chat.exportSubmenu` | `Export chat` | `@testId("chat.exportSubmenu")` |
+| Menu: Export Markdown | `chat.export.markdown` | — | `@testId("chat.export.markdown")` |
+| Menu: Export HTML | `chat.export.html` | — | `@testId("chat.export.html")` |
+| Menu: Export PDF | `chat.export.pdf` | — | `@testId("chat.export.pdf")` |
+| Menu: Share (submenu) | `chat.shareSubmenu` | `Share chat` | `@testId("chat.shareSubmenu")` |
+| Menu: Share Markdown | `chat.share.markdown` | — | `@testId("chat.share.markdown")` |
+| Menu: Share HTML | `chat.share.html` | — | `@testId("chat.share.html")` |
+| Menu: Share PDF | `chat.share.pdf` | — | `@testId("chat.share.pdf")` |
 | Menu: Clear Messages | `chat.moreOptions.clearMessages` | — | `@testId("chat.moreOptions.clearMessages")` |
 | Message scroll view | `chat.messageScrollView` | — | `@testId("chat.messageScrollView")` |
 | Attach button | `chat.attachButton` | `Attach file` | `@testId("chat.attachButton")` |
@@ -275,6 +284,10 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Mission field | `newSession.missionField` | — | `@testId("newSession.missionField")` |
 | Working directory field | `newSession.workingDirectoryField` | — | `@testId("newSession.workingDirectoryField")` |
 | Browse directory | `newSession.browseDirectoryButton` | `Browse for directory` | `@testId("newSession.browseDirectoryButton")` |
+| GitHub workspace mode (segmented) | `newSession.githubWorkspaceModePicker` | — | `@testId("newSession.githubWorkspaceModePicker")` |
+| GitHub status summary | `newSession.githubStatusSummary` | — | `@testId("newSession.githubStatusSummary")` |
+| GitHub workspace error | `newSession.githubWorkspaceError` | — | `@testId("newSession.githubWorkspaceError")` |
+| GitHub validate/update clone | `newSession.githubValidateButton` | — | `@testId("newSession.githubValidateButton")` |
 | Options disclosure | `newSession.optionsDisclosure` | — | `@testId("newSession.optionsDisclosure")` |
 | Mode description | `newSession.modeDescription` | — | `@testId("newSession.modeDescription")` |
 | Quick Chat button | `newSession.quickChatButton` | — | `@testId("newSession.quickChatButton")` |
@@ -468,6 +481,9 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Cancel button | `agentEditor.cancelButton` | — | `@testId("agentEditor.cancelButton")` |
 | Next button | `agentEditor.nextButton` | — | `@testId("agentEditor.nextButton")` |
 | Save button | `agentEditor.saveButton` | — | `@testId("agentEditor.saveButton")` |
+| GitHub clone path | `agentEditor.githubClonePathLabel` | — | `@testId("agentEditor.githubClonePathLabel")` |
+| GitHub validate/update | `agentEditor.githubValidateButton` | — | `@testId("agentEditor.githubValidateButton")` |
+| GitHub workspace message | `agentEditor.githubWorkspaceMessage` | — | `@testId("agentEditor.githubWorkspaceMessage")` |
 
 ---
 
@@ -486,6 +502,30 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 | Event row | `agentComms.event.{uuid}` | — | `@testId("agentComms.event.{uuid}")` |
 | Event icon | `agentComms.eventIcon.{uuid}` | `Chat` / `Delegation` / `Blackboard update` | `@testId("agentComms.eventIcon.{uuid}")` |
 | Event timestamp | `agentComms.eventTimestamp.{uuid}` | — | `@testId("agentComms.eventTimestamp.{uuid}")` |
+
+---
+
+### 5.12a PeerNetworkView
+
+**File:** `Views/MainWindow/PeerNetworkView.swift`
+**Access:** Toolbar "Peer Network" (⌘⇧P).
+
+| Control | Identifier | Label | Selector |
+|---------|-----------|-------|----------|
+| Title | `peerNetwork.title` | — | `@testId("peerNetwork.title")` |
+| Close | `peerNetwork.closeButton` | Close | `@testId("peerNetwork.closeButton")` |
+| Banner error | `peerNetwork.bannerError` | — | `@testId("peerNetwork.bannerError")` |
+| Empty peers | `peerNetwork.emptyPeers` | — | `@testId("peerNetwork.emptyPeers")` |
+| Peer list | `peerNetwork.peerList` | — | `@testId("peerNetwork.peerList")` |
+| Peer row | `peerNetwork.peerRow.{id}` | — | `@testId("peerNetwork.peerRow.{id}")` |
+| Detail title | `peerNetwork.detailTitle` | — | `@testId("peerNetwork.detailTitle")` |
+| Browse agents | `peerNetwork.browseAgentsButton` | — | `@testId("peerNetwork.browseAgentsButton")` |
+| List error | `peerNetwork.listError` | — | `@testId("peerNetwork.listError")` |
+| Import message | `peerNetwork.importMessage` | — | `@testId("peerNetwork.importMessage")` |
+| Remote agent list | `peerNetwork.remoteAgentList` | — | `@testId("peerNetwork.remoteAgentList")` |
+| Import button | `peerNetwork.importButton.{uuid}` | — | `@testId("peerNetwork.importButton.{uuid}")` |
+| Select peer placeholder | `peerNetwork.selectPeerPlaceholder` | — | `@testId("peerNetwork.selectPeerPlaceholder")` |
+| Refresh browse | `peerNetwork.refreshButton` | — | `@testId("peerNetwork.refreshButton")` |
 
 ---
 

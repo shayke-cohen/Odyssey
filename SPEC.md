@@ -2,8 +2,8 @@
 
 Living specification tracking implemented features, user flows, and requirements.
 
-**Version:** 0.8.1
-**Status:** Phase 8 — Group chat (incl. peer fan-out), slash commands, @-mentions, fork-from-message
+**Version:** 0.9.0
+**Status:** Phase 9 — GitHub workspace clone/update, LAN peer network (Bonjour + agent export/import)
 
 ---
 
@@ -13,7 +13,7 @@ ClaudPeer is a native macOS developer tool for managing multiple Claude AI agent
 
 ### Target Users
 - Developers using Claude for coding tasks who want persistent, configurable agent sessions
-- Teams wanting to share agent definitions across machines (planned)
+- Teams sharing agent definitions across machines on the same LAN (P2P v1)
 
 ### Core Value Proposition
 - **Multi-agent orchestration** — run multiple Claude sessions simultaneously with different configurations
@@ -371,7 +371,7 @@ XCTest-based unit test target for verifying catalog system integrity, service lo
 | FR-13.14: GitServiceTests — repo detection, status parsing, diff/diffCached/diffSummary, fullDiff | Done |
 | FR-13.15: FileNodeTests — initialization, computed properties, loadChildren, reloadChildren, applyGitStatus | Done |
 | FR-13.16: FileExplorerIntegrationTests — git path resolution, @Published behavior, edge cases, deep nesting | Done |
-| FR-13.17: 154 tests passing with 0 failures | Done |
+| FR-13.17: 200+ XCTest cases passing (includes `WorkspaceResolverTests`) | Done |
 
 ### FR-14: Inter-Agent Communication (PeerBus)
 
@@ -500,6 +500,48 @@ Backend services supporting the file explorer.
 | FR-18.4: FileNode model — ObservableObject with lazy children, @Published gitStatus | Done |
 | FR-18.5: FileNode.applyGitStatus — recursive status propagation from root | Done |
 | FR-18.6: FileNode.hasChanges — computed property traversing children | Done |
+
+### FR-19: GitHub Workspace Integration
+
+**Status:** Implemented
+
+| Requirement | Status |
+|---|---|
+| FR-19.1: `WorkspaceResolver` — clone URL normalization, stable `~/.claudpeer/repos/` directory names | Done |
+| FR-19.2: `GitHubIntegration` — `git clone` / `fetch` + `checkout` for configured branch | Done |
+| FR-19.3: `GitWorkspacePreparer` — before first sidecar turn, ensure clone when session is GitHub-backed and cwd is not an explicit user override | Done |
+| FR-19.4: New Session sheet — segmented picker (Default / Custom folder / GitHub clone) when exactly one selected agent has `githubRepo` | Done |
+| FR-19.5: New Session — validate/update clone button; errors surfaced inline | Done |
+| FR-19.6: Agent Editor — clone path label, validate/update clone, note about next session resolution | Done |
+| FR-19.7: `AgentProvisioner` / `GroupWorkingDirectory` use shared `WorkspaceResolver` paths | Done |
+
+### FR-20: LAN Peer Network (P2P v1)
+
+**Status:** Implemented (local Bonjour + HTTP catalog; not cross-machine PeerBus routing)
+
+| Requirement | Status |
+|---|---|
+| FR-20.1: `P2PNetworkManager` — Bonjour browse/advertise `_claudpeer._tcp`, NWListener-backed catalog server | Done |
+| FR-20.2: `PeerCatalogServer` — `GET /claudpeer/v1/agents` returns JSON list of export DTOs | Done |
+| FR-20.3: `WireAgentExport` / `WireAgentExportList` — stable export payload (names for skills/MCPs/permissions) | Done |
+| FR-20.4: `PeerAgentImporter` — import agent into SwiftData; resolve dependencies by name; `origin: .peer` | Done |
+| FR-20.5: `PeerNetworkView` — split list/detail, browse remote agents, per-row Import | Done |
+| FR-20.6: Main toolbar — Peer Network button, ⌘⇧P, sheet; `mainWindow.peerNetworkButton` | Done |
+| FR-20.7: `P2PNetworkManager` injected via `environmentObject` from app entry | Done |
+
+### Phase 9 — UX principles
+
+- **Workspace truth** — Clone path and repo/branch shown in New Session and Agent Editor before tools run; failures show inline with retry (Validate / update clone).
+- **Progress** — Indeterminate `ProgressView` while clone runs from New Session or editor.
+- **Peer UI** — Peer Network uses the same sheet pattern as Agent Comms; empty state explains same-network requirement.
+- **Accessibility** — `newSession.githubWorkspaceModePicker`, `newSession.githubValidateButton`, `peerNetwork.*`, `agentEditor.githubClonePathLabel`, `agentEditor.githubValidateButton` (see `TESTING.md` / `CLAUDE.md` for full prefix rules).
+
+### Phase 9 — Wireframes (reference)
+
+- **WF1 (New Session)** — Segmented control for directory mode; repo + local clone path + branch caption; optional error line; Validate/update clone when GitHub mode is selected.
+- **WF2 (Agent Editor)** — Workspace section extended with read-only clone path and Validate/update clone.
+- **WF3 (Peer Network)** — `HSplitView`: peer list (left), detail with “Browse agents” and remote agent rows with Import (right).
+- **WF4 (Import)** — Inline confirmation text after Import; missing skills/MCPs omitted with resolved names where they exist locally.
 
 ---
 
@@ -693,6 +735,24 @@ Backend services supporting the file explorer.
 - [x] Delegation bubble appears in parent chat
 - [x] Wait-for-result mode shows progress and returns result in parent chat
 - [x] Instance policies respected (singleton reused, pool capped, spawn default)
+
+### US-18: Clone GitHub Repo Before Agent Runs Tools
+**As a** developer, **I want** ClaudPeer to clone or update my agent’s GitHub repo automatically, **so that** the session working directory exists before the sidecar runs file tools.
+
+**Acceptance criteria:**
+- [x] First user message triggers `GitWorkspacePreparer` when the session is GitHub-backed (no conflicting explicit cwd override)
+- [x] New Session can require GitHub mode for a single agent with `githubRepo` and run clone before dismiss
+- [x] Agent Editor can validate/update clone from the Workspace section
+- [x] Errors from `git` are user-visible (chat event or inline in sheet/editor)
+
+### US-19: Import Agents from a LAN Peer
+**As a** developer, **I want to** browse agents advertised by another ClaudPeer on my network and import one, **so that** I can reuse templates without manual copy/paste.
+
+**Acceptance criteria:**
+- [x] Peer Network sheet lists Bonjour-discovered `_claudpeer._tcp` services (excluding self by service name)
+- [x] “Browse agents” fetches `/claudpeer/v1/agents` over TCP
+- [x] Import creates a new `Agent` with skills/MCPs/permission matched by name where present
+- [x] Imported agents use `origin: .peer` with a stable source UUID per selected peer session
 
 ### US-14: Read Rich Markdown Responses
 **As a** developer, **I want to** see Claude's responses rendered with proper markdown formatting, **so that** code blocks, links, headers, and lists are easy to read and interact with.
@@ -961,6 +1021,42 @@ flowchart TD
     ParentChat --> User([User sees full\ncollaboration in real-time])
 ```
 
+### Flow 14: GitHub workspace before first message
+
+```mermaid
+flowchart TD
+    start[User sends first message] --> group[GroupWorkingDirectory.ensureShared]
+    group --> prep[GitWorkspacePreparer per target session]
+    prep --> need{Agent has githubRepo and managed cwd?}
+    need -->|No| sidecar[session.create / session.message]
+    need -->|Yes| clone[git clone or fetch/checkout]
+    clone --> ok{OK?}
+    ok -->|Yes| sidecar
+    ok -->|No| err[Surface error on session stream]
+```
+
+### Flow 15: New Session with GitHub clone mode
+
+```mermaid
+flowchart TD
+    sheet[New Session sheet] --> one{Single agent with githubRepo?}
+    one -->|No| classic[Directory field only existing behavior]
+    one -->|Yes| mode[Segmented: Default / Custom / GitHub]
+    mode -->|GitHub| clone[Optional Validate then Start Session runs ensureClone]
+    clone --> create[Create Session with github workspaceType + clone path]
+```
+
+### Flow 16: LAN peer agent import
+
+```mermaid
+flowchart TD
+    open[Peer Network sheet] --> browse[Bonjour browse]
+    browse --> pick[Select peer row]
+    pick --> fetch[GET /claudpeer/v1/agents]
+    fetch --> row[User taps Import on agent]
+    row --> swift[PeerAgentImporter inserts Agent in SwiftData]
+```
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -975,7 +1071,7 @@ flowchart TD
 | Memory | Graceful with 10+ concurrent sessions | Untested |
 | Security | Hardened runtime, localhost-only sidecar | Met |
 | Multi-instance | Fully isolated data, ports, settings | Met |
-| Test coverage | Unit tests for catalog, config, data integrity, file explorer, chat routing, group prompts | Met (see CI / `xcodebuild test` + `bun test`) |
+| Test coverage | Unit tests for catalog, config, data integrity, file explorer, chat routing, group prompts, workspace resolver | Met (see CI / `xcodebuild test` + `bun test`) |
 | Catalog size | 30 agents + 101 skills + 100 MCPs bundled | Met |
 
 ---
@@ -999,3 +1095,4 @@ flowchart TD
 | 2026-03-22 | Phase 7: Agent Communication Wiring + Delegation UI. Wired AgentCommsView into MainWindowView (toolbar button with antenna icon + event badge, ⌘⇧A shortcut, sheet presentation). Added user-initiated delegation from chat: delegate menu button in input bar, agent picker menu, DelegateSheet (task editor, context field, wait-for-result toggle). New delegate.task sidecar command with full wire protocol (SidecarProtocol → ws-server.ts). Instance policy enforcement in both peer_delegate_task and delegate.task handler: singleton reuses existing session, pool caps at max then routes to least-busy, spawn always creates new. Added findByAgentName to SessionRegistry. Fixed pool serialization to pool:N format in AppState. Added peer_chat_listen to AgentProvisioner allowedTools. | FR-3.14, FR-3.19, FR-5.26-5.29, FR-14.23-14.24, FR-15.8-15.9, US-12, US-13, US-17, Flow 12, Flow 13 |
 | 2026-03-22 | Phase 8: Group conversations (`Conversation.sessions`), per-session transcript watermarks, `GroupPromptBuilder` injection, sequential multi-agent sends, New Session multi-select, `/help` `/topic` `/rename` `/agents`, @-mention routing and add-on-send with autocomplete hints, fork from message + `session.fork`/`session.forked` with explicit child session id, inspector multi-session list, ⌘↩ to send / Return for newline in composer. | FR-4.9, FR-5.8, FR-5.10, FR-5.11, FR-3.11 |
 | 2026-03-22 | Group chat peer fan-out: each user turn messages **all** sessions; after each assistant reply, automatic `session.message` to other agents (`Group chat: peer message`) with `GroupPeerFanOutContext` turn budget + dedup; skip fan-out to sessions still pending their user-turn message. Extended `GroupPromptBuilderTests`; sidecar E2E GC-2; docs in README, TESTING.md, AGENTS.md, CLAUDE.md. | FR-4.9, FR-5.10, NFR (tests) |
+| 2026-03-22 | Phase 9: GitHub workspace (`WorkspaceResolver`, `GitHubIntegration`, `GitWorkspacePreparer`), New Session GitHub mode + Agent Editor validate/update clone, `ChatView` pre-provision clone; P2P v1 (`P2PNetworkManager`, `PeerCatalogServer`, `PeerNetworkView`, `PeerAgentImporter`, wire DTOs), toolbar ⌘⇧P; `WorkspaceResolverTests`; `xcodegen` for new Swift files. Flows 14–16, FR-19–20, US-18–19. | FR-19, FR-20, US-18, US-19, Flow 14–16, NFR |

@@ -18,6 +18,16 @@ struct NewSessionSheet: View {
     @State private var showOptions = false
     @State private var didSetInitialDir = false
 
+    private enum SessionDirMode: Int, Hashable {
+        case inheritOrDefault = 0
+        case customFolder = 1
+        case githubClone = 2
+    }
+
+    @State private var dirMode: SessionDirMode = .inheritOrDefault
+    @State private var isWorkspacePreparing = false
+    @State private var workspacePrepError: String?
+
     private var recentAgents: [Agent] {
         var seen = Set<UUID>()
         var result: [Agent] = []
@@ -35,8 +45,16 @@ struct NewSessionSheet: View {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    private var singleAgentWithGithub: Agent? {
+        guard orderedSelectedAgents.count == 1,
+              let a = orderedSelectedAgents.first,
+              let r = a.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !r.isEmpty else { return nil }
+        return a
+    }
+
     private var canStartSession: Bool {
-        isFreeformChat || !selectedAgentIds.isEmpty
+        (isFreeformChat || !selectedAgentIds.isEmpty) && !isWorkspacePreparing
     }
 
     var body: some View {
@@ -55,6 +73,9 @@ struct NewSessionSheet: View {
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("newSession.selectedAgentsSummary")
                     }
+                    if let ga = singleAgentWithGithub {
+                        githubWorkspaceSection(agent: ga)
+                    }
                     optionsSection
                 }
                 .padding(24)
@@ -62,13 +83,101 @@ struct NewSessionSheet: View {
             Divider()
             footer
         }
-        .frame(width: 620, height: 560)
+        .frame(width: 620, height: singleAgentWithGithub != nil ? 640 : 560)
         .onAppear {
             if !didSetInitialDir, workingDirectory.isEmpty,
                let instanceDir = appState.instanceWorkingDirectory {
                 workingDirectory = instanceDir
                 didSetInitialDir = true
             }
+        }
+        .onChange(of: selectedAgentIds.count) { _, count in
+            if count != 1 {
+                dirMode = .inheritOrDefault
+                workspacePrepError = nil
+            }
+        }
+    }
+
+    // MARK: - GitHub workspace (single agent with repo)
+
+    @ViewBuilder
+    private func githubWorkspaceSection(agent: Agent) -> some View {
+        let repo = agent.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let path = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Working directory")
+                .font(.headline)
+            Picker("", selection: $dirMode) {
+                Text("Default / inherit").tag(SessionDirMode.inheritOrDefault)
+                Text("Custom folder").tag(SessionDirMode.customFolder)
+                Text("GitHub clone").tag(SessionDirMode.githubClone)
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("newSession.githubWorkspaceModePicker")
+
+            Group {
+                Text("Repo: \(repo)")
+                    .font(.caption)
+                    .textSelection(.enabled)
+                Text("Local: \(path)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                if dirMode == .githubClone {
+                    Text("Branch: \(githubBranchLabel(agent))")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("newSession.githubStatusSummary")
+
+            if let workspacePrepError {
+                Text(workspacePrepError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("newSession.githubWorkspaceError")
+            }
+
+            if dirMode == .githubClone {
+                HStack {
+                    if isWorkspacePreparing {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Updating clone…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Validate / update clone") {
+                        Task { await prepareGithubClone(agent: agent) }
+                    }
+                    .disabled(isWorkspacePreparing)
+                    .accessibilityIdentifier("newSession.githubValidateButton")
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func githubBranchLabel(_ agent: Agent) -> String {
+        let b = agent.githubDefaultBranch?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return b.isEmpty ? "main" : b
+    }
+
+    private func prepareGithubClone(agent: Agent) async {
+        guard let repo = agent.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines), !repo.isEmpty else { return }
+        isWorkspacePreparing = true
+        workspacePrepError = nil
+        defer { isWorkspacePreparing = false }
+        let path = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
+        let b = agent.githubDefaultBranch?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let branch = b.isEmpty ? "main" : b
+        do {
+            try await GitHubIntegration.ensureClone(repoInput: repo, branch: branch, destinationPath: path)
+        } catch {
+            workspacePrepError = error.localizedDescription
         }
     }
 
@@ -296,6 +405,7 @@ struct NewSessionSheet: View {
                         .foregroundStyle(.secondary)
                     TextField("~/projects/my-app", text: $workingDirectory)
                         .textFieldStyle(.roundedBorder)
+                        .disabled(singleAgentWithGithub != nil && dirMode == .githubClone)
                         .accessibilityIdentifier("newSession.workingDirectoryField")
                     Button {
                         pickDirectory()
@@ -304,6 +414,7 @@ struct NewSessionSheet: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Browse for directory")
+                    .disabled(singleAgentWithGithub != nil && dirMode == .githubClone)
                     .accessibilityIdentifier("newSession.browseDirectoryButton")
                     .accessibilityLabel("Browse for directory")
                 }
@@ -348,7 +459,7 @@ struct NewSessionSheet: View {
             .keyboardShortcut("n", modifiers: [.command, .shift])
             .accessibilityIdentifier("newSession.quickChatButton")
             Button("Start Session") {
-                createSession()
+                Task { await createSessionAsync() }
             }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.return)
@@ -360,9 +471,24 @@ struct NewSessionSheet: View {
 
     // MARK: - Actions
 
-    private func createSession() {
+    private func createSessionAsync() async {
         let missionText = mission.trimmingCharacters(in: .whitespacesAndNewlines)
         let dirText = workingDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let ga = singleAgentWithGithub, orderedSelectedAgents.count == 1, dirMode == .githubClone,
+           let repo = ga.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines), !repo.isEmpty {
+            isWorkspacePreparing = true
+            workspacePrepError = nil
+            defer { isWorkspacePreparing = false }
+            let path = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
+            let branch = githubBranchLabel(ga)
+            do {
+                try await GitHubIntegration.ensureClone(repoInput: repo, branch: branch, destinationPath: path)
+            } catch {
+                workspacePrepError = error.localizedDescription
+                return
+            }
+        }
 
         if !dirText.isEmpty {
             RecentDirectories.add(dirText)
@@ -400,7 +526,10 @@ struct NewSessionSheet: View {
 
         for agent in selectedList {
             let wd: String
-            if !dirText.isEmpty {
+            if let ga = singleAgentWithGithub, selectedList.count == 1, dirMode == .githubClone,
+               let repo = ga.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines), !repo.isEmpty {
+                wd = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
+            } else if !dirText.isEmpty {
                 wd = dirText
             } else if selectedList.count > 1 {
                 wd = ""
@@ -413,6 +542,12 @@ struct NewSessionSheet: View {
                 mode: sessionMode,
                 workingDirectory: wd
             )
+            if let ga = singleAgentWithGithub, selectedList.count == 1, dirMode == .githubClone, agent.id == ga.id,
+               let repo = ga.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines), !repo.isEmpty {
+                session.workspaceType = .githubClone(repoUrl: repo)
+            } else if !dirText.isEmpty {
+                session.workspaceType = .explicit(path: dirText)
+            }
             session.conversations = [conversation]
             conversation.sessions.append(session)
 
