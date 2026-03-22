@@ -2,8 +2,8 @@
 
 Living specification tracking implemented features, user flows, and requirements.
 
-**Version:** 0.8.0
-**Status:** Phase 8 — Group chat, slash commands, @-mentions, fork-from-message
+**Version:** 0.8.1
+**Status:** Phase 8 — Group chat (incl. peer fan-out), slash commands, @-mentions, fork-from-message
 
 ---
 
@@ -116,7 +116,7 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | FR-4.6: Parent-child conversation tree (spawned conversations) | Done |
 | FR-4.7: Conversation status (active/closed) | Done |
 | FR-4.8: Agent-to-agent conversations (created from peer.chat/peer.delegate events) | Done |
-| FR-4.9: Group conversations (user + multiple agents) | Not started |
+| FR-4.9: Group conversations (user + multiple agents) | Done |
 
 ### FR-5: Chat UI
 
@@ -158,11 +158,16 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 
 - **Per-agent sidecar key:** SwiftData `Session.id.uuidString` is the registry key for `session.create` / `session.message` / streaming maps (the JSON field on `session.create` remains `conversationId` for wire compatibility; the value is the session id).
 - **Transcript injection:** When a conversation has more than one `Session`, each outbound message includes a **delta** of shared chat lines since `Session.lastInjectedMessageId`, fenced as `Group thread (new since your last reply)`, plus role instructions and the latest user line. Single-agent chats send the raw user text.
-- **Sequential v1:** Multiple targeted agents respond one after another; watermarks advance after each assistant message is persisted so the next agent’s prompt includes prior replies in the delta.
+- **User message → all agents:** On send, every `Session` in the conversation receives a `session.message` for that user turn (sorted by `startedAt`). `@Name` mentions **do not** restrict recipients; they add missing agents to the room and add a **highlight line** in the group prompt listing mentioned names.
+- **Sequential user turn:** Agents run one after another for the same user message; watermarks advance after each assistant message is persisted so the next agent’s prompt delta includes prior replies.
+- **Peer fan-out (`may_reply`):** After each assistant `ConversationMessage` is saved, the app sends an additional `session.message` to every **other** session using `GroupPromptBuilder.buildPeerNotifyPrompt` (header `Group chat: peer message`). Recipients may reply; replies are persisted and can trigger further fan-out. **`GroupPeerFanOutContext`** caps extra sidecar turns per user send (default 12) and dedupes `(targetSessionId, triggerMessageId)` so the same notify is not sent twice. Sessions that have **not yet** run their user-turn message in the current batch are **skipped** for fan-out (their upcoming prompt already includes the new lines).
+- **Watermarks:** Documented on `GroupPromptBuilder` — only `advanceWatermark` moves `lastInjectedMessageId` for a session’s own assistant message; skipped fan-out recipients rely on the next `buildMessageText` delta.
 - **@-mentions:** Tokens `@Name` match installed agents by name (case-insensitive). Unknown names show an error and do not call the sidecar. Mentioning an agent not yet in the room provisions a `Session`, adds a participant, and includes them in the current send. Composer chips show **In chat** vs **Adds on send**.
 - **Slash commands (first line):** `/help`, `/topic` or `/rename <title>`, `/agents`. A line starting with `//` is not a command.
 - **Fork:** **Fork conversation** (header menu) clones the thread and primary session mapping, then sends `session.fork` with parent and child primary session ids. **Fork from here** (message context menu) clones through the selected message inclusive; SDK continuity follows sidecar `forkSession` behavior.
 - **Composer:** **Return** inserts a newline; **⌘↩** or the Send button sends.
+
+**Tests:** `ClaudPeerTests/GroupPromptBuilderTests.swift` (transcript, peer prompt, mentions, fan-out context). Sidecar live E2E `GC-1` / `GC-2` in `sidecar/test/e2e/scenarios.test.ts` (group-style and peer-notify prompts).
 
 ### FR-6: Main Window Layout
 
@@ -993,3 +998,4 @@ flowchart TD
 | 2026-03-22 | Phase 5: Inspector File Explorer. Tabbed Inspector (Info/Files) with file tree browser for agent working directories. FileSystemService, GitService, FileNode model. FileTreeView with DisclosureGroup, git badges, changes-only filter. FileContentView with three modes: Markdown preview, syntax-highlighted source (Highlightr), git diff (NSTextView). Async I/O, auto-refresh on tool calls, HighlightedCodeView for chat code blocks, dynamic git path, full a11y identifiers. | FR-17, FR-18, US-16, Flow 11 |
 | 2026-03-22 | Phase 7: Agent Communication Wiring + Delegation UI. Wired AgentCommsView into MainWindowView (toolbar button with antenna icon + event badge, ⌘⇧A shortcut, sheet presentation). Added user-initiated delegation from chat: delegate menu button in input bar, agent picker menu, DelegateSheet (task editor, context field, wait-for-result toggle). New delegate.task sidecar command with full wire protocol (SidecarProtocol → ws-server.ts). Instance policy enforcement in both peer_delegate_task and delegate.task handler: singleton reuses existing session, pool caps at max then routes to least-busy, spawn always creates new. Added findByAgentName to SessionRegistry. Fixed pool serialization to pool:N format in AppState. Added peer_chat_listen to AgentProvisioner allowedTools. | FR-3.14, FR-3.19, FR-5.26-5.29, FR-14.23-14.24, FR-15.8-15.9, US-12, US-13, US-17, Flow 12, Flow 13 |
 | 2026-03-22 | Phase 8: Group conversations (`Conversation.sessions`), per-session transcript watermarks, `GroupPromptBuilder` injection, sequential multi-agent sends, New Session multi-select, `/help` `/topic` `/rename` `/agents`, @-mention routing and add-on-send with autocomplete hints, fork from message + `session.fork`/`session.forked` with explicit child session id, inspector multi-session list, ⌘↩ to send / Return for newline in composer. | FR-4.9, FR-5.8, FR-5.10, FR-5.11, FR-3.11 |
+| 2026-03-22 | Group chat peer fan-out: each user turn messages **all** sessions; after each assistant reply, automatic `session.message` to other agents (`Group chat: peer message`) with `GroupPeerFanOutContext` turn budget + dedup; skip fan-out to sessions still pending their user-turn message. Extended `GroupPromptBuilderTests`; sidecar E2E GC-2; docs in README, TESTING.md, AGENTS.md, CLAUDE.md. | FR-4.9, FR-5.10, NFR (tests) |

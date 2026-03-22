@@ -1,6 +1,11 @@
 import Foundation
 
 /// Builds `session.message` text for group chats: shared transcript delta + latest user line.
+///
+/// **Watermark policy:** `lastInjectedMessageId` advances when that session’s own assistant
+/// message is persisted (`advanceWatermark`). Sessions that are waiting for the same user-turn
+/// prompt are excluded from peer fan-out so their next `buildMessageText` delta already includes
+/// prior agents’ new lines—no extra catch-up watermark is required.
 enum GroupPromptBuilder {
     /// Rough cap for injected transcript (characters) to avoid huge prompts.
     static let maxInjectedCharacters = 120_000
@@ -14,7 +19,8 @@ enum GroupPromptBuilder {
         conversation: Conversation,
         targetSession: Session,
         latestUserMessageText: String,
-        participants: [Participant]
+        participants: [Participant],
+        highlightedMentionAgentNames: [String] = []
     ) -> String {
         let sessionCount = conversation.sessions.count
         guard shouldUseGroupInjection(sessionCount: sessionCount) else {
@@ -38,17 +44,47 @@ enum GroupPromptBuilder {
         let clipped = clipTranscript(transcriptBody)
 
         let agentName = targetSession.agent?.name ?? "Assistant"
+        let mentionNote: String = {
+            let names = highlightedMentionAgentNames
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            guard !names.isEmpty else { return "" }
+            let joined = names.joined(separator: ", ")
+            return "\nThe user specifically mentioned by name: \(joined). Address them directly when appropriate.\n"
+        }()
         return """
         --- Group thread (new since your last reply) ---
         \(clipped)
         --- End ---
-
+        \(mentionNote)
         You are \(agentName). Respond to the latest user message in this group.
         Latest user message:
         \"\"\"
         \(latestUserMessageText)
         \"\"\"
         """
+    }
+
+    /// Prompt for notifying another session when a peer posted in the group (`may_reply` policy).
+    static func buildPeerNotifyPrompt(
+        senderLabel: String,
+        peerMessageText: String,
+        recipientSession: Session
+    ) -> String {
+        let name = recipientSession.agent?.name ?? "Assistant"
+        let body = peerMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let shown = body.isEmpty ? "(empty)" : body
+        return """
+        --- Group chat: peer message ---
+        \(senderLabel): \(shown)
+        --- End ---
+
+        You are \(name). Another participant posted the above in this shared group. You may reply to the whole group if you have something substantive to add; stay concise. If you have nothing useful to add, reply very briefly (e.g. that you have nothing to add).
+        """
+    }
+
+    static func senderDisplayLabel(for message: ConversationMessage, participants: [Participant]) -> String {
+        senderLabel(for: message, participants: participants)
     }
 
     private static func deltaTranscriptLines(

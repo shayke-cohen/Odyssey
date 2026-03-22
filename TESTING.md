@@ -52,6 +52,7 @@ All tests live in `ClaudPeerTests/`:
 | `GitServiceTests.swift` | Git status, diff, changed files detection |
 | `InstanceConfigTests.swift` | Agent instance configuration resolution |
 | `SidecarProtocolTests.swift` | Wire protocol encode/decode for commands and events |
+| `GroupPromptBuilderTests.swift` | Group chat transcript injection, peer-notify prompts, @-mention highlights, `GroupPeerFanOutContext` budget/dedup |
 
 ### Running Tests
 
@@ -83,7 +84,7 @@ Test files in `sidecar/test/`:
 - `integration/peerbus-tools.test.ts` — PeerBus tool handlers
 - `api/ws-protocol.test.ts` — WebSocket protocol conformance
 - `e2e/full-flow.test.ts` — end-to-end session lifecycle
-- `e2e/scenarios.test.ts` — multi-session scenarios
+- `e2e/scenarios.test.ts` — multi-session scenarios (includes **GC-1** group transcript chain and **GC-2** peer-notify prompt shape; live sidecar + API key)
 
 ---
 

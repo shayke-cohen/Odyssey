@@ -321,6 +321,49 @@ What word did GroupAlpha say (the all-caps word)? Reply with that single word on
     },
     180000,
   );
+
+  // Mirrors Swift `GroupPromptBuilder.buildPeerNotifyPrompt` shape used for automatic fan-out.
+  liveTest(
+    "GC-2: peer-notify shaped prompt is handled by sidecar (live)",
+    async () => {
+      const ws = await wsConnect(WS_PORT);
+      try {
+        await ws.waitFor((m) => m.type === "sidecar.ready");
+        const sid = randomUUID();
+        ws.send({
+          type: "session.create",
+          conversationId: sid,
+          agentConfig: makeAgentConfig({
+            name: "PeerReceiver",
+            systemPrompt:
+              "You are in a shared group. If asked to acknowledge, reply with exactly: ACK",
+            maxTurns: 1,
+          }),
+        });
+        await new Promise((r) => setTimeout(r, 500));
+        const peerPrompt = `--- Group chat: peer message ---
+OtherBot: ping
+--- End ---
+
+You are PeerReceiver. Another participant posted the above in this shared group. Reply with exactly: ACK`;
+        ws.send({ type: "session.message", sessionId: sid, text: peerPrompt });
+        const events = await ws.collectUntil(
+          (m) =>
+            m.sessionId === sid &&
+            (m.type === "session.result" || m.type === "session.error"),
+          90000,
+        );
+        const err = events.find((m) => m.type === "session.error" && m.sessionId === sid);
+        expect(err).toBeUndefined();
+        const tokens = events.filter((m: any) => m.type === "stream.token");
+        const text = tokens.map((m: any) => m.text ?? "").join("");
+        expect(text.toUpperCase()).toContain("ACK");
+      } finally {
+        ws.close();
+      }
+    },
+    120000,
+  );
 });
 
 // ─── UC: User-to-Chat ───────────────────────────────────────────────

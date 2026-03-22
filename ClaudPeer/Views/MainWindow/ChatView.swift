@@ -92,7 +92,7 @@ struct ChatView: View {
     private var sendingToSubtitle: String? {
         guard let c = conversation, c.sessions.count > 1 else { return nil }
         let names = c.sessions.compactMap { $0.agent?.name ?? "Assistant" }
-        return "Group — " + names.joined(separator: ", ")
+        return "Group — " + names.joined(separator: ", ") + " · peer replies reach everyone"
     }
 
     var body: some View {
@@ -196,7 +196,7 @@ struct ChatView: View {
         .alert("Commands", isPresented: $showSlashHelp) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("/help — this list\n/topic <name> or /rename <name> — rename conversation\n/agents — add agents to this chat")
+            Text("/help — this list\n/topic <name> or /rename <name> — rename conversation\n/agents — add agents to this chat\n@AgentName — add that agent to the group if missing; everyone still receives each message")
         }
         .alert("Unknown command", isPresented: $showUnknownSlash) {
             Button("OK", role: .cancel) {}
@@ -924,15 +924,6 @@ struct ChatView: View {
                 targetSessions = [s]
             }
         }
-        if convo.sessions.count > 1 {
-            if !resolvedMentionAgents.isEmpty {
-                let ids = Set(resolvedMentionAgents.map(\.id))
-                targetSessions = targetSessions.filter { sess in
-                    guard let ag = sess.agent else { return true }
-                    return ids.contains(ag.id)
-                }
-            }
-        }
 
         guard !targetSessions.isEmpty else {
             mentionErrorDetail = "No agent session to send to. Pick an agent or use New Session."
@@ -987,11 +978,13 @@ struct ChatView: View {
         isProcessing = true
         processingStartTime = Date()
 
-        Task {
+        let mentionHighlightNames = resolvedMentionAgents.map(\.name)
+        Task { @MainActor in
             await runSequentialAgentTurns(
                 convo: convo,
                 targetSessions: targetSessions,
                 latestUserText: text,
+                highlightedMentionAgentNames: mentionHighlightNames,
                 wireAttachments: wireAttachments,
                 manager: manager
             )
@@ -1003,13 +996,15 @@ struct ChatView: View {
         convo: Conversation,
         targetSessions: [Session],
         latestUserText: String,
+        highlightedMentionAgentNames: [String],
         wireAttachments: [WireAttachment],
         manager: SidecarManager
     ) async {
         let participants = convo.participants
         let provisioner = AgentProvisioner(modelContext: modelContext)
+        let fanOutContext = GroupPeerFanOutContext()
 
-        for session in targetSessions {
+        for (index, session) in targetSessions.enumerated() {
             let sidecarKey = session.id.uuidString
             activeStreamSessionKey = sidecarKey
             streamingDisplayName = session.agent?.name ?? "Claude"
@@ -1024,18 +1019,7 @@ struct ChatView: View {
                     let (cfg, _) = provisioner.provision(agent: agent, mission: session.mission)
                     createConfig = cfg
                 } else {
-                    createConfig = AgentConfig(
-                        name: "Claude",
-                        systemPrompt: "You are a helpful assistant. Be concise and clear.",
-                        allowedTools: [],
-                        mcpServers: [],
-                        model: "claude-sonnet-4-6",
-                        maxTurns: 1,
-                        maxBudget: nil,
-                        maxThinkingTokens: 10000,
-                        workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory(),
-                        skills: []
-                    )
+                    createConfig = makeFreeformAgentConfig()
                 }
             }
 
@@ -1043,7 +1027,8 @@ struct ChatView: View {
                 conversation: convo,
                 targetSession: session,
                 latestUserMessageText: latestUserText,
-                participants: participants
+                participants: participants,
+                highlightedMentionAgentNames: highlightedMentionAgentNames
             )
 
             do {
@@ -1074,16 +1059,127 @@ struct ChatView: View {
                 return
             }
 
-            collectResponseForSession(
+            if let reply = finalizeAssistantStreamIntoMessage(
                 convo: stillConvo,
                 session: session,
                 sidecarKey: sidecarKey
-            )
+            ) {
+                let pendingUserTurnIds = Set(targetSessions.suffix(from: index + 1).map(\.id))
+                await fanOutPeerNotifications(
+                    fromSession: session,
+                    triggerMessage: reply,
+                    convo: stillConvo,
+                    skipRecipientSessionIds: pendingUserTurnIds,
+                    manager: manager,
+                    provisioner: provisioner,
+                    participants: participants,
+                    context: fanOutContext
+                )
+            }
         }
 
         isProcessing = false
         activeStreamSessionKey = nil
         streamingDisplayName = "Claude"
+    }
+
+    private func makeFreeformAgentConfig() -> AgentConfig {
+        AgentConfig(
+            name: "Claude",
+            systemPrompt: "You are a helpful assistant. Be concise and clear.",
+            allowedTools: [],
+            mcpServers: [],
+            model: "claude-sonnet-4-6",
+            maxTurns: 1,
+            maxBudget: nil,
+            maxThinkingTokens: 10000,
+            workingDirectory: appState.instanceWorkingDirectory ?? NSHomeDirectory(),
+            skills: []
+        )
+    }
+
+    /// Delivers peer messages to other agents (`may_reply`); skips recipients that still have their user-turn prompt pending in `runSequentialAgentTurns`.
+    @MainActor
+    private func fanOutPeerNotifications(
+        fromSession: Session,
+        triggerMessage: ConversationMessage,
+        convo: Conversation,
+        skipRecipientSessionIds: Set<UUID>,
+        manager: SidecarManager,
+        provisioner: AgentProvisioner,
+        participants: [Participant],
+        context: GroupPeerFanOutContext
+    ) async {
+        guard convo.sessions.count > 1 else { return }
+
+        let senderLabel = GroupPromptBuilder.senderDisplayLabel(for: triggerMessage, participants: participants)
+        let sortedOthers = convo.sessions
+            .filter { $0.id != fromSession.id && !skipRecipientSessionIds.contains($0.id) }
+            .sorted { $0.startedAt < $1.startedAt }
+
+        for other in sortedOthers {
+            guard context.trySchedulePeerDelivery(targetSessionId: other.id, triggerMessageId: triggerMessage.id) else {
+                continue
+            }
+
+            let key = other.id.uuidString
+            activeStreamSessionKey = key
+            streamingDisplayName = other.agent?.name ?? "Claude"
+            appState.streamingText.removeValue(forKey: key)
+            appState.thinkingText.removeValue(forKey: key)
+            appState.lastSessionEvent.removeValue(forKey: key)
+
+            var createConfig: AgentConfig?
+            if !appState.createdSessions.contains(key) {
+                if let agent = other.agent {
+                    let (cfg, _) = provisioner.provision(agent: agent, mission: other.mission)
+                    createConfig = cfg
+                } else {
+                    createConfig = makeFreeformAgentConfig()
+                }
+            }
+
+            let prompt = GroupPromptBuilder.buildPeerNotifyPrompt(
+                senderLabel: senderLabel,
+                peerMessageText: triggerMessage.text,
+                recipientSession: other
+            )
+
+            do {
+                if let config = createConfig {
+                    try await manager.send(.sessionCreate(
+                        conversationId: key,
+                        agentConfig: config
+                    ))
+                    appState.createdSessions.insert(key)
+                }
+                try await manager.send(.sessionMessage(
+                    sessionId: key,
+                    text: prompt,
+                    attachments: []
+                ))
+            } catch {
+                appState.lastSessionEvent[key] = .error("Peer notify failed: \(error.localizedDescription)")
+                continue
+            }
+
+            await waitForSessionCompletion(sidecarKey: key)
+
+            guard let liveConvo = conversation, liveConvo.id == convo.id else { return }
+
+            if let peerReply = finalizeAssistantStreamIntoMessage(convo: liveConvo, session: other, sidecarKey: key) {
+                await fanOutPeerNotifications(
+                    fromSession: other,
+                    triggerMessage: peerReply,
+                    convo: liveConvo,
+                    skipRecipientSessionIds: [],
+                    manager: manager,
+                    provisioner: provisioner,
+                    participants: participants,
+                    context: context
+                )
+            }
+        }
     }
 
     private func waitForSessionCompletion(sidecarKey: String) async {
@@ -1143,24 +1239,25 @@ struct ChatView: View {
             isProcessing = false
             return
         }
-        collectResponseForSession(convo: convo, session: session, sidecarKey: key, errorMessage: errorMessage)
+        _ = finalizeAssistantStreamIntoMessage(convo: convo, session: session, sidecarKey: key, errorMessage: errorMessage)
         isProcessing = false
         activeStreamSessionKey = nil
     }
 
-    private func collectResponseForSession(
+    @discardableResult
+    private func finalizeAssistantStreamIntoMessage(
         convo: Conversation,
         session: Session,
         sidecarKey: String,
         errorMessage: String? = nil
-    ) {
+    ) -> ConversationMessage? {
         var err = errorMessage
         if err == nil, case .error(let m) = appState.lastSessionEvent[sidecarKey] {
             err = m
         }
         let streamedText = appState.streamingText[sidecarKey] ?? ""
         guard !streamedText.isEmpty || err != nil else {
-            return
+            return nil
         }
         let responseText = !streamedText.isEmpty ? streamedText : (err ?? "(no response)")
 
@@ -1183,6 +1280,7 @@ struct ChatView: View {
         appState.thinkingText.removeValue(forKey: sidecarKey)
         appState.lastSessionEvent.removeValue(forKey: sidecarKey)
         isStreamingThinkingExpanded = false
+        return response
     }
 
     // MARK: - Actions

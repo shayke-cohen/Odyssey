@@ -168,6 +168,7 @@ When adding new views, pick a unique camelCase prefix and annotate every interac
 ## Testing
 
 See `TESTING.md` for the complete testing guide, including:
+- XCTest: group chat coverage in `ClaudPeerTests/GroupPromptBuilderTests.swift` (transcript, peer prompts, fan-out context)
 - Three testing layers (XCTest, AppXray, Argus)
 - Full screen-by-screen control inventory with all `accessibilityIdentifier` and `accessibilityLabel` values
 - AppXray selector syntax (`@testId`, `@label`, `@text`, `@type`)

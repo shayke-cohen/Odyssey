@@ -61,7 +61,7 @@ All are SwiftData `@Model` classes. Relationships use UUID references (not Swift
 
 **SidebarView** organizes conversations into Pinned, Active, and Recent sections. Each row shows agent icon, auto-generated topic, relative timestamp, and last message preview. Context menu offers: Rename, Pin/Unpin, Close, Duplicate, Delete. Swipe actions: delete (trailing), pin (leading). Empty state shows when no conversations exist.
 
-**ChatView** handles message sending with auto-naming (first message sets topic). Header shows: editable topic (pencil icon), model pill, live cost, Fork/Pause/Resume/Close buttons, and overflow menu (Clear Messages, Duplicate). On first message with a linked session+agent, it calls `AgentProvisioner.provision()` → `session.create` → `session.message`. Streaming text is polled from `AppState.streamingText[sessionId]`.
+**ChatView** handles message sending with auto-naming (first message sets topic). Header shows: editable topic (pencil icon), model pill, live cost, Fork/Pause/Resume/Close buttons, and overflow menu (Clear Messages, Duplicate). On first message with a linked session+agent, it calls `AgentProvisioner.provision()` → `session.create` → `session.message`. Streaming text is polled from `AppState.streamingText[sessionId]`. **Group chats** (`conversation.sessions.count > 1`): each user send runs `runSequentialAgentTurns` so **every** session gets `session.message` with `GroupPromptBuilder.buildMessageText`; after each assistant reply is persisted, `fanOutPeerNotifications` sends `buildPeerNotifyPrompt` to other sessions (budget/dedup via `GroupPeerFanOutContext`), skipping peers that have not yet consumed their user-turn message in the same batch.
 
 **InspectorView** shows conversation metadata with actionable controls: editable topic, Close button, session Pause/Resume/Stop buttons (state-dependent), live token/cost counters from AppState, and "Open in Editor" link to Agent Library.
 
@@ -117,6 +117,8 @@ Query options include: model (default `claude-sonnet-4-6`), maxTurns (30), syste
 9. AppState.handleEvent() → updates streamingText[sessionId]
 10. ChatView observes AppState, renders streaming text
 ```
+
+**Group chat (same conversation, N sessions):** The numbered flow runs once per targeted session in order (`SidecarManager.send(.sessionMessage)` for each). After each assistant message is saved to SwiftData, ChatView may send additional `session.message` calls to other sessions for peer awareness (`may_reply` / `fanOutPeerNotifications`).
 
 ## Data Flow: First Message (Session Creation)
 

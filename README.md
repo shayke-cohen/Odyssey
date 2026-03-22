@@ -56,7 +56,9 @@ ClaudPeer/
 │   ├── Services/
 │   │   ├── SidecarManager.swift  # Launch Bun, WebSocket client, reconnect
 │   │   ├── SidecarProtocol.swift # Wire types: commands, events, AgentConfig
-│   │   └── AgentProvisioner.swift# Compose AgentConfig from SwiftData models
+│   │   ├── AgentProvisioner.swift# Compose AgentConfig from SwiftData models
+│   │   ├── GroupPromptBuilder.swift   # Group transcript + user-line prompts; peer-notify text
+│   │   └── GroupPeerFanOutContext.swift # Budget/dedup for automatic peer fan-out
 │   ├── Views/
 │   │   ├── MainWindow/           # NavigationSplitView: sidebar, chat, inspector, new session sheet
 │   │   ├── AgentLibrary/         # Agent grid + editor
@@ -194,7 +196,7 @@ The app uses SwiftData with these core entities:
 
 - **Agent** — reusable template (like a class): skills, MCPs, permissions, model, instance policy
 - **Session** — running instance (like an object): status, mode, workspace, cost tracking
-- **Conversation** — unified communication primitive for user↔agent and agent↔agent
+- **Conversation** — unified communication primitive for user↔agent and agent↔agent; **group chats** attach multiple `Session`s, send each user message to every agent, and **fan out** each assistant reply to other agents via extra `session.message` calls (see `SPEC.md` FR-4.9)
 - **Participant** — member of a conversation (`.user` or `.agentSession`)
 - **Skill / MCPServer / PermissionSet** — composable building blocks for agents
 - **BlackboardEntry** — shared structured knowledge (key-value + metadata)
@@ -253,6 +255,7 @@ See [`system-plan-vision.md` Section 11](system-plan-vision.md#11-built-in-ecosy
 - Sidebar polish: pinned section, relative timestamps, message previews, agent icons, swipe actions, empty state
 - Chat header: inline rename, close/resume, clear, model pill, live cost display
 - Inspector actions: pause/resume/stop buttons, editable topic, "Open in Editor" link
+- Group chat: shared transcript per session, sequential user-turn replies, automatic peer notify (`Group chat: peer message`) with bounded extra turns
 
 **Planned (see `system-plan-vision.md`):**
 - PeerBus custom tools (peer_chat, peer_delegate, blackboard SDK tools)
