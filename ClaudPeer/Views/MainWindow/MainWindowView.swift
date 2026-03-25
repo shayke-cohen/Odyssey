@@ -156,6 +156,14 @@ struct MainWindowView: View {
         if let conversationId = appState.selectedConversationId {
             InspectorView(conversationId: conversationId)
                 .id(conversationId)
+        } else if let agentId = appState.pendingAgentId,
+                  let agent = allAgents.first(where: { $0.id == agentId }) {
+            PendingInspectorView(agent: agent, group: nil)
+                .id(agentId)
+        } else if let groupId = appState.pendingGroupId,
+                  let group = allGroups.first(where: { $0.id == groupId }) {
+            PendingInspectorView(agent: nil, group: group)
+                .id(groupId)
         } else {
             Text("Inspector")
                 .foregroundStyle(.secondary)

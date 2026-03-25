@@ -69,6 +69,7 @@
 		794523A775FDD366B768AE3B /* WorkspaceResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0BE43793270FC4B15B426B /* WorkspaceResolver.swift */; };
 		79F811D67189FB4186690315 /* AgentQuestionBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F5E796C26A8D793C87B113C /* AgentQuestionBubble.swift */; };
 		7A7F6E1699C592B0E2822C90 /* PermissionSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4F486717BDF44CEA8256860 /* PermissionSet.swift */; };
+		7ECD353B38B15B9E19857270 /* PendingInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC8C91744E45AAC5C865D74 /* PendingInspectorView.swift */; };
 		82B5805934EF673CD8677361 /* ChatSendRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521C14971AF9F1032D60AC11 /* ChatSendRoutingTests.swift */; };
 		82F2415C2C8C5B58760304A1 /* AutonomousGroupEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F3A6B4293EA73485A47239 /* AutonomousGroupEngine.swift */; };
 		8538BF4562F7345FA6B88A3B /* AgentGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0954564CB96BAC2B83DCC80 /* AgentGroup.swift */; };
@@ -165,6 +166,7 @@
 		1745E0009016D0F4D1BEC482 /* GitWorkspacePreparer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitWorkspacePreparer.swift; sourceTree = "<group>"; };
 		1871CA94CE6B3042A9E9F46F /* GroupPromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPromptBuilder.swift; sourceTree = "<group>"; };
 		1AC4E1A19E6BDCC55C39EADA /* InstanceConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceConfigTests.swift; sourceTree = "<group>"; };
+		1AC8C91744E45AAC5C865D74 /* PendingInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingInspectorView.swift; sourceTree = "<group>"; };
 		1B2016CB468A359AF549D79A /* CatalogServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogServiceTests.swift; sourceTree = "<group>"; };
 		1C0BE43793270FC4B15B426B /* WorkspaceResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceResolver.swift; sourceTree = "<group>"; };
 		1DF42729E8075F148CDEA31B /* CatalogModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogModelTests.swift; sourceTree = "<group>"; };
@@ -358,6 +360,7 @@
 				E55639E38311435A165FCF48 /* NewSessionSheet.swift */,
 				68EA4FB151F4238EA55A907E /* PeerNetworkView.swift */,
 				3ABE7DC21569488A5F4956DD /* PendingChatView.swift */,
+				1AC8C91744E45AAC5C865D74 /* PendingInspectorView.swift */,
 				B7E20C232EF0FDCB15C1A11F /* SidebarView.swift */,
 				F699A7551BB3459C5FA21861 /* WelcomeView.swift */,
 				D43747F7AD28D67F8EB351FE /* WorkingDirectoryPicker.swift */,
@@ -803,6 +806,7 @@
 				0FA50B09FC74F48EA9D216D4 /* PeerNetworkView.swift in Sources */,
 				3E7BEC013C5C2E4D9D8EDD3E /* PeerWireModels.swift in Sources */,
 				9F3F7F1554DB7F068A2B6DA9 /* PendingChatView.swift in Sources */,
+				7ECD353B38B15B9E19857270 /* PendingInspectorView.swift in Sources */,
 				7A7F6E1699C592B0E2822C90 /* PermissionSet.swift in Sources */,
 				F1151BA284E140621801A6E3 /* RecentDirectories.swift in Sources */,
 				D1BCF026D25D7FCBCF9FAF3E /* RecentRepos.swift in Sources */,

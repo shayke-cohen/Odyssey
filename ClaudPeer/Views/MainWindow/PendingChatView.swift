@@ -215,10 +215,39 @@ struct PendingChatView: View {
     @ViewBuilder
     private var inputArea: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            TextField("Message...", text: $inputText)
-                .textFieldStyle(.plain)
-                .onSubmit { if canSend { materializeAndSend() } }
-                .xrayId("pendingChat.messageInput")
+            // Attach button (placeholder — materializes on use)
+            Button {
+                // Materialize chat first, then user can attach in the real ChatView
+                materializeAndSend()
+            } label: {
+                Image(systemName: "paperclip")
+                    .font(.body)
+            }
+            .buttonStyle(.borderless)
+            .disabled(true)
+            .help("Attach file")
+            .xrayId("pendingChat.attachButton")
+            .accessibilityLabel("Attach file")
+
+            // Plan mode toggle (visual only)
+            Button {} label: {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .disabled(true)
+            .help("Plan mode")
+            .xrayId("pendingChat.planModeToggle")
+            .accessibilityLabel("Plan mode")
+
+            PasteableTextField(
+                text: $inputText,
+                onImagePaste: { _, _ in },
+                onSubmit: { if canSend { materializeAndSend() } },
+                canSubmitOnReturn: { canSend }
+            )
+            .xrayId("pendingChat.messageInput")
 
             Button {
                 materializeAndSend()
