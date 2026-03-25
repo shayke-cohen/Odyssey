@@ -1151,7 +1151,7 @@ struct ChatView: View {
             .padding(.horizontal, appearance != nil ? 10 : 0)
             .padding(.vertical, appearance != nil ? 6 : 0)
             .background(appearance.map { $0.color.opacity(0.08) } ?? Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: appearance != nil ? 12 : 0))
 
             Spacer(minLength: 60)
         }

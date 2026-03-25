@@ -123,7 +123,7 @@ struct MessageBubble: View {
                 .padding(.horizontal, isUser ? 12 : (senderAppearance != nil ? 10 : 0))
                 .padding(.vertical, isUser ? 8 : (senderAppearance != nil ? 6 : 0))
                 .background(isUser ? Color.accentColor.opacity(0.15) : (senderAppearance.map { $0.color.opacity(0.08) } ?? Color.clear))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: isUser || senderAppearance != nil ? 12 : 0))
                 .overlay(alignment: .topTrailing) {
                     if isHovered {
                         HStack(spacing: 4) {
@@ -148,7 +148,7 @@ struct MessageBubble: View {
                         .padding(.vertical, 3)
                         .background(.ultraThinMaterial)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .offset(x: 4, y: -12)
+                        .offset(x: 4, y: -20)
                         .transition(.opacity)
                     }
                 }
