@@ -116,6 +116,21 @@ struct SidebarView: View {
                 .frame(height: 16)
 
             Button {
+                appState.showWorkshop = true
+            } label: {
+                Label("Workshop", systemImage: "wrench.and.screwdriver")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.plain)
+            .help("Entity workshop (⌘⇧W)")
+            .xrayId("sidebar.workshopButton")
+            .keyboardShortcut("w", modifiers: [.command, .shift])
+
+            Divider()
+                .frame(height: 16)
+
+            Button {
                 appState.showAgentLibrary = true
             } label: {
                 Label("Agents", systemImage: "cpu")

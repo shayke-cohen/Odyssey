@@ -119,6 +119,11 @@ struct MainWindowView: View {
                 .environmentObject(p2pNetworkManager)
                 .environment(\.modelContext, modelContext)
         }
+        .sheet(isPresented: $appState.showWorkshop) {
+            WorkshopView()
+                .environmentObject(appState)
+                .frame(minWidth: 960, minHeight: 640)
+        }
         .onAppear {
             appState.connectSidecar()
         }

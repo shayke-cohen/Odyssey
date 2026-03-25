@@ -53,6 +53,7 @@ final class AppState: ObservableObject {
     @Published var showPeerNetwork = false
     @Published var showAgentComms = false
     @Published var showDirectoryPicker = false
+    @Published var showWorkshop = false
     @Published private(set) var instanceWorkingDirectory: String?
     @Published var activeSessions: [UUID: SessionInfo] = [:]
     @Published var streamingText: [String: String] = [:]
