@@ -76,6 +76,7 @@
 		82F2415C2C8C5B58760304A1 /* AutonomousGroupEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F3A6B4293EA73485A47239 /* AutonomousGroupEngine.swift */; };
 		8538BF4562F7345FA6B88A3B /* AgentGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0954564CB96BAC2B83DCC80 /* AgentGroup.swift */; };
 		860CB66A01CCEC6EAF2460AF /* AgentEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914EA697DE0A07B913C8CA50 /* AgentEditorView.swift */; };
+		88EA8ACC32BFC0770AB196E0 /* SidebarSectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F435FB80932A12F4BC591209 /* SidebarSectionTests.swift */; };
 		896006FD0E26239ACC323138 /* ColorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = F88CEE77AD1CAF650FA09785 /* ColorExtension.swift */; };
 		8BEC63FC6F31E91EF592225D /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A8FFC6890CB51BBED09DE51 /* AppState.swift */; };
 		8E71BE6CF6CA16FBC5E7CFDF /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E20C232EF0FDCB15C1A11F /* SidebarView.swift */; };
@@ -282,6 +283,7 @@
 		ECDF40AF37752B26489E1353 /* MarkdownContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownContent.swift; sourceTree = "<group>"; };
 		EDE4FF0F6FCB68B20DEF3C69 /* GroupSummaryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSummaryBuilder.swift; sourceTree = "<group>"; };
 		F28ADA7E705CF0F037084F5A /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
+		F435FB80932A12F4BC591209 /* SidebarSectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSectionTests.swift; sourceTree = "<group>"; };
 		F640FD676BD0AED6B18E9AC9 /* FileContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileContentView.swift; sourceTree = "<group>"; };
 		F699A7551BB3459C5FA21861 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		F88CEE77AD1CAF650FA09785 /* ColorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtension.swift; sourceTree = "<group>"; };
@@ -397,6 +399,7 @@
 				3881E88C458AB35F661F8F3B /* GroupSummaryTests.swift */,
 				49195965D3224402E6B207BB /* GroupWorkflowTests.swift */,
 				1AC4E1A19E6BDCC55C39EADA /* InstanceConfigTests.swift */,
+				F435FB80932A12F4BC591209 /* SidebarSectionTests.swift */,
 				5777453F812E89A97C5F7878 /* SidecarProtocolTests.swift */,
 				257EC30B537C382049BFAD90 /* WorkshopViewTests.swift */,
 				47B0FBA346EF9C4C13EE94AD /* WorkspaceResolverTests.swift */,
@@ -730,6 +733,7 @@
 				7686221DF4816DFA817F0158 /* GroupSummaryTests.swift in Sources */,
 				5B09EBC3FC6D493388ABCCCB /* GroupWorkflowTests.swift in Sources */,
 				F30BBE1A91B9586947C5625C /* InstanceConfigTests.swift in Sources */,
+				88EA8ACC32BFC0770AB196E0 /* SidebarSectionTests.swift in Sources */,
 				1C080C704D3C5EF24F998B41 /* SidecarProtocolTests.swift in Sources */,
 				5D3942068F130232A06DEC6A /* WorkshopViewTests.swift in Sources */,
 				B66B134EAA88E378E9EDA374 /* WorkspaceResolverTests.swift in Sources */,

@@ -20,6 +20,7 @@ struct SidebarView: View {
     @State private var showDeleteConfirmation = false
     @State private var showCatalog = false
     @State private var isArchivedExpanded = false
+    @State private var isHistoryExpanded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +30,7 @@ struct SidebarView: View {
                 } else {
                     pinnedSection
                     activeSection
-                    recentSection
+                    historySection
                     archivedSection
                 }
                 groupsSection
@@ -213,30 +214,44 @@ struct SidebarView: View {
         }
     }
 
-    // MARK: - Active Section
+    // MARK: - Active Section (last 10)
 
     @ViewBuilder
     private var activeSection: some View {
-        let active = rootConversations.filter { $0.status == .active && !$0.isPinned && !$0.isArchived }
-        if !active.isEmpty {
+        let all = rootConversations.filter { !$0.isPinned && !$0.isArchived }
+        let visible = filteredConversations(Array(all.prefix(10)))
+        if !visible.isEmpty {
             Section("Active") {
-                ForEach(filteredConversations(active)) { convo in
+                ForEach(visible) { convo in
                     conversationTreeNode(convo, pinAction: "Pin")
                 }
             }
         }
     }
 
-    // MARK: - Recent Section
+    // MARK: - History Section (overflow, foldable)
 
     @ViewBuilder
-    private var recentSection: some View {
-        let closed = rootConversations.filter { $0.status == .closed && !$0.isPinned && !$0.isArchived }
-        if !closed.isEmpty {
-            Section("Recent") {
-                ForEach(filteredConversations(Array(closed.prefix(20)))) { convo in
-                    conversationTreeNode(convo, pinAction: "Pin")
+    private var historySection: some View {
+        let all = rootConversations.filter { !$0.isPinned && !$0.isArchived }
+        let overflow = Array(all.dropFirst(10))
+        let visible = filteredConversations(overflow)
+        if !visible.isEmpty {
+            Section {
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { isHistoryExpanded || !searchText.isEmpty },
+                        set: { isHistoryExpanded = $0 }
+                    )
+                ) {
+                    ForEach(visible) { convo in
+                        conversationTreeNode(convo, pinAction: "Pin")
+                    }
+                } label: {
+                    Label("History (\(visible.count))", systemImage: "clock.arrow.circlepath")
+                        .foregroundStyle(.secondary)
                 }
+                .xrayId("sidebar.historySection")
             }
         }
     }
@@ -383,7 +398,8 @@ struct SidebarView: View {
                     },
                     onEdit: { editingGroup = group },
                     onDuplicate: { duplicateGroup(group) },
-                    selectedConversationId: appState.selectedConversationId
+                    selectedConversationId: appState.selectedConversationId,
+                    hasActiveSession: groupHasActiveSession(group)
                 )
                 .contextMenu {
                     Button("Start Chat") {
@@ -435,7 +451,8 @@ struct SidebarView: View {
                     onSelectAgent: {
                         selectOrCreateAgentChat(agent)
                     },
-                    selectedConversationId: appState.selectedConversationId
+                    selectedConversationId: appState.selectedConversationId,
+                    hasActiveSession: agentHasActiveSession(agent)
                 )
                 .contextMenu {
                     Button("Start Session") {
@@ -631,12 +648,30 @@ struct SidebarView: View {
         Color.fromAgentColor(color)
     }
 
-    private func policyBadge(_ policy: InstancePolicy) -> String {
-        switch policy {
-        case .singleton: return "1"
-        case .pool(let max): return "\(max)"
-        case .spawn: return ""
+    // MARK: - Activity State
+
+    private func agentHasActiveSession(_ agent: Agent) -> Bool {
+        for conversation in conversationsForAgent(agent) {
+            for session in conversation.sessions where session.agent?.id == agent.id {
+                let key = session.id.uuidString
+                if appState.sessionActivity[key]?.isActive == true {
+                    return true
+                }
+            }
         }
+        return false
+    }
+
+    private func groupHasActiveSession(_ group: AgentGroup) -> Bool {
+        for conversation in conversationsForGroup(group) {
+            for session in conversation.sessions {
+                let key = session.id.uuidString
+                if appState.sessionActivity[key]?.isActive == true {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     // MARK: - Agent Chat History
