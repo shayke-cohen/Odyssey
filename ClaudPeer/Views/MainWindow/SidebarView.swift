@@ -341,11 +341,12 @@ struct SidebarView: View {
     @ViewBuilder
     private var groupsSection: some View {
         Section {
-            ForEach(groups) { group in
+            ForEach(groups.filter { $0.isEnabled }) { group in
                 GroupSidebarRowView(
                     group: group,
                     agentCount: group.agentIds.compactMap { id in agents.first { $0.id == id } }.count,
                     conversations: conversationsForGroup(group),
+                    allAgents: agents,
                     isExpanded: Binding(
                         get: { expandedGroupIds.contains(group.id) },
                         set: { expanded in
@@ -361,7 +362,12 @@ struct SidebarView: View {
                     } : nil,
                     onSelectConversation: { conv in
                         appState.selectedConversationId = conv.id
-                    }
+                    },
+                    onSelectGroup: {
+                        appState.startGroupChat(group: group, modelContext: modelContext)
+                    },
+                    onEdit: { editingGroup = group },
+                    onDuplicate: { duplicateGroup(group) }
                 )
                 .contextMenu {
                     Button("Start Chat") {
@@ -395,7 +401,7 @@ struct SidebarView: View {
     @ViewBuilder
     private var agentsSection: some View {
         Section("Agents") {
-            ForEach(agents) { agent in
+            ForEach(agents.filter { $0.isEnabled }) { agent in
                 AgentSidebarRowView(
                     agent: agent,
                     conversations: conversationsForAgent(agent),

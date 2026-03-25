@@ -50,6 +50,10 @@ struct ChatView: View {
         (conversation?.messages ?? []).sorted { $0.timestamp < $1.timestamp }
     }
 
+    private var hasUserChatMessages: Bool {
+        sortedMessages.contains { $0.type == .chat }
+    }
+
     private var primarySession: Session? {
         conversation?.primarySession
     }
@@ -540,7 +544,7 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    if sortedMessages.isEmpty && !isProcessing {
+                    if !hasUserChatMessages && !isProcessing {
                         chatEmptyState
                     }
 
@@ -665,7 +669,7 @@ struct ChatView: View {
                 .xrayId("chat.mentionSuggestions")
             }
 
-            if sortedMessages.isEmpty && !isProcessing && mentionAutocompleteAgents.isEmpty {
+            if !hasUserChatMessages && !isProcessing && mentionAutocompleteAgents.isEmpty {
                 actionChipsStrip
             }
 
@@ -850,10 +854,29 @@ struct ChatView: View {
 
     // MARK: - Chat Empty State
 
+    @Query private var allGroups: [AgentGroup]
+
+    private var sourceGroup: AgentGroup? {
+        guard let gid = conversation?.sourceGroupId else { return nil }
+        return allGroups.first { $0.id == gid }
+    }
+
+    private var emptyStateSuggestions: AgentSuggestions.SuggestionSet {
+        if let group = sourceGroup {
+            return AgentSuggestions.groupSuggestions(for: group)
+        }
+        if let agent = primarySession?.agent {
+            return AgentSuggestions.suggestions(for: agent)
+        }
+        return AgentSuggestions.freeformSuggestions
+    }
+
     @ViewBuilder
     private var chatEmptyState: some View {
         VStack(spacing: 16) {
-            if let agent = primarySession?.agent {
+            if let group = sourceGroup {
+                groupEmptyStateHeader(group)
+            } else if let agent = primarySession?.agent {
                 VStack(spacing: 8) {
                     Image(systemName: agent.icon)
                         .font(.system(size: 36))
@@ -894,8 +917,7 @@ struct ChatView: View {
                 .xrayId("chat.emptyState.freeformInfo")
             }
 
-            let suggestions = primarySession?.agent.map { AgentSuggestions.suggestions(for: $0) }
-                ?? AgentSuggestions.freeformSuggestions
+            let suggestions = emptyStateSuggestions
 
             VStack(spacing: 8) {
                 Text("Try asking")
@@ -938,12 +960,51 @@ struct ChatView: View {
         .xrayId("chat.emptyState")
     }
 
+    @ViewBuilder
+    private func groupEmptyStateHeader(_ group: AgentGroup) -> some View {
+        VStack(spacing: 8) {
+            Text(group.icon)
+                .font(.system(size: 40))
+                .frame(width: 64, height: 64)
+                .background(Color.fromAgentColor(group.color).opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+            Text(group.name)
+                .font(.title3)
+                .fontWeight(.semibold)
+
+            if !group.groupDescription.isEmpty {
+                Text(group.groupDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(maxWidth: 400)
+            }
+
+            let agentNames = group.agentIds.compactMap { agentId in
+                allAgents.first { $0.id == agentId }?.name
+            }
+            if !agentNames.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "person.3")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Text(agentNames.joined(separator: ", "))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .xrayId("chat.emptyState.groupInfo")
+    }
+
     // MARK: - Action Chips
 
     @ViewBuilder
     private var actionChipsStrip: some View {
-        let suggestions = primarySession?.agent.map { AgentSuggestions.suggestions(for: $0) }
-            ?? AgentSuggestions.freeformSuggestions
+        let suggestions = emptyStateSuggestions
 
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {

@@ -125,6 +125,82 @@ enum AgentSuggestions {
         chips: ["Write code", "Explain", "Review", "Plan", "Debug", "Research"]
     )
 
+    // MARK: - Group Suggestions
+
+    static let byGroupName: [String: SuggestionSet] = [
+        "Dev Squad": SuggestionSet(
+            starters: [
+                "Implement a new feature with code review and tests",
+                "Refactor this module and verify with tests",
+                "Fix this bug, review the fix, and add regression tests",
+            ],
+            chips: ["Build feature", "Fix bug", "Refactor", "Add tests"]
+        ),
+        "Code Review Pair": SuggestionSet(
+            starters: [
+                "Write this feature and review it for quality",
+                "Implement and review error handling improvements",
+                "Build a new component with code review",
+            ],
+            chips: ["Write & review", "Improve code", "Check quality"]
+        ),
+        "Full Stack Team": SuggestionSet(
+            starters: [
+                "Build an end-to-end feature from code to deploy",
+                "Implement, review, test, and deploy this change",
+                "Ship a bug fix through the full pipeline",
+            ],
+            chips: ["Full pipeline", "Ship feature", "End-to-end fix"]
+        ),
+        "Plan & Build": SuggestionSet(
+            starters: [
+                "Plan and implement a new feature from scratch",
+                "Design an architecture and build it with tests",
+                "Break down this project and start building",
+            ],
+            chips: ["Plan & build", "Design architecture", "Break down tasks"]
+        ),
+        "Security Audit": SuggestionSet(
+            starters: [
+                "Audit this codebase for security vulnerabilities",
+                "Scan for OWASP top 10 issues and write exploit tests",
+                "Review authentication and authorization patterns",
+            ],
+            chips: ["Security scan", "Audit auth", "Exploit tests", "OWASP review"]
+        ),
+        "Product Crew": SuggestionSet(
+            starters: [
+                "Research the market and recommend a product direction",
+                "Analyze user feedback and prioritize features",
+                "Write a product spec based on research findings",
+            ],
+            chips: ["Research", "Analyze feedback", "Write spec", "Prioritize"]
+        ),
+        "Content Studio": SuggestionSet(
+            starters: [
+                "Research a topic and write a comprehensive guide",
+                "Draft documentation and have it reviewed",
+                "Create a technical blog post with editing",
+            ],
+            chips: ["Write docs", "Blog post", "Technical guide", "Edit draft"]
+        ),
+    ]
+
+    static func groupSuggestions(for group: AgentGroup) -> SuggestionSet {
+        byGroupName[group.name] ?? groupFallback(for: group)
+    }
+
+    private static func groupFallback(for group: AgentGroup) -> SuggestionSet {
+        SuggestionSet(
+            starters: [
+                "Help me with a task using the \(group.name) team",
+                "Coordinate the team on a new project",
+                "Get started on a task together",
+            ],
+            chips: ["Get started", "Coordinate", "Plan together", "Assign tasks"]
+        )
+    }
+
     // MARK: - Lookup
 
     static func suggestions(for agent: Agent) -> SuggestionSet {
