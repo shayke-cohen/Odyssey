@@ -62,6 +62,7 @@ enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
 
 struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Conversation.startedAt, order: .reverse) private var conversations: [Conversation]
     @Query(sort: \Agent.name) private var agents: [Agent]
@@ -90,8 +91,9 @@ struct SidebarView: View {
     @State private var hoveredConversationId: UUID?
 
     var body: some View {
+        @Bindable var ws = windowState
         VStack(spacing: 0) {
-            List(selection: $appState.selectedConversationId) {
+            List(selection: $ws.selectedConversationId) {
                 if conversations.isEmpty {
                     emptyState
                 } else {
@@ -109,19 +111,19 @@ struct SidebarView: View {
             .listStyle(.sidebar)
             .searchable(text: $searchText, prompt: "Search conversations...")
             .xrayId("sidebar.conversationList")
-            .onChange(of: appState.selectedConversationId) { _, newValue in
+            .onChange(of: windowState.selectedConversationId) { _, newValue in
                 guard let selectedId = newValue else { return }
                 // Check if the selected ID is a task ID (not a conversation)
                 if let task = taskItems.first(where: { $0.id == selectedId }) {
                     if let convId = task.conversationId {
                         // Redirect to the actual conversation
                         DispatchQueue.main.async {
-                            appState.selectedConversationId = convId
+                            windowState.selectedConversationId = convId
                         }
                     } else {
                         // No conversation — open edit sheet, clear selection
                         DispatchQueue.main.async {
-                            appState.selectedConversationId = nil
+                            windowState.selectedConversationId = nil
                             editingTask = task
                         }
                     }
@@ -173,8 +175,8 @@ struct SidebarView: View {
         .alert("Delete Conversation?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 if let convo = conversationToDelete {
-                    if appState.selectedConversationId == convo.id {
-                        appState.selectedConversationId = nil
+                    if windowState.selectedConversationId == convo.id {
+                        windowState.selectedConversationId = nil
                     }
                     appState.clearSessionActivity(for: convo.sessions.map(\.id.uuidString))
                     modelContext.delete(convo)
@@ -221,7 +223,7 @@ struct SidebarView: View {
 
             let workshop = SidebarBottomBarItem.workshop
             Button {
-                appState.showWorkshop = true
+                windowState.showWorkshop = true
             } label: {
                 Label(workshop.rawValue, systemImage: workshop.icon)
                     .fixedSize(horizontal: true, vertical: false)
@@ -238,7 +240,7 @@ struct SidebarView: View {
 
             let agents = SidebarBottomBarItem.agents
             Button {
-                appState.showAgentLibrary = true
+                windowState.showAgentLibrary = true
             } label: {
                 Label(agents.rawValue, systemImage: agents.icon)
                     .fixedSize(horizontal: true, vertical: false)
@@ -269,7 +271,7 @@ struct SidebarView: View {
 
             let newSession = SidebarBottomBarItem.newSession
             Button {
-                appState.showNewSessionSheet = true
+                windowState.showNewSessionSheet = true
             } label: {
                 Image(systemName: newSession.icon)
                     .font(.caption)
@@ -298,7 +300,7 @@ struct SidebarView: View {
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
                 Button {
-                    appState.showNewSessionSheet = true
+                    windowState.showNewSessionSheet = true
                 } label: {
                     Label("New Session", systemImage: "plus.bubble")
                 }
@@ -589,7 +591,7 @@ struct SidebarView: View {
             Button("Edit Task...") { editingTask = task }
             Button("Mark as Ready") { appState.updateTaskStatus(task, status: .ready) }
             Button("Run with Orchestrator") {
-                appState.runTaskWithOrchestrator(task, modelContext: modelContext)
+                appState.runTaskWithOrchestrator(task, modelContext: modelContext, windowState: windowState)
             }
             Divider()
             Button("Delete", role: .destructive) {
@@ -599,7 +601,7 @@ struct SidebarView: View {
         case .ready:
             Button("Edit Task...") { editingTask = task }
             Button("Run with Orchestrator") {
-                appState.runTaskWithOrchestrator(task, modelContext: modelContext)
+                appState.runTaskWithOrchestrator(task, modelContext: modelContext, windowState: windowState)
             }
             Button("Move to Backlog") { appState.updateTaskStatus(task, status: .backlog) }
             Divider()
@@ -610,7 +612,7 @@ struct SidebarView: View {
         case .inProgress:
             if task.conversationId != nil {
                 Button("Go to Conversation") {
-                    appState.selectedConversationId = task.conversationId
+                    windowState.selectedConversationId = task.conversationId
                 }
             }
             Button("Pause") { appState.updateTaskStatus(task, status: .blocked) }
@@ -622,7 +624,7 @@ struct SidebarView: View {
         case .blocked:
             if task.conversationId != nil {
                 Button("Go to Conversation") {
-                    appState.selectedConversationId = task.conversationId
+                    windowState.selectedConversationId = task.conversationId
                 }
             }
             Button("Resume") { appState.updateTaskStatus(task, status: .inProgress) }
@@ -634,7 +636,7 @@ struct SidebarView: View {
         case .done, .failed:
             if task.conversationId != nil {
                 Button("Go to Conversation") {
-                    appState.selectedConversationId = task.conversationId
+                    windowState.selectedConversationId = task.conversationId
                 }
             }
             Button("Retry") { appState.updateTaskStatus(task, status: .ready) }
@@ -720,25 +722,29 @@ struct SidebarView: View {
                         }
                     ),
                     onNewChat: {
-                        appState.startGroupChat(group: group, modelContext: modelContext)
+                        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                            windowState.selectedConversationId = convoId
+                        }
                     },
                     onNewAutonomousChat: group.autonomousCapable ? {
                         autonomousGroup = group
                     } : nil,
                     onSelectConversation: { conv in
-                        appState.selectedConversationId = conv.id
+                        windowState.selectedConversationId = conv.id
                     },
                     onSelectGroup: {
                         selectOrCreateGroupChat(group)
                     },
                     onEdit: { editingGroup = group },
                     onDuplicate: { duplicateGroup(group) },
-                    selectedConversationId: appState.selectedConversationId,
+                    selectedConversationId: windowState.selectedConversationId,
                     hasActiveSession: groupHasActiveSession(group)
                 )
                 .contextMenu {
                     Button("Start Chat") {
-                        appState.startGroupChat(group: group, modelContext: modelContext)
+                        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                            windowState.selectedConversationId = convoId
+                        }
                     }
                     Button("Edit") { editingGroup = group }
                     Button("Duplicate") { duplicateGroup(group) }
@@ -751,7 +757,7 @@ struct SidebarView: View {
                 Text("Groups")
                 Spacer()
                 Button {
-                    appState.showGroupLibrary = true
+                    windowState.showGroupLibrary = true
                 } label: {
                     Image(systemName: "plus")
                         .font(.caption)
@@ -781,12 +787,12 @@ struct SidebarView: View {
                     ),
                     onNewChat: { startSession(with: agent) },
                     onSelectConversation: { conv in
-                        appState.selectedConversationId = conv.id
+                        windowState.selectedConversationId = conv.id
                     },
                     onSelectAgent: {
                         selectOrCreateAgentChat(agent)
                     },
-                    selectedConversationId: appState.selectedConversationId,
+                    selectedConversationId: windowState.selectedConversationId,
                     hasActiveSession: agentHasActiveSession(agent)
                 )
                 .contextMenu {
@@ -1129,7 +1135,6 @@ struct SidebarView: View {
             let newSession = Session(agent: agent, mode: session.mode)
             newSession.mission = session.mission
             newSession.workingDirectory = session.workingDirectory
-            newSession.workspaceType = session.workspaceType
             newConvo.sessions.append(newSession)
             newSession.conversations = [newConvo]
 
@@ -1144,12 +1149,12 @@ struct SidebarView: View {
 
         modelContext.insert(newConvo)
         try? modelContext.save()
-        appState.selectedConversationId = newConvo.id
+        windowState.selectedConversationId = newConvo.id
     }
 
     private func selectOrCreateAgentChat(_ agent: Agent) {
         if let existing = conversationsForAgent(agent).first(where: { !$0.isArchived }) {
-            appState.selectedConversationId = existing.id
+            windowState.selectedConversationId = existing.id
         } else {
             startSession(with: agent)
         }
@@ -1157,16 +1162,18 @@ struct SidebarView: View {
 
     private func selectOrCreateGroupChat(_ group: AgentGroup) {
         if let existing = conversationsForGroup(group).first(where: { !$0.isArchived }) {
-            appState.selectedConversationId = existing.id
+            windowState.selectedConversationId = existing.id
         } else {
-            appState.startGroupChat(group: group, modelContext: modelContext)
+            if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                windowState.selectedConversationId = convoId
+            }
         }
     }
 
     private func startSession(with agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
-        if session.workingDirectory.isEmpty, let instanceDir = appState.instanceWorkingDirectory {
-            session.workingDirectory = instanceDir
+        if session.workingDirectory.isEmpty, !windowState.projectDirectory.isEmpty {
+            session.workingDirectory = windowState.projectDirectory
         }
         let conversation = Conversation(topic: agent.name, sessions: [session])
         let userParticipant = Participant(type: .user, displayName: "You")
@@ -1182,6 +1189,6 @@ struct SidebarView: View {
         modelContext.insert(session)
         modelContext.insert(conversation)
         try? modelContext.save()
-        appState.selectedConversationId = conversation.id
+        windowState.selectedConversationId = conversation.id
     }
 }

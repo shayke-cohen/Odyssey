@@ -3,6 +3,7 @@ import SwiftData
 
 struct TaskEditSheet: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -97,7 +98,7 @@ struct TaskEditSheet: View {
 
                     if task.status == .backlog || task.status == .ready {
                         Button {
-                            appState.runTaskWithOrchestrator(task, modelContext: modelContext)
+                            appState.runTaskWithOrchestrator(task, modelContext: modelContext, windowState: windowState)
                             dismiss()
                         } label: {
                             Label("Run with Orchestrator", systemImage: "play.fill")

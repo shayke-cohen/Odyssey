@@ -1,13 +1,6 @@
 import Foundation
 import SwiftData
 
-struct IssueContext: Sendable {
-    let number: Int
-    let title: String
-    let body: String
-    let labels: [String]
-}
-
 @MainActor
 final class AgentProvisioner {
     private let modelContext: ModelContext
@@ -16,13 +9,12 @@ final class AgentProvisioner {
         self.modelContext = modelContext
     }
 
-    func provision(agent: Agent, mission: String?, workingDirOverride: String? = nil, worktreeBranch: String? = nil, issueContext: IssueContext? = nil) -> (AgentConfig, Session) {
+    func provision(agent: Agent, mission: String?, workingDirOverride: String? = nil) -> (AgentConfig, Session) {
         let session = Session(
             agent: agent,
             mission: mission,
             mode: .interactive,
-            workingDirectory: resolveWorkingDirectory(agent: agent, override: workingDirOverride, worktreeBranch: worktreeBranch),
-            workspaceType: resolveWorkspaceType(agent: agent, override: workingDirOverride, worktreeBranch: worktreeBranch)
+            workingDirectory: resolveWorkingDirectory(override: workingDirOverride)
         )
 
         let skills = resolveSkills(ids: agent.skillIds)
@@ -30,10 +22,6 @@ final class AgentProvisioner {
         let permissions = resolvePermissions(id: agent.permissionSetId)
 
         var allowedTools = permissions?.allowRules ?? ["Read", "Write", "Bash", "Grep", "Glob"]
-        if agent.githubRepo != nil {
-            if !allowedTools.contains("Bash(gh *)") { allowedTools.append("Bash(gh *)") }
-            if !allowedTools.contains("Bash(git *)") { allowedTools.append("Bash(git *)") }
-        }
         allowedTools.append(contentsOf: [
             "peer_chat_start", "peer_chat_reply", "peer_chat_listen",
             "peer_chat_close", "peer_chat_invite",
@@ -53,22 +41,6 @@ final class AgentProvisioner {
             systemPrompt += "\n\n# Available Skills\n"
             for skill in skills {
                 systemPrompt += "\n## \(skill.name)\n\(skill.content)\n"
-            }
-        }
-        if let wtBranch = worktreeBranch, let repo = agent.githubRepo {
-            systemPrompt += "\n\n# Git Worktree\nWorking in an isolated worktree on branch: \(wtBranch)\nBase repository: \(repo)\n"
-        } else if let repo = agent.githubRepo {
-            systemPrompt += "\n\n# GitHub Repository\nThis agent is linked to: \(repo)"
-            if let branch = agent.githubDefaultBranch {
-                systemPrompt += " (branch: \(branch))"
-            }
-            systemPrompt += "\n"
-        }
-        if let issue = issueContext {
-            systemPrompt += "\n\n# GitHub Issue #\(issue.number)\n"
-            systemPrompt += "**\(issue.title)**\n\n\(issue.body)\n"
-            if !issue.labels.isEmpty {
-                systemPrompt += "\nLabels: \(issue.labels.joined(separator: ", "))\n"
             }
         }
         if let mission = mission {
@@ -103,36 +75,9 @@ final class AgentProvisioner {
         return (config, session)
     }
 
-    private func resolveWorkingDirectory(agent: Agent, override: String?, worktreeBranch: String? = nil) -> String {
+    private func resolveWorkingDirectory(override: String?) -> String {
         if let explicit = override, !explicit.isEmpty { return explicit }
-        if let branch = worktreeBranch, let repo = agent.githubRepo, !repo.isEmpty {
-            return WorkspaceResolver.worktreeDestinationPath(repoInput: repo, branch: branch)
-        }
-        if let repo = agent.githubRepo, !repo.isEmpty {
-            return WorkspaceResolver.cloneDestinationPath(repoInput: repo)
-        }
-        if let defaultDir = agent.defaultWorkingDirectory, !defaultDir.isEmpty {
-            // Expand ~ to home directory
-            if defaultDir.hasPrefix("~/") {
-                return NSHomeDirectory() + String(defaultDir.dropFirst(1))
-            }
-            return defaultDir
-        }
-        let sandboxPath = "\(NSHomeDirectory())/.claudestudio/sandboxes/\(UUID().uuidString)"
-        try? FileManager.default.createDirectory(
-            atPath: sandboxPath, withIntermediateDirectories: true, attributes: nil
-        )
-        return sandboxPath
-    }
-
-    private func resolveWorkspaceType(agent: Agent, override: String?, worktreeBranch: String? = nil) -> WorkspaceType {
-        if let explicit = override, !explicit.isEmpty { return .explicit(path: explicit) }
-        if let branch = worktreeBranch, let repo = agent.githubRepo, !repo.isEmpty {
-            return .worktree(repoUrl: repo, branch: branch)
-        }
-        if let repo = agent.githubRepo, !repo.isEmpty { return .githubClone(repoUrl: repo) }
-        if agent.defaultWorkingDirectory != nil { return .agentDefault }
-        return .ephemeral
+        return NSHomeDirectory() // defensive fallback — should always have override from worktree
     }
 
     private func resolveSkills(ids: [UUID]) -> [Skill] {

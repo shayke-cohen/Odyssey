@@ -57,44 +57,46 @@ private struct GeneralSettingsTab: View {
 
     var body: some View {
         Form {
-            Picker("Appearance", selection: selectedAppearance) {
-                ForEach(AppAppearance.allCases) { option in
-                    Text(option.label).tag(option)
+            Section("Appearance") {
+                Picker("Appearance", selection: selectedAppearance) {
+                    ForEach(AppAppearance.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .xrayId("settings.general.appearancePicker")
+            }
+
+            Section("Defaults") {
+                Picker("Default Model", selection: selectedModel) {
+                    ForEach(ClaudeModel.allCases) { model in
+                        Text(model.label).tag(model)
+                    }
+                }
+                .xrayId("settings.general.defaultModelPicker")
+
+                Stepper("Default Max Turns: \(defaultMaxTurns)", value: $defaultMaxTurns, in: 1...200)
+                    .xrayId("settings.general.defaultMaxTurnsStepper")
+
+                HStack {
+                    Text("Default Max Budget")
+                    Spacer()
+                    TextField("$", value: $defaultMaxBudget, format: .number)
+                        .frame(width: 80)
+                        .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.trailing)
+                        .xrayId("settings.general.defaultMaxBudgetField")
+                    Text(defaultMaxBudget == 0 ? "(unlimited)" : "")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
                 }
             }
-            .pickerStyle(.segmented)
-            .xrayId("settings.general.appearancePicker")
 
-            Divider()
-
-            Picker("Default Model", selection: selectedModel) {
-                ForEach(ClaudeModel.allCases) { model in
-                    Text(model.label).tag(model)
-                }
+            Section("Quick Actions") {
+                Toggle("Order quick actions by usage", isOn: $quickActionUsageOrder)
+                    .xrayId("settings.general.quickActionUsageOrderToggle")
+                    .help("When enabled, quick action buttons reorder based on how often you use them (after 10 uses). When disabled, uses the default popularity order.")
             }
-            .xrayId("settings.general.defaultModelPicker")
-
-            Stepper("Default Max Turns: \(defaultMaxTurns)", value: $defaultMaxTurns, in: 1...200)
-                .xrayId("settings.general.defaultMaxTurnsStepper")
-
-            HStack {
-                Text("Default Max Budget")
-                Spacer()
-                TextField("$", value: $defaultMaxBudget, format: .number)
-                    .frame(width: 80)
-                    .textFieldStyle(.roundedBorder)
-                    .multilineTextAlignment(.trailing)
-                    .xrayId("settings.general.defaultMaxBudgetField")
-                Text(defaultMaxBudget == 0 ? "(unlimited)" : "")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-            }
-
-            Divider()
-
-            Toggle("Order quick actions by usage", isOn: $quickActionUsageOrder)
-                .xrayId("settings.general.quickActionUsageOrderToggle")
-                .help("When enabled, quick action buttons reorder based on how often you use them (after 10 uses). When disabled, uses the default popularity order.")
         }
         .formStyle(.grouped)
         .padding()

@@ -195,8 +195,6 @@ final class P2PNetworkManager: ObservableObject {
                 icon: a.icon,
                 color: a.color,
                 defaultWorkingDirectory: a.defaultWorkingDirectory,
-                githubRepo: a.githubRepo,
-                githubDefaultBranch: a.githubDefaultBranch,
                 skillNames: skillNames,
                 extraMCPNames: mcpNames,
                 permissionSetName: permName

@@ -47,7 +47,7 @@ final class AppStateEventTests: XCTestCase {
     func testEH2_peerDelegateEvent_appendsCommsAndCreatesConversation() {
         let parentConvo = Conversation(topic: "Parent")
         context.insert(parentConvo)
-        appState.selectedConversationId = parentConvo.id
+        appState.visibleConversationIds.insert(parentConvo.id)
 
         appState.handleEventForTesting(.peerDelegate(from: "Orchestrator", to: "Coder", task: "implement login"))
 

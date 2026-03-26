@@ -5,6 +5,7 @@ struct AutoAssembleSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Query(sort: \Agent.name) private var agents: [Agent]
 
     @State private var taskDescription = ""
@@ -133,7 +134,9 @@ struct AutoAssembleSheet: View {
         )
         modelContext.insert(group)
         try? modelContext.save()
-        appState.startGroupChat(group: group, modelContext: modelContext)
+        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+            windowState.selectedConversationId = convoId
+        }
         dismiss()
     }
 }

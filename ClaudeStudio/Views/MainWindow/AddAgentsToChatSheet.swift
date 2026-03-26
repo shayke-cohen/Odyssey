@@ -7,6 +7,7 @@ struct AddAgentsToChatSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query private var allConversations: [Conversation]
 
@@ -105,11 +106,10 @@ struct AddAgentsToChatSheet: View {
             modelContext.insert(session)
         }
 
-        GroupWorkingDirectory.ensureShared(
-            for: convo,
-            instanceDefault: appState.instanceWorkingDirectory,
-            modelContext: modelContext
-        )
+        // Ensure all new sessions use the window's project directory
+        for session in convo.sessions where session.workingDirectory.isEmpty {
+            session.workingDirectory = windowState.projectDirectory
+        }
         try? modelContext.save()
         dismiss()
     }

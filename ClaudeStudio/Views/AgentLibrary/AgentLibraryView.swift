@@ -5,6 +5,7 @@ struct AgentLibraryView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Query(sort: \Agent.name) private var agents: [Agent]
     @State private var searchText = ""
     @State private var filterOrigin: AgentOriginFilter = .all
@@ -206,8 +207,6 @@ struct AgentLibraryView: View {
         copy.maxTurns = agent.maxTurns
         copy.maxBudget = agent.maxBudget
         copy.defaultWorkingDirectory = agent.defaultWorkingDirectory
-        copy.githubRepo = agent.githubRepo
-        copy.githubDefaultBranch = agent.githubDefaultBranch
         modelContext.insert(copy)
         try? modelContext.save()
     }
@@ -219,8 +218,8 @@ struct AgentLibraryView: View {
 
     private func startSession(with agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
-        if session.workingDirectory.isEmpty, let instanceDir = appState.instanceWorkingDirectory {
-            session.workingDirectory = instanceDir
+        if session.workingDirectory.isEmpty, !windowState.projectDirectory.isEmpty {
+            session.workingDirectory = windowState.projectDirectory
         }
         let conversation = Conversation(topic: agent.name, sessions: [session])
         let userParticipant = Participant(type: .user, displayName: "You")
@@ -236,7 +235,7 @@ struct AgentLibraryView: View {
         modelContext.insert(session)
         modelContext.insert(conversation)
         try? modelContext.save()
-        appState.selectedConversationId = conversation.id
+        windowState.selectedConversationId = conversation.id
         dismiss()
     }
 }

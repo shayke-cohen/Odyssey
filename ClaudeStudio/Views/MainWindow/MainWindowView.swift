@@ -4,6 +4,7 @@ import SwiftData
 struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var p2pNetworkManager: P2PNetworkManager
+    @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
     @State private var columnVisibility = NavigationSplitViewVisibility.all
@@ -11,11 +12,12 @@ struct MainWindowView: View {
     @State private var inspectorVisible = true
 
     var body: some View {
+        @Bindable var ws = windowState
         NavigationSplitView(columnVisibility: $columnVisibility) {
             SidebarView()
         } detail: {
             Group {
-                if inspectorVisible && appState.selectedConversationId != nil {
+                if inspectorVisible && windowState.selectedConversationId != nil {
                     HSplitView {
                         mainDetailPane
                             .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
@@ -34,11 +36,11 @@ struct MainWindowView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 900, minHeight: 600)
-        .background(WindowTitleSetter())
+        .background(WindowTitleSetter(projectName: windowState.projectName))
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
-                    appState.showNewSessionSheet = true
+                    windowState.showNewSessionSheet = true
                 } label: {
                     Label("New Session", systemImage: "plus.bubble")
                 }
@@ -62,7 +64,7 @@ struct MainWindowView: View {
 
             ToolbarItem(placement: .automatic) {
                 Button {
-                    appState.showAgentComms = true
+                    windowState.showAgentComms = true
                 } label: {
                     Label("Agent Comms", systemImage: "antenna.radiowaves.left.and.right")
                 }
@@ -74,7 +76,7 @@ struct MainWindowView: View {
 
             ToolbarItem(placement: .automatic) {
                 Button {
-                    appState.showPeerNetwork = true
+                    windowState.showPeerNetwork = true
                 } label: {
                     Label("Peer Network", systemImage: "network")
                 }
@@ -108,28 +110,28 @@ struct MainWindowView: View {
                 .xrayId("mainWindow.inspectorToggle")
             }
         }
-        .sheet(isPresented: $appState.showNewSessionSheet) {
+        .sheet(isPresented: $ws.showNewSessionSheet) {
             NewSessionSheet()
         }
-        .sheet(isPresented: $appState.showAgentLibrary) {
+        .sheet(isPresented: $ws.showAgentLibrary) {
             AgentLibraryView()
                 .frame(minWidth: 700, minHeight: 500)
         }
-        .sheet(isPresented: $appState.showGroupLibrary) {
+        .sheet(isPresented: $ws.showGroupLibrary) {
             GroupLibraryView()
                 .frame(minWidth: 700, minHeight: 500)
         }
-        .sheet(isPresented: $appState.showAgentComms) {
+        .sheet(isPresented: $ws.showAgentComms) {
             AgentCommsView()
                 .environmentObject(appState)
                 .frame(minWidth: 600, minHeight: 400)
         }
-        .sheet(isPresented: $appState.showPeerNetwork) {
+        .sheet(isPresented: $ws.showPeerNetwork) {
             PeerNetworkView()
                 .environmentObject(p2pNetworkManager)
                 .environment(\.modelContext, modelContext)
         }
-        .sheet(isPresented: $appState.showWorkshop) {
+        .sheet(isPresented: $ws.showWorkshop) {
             WorkshopView()
                 .environmentObject(appState)
                 .frame(minWidth: 960, minHeight: 640)
@@ -138,16 +140,16 @@ struct MainWindowView: View {
             appState.connectSidecar()
         }
         .alert("Launch Error", isPresented: launchErrorBinding) {
-            Button("OK") { appState.launchError = nil }
+            Button("OK") { windowState.launchError = nil }
         } message: {
-            Text(appState.launchError ?? "")
+            Text(windowState.launchError ?? "")
         }
     }
 
     private var launchErrorBinding: Binding<Bool> {
         Binding(
-            get: { appState.launchError != nil },
-            set: { if !$0 { appState.launchError = nil } }
+            get: { windowState.launchError != nil },
+            set: { if !$0 { windowState.launchError = nil } }
         )
     }
 
@@ -155,10 +157,10 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var mainDetailPane: some View {
-        if let conversationId = appState.selectedConversationId {
+        if let conversationId = windowState.selectedConversationId {
             ChatView(conversationId: conversationId)
                 .id(conversationId)
-        } else if let groupId = appState.selectedGroupId {
+        } else if let groupId = windowState.selectedGroupId {
             GroupDetailView(groupId: groupId)
                 .id(groupId)
         } else {
@@ -173,7 +175,7 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var inspectorPane: some View {
-        if let conversationId = appState.selectedConversationId {
+        if let conversationId = windowState.selectedConversationId {
             InspectorView(conversationId: conversationId)
                 .id(conversationId)
         } else {
@@ -306,12 +308,12 @@ struct MainWindowView: View {
         conversation.participants.append(userParticipant)
         modelContext.insert(conversation)
         try? modelContext.save()
-        appState.selectedConversationId = conversation.id
+        windowState.selectedConversationId = conversation.id
     }
 
     private func startSessionWithAgent(_ agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
-        session.workingDirectory = agent.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? ""
+        session.workingDirectory = agent.defaultWorkingDirectory ?? windowState.projectDirectory
         let conversation = Conversation(topic: agent.name, sessions: [session])
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(
@@ -326,11 +328,13 @@ struct MainWindowView: View {
         modelContext.insert(session)
         modelContext.insert(conversation)
         try? modelContext.save()
-        appState.selectedConversationId = conversation.id
+        windowState.selectedConversationId = conversation.id
     }
 
     private func startGroupChat(_ group: AgentGroup) {
-        appState.startGroupChat(group: group, modelContext: modelContext)
+        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+            windowState.selectedConversationId = convoId
+        }
     }
 }
 
@@ -380,23 +384,28 @@ private struct SplitViewConfigurator: NSViewRepresentable {
 /// Sets the NSWindow title for multi-instance disambiguation.
 /// Uses NSWindow.didBecomeKeyNotification so it fires after SwiftUI finishes layout.
 private struct WindowTitleSetter: NSViewRepresentable {
+    let projectName: String
+
     func makeNSView(context: Context) -> NSView {
-        let view = TitleSettingView()
+        let view = TitleSettingView(projectName: projectName)
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
 
     private final class TitleSettingView: NSView {
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            applyTitle()
+        let projectName: String
+
+        init(projectName: String) {
+            self.projectName = projectName
+            super.init(frame: .zero)
         }
 
-        private func applyTitle() {
-            guard !InstanceConfig.isDefault else { return }
-            let title = "ClaudeStudio — \(InstanceConfig.name)"
-            window?.title = title
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            window?.title = "ClaudeStudio — \(projectName)"
         }
     }
 }

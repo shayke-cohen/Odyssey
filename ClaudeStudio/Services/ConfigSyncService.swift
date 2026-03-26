@@ -250,9 +250,6 @@ final class ConfigSyncService {
                 entity.maxBudget = dto.maxBudget
                 entity.maxThinkingTokens = dto.maxThinkingTokens
                 entity.defaultWorkingDirectory = dto.defaultWorkingDirectory
-                entity.githubRepo = dto.githubRepo
-                entity.githubDefaultBranch = dto.githubDefaultBranch
-                entity.githubAutoCreateBranch = dto.githubAutoCreateBranch ?? false
                 entity.isEnabled = dto.enabled
             } else {
                 let byName = existing.first { $0.name == dto.name && $0.configSlug == nil }
@@ -270,9 +267,6 @@ final class ConfigSyncService {
                     entity.maxBudget = dto.maxBudget
                     entity.maxThinkingTokens = dto.maxThinkingTokens
                     entity.defaultWorkingDirectory = dto.defaultWorkingDirectory
-                    entity.githubRepo = dto.githubRepo
-                    entity.githubDefaultBranch = dto.githubDefaultBranch
-                    entity.githubAutoCreateBranch = dto.githubAutoCreateBranch ?? false
                     entity.isEnabled = dto.enabled
                 } else {
                     let entity = Agent(name: dto.name, agentDescription: dto.agentDescription, systemPrompt: systemPrompt, model: dto.model, icon: dto.icon, color: dto.color)
@@ -283,9 +277,6 @@ final class ConfigSyncService {
                     entity.maxBudget = dto.maxBudget
                     entity.maxThinkingTokens = dto.maxThinkingTokens
                     entity.defaultWorkingDirectory = dto.defaultWorkingDirectory
-                    entity.githubRepo = dto.githubRepo
-                    entity.githubDefaultBranch = dto.githubDefaultBranch
-                    entity.githubAutoCreateBranch = dto.githubAutoCreateBranch ?? false
                     entity.isEnabled = dto.enabled
                     entity.configSlug = slug
                     entity.origin = .builtin
@@ -416,8 +407,7 @@ final class ConfigSyncService {
             skillNames: skillNames, mcpServerNames: mcpNames, permissionSetName: permName,
             systemPromptTemplate: nil, systemPromptVariables: nil,
             maxTurns: agent.maxTurns, maxBudget: agent.maxBudget, maxThinkingTokens: agent.maxThinkingTokens,
-            defaultWorkingDirectory: agent.defaultWorkingDirectory, githubRepo: agent.githubRepo,
-            githubDefaultBranch: agent.githubDefaultBranch, githubAutoCreateBranch: agent.githubAutoCreateBranch
+            defaultWorkingDirectory: agent.defaultWorkingDirectory
         )
 
         isWritingBack = true

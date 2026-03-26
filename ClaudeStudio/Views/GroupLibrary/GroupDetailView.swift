@@ -4,6 +4,7 @@ import SwiftData
 struct GroupDetailView: View {
     let groupId: UUID
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
     @Query private var allGroups: [AgentGroup]
     @Query private var allAgents: [Agent]
@@ -105,7 +106,9 @@ struct GroupDetailView: View {
 
                 HStack(spacing: 8) {
                     Button {
-                        appState.startGroupChat(group: group, modelContext: modelContext)
+                        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                            windowState.selectedConversationId = convoId
+                        }
                     } label: {
                         Label("Start Chat", systemImage: "play.fill")
                     }
@@ -346,7 +349,7 @@ struct GroupDetailView: View {
                 VStack(spacing: 4) {
                     ForEach(convos.prefix(8)) { conv in
                         Button {
-                            appState.selectedConversationId = conv.id
+                            windowState.selectedConversationId = conv.id
                         } label: {
                             HStack(spacing: 10) {
                                 Circle()
@@ -473,6 +476,6 @@ struct GroupDetailView: View {
     private func deleteGroup(_ group: AgentGroup) {
         modelContext.delete(group)
         try? modelContext.save()
-        appState.selectedGroupId = nil
+        windowState.selectedGroupId = nil
     }
 }

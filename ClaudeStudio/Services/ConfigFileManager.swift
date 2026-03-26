@@ -20,16 +20,13 @@ struct AgentConfigDTO: Codable {
     let maxBudget: Double?
     let maxThinkingTokens: Int?
     let defaultWorkingDirectory: String?
-    let githubRepo: String?
-    let githubDefaultBranch: String?
-    let githubAutoCreateBranch: Bool?
 
     enum CodingKeys: String, CodingKey {
         case name, enabled, agentDescription, model, icon, color
         case skillNames, mcpServerNames, permissionSetName
         case systemPromptTemplate, systemPromptVariables
         case maxTurns, maxBudget, maxThinkingTokens
-        case defaultWorkingDirectory, githubRepo, githubDefaultBranch, githubAutoCreateBranch
+        case defaultWorkingDirectory
     }
 
     init(from decoder: Decoder) throws {
@@ -49,9 +46,6 @@ struct AgentConfigDTO: Codable {
         maxBudget = try c.decodeIfPresent(Double.self, forKey: .maxBudget)
         maxThinkingTokens = try c.decodeIfPresent(Int.self, forKey: .maxThinkingTokens)
         defaultWorkingDirectory = try c.decodeIfPresent(String.self, forKey: .defaultWorkingDirectory)
-        githubRepo = try c.decodeIfPresent(String.self, forKey: .githubRepo)
-        githubDefaultBranch = try c.decodeIfPresent(String.self, forKey: .githubDefaultBranch)
-        githubAutoCreateBranch = try c.decodeIfPresent(Bool.self, forKey: .githubAutoCreateBranch)
     }
 
     init(
@@ -59,7 +53,7 @@ struct AgentConfigDTO: Codable {
         skillNames: [String], mcpServerNames: [String], permissionSetName: String,
         systemPromptTemplate: String?, systemPromptVariables: [String: String]?,
         maxTurns: Int?, maxBudget: Double?, maxThinkingTokens: Int?,
-        defaultWorkingDirectory: String?, githubRepo: String?, githubDefaultBranch: String?, githubAutoCreateBranch: Bool?
+        defaultWorkingDirectory: String?
     ) {
         self.name = name
         self.enabled = enabled
@@ -76,9 +70,6 @@ struct AgentConfigDTO: Codable {
         self.maxBudget = maxBudget
         self.maxThinkingTokens = maxThinkingTokens
         self.defaultWorkingDirectory = defaultWorkingDirectory
-        self.githubRepo = githubRepo
-        self.githubDefaultBranch = githubDefaultBranch
-        self.githubAutoCreateBranch = githubAutoCreateBranch
     }
 }
 

@@ -5,6 +5,7 @@ struct AutonomousMissionSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
 
     let group: AgentGroup
 
@@ -64,7 +65,9 @@ struct AutonomousMissionSheet: View {
                     .accessibilityIdentifier("autonomousMission.cancelButton")
                 Spacer()
                 Button {
-                    appState.startAutonomousGroupChat(group: group, mission: mission, modelContext: modelContext)
+                    if let convoId = appState.startAutonomousGroupChat(group: group, mission: mission, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                        windowState.selectedConversationId = convoId
+                    }
                     dismiss()
                 } label: {
                     Label("Launch", systemImage: "bolt.fill")

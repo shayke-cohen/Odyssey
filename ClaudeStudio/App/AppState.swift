@@ -13,24 +13,10 @@ final class AppState: ObservableObject {
     }
 
     @Published var sidecarStatus: SidecarStatus = .disconnected
-    @Published var selectedConversationId: UUID? {
-        didSet {
-            if selectedConversationId != nil { selectedGroupId = nil }
-            if let id = selectedConversationId { markConversationRead(id: id) }
-        }
-    }
-    @Published var selectedGroupId: UUID? {
-        didSet { if selectedGroupId != nil { selectedConversationId = nil } }
-    }
-    @Published var showAgentLibrary = false
-    @Published var showGroupLibrary = false
-    @Published var showNewSessionSheet = false
-    @Published var showPeerNetwork = false
-    @Published var showAgentComms = false
-    @Published var showDirectoryPicker = false
-    @Published var showWorkshop = false
-    @Published private(set) var instanceWorkingDirectory: String?
     @Published var activeSessions: [UUID: SessionInfo] = [:]
+
+    /// Conversation IDs currently visible in any window — used for notification/unread gating.
+    @Published var visibleConversationIds: Set<UUID> = []
     @Published var streamingText: [String: String] = [:]
     @Published var thinkingText: [String: String] = [:]
     @Published var streamingImages: [String: [(data: String, mediaType: String)]] = [:]
@@ -51,11 +37,7 @@ final class AppState: ObservableObject {
     @Published var progressTrackers: [String: ProgressTracker] = [:]
     @Published var pendingSuggestions: [String: [SuggestionItem]] = [:]
     @Published var completedPlans: [String: CompletedPlan] = [:]
-    @Published var launchError: String?
-
-    /// Text to auto-send in the active chat once the sidecar connects.
-    /// Set by `executeLaunchIntent`, consumed by ChatView.
-    @Published var autoSendText: String?
+    // launchError and autoSendText moved to WindowState (per-window)
 
     /// File-based config sync service (set by ClaudeStudioApp on appear)
     var configSyncService: ConfigSyncService?
@@ -200,25 +182,17 @@ final class AppState: ObservableObject {
     private var eventTask: Task<Void, Never>?
     var modelContext: ModelContext?
 
-    func loadInstanceWorkingDirectory() {
-        instanceWorkingDirectory = InstanceConfig.userDefaults.string(
-            forKey: AppSettings.instanceWorkingDirectoryKey
-        )
-        if instanceWorkingDirectory == nil {
-            showDirectoryPicker = true
-        }
-    }
-
-    func setInstanceWorkingDirectory(_ path: String) {
-        instanceWorkingDirectory = path
-        InstanceConfig.userDefaults.set(path, forKey: AppSettings.instanceWorkingDirectoryKey)
-    }
+    // instanceWorkingDirectory, loadInstanceWorkingDirectory, setInstanceWorkingDirectory
+    // moved to WindowState.projectDirectory (per-window)
 
     // MARK: - Launch Intent
 
     /// Executes a parsed launch intent (from CLI args or URL scheme).
     /// Must be called after `modelContext` is set.
-    func executeLaunchIntent(_ intent: LaunchIntent, modelContext: ModelContext) {
+    /// Updates the given WindowState with the result (selected conversation, auto-send text, errors).
+    func executeLaunchIntent(_ intent: LaunchIntent, modelContext: ModelContext, windowState: WindowState) {
+        let projectDir = intent.workingDirectory ?? windowState.projectDirectory
+
         switch intent.mode {
         case .chat:
             let conversation = Conversation(topic: "New Chat")
@@ -226,10 +200,8 @@ final class AppState: ObservableObject {
             userParticipant.conversation = conversation
             conversation.participants.append(userParticipant)
 
-            // If a prompt is provided, create a freeform sidecar session so the prompt can be sent
             if intent.prompt != nil {
-                let wd = intent.workingDirectory ?? instanceWorkingDirectory ?? NSHomeDirectory()
-                let freeformSession = Session(agent: nil, mode: .interactive, workingDirectory: wd)
+                let freeformSession = Session(agent: nil, mode: .interactive, workingDirectory: projectDir)
                 freeformSession.conversations = [conversation]
                 conversation.sessions.append(freeformSession)
                 let agentParticipant = Participant(
@@ -243,10 +215,10 @@ final class AppState: ObservableObject {
 
             modelContext.insert(conversation)
             try? modelContext.save()
-            selectedConversationId = conversation.id
+            windowState.selectedConversationId = conversation.id
 
             if intent.prompt != nil {
-                autoSendText = intent.prompt
+                windowState.autoSendText = intent.prompt
             }
 
         case .agent(let name):
@@ -255,13 +227,12 @@ final class AppState: ObservableObject {
             guard let agent = allAgents.first(where: {
                 $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
             }) else {
-                launchError = "Agent not found: \"\(name)\""
+                windowState.launchError = "Agent not found: \"\(name)\""
                 return
             }
 
             let provisioner = AgentProvisioner(modelContext: modelContext)
-            let wdOverride = intent.workingDirectory
-            let (_, session) = provisioner.provision(agent: agent, mission: nil, workingDirOverride: wdOverride)
+            let (_, session) = provisioner.provision(agent: agent, mission: nil, workingDirOverride: projectDir)
             if intent.autonomous { session.mode = .autonomous }
 
             let conversation = Conversation(topic: agent.name)
@@ -278,10 +249,10 @@ final class AppState: ObservableObject {
             modelContext.insert(session)
             modelContext.insert(conversation)
             try? modelContext.save()
-            selectedConversationId = conversation.id
+            windowState.selectedConversationId = conversation.id
 
             if intent.prompt != nil {
-                autoSendText = intent.prompt
+                windowState.autoSendText = intent.prompt
             }
 
         case .group(let name):
@@ -290,31 +261,33 @@ final class AppState: ObservableObject {
             guard let group = allGroups.first(where: {
                 $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
             }) else {
-                launchError = "Group not found: \"\(name)\""
+                windowState.launchError = "Group not found: \"\(name)\""
                 return
             }
 
             if intent.autonomous, let prompt = intent.prompt {
-                startAutonomousGroupChat(group: group, mission: prompt, modelContext: modelContext)
+                let convoId = startAutonomousGroupChat(group: group, mission: prompt, projectDirectory: projectDir, modelContext: modelContext)
+                windowState.selectedConversationId = convoId
             } else {
-                startGroupChat(group: group, modelContext: modelContext)
+                let convoId = startGroupChat(group: group, projectDirectory: projectDir, modelContext: modelContext)
+                windowState.selectedConversationId = convoId
                 if intent.prompt != nil {
-                    autoSendText = intent.prompt
+                    windowState.autoSendText = intent.prompt
                 }
             }
         }
-
     }
 
     // MARK: - Group Chat
 
-    func startGroupChat(group: AgentGroup, modelContext: ModelContext) {
-        guard !group.agentIds.isEmpty else { return }
+    @discardableResult
+    func startGroupChat(group: AgentGroup, projectDirectory: String, modelContext: ModelContext) -> UUID? {
+        guard !group.agentIds.isEmpty else { return nil }
 
         let allAgents = (try? modelContext.fetch(FetchDescriptor<Agent>())) ?? []
         let agentById = Dictionary(uniqueKeysWithValues: allAgents.map { ($0.id, $0) })
         let resolvedAgents = group.agentIds.compactMap { agentById[$0] }
-        guard !resolvedAgents.isEmpty else { return }
+        guard !resolvedAgents.isEmpty else { return nil }
 
         let conversation = Conversation(topic: group.name)
         conversation.sourceGroupId = group.id
@@ -323,7 +296,6 @@ final class AppState: ObservableObject {
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)
 
-        // Inject group instruction as first system message
         let instruction = group.groupInstruction.trimmingCharacters(in: .whitespacesAndNewlines)
         if !instruction.isEmpty {
             let sysMsg = ConversationMessage(
@@ -339,7 +311,7 @@ final class AppState: ObservableObject {
         let mission = group.defaultMission
 
         for agent in resolvedAgents {
-            let (_, session) = provisioner.provision(agent: agent, mission: mission)
+            let (_, session) = provisioner.provision(agent: agent, mission: mission, workingDirOverride: projectDirectory)
             session.conversations = [conversation]
             conversation.sessions.append(session)
 
@@ -354,23 +326,17 @@ final class AppState: ObservableObject {
 
         modelContext.insert(conversation)
         try? modelContext.save()
-
-        GroupWorkingDirectory.ensureShared(
-            for: conversation,
-            instanceDefault: instanceWorkingDirectory,
-            modelContext: modelContext
-        )
-
-        selectedConversationId = conversation.id
+        return conversation.id
     }
 
-    func startAutonomousGroupChat(group: AgentGroup, mission: String, modelContext: ModelContext) {
-        guard group.autonomousCapable, !group.agentIds.isEmpty else { return }
+    @discardableResult
+    func startAutonomousGroupChat(group: AgentGroup, mission: String, projectDirectory: String, modelContext: ModelContext) -> UUID? {
+        guard group.autonomousCapable, !group.agentIds.isEmpty else { return nil }
 
         let allAgents = (try? modelContext.fetch(FetchDescriptor<Agent>())) ?? []
         let agentById = Dictionary(uniqueKeysWithValues: allAgents.map { ($0.id, $0) })
         let resolvedAgents = group.agentIds.compactMap { agentById[$0] }
-        guard !resolvedAgents.isEmpty else { return }
+        guard !resolvedAgents.isEmpty else { return nil }
 
         let conversation = Conversation(topic: "\(group.name) — Autonomous")
         conversation.sourceGroupId = group.id
@@ -394,7 +360,7 @@ final class AppState: ObservableObject {
         let provisioner = AgentProvisioner(modelContext: modelContext)
 
         for agent in resolvedAgents {
-            let (_, session) = provisioner.provision(agent: agent, mission: mission)
+            let (_, session) = provisioner.provision(agent: agent, mission: mission, workingDirOverride: projectDirectory)
             session.conversations = [conversation]
             conversation.sessions.append(session)
 
@@ -409,14 +375,7 @@ final class AppState: ObservableObject {
 
         modelContext.insert(conversation)
         try? modelContext.save()
-
-        GroupWorkingDirectory.ensureShared(
-            for: conversation,
-            instanceDefault: instanceWorkingDirectory,
-            modelContext: modelContext
-        )
-
-        selectedConversationId = conversation.id
+        return conversation.id
     }
 
     func connectSidecar() {
@@ -1027,7 +986,7 @@ final class AppState: ObservableObject {
     /// Launch an Orchestrator session to process a specific task.
     /// Marks the task as ready if it's in backlog, then creates a new Orchestrator
     /// conversation with a prompt instructing it to claim and execute the task.
-    func runTaskWithOrchestrator(_ task: TaskItem, modelContext: ModelContext) {
+    func runTaskWithOrchestrator(_ task: TaskItem, modelContext: ModelContext, windowState: WindowState) {
         // Ensure task is ready for the orchestrator
         if task.status == .backlog {
             updateTaskStatus(task, status: .ready)
@@ -1064,9 +1023,8 @@ final class AppState: ObservableObject {
         task.conversationId = conversation.id
         try? modelContext.save()
 
-        selectedConversationId = conversation.id
+        windowState.selectedConversationId = conversation.id
 
-        // Auto-send the prompt to process this task
         let prompt = """
         Check the task board and process the task with ID: \(task.id.uuidString)
 
@@ -1076,7 +1034,7 @@ final class AppState: ObservableObject {
 
         Use task_board_claim to claim it, then plan and execute it by delegating to the appropriate agents.
         """
-        autoSendText = prompt
+        windowState.autoSendText = prompt
     }
 
     #if DEBUG
@@ -1151,28 +1109,18 @@ final class AppState: ObservableObject {
     // MARK: - Worktree cleanup
 
     private func cleanupWorktreeIfNeeded(sessionId: String) {
-        guard let ctx = modelContext, let uuid = UUID(uuidString: sessionId) else { return }
-        let descriptor = FetchDescriptor<Session>(predicate: #Predicate { s in s.id == uuid })
-        guard let session = try? ctx.fetch(descriptor).first else { return }
-        Task { await WorktreeCleanup.cleanupIfNeeded(session: session) }
+        // Session-level worktrees have been removed.
+        // Per-conversation worktrees are managed by WorktreeManager.
     }
 
     // MARK: - Unread state
-
-    private func markConversationRead(id: UUID) {
-        guard let ctx = modelContext else { return }
-        let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { c in c.id == id })
-        guard let convo = try? ctx.fetch(descriptor).first, convo.isUnread else { return }
-        convo.isUnread = false
-        try? ctx.save()
-    }
 
     private func markConversationUnreadIfNeeded(sessionId: String) {
         guard let ctx = modelContext, let uuid = UUID(uuidString: sessionId) else { return }
         let descriptor = FetchDescriptor<Session>(predicate: #Predicate { s in s.id == uuid })
         guard let session = try? ctx.fetch(descriptor).first,
               let convo = session.conversations.first,
-              convo.id != selectedConversationId else { return }
+              !visibleConversationIds.contains(convo.id) else { return }
         convo.isUnread = true
         try? ctx.save()
     }
@@ -1184,7 +1132,7 @@ final class AppState: ObservableObject {
         let descriptor = FetchDescriptor<Session>(predicate: #Predicate { s in s.id == uuid })
         guard let session = try? ctx.fetch(descriptor).first,
               let convo = session.conversations.first else { return }
-        guard convo.id != selectedConversationId || !appIsActive else { return }
+        guard !visibleConversationIds.contains(convo.id) || !appIsActive else { return }
         let agentName = session.agent?.name ?? "Agent"
         action(agentName, convo.topic)
     }
@@ -1223,7 +1171,7 @@ final class AppState: ObservableObject {
         guard let ctx = modelContext else { return }
 
         let convo = Conversation(topic: "\(from) → \(to)")
-        convo.parentConversationId = selectedConversationId
+        convo.parentConversationId = visibleConversationIds.first
         ctx.insert(convo)
 
         let msg = ConversationMessage(

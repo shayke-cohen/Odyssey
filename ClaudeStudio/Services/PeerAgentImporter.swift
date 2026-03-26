@@ -45,8 +45,6 @@ enum PeerAgentImporter {
         agent.maxBudget = w.maxBudget
         agent.maxThinkingTokens = w.maxThinkingTokens
         agent.defaultWorkingDirectory = w.defaultWorkingDirectory
-        agent.githubRepo = w.githubRepo
-        agent.githubDefaultBranch = w.githubDefaultBranch
         agent.origin = .peer(peerName: peerDisplayName)
         agent.originRemoteId = w.id
         agent.catalogId = nil

@@ -32,9 +32,6 @@ final class Agent {
     var originRemoteId: UUID?
 
     var defaultWorkingDirectory: String?
-    var githubRepo: String?
-    var githubDefaultBranch: String?
-    var githubAutoCreateBranch: Bool
     var isShared: Bool
     var isEnabled: Bool = true
     var configSlug: String?
@@ -100,7 +97,6 @@ final class Agent {
         self.originKind = "local"
         self.originPeerName = nil
         self.originRemoteId = nil
-        self.githubAutoCreateBranch = false
         self.isShared = false
         self.isEnabled = true
         self.configSlug = nil

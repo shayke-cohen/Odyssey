@@ -13,6 +13,7 @@ enum InspectorTab: String, CaseIterable, Identifiable {
 struct InspectorView: View {
     let conversationId: UUID
     @Environment(\.modelContext) private var modelContext
+    @Environment(WindowState.self) private var windowState: WindowState
     @Query private var allConversations: [Conversation]
     @Query(sort: \Session.startedAt) private var allSessions: [Session]
     @EnvironmentObject private var appState: AppState
@@ -22,7 +23,8 @@ struct InspectorView: View {
     @State private var inspectorTab: InspectorTab = .info
     @State private var editingGroup: AgentGroup?
     @State private var instructionExpanded = false
-    @State private var showAttachRepoSheet = false
+    // editingWorkingDirectory removed — project dir is per-window
+    // workingDirectoryDraft removed — project dir is per-window, not editable per-session
 
     private let durationTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -66,8 +68,7 @@ struct InspectorView: View {
     }
 
     private var hasWorkingDirectory: Bool {
-        guard let session = primarySession else { return false }
-        return !session.workingDirectory.isEmpty
+        !windowState.projectDirectory.isEmpty
     }
 
     var body: some View {
@@ -88,14 +89,11 @@ struct InspectorView: View {
             case .info:
                 infoContent
             case .files:
-                if let dir = primarySession?.workingDirectory, !dir.isEmpty {
-                    FileExplorerView(
-                        workingDirectory: dir,
-                        refreshTrigger: appState.fileTreeRefreshTrigger
-                    )
-                } else {
-                    infoContent
-                }
+                FileExplorerView(
+                    workingDirectory: conversation?.worktreePath ?? windowState.projectDirectory,
+                    displayPath: windowState.projectDirectory,
+                    refreshTrigger: appState.fileTreeRefreshTrigger
+                )
             case .group:
                 if let group = sourceGroup {
                     groupContent(group)
@@ -123,11 +121,6 @@ struct InspectorView: View {
         .sheet(item: $editingGroup) { g in
             GroupEditorView(group: g)
         }
-        .sheet(isPresented: $showAttachRepoSheet) {
-            AttachRepoSheet(conversationId: conversationId)
-                .environmentObject(appState)
-                .environment(\.modelContext, modelContext)
-        }
     }
 
     // MARK: - Info Content
@@ -151,16 +144,6 @@ struct InspectorView: View {
                 }
                 if hasWorkingDirectory {
                     workspaceSection
-                }
-                if !orderedSessions.isEmpty {
-                    Button { showAttachRepoSheet = true } label: {
-                        Label("Attach GitHub Repo", systemImage: "arrow.triangle.branch")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("Attach a GitHub repository to this conversation")
-                    .xrayId("inspector.attachRepoButton")
                 }
                 historySection
             }
@@ -255,7 +238,7 @@ struct InspectorView: View {
             InfoRow(label: "Tool Calls", value: "\(live?.toolCallCount ?? session.toolCallCount)")
             if let agent {
                 Button {
-                    appState.showAgentLibrary = true
+                    windowState.showAgentLibrary = true
                 } label: {
                     Text("Open \(agent.name) in editor")
                         .font(.caption)
@@ -312,50 +295,41 @@ struct InspectorView: View {
 
     @ViewBuilder
     private var workspaceSection: some View {
-        if let session = primarySession, !session.workingDirectory.isEmpty {
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Working directory", systemImage: "folder")
-                    .font(.headline)
-                    .xrayId("inspector.workspaceHeading")
+        Divider()
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Project", systemImage: "folder")
+                .font(.headline)
+                .xrayId("inspector.workspaceHeading")
 
-                InfoRow(label: "Path", value: abbreviatePath(session.workingDirectory))
+            InfoRow(label: "Directory", value: abbreviatePath(windowState.projectDirectory))
 
-                HStack(spacing: 8) {
-                    Button {
-                        revealInFinder(session.workingDirectory)
-                    } label: {
-                        Label("Finder", systemImage: "arrow.up.right.square")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("Reveal working directory in Finder")
-                    .accessibilityLabel("Reveal in Finder")
-                    .xrayId("inspector.openFinderButton")
+            if let branch = conversation?.worktreeBranch {
+                InfoRow(label: "Branch", value: branch)
+            }
 
-                    Button {
-                        openInTerminal(session.workingDirectory)
-                    } label: {
-                        Label("Open in Terminal", systemImage: "terminal")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("Open working directory in Terminal")
-                    .xrayId("inspector.openTerminalButton")
-
-                    Button {
-                        revealSandboxesRootInFinder()
-                    } label: {
-                        Label("Sandboxes", systemImage: "archivebox")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("Open ~/.claudestudio/sandboxes in Finder")
-                    .xrayId("inspector.openSandboxesFinderButton")
+            HStack(spacing: 8) {
+                Button {
+                    revealInFinder(windowState.projectDirectory)
+                } label: {
+                    Label("Finder", systemImage: "arrow.up.right.square")
+                        .font(.caption)
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Reveal project in Finder")
+                .accessibilityLabel("Reveal in Finder")
+                .xrayId("inspector.openFinderButton")
+
+                Button {
+                    openInTerminal(windowState.projectDirectory)
+                } label: {
+                    Label("Terminal", systemImage: "terminal")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Open project in Terminal")
+                .xrayId("inspector.openTerminalButton")
             }
         }
     }
@@ -372,7 +346,7 @@ struct InspectorView: View {
                 .xrayId("inspector.agentHeading")
 
             Button {
-                appState.showAgentLibrary = true
+                windowState.showAgentLibrary = true
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: agent.icon)
@@ -484,7 +458,9 @@ struct InspectorView: View {
                 // Actions
                 HStack(spacing: 6) {
                     Button {
-                        appState.startGroupChat(group: group, modelContext: modelContext)
+                        if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                            windowState.selectedConversationId = convoId
+                        }
                     } label: {
                         Label("New Chat", systemImage: "play.fill")
                             .font(.caption)
@@ -673,7 +649,7 @@ struct InspectorView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        appState.selectedConversationId = conv.id
+                        windowState.selectedConversationId = conv.id
                     }
                     .xrayId("inspector.group.recentRow.\(conv.id.uuidString)")
                 }

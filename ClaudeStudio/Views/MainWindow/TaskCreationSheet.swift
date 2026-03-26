@@ -3,6 +3,7 @@ import SwiftData
 
 struct TaskCreationSheet: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -86,7 +87,7 @@ struct TaskCreationSheet: View {
                         )
                         if let task = try? modelContext.fetch(descriptor).first,
                            task.title == title {
-                            appState.runTaskWithOrchestrator(task, modelContext: modelContext)
+                            appState.runTaskWithOrchestrator(task, modelContext: modelContext, windowState: windowState)
                         }
                     }
 

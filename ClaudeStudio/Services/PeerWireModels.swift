@@ -13,8 +13,6 @@ struct WireAgentExport: Codable, Identifiable, Sendable {
     var icon: String
     var color: String
     var defaultWorkingDirectory: String?
-    var githubRepo: String?
-    var githubDefaultBranch: String?
     var skillNames: [String]
     var extraMCPNames: [String]
     var permissionSetName: String?

@@ -5,6 +5,7 @@ struct NewSessionSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \Session.startedAt, order: .reverse) private var recentSessions: [Session]
 
@@ -14,33 +15,10 @@ struct NewSessionSheet: View {
     @State private var modelOverride = ""
     @State private var sessionMode: SessionMode = .interactive
     @State private var mission = ""
-    @State private var workingDirectory = ""
     @State private var showOptions = false
-    @State private var didSetInitialDir = false
 
-    private enum WorkspaceTab: Int, Hashable {
-        case localDirectory = 0
-        case githubRepo = 1
-    }
-
-    private enum GitHubWorkspaceMode: Int, Hashable {
-        case clone = 0
-        case worktree = 1
-    }
-
-    @State private var workspaceTab: WorkspaceTab = .localDirectory
-    @State private var githubRepoInput = ""
-    @State private var githubBranch = ""
-    @State private var githubMode: GitHubWorkspaceMode = .clone
-    @State private var worktreeBranch = ""
-    @State private var githubIssueNumber = ""
-    @State private var fetchedIssueTitle: String?
-    @State private var isWorkspacePreparing = false
-    @State private var workspacePrepError: String?
     @State private var showCreateFromPrompt = false
     @State private var createFromPromptText = ""
-    @State private var recentDirs: [String] = []
-    @State private var recentRepos: [String] = []
     @Query(sort: \Skill.name) private var allSkills: [Skill]
     @Query(sort: \MCPServer.name) private var allMCPs: [MCPServer]
 
@@ -66,12 +44,7 @@ struct NewSessionSheet: View {
     }
 
     private var canStartSession: Bool {
-        (isFreeformChat || !selectedAgentIds.isEmpty) && !isWorkspacePreparing
-    }
-
-    private var isGithubRepoInputValid: Bool {
-        let trimmed = githubRepoInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !trimmed.isEmpty && (trimmed.contains("/") || trimmed.hasPrefix("https://") || trimmed.hasPrefix("git@"))
+        isFreeformChat || !selectedAgentIds.isEmpty
     }
 
     var body: some View {
@@ -91,7 +64,7 @@ struct NewSessionSheet: View {
                             .foregroundStyle(.secondary)
                             .xrayId("newSession.selectedAgentsSummary")
                     }
-                    workspaceSection
+                    projectInfoRow
                     optionsSection
                 }
                 .padding(24)
@@ -100,294 +73,25 @@ struct NewSessionSheet: View {
             footer
         }
         .frame(width: 620, height: 620)
-        .onAppear {
-            recentDirs = RecentDirectories.load()
-            recentRepos = RecentRepos.load()
-            if !didSetInitialDir, workingDirectory.isEmpty,
-               let instanceDir = appState.instanceWorkingDirectory {
-                workingDirectory = instanceDir
-                didSetInitialDir = true
-            }
-        }
-        .onChange(of: selectedAgentIds) { _, newIds in
-            if newIds.count == 1, let agentId = newIds.first,
-               let agent = agents.first(where: { $0.id == agentId }) {
-                if let repo = agent.githubRepo?.trimmingCharacters(in: .whitespacesAndNewlines),
-                   !repo.isEmpty, githubRepoInput.isEmpty {
-                    githubRepoInput = repo
-                    githubBranch = agent.githubDefaultBranch?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "main"
-                    workspaceTab = .githubRepo
-                }
-                if let dir = agent.defaultWorkingDirectory, !dir.isEmpty, workingDirectory.isEmpty {
-                    workingDirectory = dir
-                }
-            }
-            workspacePrepError = nil
-        }
     }
 
-    // MARK: - Workspace
+    // MARK: - Project Info
 
     @ViewBuilder
-    private var workspaceSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Workspace")
-                .font(.headline)
-
-            Picker("", selection: $workspaceTab) {
-                Text("Local Directory").tag(WorkspaceTab.localDirectory)
-                Text("GitHub Repo").tag(WorkspaceTab.githubRepo)
-            }
-            .pickerStyle(.segmented)
-            .xrayId("newSession.workspaceTabPicker")
-
-            switch workspaceTab {
-            case .localDirectory:
-                localDirectoryTab
-            case .githubRepo:
-                githubRepoTab
-            }
+    private var projectInfoRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "folder.fill")
+                .foregroundStyle(.secondary)
+            Text("Project:")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(windowState.projectName)
+                .font(.subheadline)
+                .fontWeight(.medium)
+            Spacer()
         }
         .padding(.vertical, 4)
-    }
-
-    @ViewBuilder
-    private var localDirectoryTab: some View {
-        if !recentDirs.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Array(recentDirs.prefix(6).enumerated()), id: \.offset) { index, dir in
-                        let displayName = (dir as NSString).lastPathComponent
-                        Button {
-                            workingDirectory = dir
-                        } label: {
-                            Text(displayName)
-                                .font(.caption)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(workingDirectory == dir ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08))
-                                .clipShape(Capsule())
-                                .overlay {
-                                    Capsule()
-                                        .strokeBorder(workingDirectory == dir ? Color.accentColor : .clear, lineWidth: 1.5)
-                                }
-                        }
-                        .buttonStyle(.plain)
-                        .help(dir)
-                        .xrayId("newSession.recentDirChip.\(index)")
-                        .accessibilityLabel("Select recent directory: \(displayName) at \(dir)")
-                    }
-                }
-            }
-        }
-
-        HStack(alignment: .firstTextBaseline) {
-            TextField("~/projects/my-app", text: $workingDirectory)
-                .textFieldStyle(.roundedBorder)
-                .xrayId("newSession.workingDirectoryField")
-            Button {
-                pickDirectory()
-            } label: {
-                Image(systemName: "folder")
-            }
-            .buttonStyle(.borderless)
-            .help("Browse for directory")
-            .xrayId("newSession.browseDirectoryButton")
-            .accessibilityLabel("Browse for directory")
-        }
-    }
-
-    @ViewBuilder
-    private var githubRepoTab: some View {
-        if !recentRepos.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Array(recentRepos.prefix(6).enumerated()), id: \.offset) { index, repo in
-                        Button {
-                            githubRepoInput = repo
-                            githubBranch = "main"
-                        } label: {
-                            Text(repo)
-                                .font(.caption)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(githubRepoInput == repo ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08))
-                                .clipShape(Capsule())
-                                .overlay {
-                                    Capsule()
-                                        .strokeBorder(githubRepoInput == repo ? Color.accentColor : .clear, lineWidth: 1.5)
-                                }
-                        }
-                        .buttonStyle(.plain)
-                        .help(repo)
-                        .xrayId("newSession.recentRepoChip.\(index)")
-                        .accessibilityLabel("Select recent repository: \(repo)")
-                    }
-                }
-            }
-        }
-
-        HStack(alignment: .firstTextBaseline) {
-            Text("Repo")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 50, alignment: .trailing)
-            TextField("org/repo or URL", text: $githubRepoInput)
-                .textFieldStyle(.roundedBorder)
-                .xrayId("newSession.githubRepoField")
-        }
-
-        HStack(alignment: .firstTextBaseline) {
-            Text("Branch")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 50, alignment: .trailing)
-            TextField("main", text: $githubBranch)
-                .textFieldStyle(.roundedBorder)
-                .xrayId("newSession.githubBranchField")
-        }
-
-        HStack(alignment: .firstTextBaseline) {
-            Text("Mode")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 50, alignment: .trailing)
-            Picker("", selection: $githubMode) {
-                Text("Clone").tag(GitHubWorkspaceMode.clone)
-                Text("Worktree").tag(GitHubWorkspaceMode.worktree)
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 180)
-            .labelsHidden()
-            .xrayId("newSession.githubModePicker")
-        }
-
-        if githubMode == .worktree {
-            HStack(alignment: .firstTextBaseline) {
-                Text("WT Branch")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 50, alignment: .trailing)
-                TextField("feature/my-branch", text: $worktreeBranch)
-                    .textFieldStyle(.roundedBorder)
-                    .xrayId("newSession.worktreeBranchField")
-            }
-        }
-
-        if isGithubRepoInputValid {
-            let repo = githubRepoInput.trimmingCharacters(in: .whitespacesAndNewlines)
-            if githubMode == .clone {
-                Text("Path: \(WorkspaceResolver.cloneDestinationPath(repoInput: repo))")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .textSelection(.enabled)
-            } else {
-                let branch = worktreeBranch.trimmingCharacters(in: .whitespacesAndNewlines)
-                Text("Path: \(WorkspaceResolver.worktreeDestinationPath(repoInput: repo, branch: branch.isEmpty ? "branch" : branch))")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .textSelection(.enabled)
-            }
-        }
-
-        if let workspacePrepError {
-            Text(workspacePrepError)
-                .font(.caption)
-                .foregroundStyle(.red)
-                .xrayId("newSession.githubWorkspaceError")
-        }
-
-        HStack {
-            if isWorkspacePreparing {
-                ProgressView()
-                    .scaleEffect(0.8)
-                Text("Preparing…")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button("Validate / Clone") {
-                Task { await prepareGithubClone() }
-            }
-            .disabled(!isGithubRepoInputValid || isWorkspacePreparing)
-            .xrayId("newSession.githubValidateButton")
-        }
-
-        // GitHub issue (optional)
-        Divider()
-        HStack {
-            Text("Issue:")
-                .font(.caption)
-            TextField("#123", text: $githubIssueNumber)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 80)
-                .xrayId("newSession.githubIssueField")
-            if let title = fetchedIssueTitle {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            Button("Fetch") {
-                Task { await fetchIssue() }
-            }
-            .disabled(githubIssueNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !isGithubRepoInputValid)
-            .xrayId("newSession.githubIssueFetchButton")
-        }
-        Text("Optional — fetches issue context into the agent's system prompt")
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
-    }
-
-    private func fetchIssue() async {
-        let numberStr = githubIssueNumber.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
-        let repo = githubRepoInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let number = Int(numberStr), !repo.isEmpty else {
-            workspacePrepError = "Enter a valid issue number"
-            return
-        }
-        do {
-            let issue = try await GitHubIntegration.fetchIssue(repoInput: repo, issueNumber: number)
-            fetchedIssueTitle = issue.title
-            if mission.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                mission = issue.body
-            }
-        } catch {
-            workspacePrepError = error.localizedDescription
-        }
-    }
-
-    private func prepareGithubClone() async {
-        let repo = githubRepoInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !repo.isEmpty else { return }
-        isWorkspacePreparing = true
-        workspacePrepError = nil
-        defer { isWorkspacePreparing = false }
-        let branch = {
-            let b = githubBranch.trimmingCharacters(in: .whitespacesAndNewlines)
-            return b.isEmpty ? "main" : b
-        }()
-        do {
-            if githubMode == .clone {
-                let path = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
-                try await GitHubIntegration.ensureClone(repoInput: repo, branch: branch, destinationPath: path)
-            } else {
-                let wtBranch = worktreeBranch.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !wtBranch.isEmpty else {
-                    workspacePrepError = "Branch name is required for worktree mode."
-                    return
-                }
-                let basePath = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
-                let wtPath = WorkspaceResolver.worktreeDestinationPath(repoInput: repo, branch: wtBranch)
-                try await GitHubIntegration.ensureWorktree(
-                    repoInput: repo, branch: wtBranch,
-                    baseClonePath: basePath, worktreePath: wtPath
-                )
-            }
-        } catch {
-            workspacePrepError = error.localizedDescription
-        }
+        .xrayId("newSession.projectInfo")
     }
 
     // MARK: - Header
@@ -535,9 +239,6 @@ struct NewSessionSheet: View {
                         isFreeformChat = false
                         selectedAgentIds = [agent.id]
                         modelOverride = ""
-                        if let dir = agent.defaultWorkingDirectory, !dir.isEmpty {
-                            workingDirectory = dir
-                        }
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: agent.icon)
@@ -610,9 +311,6 @@ struct NewSessionSheet: View {
                         } else {
                             selectedAgentIds.insert(agent.id)
                             modelOverride = ""
-                            if let dir = agent.defaultWorkingDirectory, !dir.isEmpty {
-                                workingDirectory = dir
-                            }
                         }
                     }
                 }
@@ -768,69 +466,7 @@ struct NewSessionSheet: View {
 
     private func createSessionAsync() async {
         let missionText = mission.trimmingCharacters(in: .whitespacesAndNewlines)
-        let dirText = workingDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Resolve workspace based on active tab
-        var resolvedWd = ""
-        var resolvedWsType: WorkspaceType?
-        var resolvedWorktreePath: String?
-
-        switch workspaceTab {
-        case .localDirectory:
-            resolvedWd = dirText
-            if !dirText.isEmpty {
-                resolvedWsType = .explicit(path: dirText)
-                RecentDirectories.add(dirText)
-            }
-
-        case .githubRepo:
-            let repo = githubRepoInput.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !repo.isEmpty else { break }
-            let branch = {
-                let b = githubBranch.trimmingCharacters(in: .whitespacesAndNewlines)
-                return b.isEmpty ? "main" : b
-            }()
-
-            if githubMode == .clone {
-                isWorkspacePreparing = true
-                workspacePrepError = nil
-                defer { isWorkspacePreparing = false }
-                let path = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
-                do {
-                    try await GitHubIntegration.ensureClone(repoInput: repo, branch: branch, destinationPath: path)
-                } catch {
-                    workspacePrepError = error.localizedDescription
-                    return
-                }
-                resolvedWd = path
-                resolvedWsType = .githubClone(repoUrl: repo)
-                RecentRepos.add(repo)
-            } else {
-                let wtBranch = worktreeBranch.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !wtBranch.isEmpty else {
-                    workspacePrepError = "Branch name is required for worktree mode."
-                    return
-                }
-                isWorkspacePreparing = true
-                workspacePrepError = nil
-                defer { isWorkspacePreparing = false }
-                let basePath = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
-                let wtPath = WorkspaceResolver.worktreeDestinationPath(repoInput: repo, branch: wtBranch)
-                do {
-                    try await GitHubIntegration.ensureWorktree(
-                        repoInput: repo, branch: wtBranch,
-                        baseClonePath: basePath, worktreePath: wtPath
-                    )
-                } catch {
-                    workspacePrepError = error.localizedDescription
-                    return
-                }
-                resolvedWd = wtPath
-                resolvedWsType = .worktree(repoUrl: repo, branch: wtBranch)
-                resolvedWorktreePath = wtPath
-                RecentRepos.add(repo)
-            }
-        }
+        let projectDir = windowState.projectDirectory
 
         // Freeform chat
         if isFreeformChat || selectedAgentIds.isEmpty {
@@ -840,7 +476,7 @@ struct NewSessionSheet: View {
             conversation.participants.append(userParticipant)
             modelContext.insert(conversation)
             try? modelContext.save()
-            appState.selectedConversationId = conversation.id
+            windowState.selectedConversationId = conversation.id
             dismiss()
             return
         }
@@ -863,44 +499,13 @@ struct NewSessionSheet: View {
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)
 
-        // Issue context for system prompt
-        let issueContext: String? = {
-            if let title = fetchedIssueTitle, !title.isEmpty {
-                let num = githubIssueNumber.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
-                return "GitHub Issue #\(num): \(title)"
-            }
-            return nil
-        }()
-
         for agent in selectedList {
-            let wd: String
-            if !resolvedWd.isEmpty {
-                wd = resolvedWd
-            } else if selectedList.count > 1 {
-                wd = ""
-            } else {
-                wd = agent.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? ""
-            }
-
             let session = Session(
                 agent: agent,
                 mission: missionText.isEmpty ? nil : missionText,
                 mode: sessionMode,
-                workingDirectory: wd
+                workingDirectory: projectDir
             )
-
-            if let wsType = resolvedWsType {
-                session.workspaceType = wsType
-                if let wtPath = resolvedWorktreePath {
-                    session.worktreePath = wtPath
-                }
-            } else if !wd.isEmpty {
-                session.workspaceType = .explicit(path: wd)
-            }
-
-            if let issue = issueContext {
-                session.githubIssue = issue
-            }
 
             session.conversations = [conversation]
             conversation.sessions.append(session)
@@ -916,15 +521,8 @@ struct NewSessionSheet: View {
         }
 
         modelContext.insert(conversation)
-        if selectedList.count > 1, resolvedWd.isEmpty {
-            GroupWorkingDirectory.ensureShared(
-                for: conversation,
-                instanceDefault: appState.instanceWorkingDirectory,
-                modelContext: modelContext
-            )
-        }
         try? modelContext.save()
-        appState.selectedConversationId = conversation.id
+        windowState.selectedConversationId = conversation.id
         dismiss()
     }
 
@@ -935,18 +533,7 @@ struct NewSessionSheet: View {
         conversation.participants.append(userParticipant)
         modelContext.insert(conversation)
         try? modelContext.save()
-        appState.selectedConversationId = conversation.id
+        windowState.selectedConversationId = conversation.id
         dismiss()
-    }
-
-    private func pickDirectory() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        if panel.runModal() == .OK, let url = panel.url {
-            workingDirectory = url.path(percentEncoded: false)
-        }
     }
 }

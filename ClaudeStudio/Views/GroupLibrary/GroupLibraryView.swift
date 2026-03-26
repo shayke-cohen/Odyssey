@@ -5,6 +5,7 @@ struct GroupLibraryView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
     @Query(sort: \Agent.name) private var agents: [Agent]
     @State private var searchText = ""
@@ -110,7 +111,9 @@ struct GroupLibraryView: View {
                                 group: group,
                                 agents: agents,
                                 onStart: {
-                                    appState.startGroupChat(group: group, modelContext: modelContext)
+                                    if let convoId = appState.startGroupChat(group: group, projectDirectory: windowState.projectDirectory, modelContext: modelContext) {
+                                        windowState.selectedConversationId = convoId
+                                    }
                                     dismiss()
                                 },
                                 onEdit: {

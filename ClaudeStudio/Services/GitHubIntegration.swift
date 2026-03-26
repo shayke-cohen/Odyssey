@@ -33,12 +33,27 @@ enum GitHubIntegration {
         return "/usr/bin/git"
     }
 
+    /// Normalizes a user-entered repo string into a `git clone` URL.
+    private static func cloneURL(from repoInput: String) -> String {
+        let trimmed = repoInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return trimmed }
+        if trimmed.hasPrefix("git@") || trimmed.hasPrefix("https://") || trimmed.hasPrefix("http://") || trimmed.hasPrefix("ssh://") {
+            return trimmed
+        }
+        // org/repo shorthand
+        let parts = trimmed.split(separator: "/").map(String.init)
+        if parts.count == 2, !parts[0].contains(".") {
+            return "https://github.com/\(parts[0])/\(parts[1])"
+        }
+        return trimmed
+    }
+
     /// Ensures `destinationPath` contains the repo on `branch`, cloning if needed.
     static func ensureClone(repoInput: String, branch: String, destinationPath: String) async throws {
         let trimmedRepo = repoInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedRepo.isEmpty else { throw GitHubIntegrationError.emptyRepository }
 
-        let url = WorkspaceResolver.cloneURL(from: trimmedRepo)
+        let url = cloneURL(from: trimmedRepo)
         let git = gitExecutablePath()
         guard FileManager.default.isExecutableFile(atPath: git) else {
             throw GitHubIntegrationError.gitNotFound
@@ -129,7 +144,7 @@ enum GitHubIntegration {
 
     /// Fetches a GitHub issue's title, body, and labels as JSON.
     static func fetchIssue(repoInput: String, issueNumber: Int) async throws -> (title: String, body: String, labels: [String]) {
-        let repo = WorkspaceResolver.cloneURL(from: repoInput)
+        let repo = cloneURL(from: repoInput)
             .replacingOccurrences(of: "https://github.com/", with: "")
             .replacingOccurrences(of: ".git", with: "")
         let json = try await ghOutput(arguments: [

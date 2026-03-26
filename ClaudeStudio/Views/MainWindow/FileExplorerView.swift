@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FileExplorerView: View {
     let workingDirectory: String
+    var displayPath: String?
     let refreshTrigger: Int
 
     @State private var selectedFile: FileNode?
@@ -14,11 +15,12 @@ struct FileExplorerView: View {
     }
 
     private var abbreviatedPath: String {
+        let path = displayPath ?? workingDirectory
         let home = NSHomeDirectory()
-        if workingDirectory.hasPrefix(home) {
-            return "~" + workingDirectory.dropFirst(home.count)
+        if path.hasPrefix(home) {
+            return "~" + path.dropFirst(home.count)
         }
-        return workingDirectory
+        return path
     }
 
     var body: some View {

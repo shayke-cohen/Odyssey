@@ -20,18 +20,12 @@ struct AgentEditorView: View {
     @State private var maxTurns: String
     @State private var maxBudget: String
     @State private var workingDirectory: String
-    @State private var githubRepo: String
-    @State private var githubBranch: String
-    @State private var githubAutoCreateBranch: Bool
     @State private var selectedSkillIds: Set<UUID>
     @State private var selectedMCPIds: Set<UUID>
     @State private var selectedPermissionId: UUID?
     @State private var systemPrompt: String
     @State private var showSkillLibrary = false
     @State private var showMCPLibrary = false
-    @State private var githubWorkspaceBusy = false
-    @State private var githubWorkspaceMessage = ""
-    @State private var githubWorkspaceSucceeded = false
     @State private var skillsExpanded = true
     @State private var mcpsExpanded = true
     @State private var permissionsExpanded = false
@@ -47,9 +41,6 @@ struct AgentEditorView: View {
         _maxTurns = State(initialValue: agent?.maxTurns.map(String.init) ?? "")
         _maxBudget = State(initialValue: agent?.maxBudget.map { String(format: "%.2f", $0) } ?? "")
         _workingDirectory = State(initialValue: agent?.defaultWorkingDirectory ?? "")
-        _githubRepo = State(initialValue: agent?.githubRepo ?? "")
-        _githubBranch = State(initialValue: agent?.githubDefaultBranch ?? "main")
-        _githubAutoCreateBranch = State(initialValue: agent?.githubAutoCreateBranch ?? false)
         _selectedSkillIds = State(initialValue: Set(agent?.skillIds ?? []))
         _selectedMCPIds = State(initialValue: Set(agent?.extraMCPServerIds ?? []))
         _selectedPermissionId = State(initialValue: agent?.permissionSetId)
@@ -169,42 +160,6 @@ struct AgentEditorView: View {
             Section("Workspace") {
                 TextField("Working Directory", text: $workingDirectory)
                     .xrayId("agentEditor.workingDirectoryField")
-                TextField("GitHub Repo URL", text: $githubRepo)
-                    .xrayId("agentEditor.githubRepoField")
-                TextField("Branch", text: $githubBranch)
-                    .xrayId("agentEditor.githubBranchField")
-                Toggle("Auto-create branch from issue", isOn: $githubAutoCreateBranch)
-                    .xrayId("agentEditor.githubAutoCreateBranchToggle")
-
-                let repoTrim = githubRepo.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !repoTrim.isEmpty {
-                    let clonePath = WorkspaceResolver.cloneDestinationPath(repoInput: repoTrim)
-                    LabeledContent("Clone path") {
-                        Text(clonePath)
-                            .font(.caption)
-                            .textSelection(.enabled)
-                    }
-                    .xrayId("agentEditor.githubClonePathLabel")
-                    HStack {
-                        if githubWorkspaceBusy {
-                            ProgressView().scaleEffect(0.75)
-                        }
-                        Button("Validate / update clone") {
-                            Task { await runGithubWorkspacePrep() }
-                        }
-                        .disabled(githubWorkspaceBusy)
-                        .xrayId("agentEditor.githubValidateButton")
-                    }
-                    if !githubWorkspaceMessage.isEmpty {
-                        Text(githubWorkspaceMessage)
-                            .font(.caption)
-                            .foregroundStyle(githubWorkspaceSucceeded ? Color.secondary : Color.red)
-                            .xrayId("agentEditor.githubWorkspaceMessage")
-                    }
-                    Text("Next session start will re-run clone resolution if the repo or branch changes.")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
             }
         }
         .formStyle(.grouped)
@@ -561,25 +516,6 @@ struct AgentEditorView: View {
         .padding()
     }
 
-    private func runGithubWorkspacePrep() async {
-        let repo = githubRepo.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !repo.isEmpty else { return }
-        githubWorkspaceBusy = true
-        githubWorkspaceMessage = ""
-        defer { githubWorkspaceBusy = false }
-        let path = WorkspaceResolver.cloneDestinationPath(repoInput: repo)
-        let b = githubBranch.trimmingCharacters(in: .whitespacesAndNewlines)
-        let branch = b.isEmpty ? "main" : b
-        do {
-            try await GitHubIntegration.ensureClone(repoInput: repo, branch: branch, destinationPath: path)
-            githubWorkspaceSucceeded = true
-            githubWorkspaceMessage = "Clone is ready at the path above."
-        } catch {
-            githubWorkspaceSucceeded = false
-            githubWorkspaceMessage = error.localizedDescription
-        }
-    }
-
     // MARK: - Save
 
     private func saveAgent() {
@@ -603,9 +539,6 @@ struct AgentEditorView: View {
         target.permissionSetId = selectedPermissionId
         target.systemPrompt = systemPrompt
         target.defaultWorkingDirectory = workingDirectory.isEmpty ? nil : workingDirectory
-        target.githubRepo = githubRepo.isEmpty ? nil : githubRepo
-        target.githubDefaultBranch = githubBranch.isEmpty ? nil : githubBranch
-        target.githubAutoCreateBranch = githubAutoCreateBranch
         target.updatedAt = Date()
 
 
