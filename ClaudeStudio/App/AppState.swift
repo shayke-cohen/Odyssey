@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import Combine
+import OSLog
 
 @MainActor
 final class AppState: ObservableObject {
@@ -49,6 +50,7 @@ final class AppState: ObservableObject {
     @Published var pendingConfirmations: [String: AgentConfirmation] = [:]
     @Published var progressTrackers: [String: ProgressTracker] = [:]
     @Published var pendingSuggestions: [String: [SuggestionItem]] = [:]
+    @Published var completedPlans: [String: CompletedPlan] = [:]
     @Published var launchError: String?
 
     /// Text to auto-send in the active chat once the sidecar connects.
@@ -87,6 +89,12 @@ final class AppState: ObservableObject {
         let id: String  // progressId
         let title: String
         let steps: [ProgressStep]
+    }
+
+    struct CompletedPlan {
+        let sessionId: String
+        let plan: String?
+        let allowedPrompts: [PlanAllowedPrompt]?
     }
 
     enum SessionEventKind {
@@ -616,7 +624,7 @@ final class AppState: ObservableObject {
         }
 
         sendToSidecar(.agentRegister(agents: defs))
-        print("[AppState] Registered \(defs.count) agent definitions with sidecar")
+        Log.appState.info("Registered \(defs.count) agent definitions with sidecar")
     }
 
     // MARK: - Conversation Activity
@@ -739,7 +747,7 @@ final class AppState: ObservableObject {
             notifyIfNeeded(sessionId: sessionId) { name, _ in
                 ChatNotificationManager.shared.notifySessionError(agentName: name, error: error)
             }
-            print("[AppState] Session \(sessionId) error: \(error)")
+            Log.appState.error("Session \(sessionId, privacy: .public) error: \(error, privacy: .public)")
             cleanupWorktreeIfNeeded(sessionId: sessionId)
 
         case .peerChat(let channelId, let from, let message):
@@ -764,10 +772,10 @@ final class AppState: ObservableObject {
             persistBlackboardUpdate(key: key, value: value, writtenBy: writtenBy)
 
         case .sessionForked(let parentSessionId, let childSessionId):
-            print("[AppState] session.forked parent=\(parentSessionId) child=\(childSessionId)")
+            Log.appState.info("session.forked parent=\(parentSessionId, privacy: .public) child=\(childSessionId, privacy: .public)")
 
         case .sessionReused(let originalSessionId, let reusedSessionId):
-            print("[AppState] session.reused original=\(originalSessionId) → reused=\(reusedSessionId)")
+            Log.appState.info("session.reused original=\(originalSessionId, privacy: .public) → reused=\(reusedSessionId, privacy: .public)")
 
         case .streamImage(let sessionId, let imageData, let mediaType, _):
             streamingImages[sessionId, default: []].append((data: imageData, mediaType: mediaType))
@@ -808,7 +816,7 @@ final class AppState: ObservableObject {
             sessionActivity[sessionId] = .askingUser
 
         case .streamRichContent(let sessionId, let format, let title, let content, let height):
-            print("[AppState] stream.richContent format=\(format) session=\(sessionId)")
+            Log.appState.debug("stream.richContent format=\(format, privacy: .public) session=\(sessionId, privacy: .public)")
             persistRichContent(sessionId: sessionId, format: format, title: title, content: content, height: height)
 
         case .streamProgress(let sessionId, let progressId, let title, let steps):
@@ -828,7 +836,13 @@ final class AppState: ObservableObject {
             generateAgentError = error
             isGeneratingAgent = false
             generateAgentRequestId = nil
-            print("[AppState] Agent generation error: \(error)")
+            Log.appState.error("Agent generation error: \(error, privacy: .public)")
+
+        case .planComplete(let sessionId, let plan, let allowedPrompts):
+            flushStreamingContent(sessionId: sessionId)
+            completedPlans[sessionId] = CompletedPlan(
+                sessionId: sessionId, plan: plan, allowedPrompts: allowedPrompts
+            )
 
         case .conversationInviteAgent(let sessionId, let agentName):
             handleInviteAgent(sessionId: sessionId, agentName: agentName)
@@ -866,7 +880,7 @@ final class AppState: ObservableObject {
         let sessionDescriptor = FetchDescriptor<Session>(predicate: #Predicate { s in s.id == sessionUUID })
         guard let requestingSession = try? ctx.fetch(sessionDescriptor).first,
               let conversation = requestingSession.conversations.first else {
-            print("[AppState] handleInviteAgent: no conversation found for session \(sessionId)")
+            Log.appState.warning("handleInviteAgent: no conversation found for session \(sessionId, privacy: .public)")
             return
         }
 
@@ -874,13 +888,13 @@ final class AppState: ObservableObject {
         let agentDescriptor = FetchDescriptor<Agent>()
         guard let agents = try? ctx.fetch(agentDescriptor),
               let agent = agents.first(where: { $0.name.localizedCaseInsensitiveCompare(agentName) == .orderedSame }) else {
-            print("[AppState] handleInviteAgent: agent '\(agentName)' not found")
+            Log.appState.warning("handleInviteAgent: agent '\(agentName, privacy: .public)' not found")
             return
         }
 
         // Check if agent is already in the conversation
         if conversation.sessions.contains(where: { $0.agent?.id == agent.id }) {
-            print("[AppState] handleInviteAgent: '\(agentName)' already in conversation")
+            Log.appState.info("handleInviteAgent: '\(agentName, privacy: .public)' already in conversation")
             return
         }
 
@@ -910,7 +924,7 @@ final class AppState: ObservableObject {
             agentConfig: config
         ))
 
-        print("[AppState] handleInviteAgent: added '\(agentName)' to conversation \(conversation.id)")
+        Log.appState.info("handleInviteAgent: added '\(agentName, privacy: .public)' to conversation \(conversation.id, privacy: .public)")
     }
 
     // MARK: - Task Board
@@ -1023,7 +1037,7 @@ final class AppState: ObservableObject {
         let descriptor = FetchDescriptor<Agent>()
         guard let agents = try? modelContext.fetch(descriptor),
               let orchestrator = agents.first(where: { $0.name.lowercased() == "orchestrator" }) else {
-            print("[AppState] runTaskWithOrchestrator: Orchestrator agent not found")
+            Log.appState.error("runTaskWithOrchestrator: Orchestrator agent not found")
             return
         }
 
@@ -1110,7 +1124,7 @@ final class AppState: ObservableObject {
         guard !entries.isEmpty else { return }
         try? ctx.save()
         try? await manager.send(.sessionBulkResume(sessions: entries))
-        print("[AppState] Recovered \(entries.count) sessions after reconnect")
+        Log.appState.info("Recovered \(entries.count) sessions after reconnect")
     }
 
     /// Mark active sessions as paused after prolonged sidecar disconnect (60s).
@@ -1131,7 +1145,7 @@ final class AppState: ObservableObject {
             session.status = .paused
         }
         try? ctx.save()
-        print("[AppState] Marked active sessions as paused after prolonged disconnect")
+        Log.appState.warning("Marked active sessions as paused after prolonged disconnect")
     }
 
     // MARK: - Worktree cleanup

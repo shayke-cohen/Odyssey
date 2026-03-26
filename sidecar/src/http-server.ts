@@ -1,6 +1,7 @@
 import type { BlackboardStore } from "./stores/blackboard-store.js";
 import type { ApiContext } from "./types.js";
 import { handleApiRequest } from "./api-router.js";
+import { logger } from "./logger.js";
 
 export class HttpServer {
   private server: ReturnType<typeof Bun.serve> | null = null;
@@ -22,7 +23,7 @@ export class HttpServer {
       hostname: "127.0.0.1",
       fetch: (req) => this.handleRequest(req),
     });
-    console.log(`[http] HTTP API listening on http://127.0.0.1:${this.port}`);
+    logger.info("http", `HTTP API listening on http://127.0.0.1:${this.port}`);
   }
 
   private async handleRequest(req: Request): Promise<Response> {

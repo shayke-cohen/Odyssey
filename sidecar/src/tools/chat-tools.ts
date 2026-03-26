@@ -251,6 +251,34 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
         };
       },
     ),
+
+    tool(
+      "group_invite_agent",
+      "Invite an agent to join your current conversation as a group member. The invited agent will see the full chat transcript and can participate alongside you. Use peer_list_agents() first to see available agents.",
+      {
+        agent_name: z.string().describe("Name of the agent to invite (e.g. 'Coder', 'Reviewer')"),
+      },
+      async (args, extra: any) => {
+        const sessionId = extra?.sessionId ?? callingSessionId;
+
+        ctx.broadcast({
+          type: "conversation.inviteAgent",
+          sessionId,
+          agentName: args.agent_name,
+        });
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              invited: true,
+              agent: args.agent_name,
+              note: "The agent is being added to your conversation. They will see the transcript and can participate.",
+            }),
+          }],
+        };
+      },
+    ),
   ];
 }
 

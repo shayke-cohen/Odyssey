@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftData
 
 enum DefaultsSeeder {
@@ -12,7 +13,7 @@ enum DefaultsSeeder {
         let permCount = (try? context.fetchCount(FetchDescriptor<PermissionSet>())) ?? 0
         if permCount > 0 { return }
 
-        print("[DefaultsSeeder] First launch — seeding defaults")
+        Log.seeder.info("First launch — seeding defaults")
 
         let permissions = seedPermissionPresets(into: context)
         let mcpServers = seedMCPServers(into: context)
@@ -23,9 +24,9 @@ enum DefaultsSeeder {
         do {
             try context.save()
             InstanceConfig.userDefaults.set(true, forKey: seededKey)
-            print("[DefaultsSeeder] Seeding complete")
+            Log.seeder.info("Seeding complete")
         } catch {
-            print("[DefaultsSeeder] Failed to save: \(error)")
+            Log.seeder.error("Failed to save: \(error)")
         }
     }
 
@@ -43,15 +44,15 @@ enum DefaultsSeeder {
             return
         }
 
-        print("[DefaultsSeeder] Seeding default groups")
+        Log.seeder.info("Seeding default groups")
         seedGroups(into: context)
 
         do {
             try context.save()
             InstanceConfig.userDefaults.set(true, forKey: groupsSeededKey)
-            print("[DefaultsSeeder] Groups seeding complete")
+            Log.seeder.info("Groups seeding complete")
         } catch {
-            print("[DefaultsSeeder] Failed to save groups: \(error)")
+            Log.seeder.error("Failed to save groups: \(error)")
         }
     }
 
@@ -309,7 +310,7 @@ enum DefaultsSeeder {
                 !spec.roles.isEmpty ? "roles" : nil,
             ].compactMap { $0 }.joined(separator: ", ")
             let suffix = extras.isEmpty ? "" : " [\(extras)]"
-            print("[DefaultsSeeder]   Group: \(spec.name) (\(spec.agentNames.count) agents)\(suffix)")
+            Log.seeder.info("Group: \(spec.name, privacy: .public) (\(spec.agentNames.count) agents)\(suffix, privacy: .public)")
         }
     }
 
@@ -318,7 +319,7 @@ enum DefaultsSeeder {
     @discardableResult
     private static func seedPermissionPresets(into context: ModelContext) -> [String: PermissionSet] {
         guard let data = loadResource(name: "DefaultPermissionPresets", ext: "json") else {
-            print("[DefaultsSeeder] DefaultPermissionPresets.json not found")
+            Log.seeder.error("DefaultPermissionPresets.json not found")
             return [:]
         }
 
@@ -331,7 +332,7 @@ enum DefaultsSeeder {
         }
 
         guard let dtos = try? JSONDecoder().decode([PresetDTO].self, from: data) else {
-            print("[DefaultsSeeder] Failed to decode permission presets")
+            Log.seeder.error("Failed to decode permission presets")
             return [:]
         }
 
@@ -346,7 +347,7 @@ enum DefaultsSeeder {
             ps.additionalDirectories = dto.additionalDirectories
             context.insert(ps)
             map[dto.name] = ps
-            print("[DefaultsSeeder]   Permission preset: \(dto.name)")
+            Log.seeder.debug("Permission preset: \(dto.name, privacy: .public)")
         }
         return map
     }
@@ -355,7 +356,7 @@ enum DefaultsSeeder {
 
     private static func seedMCPServers(into context: ModelContext) -> [String: MCPServer] {
         guard let data = loadResource(name: "DefaultMCPs", ext: "json") else {
-            print("[DefaultsSeeder] DefaultMCPs.json not found")
+            Log.seeder.error("DefaultMCPs.json not found")
             return [:]
         }
 
@@ -371,7 +372,7 @@ enum DefaultsSeeder {
         }
 
         guard let dtos = try? JSONDecoder().decode([MCPDTO].self, from: data) else {
-            print("[DefaultsSeeder] Failed to decode MCP servers")
+            Log.seeder.error("Failed to decode MCP servers")
             return [:]
         }
 
@@ -393,7 +394,7 @@ enum DefaultsSeeder {
             let server = MCPServer(name: dto.name, serverDescription: dto.serverDescription, transport: transport)
             context.insert(server)
             map[dto.name] = server
-            print("[DefaultsSeeder]   MCP server: \(dto.name)")
+            Log.seeder.debug("MCP server: \(dto.name, privacy: .public)")
         }
         return map
     }
@@ -413,7 +414,7 @@ enum DefaultsSeeder {
         var map: [String: Skill] = [:]
         for skillName in skillNames {
             guard let content = loadSkillContent(name: skillName) else {
-                print("[DefaultsSeeder]   Skill not found: \(skillName)")
+                Log.seeder.warning("Skill not found: \(skillName, privacy: .public)")
                 continue
             }
 
@@ -428,7 +429,7 @@ enum DefaultsSeeder {
             skill.source = .builtin
             context.insert(skill)
             map[skillName] = skill
-            print("[DefaultsSeeder]   Skill: \(skillName)")
+            Log.seeder.debug("Skill: \(skillName, privacy: .public)")
         }
         return map
     }
@@ -441,9 +442,9 @@ enum DefaultsSeeder {
         for name in templateNames {
             if let content = loadTemplateContent(name: name) {
                 templates[name] = content
-                print("[DefaultsSeeder]   Template loaded: \(name)")
+                Log.seeder.debug("Template loaded: \(name, privacy: .public)")
             } else {
-                print("[DefaultsSeeder]   Template not found: \(name)")
+                Log.seeder.warning("Template not found: \(name, privacy: .public)")
             }
         }
         return templates
@@ -462,12 +463,12 @@ enum DefaultsSeeder {
 
         for fileName in agentFiles {
             guard let data = loadAgentResource(name: fileName) else {
-                print("[DefaultsSeeder]   Agent JSON not found: \(fileName)")
+                Log.seeder.warning("Agent JSON not found: \(fileName, privacy: .public)")
                 continue
             }
 
             guard let dto = try? JSONDecoder().decode(AgentDTO.self, from: data) else {
-                print("[DefaultsSeeder]   Failed to decode agent: \(fileName)")
+                Log.seeder.error("Failed to decode agent: \(fileName, privacy: .public)")
                 continue
             }
 
@@ -492,7 +493,7 @@ enum DefaultsSeeder {
             }
 
             context.insert(agent)
-            print("[DefaultsSeeder]   Agent: \(dto.name) (skills: \(agent.skillIds.count), MCPs: \(agent.extraMCPServerIds.count))")
+            Log.seeder.debug("Agent: \(dto.name, privacy: .public) (skills: \(agent.skillIds.count), MCPs: \(agent.extraMCPServerIds.count))")
         }
     }
 
@@ -583,6 +584,12 @@ enum DefaultsSeeder {
         if let url = Bundle.main.url(forResource: "SKILL", withExtension: "md", subdirectory: "DefaultSkills/\(name)") {
             return try? String(contentsOf: url, encoding: .utf8)
         }
+        if let resourceURL = Bundle.main.resourceURL {
+            let url = resourceURL.appendingPathComponent("DefaultSkills/\(name)/SKILL.md")
+            if let content = try? String(contentsOf: url, encoding: .utf8) {
+                return content
+            }
+        }
         let fallbackPaths = [
             "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/DefaultSkills/\(name)/SKILL.md",
             "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources/DefaultSkills/\(name)/SKILL.md"
@@ -596,8 +603,16 @@ enum DefaultsSeeder {
     }
 
     private static func loadAgentResource(name: String) -> Data? {
+        // Try subdirectory lookup first (works with group references)
         if let url = Bundle.main.url(forResource: name, withExtension: "json", subdirectory: "DefaultAgents") {
             return try? Data(contentsOf: url)
+        }
+        // Try direct path in bundle resources (works with folder references)
+        if let resourceURL = Bundle.main.resourceURL {
+            let url = resourceURL.appendingPathComponent("DefaultAgents/\(name).json")
+            if let data = try? Data(contentsOf: url) {
+                return data
+            }
         }
         let fallbackPaths = [
             "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/DefaultAgents/\(name).json",
@@ -614,6 +629,12 @@ enum DefaultsSeeder {
     private static func loadTemplateContent(name: String) -> String? {
         if let url = Bundle.main.url(forResource: name, withExtension: "md", subdirectory: "SystemPromptTemplates") {
             return try? String(contentsOf: url, encoding: .utf8)
+        }
+        if let resourceURL = Bundle.main.resourceURL {
+            let url = resourceURL.appendingPathComponent("SystemPromptTemplates/\(name).md")
+            if let content = try? String(contentsOf: url, encoding: .utf8) {
+                return content
+            }
         }
         let fallbackPaths = [
             "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/SystemPromptTemplates/\(name).md",

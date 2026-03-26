@@ -219,6 +219,9 @@ struct AgentLibraryView: View {
 
     private func startSession(with agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
+        if session.workingDirectory.isEmpty, let instanceDir = appState.instanceWorkingDirectory {
+            session.workingDirectory = instanceDir
+        }
         let conversation = Conversation(topic: agent.name, sessions: [session])
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(

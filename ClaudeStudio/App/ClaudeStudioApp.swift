@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import OSLog
 #if DEBUG
 import AppXray
 #endif
@@ -136,7 +137,22 @@ struct ClaudeStudioApp: App {
                 }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
             }
+            CommandGroup(replacing: .help) {
+                Button("Report a Bug...") {
+                    if let url = URL(string: "https://forms.gle/Cq4bWNwUVaX8zZr67") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
         }
+
+        Window("Debug Log", id: "debug-log") {
+            DebugLogView()
+                .environmentObject(appState)
+                .preferredColorScheme(resolvedColorScheme)
+        }
+        .defaultSize(width: 900, height: 600)
+        .keyboardShortcut("d", modifiers: [.command, .shift])
 
         Settings {
             SettingsView()
@@ -180,7 +196,7 @@ struct ClaudeStudioApp: App {
 
         guard appState.sidecarStatus == .connected,
               let manager = appState.sidecarManager else {
-            print("[Test] Sidecar not connected")
+            Log.general.warning("Sidecar not connected")
             return
         }
 
@@ -210,7 +226,7 @@ struct ClaudeStudioApp: App {
                 sessionId: sessionId,
                 text: "What is 2+2? Reply with just the number."
             ))
-            print("[Test] Sent test message for session \(sessionId)")
+            Log.general.info("Sent test message for session \(sessionId, privacy: .public)")
         }
     }
 }

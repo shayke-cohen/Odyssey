@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 // MARK: - Config DTOs
 
@@ -392,7 +393,7 @@ enum ConfigFileManager {
             try FileManager.default.copyItem(at: factoryFile, to: targetFile)
             return true
         } catch {
-            print("[ConfigFileManager] Failed to restore factory default \(entityType)/\(slug): \(error)")
+            Log.configFile.error("Failed to restore factory default \(entityType, privacy: .public)/\(slug, privacy: .public): \(error)")
             return false
         }
     }
@@ -464,7 +465,7 @@ enum ConfigFileManager {
         for file in contents where file.pathExtension == "json" {
             guard let data = try? Data(contentsOf: file),
                   let dto = try? decoder.decode(T.self, from: data) else {
-                print("[ConfigFileManager] Failed to read \(file.lastPathComponent)")
+                Log.configFile.warning("Failed to read \(file.lastPathComponent, privacy: .public)")
                 continue
             }
             let slug = file.deletingPathExtension().lastPathComponent
@@ -800,6 +801,14 @@ enum ConfigFileManager {
         if let url = Bundle.main.url(forResource: name, withExtension: ext, subdirectory: subdirectory) {
             return try? Data(contentsOf: url)
         }
+        // Folder references: Bundle.main.url(forResource:subdirectory:) doesn't search inside them
+        if let resourceURL = Bundle.main.resourceURL {
+            let path = subdirectory != nil ? "\(subdirectory!)/\(name).\(ext)" : "\(name).\(ext)"
+            let url = resourceURL.appendingPathComponent(path)
+            if let data = try? Data(contentsOf: url) {
+                return data
+            }
+        }
         // Fallback for development
         let basePaths = [
             "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources",
@@ -818,6 +827,12 @@ enum ConfigFileManager {
         if let url = Bundle.main.url(forResource: "SKILL", withExtension: "md", subdirectory: "DefaultSkills/\(name)") {
             return try? String(contentsOf: url, encoding: .utf8)
         }
+        if let resourceURL = Bundle.main.resourceURL {
+            let url = resourceURL.appendingPathComponent("DefaultSkills/\(name)/SKILL.md")
+            if let content = try? String(contentsOf: url, encoding: .utf8) {
+                return content
+            }
+        }
         let basePaths = [
             "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/DefaultSkills/\(name)/SKILL.md",
             "\(FileManager.default.currentDirectoryPath)/ClaudeStudio/Resources/DefaultSkills/\(name)/SKILL.md"
@@ -833,6 +848,12 @@ enum ConfigFileManager {
     private static func loadBundleTemplateContent(name: String) -> String? {
         if let url = Bundle.main.url(forResource: name, withExtension: "md", subdirectory: "SystemPromptTemplates") {
             return try? String(contentsOf: url, encoding: .utf8)
+        }
+        if let resourceURL = Bundle.main.resourceURL {
+            let url = resourceURL.appendingPathComponent("SystemPromptTemplates/\(name).md")
+            if let content = try? String(contentsOf: url, encoding: .utf8) {
+                return content
+            }
         }
         let basePaths = [
             "\(NSHomeDirectory())/ClaudeStudio/ClaudeStudio/Resources/SystemPromptTemplates/\(name).md",

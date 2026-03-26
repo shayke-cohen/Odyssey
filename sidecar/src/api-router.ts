@@ -13,6 +13,7 @@ import type {
   AgentConfig,
 } from "./types.js";
 import { resolveQuestion, createQuestion, questionsBySession } from "./tools/ask-user-tool.js";
+import { logger } from "./logger.js";
 
 // ─── Helpers ───
 
@@ -219,12 +220,32 @@ export async function handleApiRequest(
       return await handleCreateWorkspace(req, ctx);
     }
 
+    // ─── Task Board ───
+
+    if (matchRoute("/api/v1/tasks", "GET", req.method, path)) {
+      return handleListTasks(req, ctx);
+    }
+
+    if (matchRoute("/api/v1/tasks", "POST", req.method, path)) {
+      return await handleCreateTask(req, ctx);
+    }
+
+    params = matchRoute("/api/v1/tasks/:id", "PATCH", req.method, path);
+    if (params) {
+      return await handleUpdateTask(params.id, req, ctx);
+    }
+
+    params = matchRoute("/api/v1/tasks/:id/claim", "POST", req.method, path);
+    if (params) {
+      return await handleClaimTask(params.id, req, ctx);
+    }
+
     return apiError("not_found", `No route matches ${req.method} ${path}`, 404);
   } catch (err: any) {
     if (err.error && err.status) {
       return apiError(err.error, err.message, err.status);
     }
-    console.error("[api] Unhandled error:", err);
+    logger.error("api", `Unhandled error: ${err}`);
     return apiError("internal_error", err.message ?? "Internal error", 500);
   }
 }
@@ -371,7 +392,7 @@ async function handleSendMessage(sessionId: string, req: Request, ctx: ApiContex
 
   // Note: sendMessage aborts any in-progress query for this session
   ctx.sessionManager.sendMessage(sessionId, body.text, body.attachments).catch((err) => {
-    console.error(`[api] sendMessage error for ${sessionId}:`, err);
+    logger.error("api", `sendMessage error for ${sessionId}: ${err}`);
   });
 
   return apiJson({ accepted: true }, 202);
@@ -455,7 +476,7 @@ async function handleCreateQuestion(
     private: body.private ?? true,
   });
 
-  console.log(`[api] ask_user: session=${sessionId} questionId=${questionId}`);
+  logger.info("api", `ask_user: session=${sessionId} questionId=${questionId}`);
 
   // Long-poll: block until answered or timeout (the createQuestion timeout handles the latter)
   const result = await promise;
@@ -666,4 +687,50 @@ async function handleCreateWorkspace(req: Request, ctx: ApiContext): Promise<Res
   const from = clientIdentity(req);
   const workspace = ctx.toolCtx.workspaces.create(body.name, from);
   return apiJson(workspace, 201);
+}
+
+// ─── Task Board Handlers ───
+
+function handleListTasks(req: Request, ctx: ApiContext): Response {
+  const url = new URL(req.url);
+  const status = url.searchParams.get("status") ?? undefined;
+  const assignedTo = url.searchParams.get("assigned_to") ?? undefined;
+  const tasks = ctx.toolCtx.taskBoard.list({ status, assignedTo });
+  return apiJson({ tasks });
+}
+
+async function handleCreateTask(req: Request, ctx: ApiContext): Promise<Response> {
+  const body = await parseBody<{ title: string; description?: string; priority?: string; labels?: string[]; status?: string; parentTaskId?: string }>(req);
+  if (!body.title) return apiError("invalid_request", "title is required", 400);
+
+  const task = ctx.toolCtx.taskBoard.create({
+    title: body.title,
+    description: body.description ?? "",
+    priority: (body.priority as any) ?? "medium",
+    labels: body.labels ?? [],
+    status: (body.status as any) ?? "backlog",
+    parentTaskId: body.parentTaskId,
+  });
+
+  ctx.toolCtx.broadcast({ type: "task.created", task });
+  return apiJson(task, 201);
+}
+
+async function handleUpdateTask(taskId: string, req: Request, ctx: ApiContext): Promise<Response> {
+  const body = await parseBody<Record<string, any>>(req);
+  const task = ctx.toolCtx.taskBoard.update(taskId, body);
+  if (!task) return apiError("not_found", `Task ${taskId} not found`, 404);
+
+  ctx.toolCtx.broadcast({ type: "task.updated", task });
+  return apiJson(task);
+}
+
+async function handleClaimTask(taskId: string, req: Request, ctx: ApiContext): Promise<Response> {
+  const body = await parseBody<{ agentName?: string }>(req);
+  const agentName = body.agentName ?? clientIdentity(req);
+  const task = ctx.toolCtx.taskBoard.claim(taskId, agentName);
+  if (!task) return apiError("conflict", `Task ${taskId} cannot be claimed (not in 'ready' status)`, 409);
+
+  ctx.toolCtx.broadcast({ type: "task.updated", task });
+  return apiJson(task);
 }

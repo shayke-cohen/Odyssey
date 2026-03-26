@@ -1,6 +1,65 @@
 import SwiftUI
 import SwiftData
 
+enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
+    case catalog = "Catalog"
+    case workshop = "Workshop"
+    case agents = "Agents"
+    case autoAssemble = "Auto-assemble"
+    case newSession = "New session"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .catalog: "square.grid.2x2"
+        case .workshop: "wrench.and.screwdriver"
+        case .agents: "cpu"
+        case .autoAssemble: "wand.and.stars"
+        case .newSession: "plus"
+        }
+    }
+
+    var helpText: String {
+        switch self {
+        case .catalog: "Browse catalog"
+        case .workshop: "Entity workshop (⌘⇧W)"
+        case .agents: "Agent library"
+        case .autoAssemble: "Auto-assemble team"
+        case .newSession: "New session"
+        }
+    }
+
+    var xrayId: String {
+        switch self {
+        case .catalog: "sidebar.catalogButton"
+        case .workshop: "sidebar.workshopButton"
+        case .agents: "sidebar.agentsButton"
+        case .autoAssemble: "sidebar.autoAssembleButton"
+        case .newSession: "sidebar.newSessionButton"
+        }
+    }
+
+    /// Whether this item shows a text label alongside its icon.
+    /// Items with text labels participate in the adaptive icon-only collapse via `ViewThatFits`.
+    var hasTextLabel: Bool {
+        switch self {
+        case .catalog, .workshop, .agents: true
+        case .autoAssemble, .newSession: false
+        }
+    }
+
+    /// Items that show text labels and collapse to icon-only when space is constrained.
+    static var adaptiveItems: [SidebarBottomBarItem] {
+        allCases.filter(\.hasTextLabel)
+    }
+
+    /// Items that always display as icon-only.
+    static var iconOnlyItems: [SidebarBottomBarItem] {
+        allCases.filter { !$0.hasTextLabel }
+    }
+}
+
 struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.modelContext) private var modelContext
@@ -8,7 +67,12 @@ struct SidebarView: View {
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
     @Query(sort: \Session.startedAt, order: .reverse) private var allSessions: [Session]
+    @Query(sort: \TaskItem.createdAt, order: .reverse) private var taskItems: [TaskItem]
     @State private var searchText = ""
+    @State private var isTasksExpanded = true
+    @State private var isCompletedTasksExpanded = false
+    @State private var showTaskCreation = false
+    @State private var editingTask: TaskItem?
     @State private var expandedAgentIds: Set<UUID> = []
     @State private var expandedGroupIds: Set<UUID> = []
     @State private var editingGroup: AgentGroup?
@@ -38,12 +102,31 @@ struct SidebarView: View {
                         archivedSection
                     }
                 }
+                tasksSection
                 groupsSection
                 agentsSection
             }
             .listStyle(.sidebar)
             .searchable(text: $searchText, prompt: "Search conversations...")
             .xrayId("sidebar.conversationList")
+            .onChange(of: appState.selectedConversationId) { _, newValue in
+                guard let selectedId = newValue else { return }
+                // Check if the selected ID is a task ID (not a conversation)
+                if let task = taskItems.first(where: { $0.id == selectedId }) {
+                    if let convId = task.conversationId {
+                        // Redirect to the actual conversation
+                        DispatchQueue.main.async {
+                            appState.selectedConversationId = convId
+                        }
+                    } else {
+                        // No conversation — open edit sheet, clear selection
+                        DispatchQueue.main.async {
+                            appState.selectedConversationId = nil
+                            editingTask = task
+                        }
+                    }
+                }
+            }
 
             Divider()
 
@@ -63,6 +146,14 @@ struct SidebarView: View {
         }
         .sheet(isPresented: $showAutoAssemble) {
             AutoAssembleSheet()
+                .environmentObject(appState)
+        }
+        .sheet(isPresented: $showTaskCreation) {
+            TaskCreationSheet()
+                .environmentObject(appState)
+        }
+        .sheet(item: $editingTask) { task in
+            TaskEditSheet(task: task)
                 .environmentObject(appState)
         }
         .alert("Rename Conversation", isPresented: Binding(
@@ -100,78 +191,94 @@ struct SidebarView: View {
     // MARK: - Bottom Bar
 
     private var sidebarBottomBar: some View {
+        ViewThatFits(in: .horizontal) {
+            sidebarBottomBarButtons
+            sidebarBottomBarButtons
+                .labelStyle(.iconOnly)
+        }
+        .padding(.vertical, 6)
+        .background(.bar)
+        .xrayId("sidebar.bottomBar")
+    }
+
+    private var sidebarBottomBarButtons: some View {
         HStack(spacing: 0) {
+            let catalog = SidebarBottomBarItem.catalog
             Button {
                 showCatalog = true
             } label: {
-                Label("Catalog", systemImage: "square.grid.2x2")
+                Label(catalog.rawValue, systemImage: catalog.icon)
+                    .fixedSize(horizontal: true, vertical: false)
                     .font(.caption)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
-            .help("Browse catalog")
-            .xrayId("sidebar.catalogButton")
+            .help(catalog.helpText)
+            .xrayId(catalog.xrayId)
 
             Divider()
                 .frame(height: 16)
 
+            let workshop = SidebarBottomBarItem.workshop
             Button {
                 appState.showWorkshop = true
             } label: {
-                Label("Workshop", systemImage: "wrench.and.screwdriver")
+                Label(workshop.rawValue, systemImage: workshop.icon)
+                    .fixedSize(horizontal: true, vertical: false)
                     .font(.caption)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
-            .help("Entity workshop (⌘⇧W)")
-            .xrayId("sidebar.workshopButton")
+            .help(workshop.helpText)
+            .xrayId(workshop.xrayId)
             .keyboardShortcut("w", modifiers: [.command, .shift])
 
             Divider()
                 .frame(height: 16)
 
+            let agents = SidebarBottomBarItem.agents
             Button {
                 appState.showAgentLibrary = true
             } label: {
-                Label("Agents", systemImage: "cpu")
+                Label(agents.rawValue, systemImage: agents.icon)
+                    .fixedSize(horizontal: true, vertical: false)
                     .font(.caption)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
-            .help("Agent library")
-            .xrayId("sidebar.agentsButton")
+            .help(agents.helpText)
+            .xrayId(agents.xrayId)
 
             Divider()
                 .frame(height: 16)
 
+            let autoAssemble = SidebarBottomBarItem.autoAssemble
             Button {
                 showAutoAssemble = true
             } label: {
-                Image(systemName: "wand.and.stars")
+                Image(systemName: autoAssemble.icon)
                     .font(.caption)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
-            .help("Auto-assemble team")
-            .xrayId("sidebar.autoAssembleButton")
+            .help(autoAssemble.helpText)
+            .xrayId(autoAssemble.xrayId)
 
             Divider()
                 .frame(height: 16)
 
+            let newSession = SidebarBottomBarItem.newSession
             Button {
                 appState.showNewSessionSheet = true
             } label: {
-                Image(systemName: "plus")
+                Image(systemName: newSession.icon)
                     .font(.caption)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
-            .help("New session")
-            .xrayId("sidebar.newSessionButton")
+            .help(newSession.helpText)
+            .xrayId(newSession.xrayId)
         }
-        .padding(.vertical, 6)
-        .background(.bar)
-        .xrayId("sidebar.bottomBar")
     }
 
     // MARK: - Empty State
@@ -384,6 +491,214 @@ struct SidebarView: View {
                     Label("Delete", systemImage: "trash")
                 }
             }
+    }
+
+    // MARK: - Tasks Section
+
+    @ViewBuilder
+    private var tasksSection: some View {
+        let activeTasks = taskItems.filter { $0.status != .done && $0.status != .failed }
+        let completedTasks = taskItems.filter { $0.status == .done || $0.status == .failed }
+
+        if !taskItems.isEmpty || true { // Always show section for the [+] button
+            Section {
+                DisclosureGroup(isExpanded: $isTasksExpanded) {
+                    // In Progress
+                    ForEach(taskItems.filter { $0.status == .inProgress }) { task in
+                        taskRow(task)
+                    }
+                    // Ready
+                    ForEach(taskItems.filter { $0.status == .ready }) { task in
+                        taskRow(task)
+                    }
+                    // Blocked
+                    ForEach(taskItems.filter { $0.status == .blocked }) { task in
+                        taskRow(task)
+                    }
+                    // Backlog
+                    ForEach(taskItems.filter { $0.status == .backlog }) { task in
+                        taskRow(task)
+                    }
+                    // Completed (foldable)
+                    if !completedTasks.isEmpty {
+                        DisclosureGroup(isExpanded: $isCompletedTasksExpanded) {
+                            ForEach(completedTasks) { task in
+                                taskRow(task)
+                            }
+                        } label: {
+                            Text("Completed (\(completedTasks.count))")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Label("Task Board (\(activeTasks.count))", systemImage: "checklist")
+                        Spacer()
+                        Button {
+                            showTaskCreation = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("sidebar.tasksAddButton")
+                    }
+                }
+            }
+            .accessibilityIdentifier("sidebar.tasksSection")
+        }
+    }
+
+    @ViewBuilder
+    private func taskRow(_ task: TaskItem) -> some View {
+        HStack(spacing: 6) {
+            taskStatusIcon(task.status)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(task.title)
+                    .lineLimit(1)
+                    .font(.callout)
+                HStack(spacing: 4) {
+                    statusBadge(task.status)
+                    priorityBadge(task.priority)
+                    if let agentId = task.assignedAgentId,
+                       let agent = agents.first(where: { $0.id == agentId }) {
+                        Text(agent.name)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Spacer()
+            if task.conversationId != nil {
+                Image(systemName: "bubble.left.and.bubble.right")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        // Use task.id as tag — intercepted by onChange to redirect
+        .tag(task.id)
+        .accessibilityIdentifier("sidebar.taskRow.\(task.id.uuidString)")
+        .contextMenu { taskContextMenu(for: task) }
+    }
+
+    @ViewBuilder
+    private func taskContextMenu(for task: TaskItem) -> some View {
+        switch task.status {
+        case .backlog:
+            Button("Edit Task...") { editingTask = task }
+            Button("Mark as Ready") { appState.updateTaskStatus(task, status: .ready) }
+            Button("Run with Orchestrator") {
+                appState.runTaskWithOrchestrator(task, modelContext: modelContext)
+            }
+            Divider()
+            Button("Delete", role: .destructive) {
+                modelContext.delete(task)
+                try? modelContext.save()
+            }
+        case .ready:
+            Button("Edit Task...") { editingTask = task }
+            Button("Run with Orchestrator") {
+                appState.runTaskWithOrchestrator(task, modelContext: modelContext)
+            }
+            Button("Move to Backlog") { appState.updateTaskStatus(task, status: .backlog) }
+            Divider()
+            Button("Delete", role: .destructive) {
+                modelContext.delete(task)
+                try? modelContext.save()
+            }
+        case .inProgress:
+            if task.conversationId != nil {
+                Button("Go to Conversation") {
+                    appState.selectedConversationId = task.conversationId
+                }
+            }
+            Button("Pause") { appState.updateTaskStatus(task, status: .blocked) }
+            Divider()
+            Button("Cancel & Delete", role: .destructive) {
+                modelContext.delete(task)
+                try? modelContext.save()
+            }
+        case .blocked:
+            if task.conversationId != nil {
+                Button("Go to Conversation") {
+                    appState.selectedConversationId = task.conversationId
+                }
+            }
+            Button("Resume") { appState.updateTaskStatus(task, status: .inProgress) }
+            Divider()
+            Button("Cancel & Delete", role: .destructive) {
+                modelContext.delete(task)
+                try? modelContext.save()
+            }
+        case .done, .failed:
+            if task.conversationId != nil {
+                Button("Go to Conversation") {
+                    appState.selectedConversationId = task.conversationId
+                }
+            }
+            Button("Retry") { appState.updateTaskStatus(task, status: .ready) }
+            Divider()
+            Button("Delete", role: .destructive) {
+                modelContext.delete(task)
+                try? modelContext.save()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func taskStatusIcon(_ status: TaskStatus) -> some View {
+        switch status {
+        case .backlog:
+            Image(systemName: "circle.dotted").foregroundStyle(.gray)
+        case .ready:
+            Image(systemName: "circle").foregroundStyle(.blue)
+        case .inProgress:
+            Image(systemName: "circle.fill").foregroundStyle(.orange)
+        case .done:
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+        case .failed:
+            Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+        case .blocked:
+            Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.yellow)
+        }
+    }
+
+    @ViewBuilder
+    private func statusBadge(_ status: TaskStatus) -> some View {
+        let (label, color): (String, Color) = switch status {
+        case .backlog: ("Backlog", .gray)
+        case .ready: ("Ready", .blue)
+        case .inProgress: ("In Progress", .orange)
+        case .done: ("Done", .green)
+        case .failed: ("Failed", .red)
+        case .blocked: ("Blocked", .yellow)
+        }
+        Text(label)
+            .font(.caption2)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .foregroundStyle(color)
+            .background(color.opacity(0.15))
+            .cornerRadius(3)
+    }
+
+    private func priorityBadge(_ priority: TaskPriority) -> some View {
+        Text(priority.rawValue.capitalized)
+            .font(.caption2)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(priorityColor(priority).opacity(0.2))
+            .cornerRadius(3)
+    }
+
+    private func priorityColor(_ priority: TaskPriority) -> Color {
+        switch priority {
+        case .low: .gray
+        case .medium: .blue
+        case .high: .orange
+        case .critical: .red
+        }
     }
 
     // MARK: - Groups Section
@@ -850,6 +1165,9 @@ struct SidebarView: View {
 
     private func startSession(with agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
+        if session.workingDirectory.isEmpty, let instanceDir = appState.instanceWorkingDirectory {
+            session.workingDirectory = instanceDir
+        }
         let conversation = Conversation(topic: agent.name, sessions: [session])
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(

@@ -41,7 +41,8 @@
       "Bash(git mv:*)",
       "Bash(xcodebuild -project ClaudPeer.xcodeproj -scheme ClaudPeer -configuration Debug -derivedDataPath .derived-run build)",
       "Bash(ls /Users/shayco/ClaudPeer/*.xcodeproj)",
-      "Bash(ls /Users/shayco/ClaudPeer/*.xcworkspace)"
+      "Bash(ls /Users/shayco/ClaudPeer/*.xcworkspace)",
+      "Bash(open /Users/shayco/Library/Developer/Xcode/DerivedData/ClaudeStudio-aacesxntcduwzqbazhfjqhybjfau/Build/Products/Debug/ClaudeStudio.app)"
     ],
     "additionalDirectories": [
       "/Users/shayco/.claudestudio/instances/default/data"

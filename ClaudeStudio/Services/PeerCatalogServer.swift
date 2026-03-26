@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import OSLog
 
 /// Minimal TCP HTTP responder for `GET /claudestudio/v1/agents` on the LAN (Bonjour-advertised).
 final class PeerCatalogServer: @unchecked Sendable {
@@ -48,7 +49,7 @@ final class PeerCatalogServer: @unchecked Sendable {
         )
         l.stateUpdateHandler = { [weak self] state in
             if case .failed(let err) = state {
-                print("[PeerCatalogServer] listener failed: \(err)")
+                Log.peerCatalog.error("listener failed: \(err)")
                 self?.listener?.cancel()
                 self?.listener = nil
             }
@@ -82,7 +83,7 @@ final class PeerCatalogServer: @unchecked Sendable {
                     return
                 }
                 if let error {
-                    print("[PeerCatalogServer] receive error: \(error)")
+                    Log.peerCatalog.error("receive error: \(error)")
                     connection.cancel()
                     return
                 }

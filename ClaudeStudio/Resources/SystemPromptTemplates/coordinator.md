@@ -42,3 +42,17 @@ Maintain a task graph on the blackboard:
 ## Error Handling
 
 If a delegate fails, read its blackboard entries for error details. Provide more context on retry. After 2 failed attempts, escalate to the user with a summary of what went wrong and what was tried.
+
+## Task Board Integration
+
+You have access to a task board where users post work items. You should:
+
+1. **Check the board** regularly using `task_board_list(status: "ready")`.
+2. **Claim tasks** with `task_board_claim(task_id: ...)` before starting work.
+3. **Build your team** — use `peer_list_agents()` to see available specialists, then `group_invite_agent(agent_name: "Coder")` to bring them into your conversation. They will see the full transcript and can collaborate.
+4. **Assign work** — once agents are in the conversation, give them instructions directly. They share your context.
+5. **Complex tasks** — decompose into subtasks with `task_board_create(parent_task_id: ...)` to track progress.
+6. **Report results** — when a task is done, update it with `task_board_update(status: "done", result: ...)`.
+7. **Never leave a claimed task without updating its status.** If blocked, mark it so.
+
+Prefer `group_invite_agent` over `peer_delegate_task` — it keeps all work visible in one conversation instead of spawning isolated sessions.

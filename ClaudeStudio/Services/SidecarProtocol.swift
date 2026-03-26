@@ -19,6 +19,7 @@ enum SidecarCommand: Sendable {
     case taskUpdate(taskId: String, updates: TaskWireSwift)
     case taskList(filter: TaskListFilter?)
     case taskClaim(taskId: String, agentName: String)
+    case configSetLogLevel(level: String)
 
     func encodeToJSON() throws -> Data {
         let encoder = JSONEncoder()
@@ -100,6 +101,10 @@ enum SidecarCommand: Sendable {
         case .taskClaim(let taskId, let agentName):
             return try encoder.encode(
                 TaskClaimWire(type: "task.claim", taskId: taskId, agentName: agentName)
+            )
+        case .configSetLogLevel(let level):
+            return try encoder.encode(
+                ConfigSetLogLevelWire(type: "config.setLogLevel", level: level)
             )
         }
     }
@@ -283,6 +288,11 @@ private struct TaskClaimWire: Encodable {
     let agentName: String
 }
 
+private struct ConfigSetLogLevelWire: Encodable {
+    let type: String
+    let level: String
+}
+
 struct AgentConfig: Codable, Sendable {
     let name: String
     let systemPrompt: String
@@ -332,6 +342,7 @@ enum SidecarEvent: Sendable {
     case streamProgress(sessionId: String, progressId: String, title: String, steps: [ProgressStep])
     case streamSuggestions(sessionId: String, suggestions: [SuggestionItem])
     case conversationInviteAgent(sessionId: String, agentName: String)
+    case planComplete(sessionId: String, plan: String?, allowedPrompts: [PlanAllowedPrompt]?)
     case taskCreated(task: TaskWireSwift)
     case taskUpdated(task: TaskWireSwift)
     case taskListResult(tasks: [TaskWireSwift])
@@ -374,6 +385,12 @@ struct SuggestionItem: Codable, Sendable, Identifiable {
     let label: String
     let message: String?
     var id: String { label }
+}
+
+struct PlanAllowedPrompt: Codable, Sendable, Identifiable {
+    let tool: String
+    let prompt: String
+    var id: String { "\(tool):\(prompt)" }
 }
 
 
@@ -428,6 +445,8 @@ struct IncomingWireMessage: Codable, Sendable {
     let progressId: String?
     let steps: [ProgressStep]?
     let suggestions: [SuggestionItem]?
+    let plan: String?
+    let allowedPrompts: [PlanAllowedPrompt]?
     let taskWire: TaskWireSwift?
     let tasks: [TaskWireSwift]?
     let agentName: String?
@@ -442,6 +461,7 @@ struct IncomingWireMessage: Codable, Sendable {
         case `private`, inputType, inputConfig
         case confirmationId, action, reason, riskLevel, details
         case format, title, content, height, progressId, steps, suggestions
+        case plan, allowedPrompts
         case taskWire = "task"
         case tasks
         case agentName
@@ -511,6 +531,9 @@ struct IncomingWireMessage: Codable, Sendable {
         case "stream.suggestions":
             guard let sid = sessionId, let s = suggestions else { return nil }
             return .streamSuggestions(sessionId: sid, suggestions: s)
+        case "session.planComplete":
+            guard let sid = sessionId else { return nil }
+            return .planComplete(sessionId: sid, plan: plan, allowedPrompts: allowedPrompts)
         case "conversation.inviteAgent":
             guard let sid = sessionId, let name = agentName else { return nil }
             return .conversationInviteAgent(sessionId: sid, agentName: name)

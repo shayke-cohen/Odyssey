@@ -2,6 +2,7 @@ import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import type { ToolContext } from "./tool-context.js";
+import { logger } from "../logger.js";
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -45,8 +46,7 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
         height: z.number().optional().describe("Optional max height in pixels. Auto-sizes if omitted."),
       },
       async (args) => {
-        console.log(`[render_content] format=${args.format} for session ${callingSessionId}`);
-        Bun.write("/tmp/claudestudio-render.log", `[${new Date().toISOString()}] render_content called: format=${args.format} title=${args.title} content_len=${args.content.length}\n`);
+        logger.info("tools", `render_content format=${args.format} for session ${callingSessionId}`);
         ctx.broadcast({
           type: "stream.richContent",
           sessionId: callingSessionId,
@@ -72,7 +72,7 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
         details: z.string().optional().describe("Optional additional context (diff summary, affected files, etc.)"),
       },
       async (args) => {
-        console.log(`[confirm_action] action="${args.action}" risk=${args.risk_level} for session ${callingSessionId}`);
+        logger.info("tools", `confirm_action action="${args.action}" risk=${args.risk_level} for session ${callingSessionId}`);
         const confirmationId = randomUUID();
 
         const result = await new Promise<{ approved: boolean; modifiedAction?: string }>(
@@ -123,7 +123,7 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
         ).describe("Array of steps with their current statuses"),
       },
       async (args) => {
-        console.log(`[show_progress] id=${args.id} title="${args.title}" for session ${callingSessionId}`);
+        logger.info("tools", `show_progress id=${args.id} title="${args.title}" for session ${callingSessionId}`);
         ctx.broadcast({
           type: "stream.progress",
           sessionId: callingSessionId,
@@ -150,7 +150,7 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
         ).max(5).describe("Up to 5 suggestion chips"),
       },
       async (args) => {
-        console.log(`[suggest_actions] ${args.suggestions.length} suggestions for session ${callingSessionId}`);
+        logger.info("tools", `suggest_actions ${args.suggestions.length} suggestions for session ${callingSessionId}`);
         ctx.broadcast({
           type: "stream.suggestions",
           sessionId: callingSessionId,

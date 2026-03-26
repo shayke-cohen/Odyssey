@@ -39,6 +39,7 @@ private struct GeneralSettingsTab: View {
     @AppStorage(AppSettings.defaultModelKey, store: AppSettings.store) private var defaultModel = AppSettings.defaultModel
     @AppStorage(AppSettings.defaultMaxTurnsKey, store: AppSettings.store) private var defaultMaxTurns = AppSettings.defaultMaxTurns
     @AppStorage(AppSettings.defaultMaxBudgetKey, store: AppSettings.store) private var defaultMaxBudget = AppSettings.defaultMaxBudget
+    @AppStorage(AppSettings.quickActionUsageOrderKey, store: AppSettings.store) private var quickActionUsageOrder = true
 
     private var selectedAppearance: Binding<AppAppearance> {
         Binding(
@@ -88,6 +89,12 @@ private struct GeneralSettingsTab: View {
                     .foregroundStyle(.secondary)
                     .font(.caption)
             }
+
+            Divider()
+
+            Toggle("Order quick actions by usage", isOn: $quickActionUsageOrder)
+                .xrayId("settings.general.quickActionUsageOrderToggle")
+                .help("When enabled, quick action buttons reorder based on how often you use them (after 10 uses). When disabled, uses the default popularity order.")
         }
         .formStyle(.grouped)
         .padding()
@@ -291,6 +298,7 @@ private struct ChatDisplaySettingsTab: View {
 // MARK: - Developer
 
 private struct DeveloperSettingsTab: View {
+    @EnvironmentObject private var appState: AppState
     @AppStorage(AppSettings.bunPathOverrideKey, store: AppSettings.store) private var bunPathOverride = ""
     @AppStorage(AppSettings.sidecarPathKey, store: AppSettings.store) private var sidecarPath = ""
     @AppStorage(AppSettings.dataDirectoryKey, store: AppSettings.store) private var dataDirectory = AppSettings.defaultDataDirectory
@@ -367,6 +375,13 @@ private struct DeveloperSettingsTab: View {
                     }
                 }
                 .xrayId("settings.developer.logLevelPicker")
+                .onChange(of: logLevel) { _, newValue in
+                    guard appState.sidecarStatus == .connected,
+                          let manager = appState.sidecarManager else { return }
+                    Task {
+                        try? await manager.send(.configSetLogLevel(level: newValue))
+                    }
+                }
             }
 
             Section {

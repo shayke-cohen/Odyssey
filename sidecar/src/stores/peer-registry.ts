@@ -1,4 +1,5 @@
 import type { AgentConfig } from "../types.js";
+import { logger } from "../logger.js";
 
 export interface RemotePeer {
   name: string;
@@ -24,12 +25,12 @@ export class PeerRegistry {
       lastSeen: new Date(),
       status: "connected",
     });
-    console.log(`[peer-registry] Registered peer "${name}" with ${agents.length} agents at ${endpoint}`);
+    logger.info("peer-registry", `Registered peer "${name}" with ${agents.length} agents at ${endpoint}`);
   }
 
   remove(name: string): void {
     this.peers.delete(name);
-    console.log(`[peer-registry] Removed peer "${name}"`);
+    logger.info("peer-registry", `Removed peer "${name}"`);
   }
 
   get(name: string): RemotePeer | undefined {

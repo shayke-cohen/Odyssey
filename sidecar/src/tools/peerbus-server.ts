@@ -1,21 +1,13 @@
 import { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
-import { appendFileSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
 import type { ToolContext } from "./tool-context.js";
 import { createBlackboardTools } from "./blackboard-tools.js";
 import { createMessagingTools } from "./messaging-tools.js";
 import { createChatTools } from "./chat-tools.js";
 import { createWorkspaceTools } from "./workspace-tools.js";
-
-const DEBUG_LOG = join(homedir(), ".claudestudio", "debug-ask-user.log");
-function debugLog(msg: string) {
-  const line = `[${new Date().toISOString()}] ${msg}\n`;
-  try { appendFileSync(DEBUG_LOG, line); } catch {}
-  console.log(msg);
-}
+import { createTaskBoardTools } from "./task-board-tools.js";
 import { createAskUserTool } from "./ask-user-tool.js";
 import { createRichDisplayTools } from "./rich-display-tools.js";
+import { logger } from "../logger.js";
 
 /**
  * Creates the in-process PeerBus MCP server that gives every agent session
@@ -38,18 +30,19 @@ export function createPeerBusServer(
     ...createMessagingTools(ctx, callingSessionId),
     ...createChatTools(ctx, callingSessionId),
     ...createWorkspaceTools(ctx, callingSessionId),
+    ...createTaskBoardTools(ctx),
   ];
 
   if (includeAskUser) {
     tools.push(...createAskUserTool(ctx, callingSessionId, onQuestionCreated));
     tools.push(...createRichDisplayTools(ctx, callingSessionId));
-    debugLog(`[peerbus] ask_user + rich display tools INCLUDED for session ${callingSessionId}`);
+    logger.debug("peerbus", `ask_user + rich display tools INCLUDED for session ${callingSessionId}`);
   } else {
-    debugLog(`[peerbus] ask_user tool NOT included for session ${callingSessionId} (includeAskUser=${includeAskUser})`);
+    logger.debug("peerbus", `ask_user tool NOT included for session ${callingSessionId} (includeAskUser=${includeAskUser})`);
   }
 
   const toolNames = tools.map((t: any) => t.name).join(", ");
-  debugLog(`[peerbus] Creating SDK MCP server with ${tools.length} tools: [${toolNames}]`);
+  logger.debug("peerbus", `Creating SDK MCP server with ${tools.length} tools: [${toolNames}]`);
 
   return createSdkMcpServer({
     name: "peerbus",

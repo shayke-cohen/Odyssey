@@ -1,4 +1,5 @@
 import type { SidecarEvent, WebhookRegistration } from "./types.js";
+import { logger } from "./logger.js";
 
 const MAX_WEBHOOKS = 50;
 const MAX_RETRIES = 3;
@@ -27,13 +28,13 @@ export class WebhookManager {
       createdAt: new Date().toISOString(),
     };
     this.webhooks.set(id, registration);
-    console.log(`[webhook] Registered ${id} → ${url} (events: ${events.join(", ")})`);
+    logger.info("webhook", `Registered ${id} → ${url} (events: ${events.join(", ")})`);
     return registration;
   }
 
   unregister(id: string): boolean {
     const deleted = this.webhooks.delete(id);
-    if (deleted) console.log(`[webhook] Unregistered ${id}`);
+    if (deleted) logger.info("webhook", `Unregistered ${id}`);
     return deleted;
   }
 
@@ -55,7 +56,7 @@ export class WebhookManager {
       if (webhook.sessionFilter && webhook.sessionFilter !== sessionId) continue;
 
       this.deliverWithRetry(webhook, event).catch((err) => {
-        console.error(`[webhook] Final delivery failure for ${webhook.id}:`, err.message);
+        logger.error("webhook", `Final delivery failure for ${webhook.id}: ${err.message}`);
       });
     }
   }
@@ -90,7 +91,7 @@ export class WebhookManager {
           webhook.failureCount++;
           if (webhook.failureCount >= MAX_FAILURES_BEFORE_DISABLE) {
             webhook.disabled = true;
-            console.warn(`[webhook] Disabled ${webhook.id} after ${MAX_FAILURES_BEFORE_DISABLE} consecutive failures`);
+            logger.warn("webhook", `Disabled ${webhook.id} after ${MAX_FAILURES_BEFORE_DISABLE} consecutive failures`);
           }
         }
       }

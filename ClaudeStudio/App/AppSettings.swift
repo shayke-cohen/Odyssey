@@ -34,6 +34,10 @@ enum AppSettings {
     static let showSessionSummaryKey = "claudestudio.chat.showSessionSummary"
     static let showSuggestionChipsKey = "claudestudio.chat.showSuggestionChips"
 
+    // MARK: - Quick Actions
+    static let quickActionUsageOrderKey = "claudestudio.chat.quickActionUsageOrder"
+    static let quickActionUsageCountsKey = "claudestudio.chat.quickActionUsageCounts"
+
     // MARK: - Advanced
     static let dataDirectoryKey = "claudestudio.dataDirectory"
     static let logLevelKey = "claudestudio.logLevel"
@@ -59,6 +63,7 @@ enum AppSettings {
             notificationsEnabledKey, notificationSoundEnabledKey,
             renderMermaidKey, renderHTMLKey, renderDiffsKey, renderTerminalKey,
             renderAdmonitionsKey, renderPDFKey, showSessionSummaryKey, showSuggestionChipsKey,
+            quickActionUsageOrderKey, quickActionUsageCountsKey,
             dataDirectoryKey, logLevelKey,
         ]
     }

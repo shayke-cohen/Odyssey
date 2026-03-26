@@ -1,4 +1,5 @@
 import type { BlackboardStore } from "../stores/blackboard-store.js";
+import type { TaskBoardStore } from "../stores/task-board-store.js";
 import type { SessionRegistry } from "../stores/session-registry.js";
 import type { MessageStore } from "../stores/message-store.js";
 import type { ChatChannelStore } from "../stores/chat-channel-store.js";
@@ -9,6 +10,7 @@ import type { SidecarEvent, AgentConfig } from "../types.js";
 
 export interface ToolContext {
   blackboard: BlackboardStore;
+  taskBoard: TaskBoardStore;
   sessions: SessionRegistry;
   messages: MessageStore;
   channels: ChatChannelStore;

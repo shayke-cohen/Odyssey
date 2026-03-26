@@ -5,7 +5,7 @@
   "model": "opus",
   "icon": "gear.2",
   "color": "purple",
-  "skillNames": ["peer-collaboration", "delegation-patterns", "blackboard-patterns", "agent-identity"],
+  "skillNames": ["peer-collaboration", "delegation-patterns", "blackboard-patterns", "agent-identity", "task-board-patterns"],
   "mcpServerNames": [],
   "permissionSetName": "Full Access",
   "systemPromptTemplate": "coordinator",

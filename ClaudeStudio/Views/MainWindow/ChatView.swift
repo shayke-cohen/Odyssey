@@ -231,7 +231,6 @@ struct ChatView: View {
     @State private var showFileImporter = false
     @State private var previewAttachment: MessageAttachment?
     @State private var previewImageFromPending: (data: Data, mediaType: String)?
-    @State private var delegateTarget: Agent?
     @State private var isStreamingThinkingExpanded = false
     /// Sidecar `Session.id` string currently receiving stream (sequential multi-agent).
     @State private var activeStreamSessionKey: String?
@@ -485,16 +484,6 @@ struct ChatView: View {
             allowsMultipleSelection: true
         ) { result in
             handleFileImport(result)
-        }
-        .sheet(item: $delegateTarget) { agent in
-            DelegateSheet(
-                agent: agent,
-                initialTask: inputText.trimmingCharacters(in: .whitespacesAndNewlines),
-                sourceSessionId: primarySession?.id ?? conversationId
-            ) {
-                inputText = ""
-            }
-            .environmentObject(appState)
         }
         .sheet(isPresented: $showAddAgentsSheet) {
             AddAgentsToChatSheet(conversationId: conversationId)
@@ -960,8 +949,6 @@ struct ChatView: View {
                 .help("Attach file")
                 .disabled(isProcessing)
 
-                delegateMenu
-
                 Button {
                     conversation?.planModeEnabled.toggle()
                     try? modelContext.save()
@@ -1150,31 +1137,6 @@ struct ChatView: View {
         .xrayId("chat.pendingAttachments")
     }
 
-    @ViewBuilder
-    private var delegateMenu: some View {
-        let inChatAgentIds = Set(conversationSessions.compactMap(\.agent?.id))
-        let eligibleAgents = allAgents.filter { !inChatAgentIds.contains($0.id) }
-
-        Menu {
-            Section("Delegate to...") {
-                ForEach(eligibleAgents, id: \.id) { agent in
-                    Button {
-                        delegateTarget = agent
-                    } label: {
-                        Label(agent.name, systemImage: agent.icon)
-                    }
-                }
-            }
-        } label: {
-            Label("Delegate", systemImage: "arrow.triangle.branch")
-                .font(.caption)
-        }
-        .menuStyle(.borderlessButton)
-        .xrayId("chat.delegateButton")
-        .accessibilityLabel("Delegate to agent")
-        .help("Delegate task to another agent")
-        .disabled(isProcessing || appState.sidecarStatus != .connected || eligibleAgents.isEmpty)
-    }
 
     private func iconForMediaType(_ mediaType: String) -> String {
         switch mediaType {

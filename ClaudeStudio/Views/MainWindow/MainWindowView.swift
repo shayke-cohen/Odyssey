@@ -5,6 +5,7 @@ struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var p2pNetworkManager: P2PNetworkManager
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openWindow) private var openWindow
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     @State private var showStatusPopover = false
     @State private var inspectorVisible = true
@@ -14,7 +15,7 @@ struct MainWindowView: View {
             SidebarView()
         } detail: {
             Group {
-                if inspectorVisible {
+                if inspectorVisible && appState.selectedConversationId != nil {
                     HSplitView {
                         mainDetailPane
                             .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
@@ -80,6 +81,17 @@ struct MainWindowView: View {
                 .keyboardShortcut("p", modifiers: [.command, .shift])
                 .help("Peer network (⌘⇧P)")
                 .xrayId("mainWindow.peerNetworkButton")
+            }
+
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    openWindow(id: "debug-log")
+                } label: {
+                    Label("Debug Log", systemImage: "ladybug")
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+                .help("Debug log (⌘⇧D)")
+                .xrayId("mainWindow.debugLogButton")
             }
 
             ToolbarItem(placement: .automatic) {
@@ -299,7 +311,7 @@ struct MainWindowView: View {
 
     private func startSessionWithAgent(_ agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
-        session.workingDirectory = agent.defaultWorkingDirectory ?? ""
+        session.workingDirectory = agent.defaultWorkingDirectory ?? appState.instanceWorkingDirectory ?? ""
         let conversation = Conversation(topic: agent.name, sessions: [session])
         let userParticipant = Participant(type: .user, displayName: "You")
         let agentParticipant = Participant(

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import OSLog
 
 @MainActor
 final class SidecarManager: ObservableObject, Sendable {
@@ -54,7 +55,7 @@ final class SidecarManager: ObservableObject, Sendable {
                 connected = true
                 break
             } catch {
-                print("[SidecarManager] Connect attempt \(attempt)/5 failed: \(error.localizedDescription)")
+                Log.sidecar.warning("Connect attempt \(attempt)/5 failed: \(error.localizedDescription)")
             }
         }
         guard connected else {
@@ -100,10 +101,10 @@ final class SidecarManager: ObservableObject, Sendable {
     private func launchSidecar() throws {
         let bunPath = findBunPath()
         let sidecarPath = findSidecarPath()
-        print("[SidecarManager] Bun: \(bunPath)")
-        print("[SidecarManager] Sidecar: \(sidecarPath)")
-        print("[SidecarManager] Sidecar exists: \(FileManager.default.fileExists(atPath: sidecarPath))")
-        print("[SidecarManager] Bun exists: \(FileManager.default.fileExists(atPath: bunPath))")
+        Log.sidecar.info("Bun: \(bunPath, privacy: .public)")
+        Log.sidecar.info("Sidecar: \(sidecarPath, privacy: .public)")
+        Log.sidecar.info("Sidecar exists: \(FileManager.default.fileExists(atPath: sidecarPath))")
+        Log.sidecar.info("Bun exists: \(FileManager.default.fileExists(atPath: bunPath))")
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: bunPath)
@@ -114,6 +115,8 @@ final class SidecarManager: ObservableObject, Sendable {
         if let dataDir = config.dataDirectory {
             process.environment?["CLAUDESTUDIO_DATA_DIR"] = dataDir
         }
+        let logLevel = InstanceConfig.userDefaults.string(forKey: AppSettings.logLevelKey) ?? AppSettings.defaultLogLevel
+        process.environment?["CLAUDESTUDIO_LOG_LEVEL"] = logLevel
 
         let logDir = config.logDirectory ?? "\(NSHomeDirectory())/.claudestudio/instances/default/logs"
         try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
@@ -124,7 +127,7 @@ final class SidecarManager: ObservableObject, Sendable {
         process.standardError = logHandle ?? FileHandle.nullDevice
 
         process.terminationHandler = { [weak self] proc in
-            print("[SidecarManager] Process exited with code \(proc.terminationStatus)")
+            Log.sidecar.warning("Process exited with code \(proc.terminationStatus)")
             Task { @MainActor in
                 self?.handleProcessTermination()
             }
@@ -132,7 +135,7 @@ final class SidecarManager: ObservableObject, Sendable {
 
         try process.run()
         self.process = process
-        print("[SidecarManager] Launched PID \(process.processIdentifier)")
+        Log.sidecar.info("Launched PID \(process.processIdentifier)")
     }
 
     private func connectWebSocket() async throws {
@@ -152,7 +155,7 @@ final class SidecarManager: ObservableObject, Sendable {
         // Verify connection by receiving the sidecar.ready message
         let message = try await task.receive()
         if case .string(let text) = message {
-            print("[SidecarManager] Handshake received: \(text.prefix(80))")
+            Log.sidecar.debug("Handshake received: \(text.prefix(80), privacy: .public)")
         }
 
         eventContinuation?.yield(.connected)
@@ -168,7 +171,7 @@ final class SidecarManager: ObservableObject, Sendable {
                 guard !Task.isCancelled else { break }
                 self?.webSocketTask?.sendPing { error in
                     if let error {
-                        print("[SidecarManager] Ping failed: \(error)")
+                        Log.sidecar.warning("Ping failed: \(error)")
                     }
                 }
             }
@@ -233,7 +236,7 @@ final class SidecarManager: ObservableObject, Sendable {
                 try await Task.sleep(for: .milliseconds(800))
                 try await connectWebSocket()
             } catch {
-                print("[SidecarManager] Reconnect failed: \(error). Will retry in 5s.")
+                Log.sidecar.error("Reconnect failed: \(error). Will retry in 5s.")
                 try? await Task.sleep(for: .seconds(5))
                 Task { @MainActor in self.attemptReconnect() }
             }

@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftData
 
 /// Watches ~/.claudestudio/config/ for changes and syncs to SwiftData.
@@ -29,15 +30,15 @@ final class ConfigSyncService {
 
             if entityCount > 0 {
                 // Existing user: export SwiftData → files, then sync
-                print("[ConfigSync] Migrating existing data to config files")
+                Log.configSync.info("Migrating existing data to config files")
                 exportCurrentState(context: context)
             } else {
                 // Fresh install: copy factory defaults
-                print("[ConfigSync] Fresh install — copying factory defaults")
+                Log.configSync.info("Fresh install — copying factory defaults")
                 do {
                     try ConfigFileManager.copyFactoryDefaults()
                 } catch {
-                    print("[ConfigSync] Failed to copy factory defaults: \(error)")
+                    Log.configSync.error("Failed to copy factory defaults: \(error)")
                 }
             }
         }
@@ -60,7 +61,7 @@ final class ConfigSyncService {
         guard let container = modelContainer else { return }
         let context = ModelContext(container)
 
-        print("[ConfigSync] Starting full sync")
+        Log.configSync.info("Starting full sync")
 
         // Load templates for system prompt resolution
         let templates = ConfigFileManager.readAllTemplates()
@@ -74,9 +75,9 @@ final class ConfigSyncService {
 
         do {
             try context.save()
-            print("[ConfigSync] Full sync complete")
+            Log.configSync.info("Full sync complete")
         } catch {
-            print("[ConfigSync] Failed to save: \(error)")
+            Log.configSync.error("Failed to save: \(error)")
         }
     }
 
@@ -540,7 +541,7 @@ final class ConfigSyncService {
         do {
             try ConfigFileManager.createDirectoryStructure()
         } catch {
-            print("[ConfigSync] Failed to create directory structure: \(error)")
+            Log.configSync.error("Failed to create directory structure: \(error)")
             return
         }
 
@@ -598,7 +599,7 @@ final class ConfigSyncService {
 
         try? context.save()
         isWritingBack = false
-        print("[ConfigSync] Export complete")
+        Log.configSync.info("Export complete")
     }
 
     // MARK: - Factory Reset
@@ -607,9 +608,9 @@ final class ConfigSyncService {
         do {
             try ConfigFileManager.factoryReset()
             performFullSync()
-            print("[ConfigSync] Factory reset complete")
+            Log.configSync.info("Factory reset complete")
         } catch {
-            print("[ConfigSync] Factory reset failed: \(error)")
+            Log.configSync.error("Factory reset failed: \(error)")
         }
     }
 
@@ -624,7 +625,7 @@ final class ConfigSyncService {
             try ConfigFileManager.restoreFactoryDefaults(entityType: entityType)
             performFullSync()
         } catch {
-            print("[ConfigSync] Failed to restore \(entityType) defaults: \(error)")
+            Log.configSync.error("Failed to restore \(entityType, privacy: .public) defaults: \(error)")
         }
     }
 
@@ -660,7 +661,7 @@ final class ConfigSyncService {
         }
 
         isWatching = true
-        print("[ConfigSync] File watcher started on \(allDirs.count) directories")
+        Log.configSync.info("File watcher started on \(allDirs.count) directories")
     }
 
     private func stopFileWatcher() {

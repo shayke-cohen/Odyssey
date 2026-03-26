@@ -3,19 +3,13 @@ import { randomUUID } from "crypto";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-import { appendFileSync } from "fs";
 import type { AgentConfig, BulkResumeEntry, FileAttachment, SidecarEvent } from "./types.js";
 import type { SessionRegistry } from "./stores/session-registry.js";
 import type { ToolContext } from "./tools/tool-context.js";
 import { createPeerBusServer } from "./tools/peerbus-server.js";
 import { pendingQuestions, questionsBySession } from "./tools/ask-user-tool.js";
-
-const DEBUG_LOG = join(homedir(), ".claudestudio", "debug-ask-user.log");
-function debugLog(msg: string) {
-  const line = `[${new Date().toISOString()}] ${msg}\n`;
-  try { appendFileSync(DEBUG_LOG, line); } catch {}
-  console.log(msg);
-}
+import { PLAN_MODE_APPEND } from "./prompts/plan-mode.js";
+import { logger } from "./logger.js";
 
 const FILE_PATH_REGEX = /(?:^|\s)(\/[\w.\-/]+\.(?:png|jpe?g|gif|webp|svg|ico|html?|pdf))(?:\s|$|[.,;)}\]])/gi;
 
@@ -66,11 +60,11 @@ export class SessionManager {
 
   async createSession(conversationId: string, config: AgentConfig): Promise<void> {
     if (this.registry.get(conversationId)) {
-      console.log(`[session] Session ${conversationId} already exists, skipping create`);
+      logger.info("session", `Session ${conversationId} already exists, skipping create`);
       return;
     }
     this.registry.create(conversationId, config);
-    console.log(`[session] Created session ${conversationId} for "${config.name}" (model: ${config.model})`);
+    logger.info("session", `Created session ${conversationId} for "${config.name}" (model: ${config.model})`);
   }
 
   async sendMessage(sessionId: string, text: string, attachments?: FileAttachment[], planMode?: boolean): Promise<void> {
@@ -88,7 +82,7 @@ export class SessionManager {
 
     const existingAbort = this.activeAborts.get(sessionId);
     if (existingAbort) {
-      console.log(`[session] Aborting previous query for ${sessionId}`);
+      logger.info("session", `Aborting previous query for ${sessionId}`);
       existingAbort.abort();
     }
 
@@ -101,16 +95,14 @@ export class SessionManager {
       const sdkSessionId = options.sessionId ?? options.resume;
 
       if (options.cwd && !existsSync(options.cwd)) {
-        console.log(`[session] Creating missing cwd: ${options.cwd}`);
+        logger.info("session", `Creating missing cwd: ${options.cwd}`);
         mkdirSync(options.cwd, { recursive: true });
       }
 
       const prompt = this.buildPrompt(text, attachments);
       const attachmentCount = attachments?.length ?? 0;
       const mcpNames = Object.keys(options.mcpServers ?? {});
-      debugLog(`[session] query() start for ${sessionId} (model=${options.model}, cwd=${options.cwd ?? "none"}, turns=${options.maxTurns}, attachments=${attachmentCount}, mcpServers=${mcpNames.join(",")})`);
-      const appendUsed = (options.systemPrompt as any)?.append ? "YES" : "NO";
-      Bun.write("/tmp/claudestudio-session.log", `[${new Date().toISOString()}] query start: session=${sessionId} model=${options.model} append=${appendUsed} mcps=${mcpNames.join(",")}\n`).catch(() => {});
+      logger.info("session", `query() start for ${sessionId} (model=${options.model}, cwd=${options.cwd ?? "none"}, turns=${options.maxTurns}, attachments=${attachmentCount}, mcpServers=${mcpNames.join(",")})`);
       const stream = query({ prompt, options });
       let resultText = "";
       const usageAccum = { inputTokens: 0, outputTokens: 0, numTurns: 0 };
@@ -119,18 +111,18 @@ export class SessionManager {
         if (abortController.signal.aborted) break;
         const msgType = (message as any).type ?? "unknown";
         const extra = msgType === "result" ? ` subtype="${(message as any).subtype}" result="${((message as any).result ?? "").substring(0, 200)}"` : "";
-        debugLog(`[session:${sessionId}] SDK msg type="${msgType}"${extra}`);
+        logger.debug("session", `[${sessionId}] SDK msg type="${msgType}"${extra}`);
         await this.handleSDKMessage(sessionId, message, (t) => { resultText += t; }, usageAccum);
       }
 
-      console.log(`[session] query() done for ${sessionId} (${resultText.length} chars)`);
+      logger.info("session", `query() done for ${sessionId} (${resultText.length} chars)`);
 
       if (sdkSessionId && !state.claudeSessionId) {
         this.registry.update(sessionId, { claudeSessionId: sdkSessionId });
       }
 
       const sessionState = this.registry.get(sessionId);
-      console.log(`[session:${sessionId}] Emitting session.result: cost=${sessionState?.cost ?? 0}, inputTokens=${usageAccum.inputTokens}, outputTokens=${usageAccum.outputTokens}, numTurns=${usageAccum.numTurns}, toolCallCount=${sessionState?.toolCallCount ?? 0}`);
+      logger.info("session", `[${sessionId}] Emitting session.result: cost=${sessionState?.cost ?? 0}, inputTokens=${usageAccum.inputTokens}, outputTokens=${usageAccum.outputTokens}, numTurns=${usageAccum.numTurns}, toolCallCount=${sessionState?.toolCallCount ?? 0}`);
       this.emit({
         type: "session.result",
         sessionId,
@@ -153,8 +145,9 @@ export class SessionManager {
         this.registry.update(sessionId, { status: "paused" });
       } else {
         const errMsg = err.message ?? String(err);
-        console.error(`[session:${sessionId}] Error: ${errMsg}`);
-        if (err.stack) console.error(`[session:${sessionId}] Stack: ${err.stack.substring(0, 500)}`);
+        logger.error("session", `[${sessionId}] Error: ${errMsg}`, {
+          stack: err.stack?.substring(0, 500),
+        });
         this.emit({
           type: "session.error",
           sessionId,
@@ -190,14 +183,14 @@ export class SessionManager {
         this.autonomousResults.set(sessionId, { resolve });
       });
       this.sendMessage(sessionId, initialPrompt).catch((err) => {
-        console.error(`[session:${sessionId}] Autonomous send error:`, err);
+        logger.error("session", `[${sessionId}] Autonomous send error: ${err}`);
       });
       const result = await resultPromise;
       return { sessionId, result };
     }
 
     this.sendMessage(sessionId, initialPrompt).catch((err) => {
-      console.error(`[session:${sessionId}] Autonomous send error:`, err);
+      logger.error("session", `[${sessionId}] Autonomous send error: ${err}`);
     });
     return { sessionId };
   }
@@ -223,7 +216,7 @@ export class SessionManager {
       });
       restored++;
     }
-    console.log(`[session] Bulk resume: restored ${restored}/${sessions.length} sessions`);
+    logger.info("session", `Bulk resume: restored ${restored}/${sessions.length} sessions`);
   }
 
   async forkSession(parentSessionId: string, childSessionId: string): Promise<void> {
@@ -290,8 +283,14 @@ export class SessionManager {
     if (attachmentCount > 0 && maxTurns < 3) {
       maxTurns = 3;
     }
-    const resolvedModel = SessionManager.resolveModel(config.model);
+    let resolvedModel = SessionManager.resolveModel(config.model);
     const usePlanMode = planMode === true;
+    // Plan mode: use Opus for better instruction following + more turns for exploration
+    if (usePlanMode) {
+      resolvedModel = "claude-opus-4-6";
+      if (maxTurns < 30) maxTurns = 30;
+    }
+    logger.debug("session", `[${sessionId}] buildQueryOptions: planMode=${usePlanMode}, maxTurns=${maxTurns}`);
     const env = { ...process.env };
     delete env.CLAUDECODE;
     const options: Record<string, any> = {
@@ -299,12 +298,15 @@ export class SessionManager {
       maxTurns,
       abortController,
       cwd: config.workingDirectory || undefined,
-      permissionMode: usePlanMode ? "plan" : "bypassPermissions",
-      allowDangerouslySkipPermissions: !usePlanMode,
+      // Note: we do NOT use permissionMode:"plan" because it blocks MCP tools
+      // (ask_user, render_content, show_progress, suggest_actions).
+      // Plan mode behavior is enforced via system prompt instead.
+      permissionMode: "bypassPermissions",
+      allowDangerouslySkipPermissions: true,
       env,
     };
 
-    const appendText = this.buildSystemPromptAppend(config);
+    const appendText = this.buildSystemPromptAppend(config, usePlanMode);
     if (appendText) {
       options.systemPrompt = {
         type: "preset" as const,
@@ -346,7 +348,7 @@ export class SessionManager {
     }
 
     const isInteractive = config.interactive ?? false;
-    debugLog(`[session:${sessionId}] config.interactive=${config.interactive}, isInteractive=${isInteractive}, maxTurns=${config.maxTurns}`);
+    logger.debug("session", `[${sessionId}] config.interactive=${config.interactive}, isInteractive=${isInteractive}, maxTurns=${config.maxTurns}`);
     // Include ask_user in the peerbus in-process MCP server for interactive sessions
     mcpServers["peerbus"] = createPeerBusServer(this.toolCtx, sessionId, isInteractive);
     options.mcpServers = mcpServers;
@@ -421,7 +423,7 @@ export class SessionManager {
     }
   }
 
-  private buildSystemPromptAppend(config: AgentConfig): string {
+  private buildSystemPromptAppend(config: AgentConfig, planMode?: boolean): string {
     let append = config.systemPrompt || "";
 
     if (config.interactive) {
@@ -477,6 +479,11 @@ You can also use these markdown features that render as rich cards:
       }
     }
 
+    // Plan mode instructions go LAST so they override everything above
+    if (planMode) {
+      append += PLAN_MODE_APPEND;
+    }
+
     return append;
   }
 
@@ -508,8 +515,7 @@ You can also use these markdown features that render as rich cards:
         break;
 
       case "tool_use":
-        console.log(`[session:${sessionId}] tool_use: name="${message.name}" id="${message.id}" input=${JSON.stringify(message.input ?? {}).substring(0, 100)}`);
-        Bun.write("/tmp/claudestudio-tooluse.log", `[${new Date().toISOString()}] tool_use: name="${message.name}" session=${sessionId}\n`).catch(() => {});
+        logger.debug("session", `[${sessionId}] tool_use: name="${message.name}" id="${message.id}" input=${JSON.stringify(message.input ?? {}).substring(0, 200)}`);
         this.emit({
           type: "stream.toolCall",
           sessionId,
@@ -569,14 +575,15 @@ You can also use these markdown features that render as rich cards:
         break;
 
       case "result":
-        console.log(`[session:${sessionId}] SDK result keys: ${Object.keys(message).join(", ")}`);
-        console.log(`[session:${sessionId}] SDK result usage: ${JSON.stringify(message.usage)}`);
-        console.log(`[session:${sessionId}] SDK result cost_usd=${message.cost_usd} total_cost_usd=${message.total_cost_usd} num_turns=${message.num_turns}`);
+        logger.info("session", `[${sessionId}] SDK result cost_usd=${message.cost_usd} total_cost_usd=${message.total_cost_usd} num_turns=${message.num_turns}`, {
+          keys: Object.keys(message),
+          usage: message.usage,
+        });
         if (message.errors && message.errors.length > 0) {
-          console.log(`[session:${sessionId}] SDK result ERRORS: ${JSON.stringify(message.errors)}`);
+          logger.warn("session", `[${sessionId}] SDK result ERRORS`, { errors: message.errors });
         }
         if (message.permission_denials && message.permission_denials.length > 0) {
-          console.log(`[session:${sessionId}] SDK result permission_denials: ${JSON.stringify(message.permission_denials)}`);
+          logger.warn("session", `[${sessionId}] SDK result permission_denials`, { denials: message.permission_denials });
         }
         if (message.cost_usd != null || message.total_cost_usd != null) {
           const cost = message.total_cost_usd ?? message.cost_usd ?? 0;
@@ -609,7 +616,7 @@ You can also use these markdown features that render as rich cards:
           const extra = message.type === "user" && message.tool_use_result
             ? ` tool_use_result=${JSON.stringify(message.tool_use_result).substring(0, 200)}`
             : "";
-          console.log(`[session:${sessionId}] SDK message type="${message.type}" name="${message.name ?? ""}" keys=${Object.keys(message).join(",")}${extra}`);
+          logger.debug("session", `[${sessionId}] SDK message type="${message.type}" name="${message.name ?? ""}" keys=${Object.keys(message).join(",")}${extra}`);
         }
         break;
     }

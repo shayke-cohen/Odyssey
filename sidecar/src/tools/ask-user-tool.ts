@@ -2,6 +2,7 @@ import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import type { ToolContext } from "./tool-context.js";
+import { logger } from "../logger.js";
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -121,7 +122,7 @@ export function createAskUserTool(ctx: ToolContext, callingSessionId: string, on
           .describe("Configuration for the selected input_type"),
       },
       async (args) => {
-        console.log(`[ask_user] tool invoked for session ${callingSessionId}: "${args.question.substring(0, 80)}"`);
+        logger.info("tools", `ask_user invoked for session ${callingSessionId}: "${args.question.substring(0, 80)}"`);
         const questionId = randomUUID();
 
         const result = await new Promise<{ answer: string; selectedOptions?: string[] }>(

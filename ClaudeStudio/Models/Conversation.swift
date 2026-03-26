@@ -20,6 +20,7 @@ final class Conversation {
     var workflowCompletedSteps: [Int]?
     var isUnread: Bool = false
     var isAutonomous: Bool = false
+    var planModeEnabled: Bool = false
     var startedAt: Date
     var closedAt: Date?
 

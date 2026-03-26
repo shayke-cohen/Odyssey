@@ -1,4 +1,5 @@
 import type { SidecarCommand, SidecarEvent } from "./types.js";
+import { logger } from "./logger.js";
 
 interface PendingRequest {
   resolve: (event: SidecarEvent) => void;
@@ -30,7 +31,7 @@ export class RelayClient {
           version: "0.2.0",
         }));
         this.connections.set(peerName, ws);
-        console.log(`[relay] Connected to peer "${peerName}" at ${endpoint}`);
+        logger.info("relay", `Connected to peer "${peerName}" at ${endpoint}`);
         resolve();
       });
       ws.addEventListener("message", (event) => {
@@ -49,7 +50,7 @@ export class RelayClient {
       });
       ws.addEventListener("close", () => {
         this.connections.delete(peerName);
-        console.log(`[relay] Disconnected from peer "${peerName}"`);
+        logger.info("relay", `Disconnected from peer "${peerName}"`);
       });
       ws.addEventListener("error", (err) => {
         this.connections.delete(peerName);
