@@ -13,6 +13,8 @@ import { SessionRegistry } from "../../src/stores/session-registry.js";
 import { MessageStore } from "../../src/stores/message-store.js";
 import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
+import { TaskBoardStore } from "../../src/stores/task-board-store.js";
+import { PeerRegistry } from "../../src/stores/peer-registry.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import type { AgentConfig, SidecarEvent } from "../../src/types.js";
 import { createBlackboardTools } from "../../src/tools/blackboard-tools.js";
@@ -40,10 +42,17 @@ function createTestContext(): {
 
   const ctx: ToolContext = {
     blackboard: new BlackboardStore(`test-${Date.now()}-${Math.random()}`),
+    taskBoard: new TaskBoardStore(`test-${Date.now()}-${Math.random()}`),
     sessions: new SessionRegistry(),
     messages: new MessageStore(),
     channels: new ChatChannelStore(),
     workspaces: new WorkspaceStore(),
+    peerRegistry: new PeerRegistry(),
+    relayClient: {
+      isConnected: () => false,
+      connect: async () => {},
+      sendCommand: async () => ({}),
+    } as any,
     broadcast: (event) => events.push(event),
     spawnSession: async (sessionId, config, prompt, wait) => {
       spawnCalls.push({ sessionId, config, prompt, wait });

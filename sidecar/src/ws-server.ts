@@ -3,6 +3,7 @@ import type { SidecarCommand, SidecarEvent } from "./types.js";
 import type { SessionManager } from "./session-manager.js";
 import type { ToolContext } from "./tools/tool-context.js";
 import { resolveQuestion } from "./tools/ask-user-tool.js";
+import { logger } from "./logger.js";
 import Anthropic from "@anthropic-ai/sdk";
 
 export class WsServer {
@@ -24,7 +25,7 @@ export class WsServer {
       websocket: {
         open: (ws) => {
           this.clients.add(ws);
-          console.log(`[ws] Swift client connected (total: ${this.clients.size})`);
+          logger.info("ws", `Swift client connected (total: ${this.clients.size})`);
           const ready: SidecarEvent = {
             type: "sidecar.ready",
             port,
@@ -35,23 +36,23 @@ export class WsServer {
         message: (ws, message) => {
           try {
             const data = typeof message === "string" ? message : new TextDecoder().decode(message);
-            console.log("[ws] Received:", data.substring(0, 200));
+            logger.debug("ws", `Received: ${data.substring(0, 200)}`);
             const command = JSON.parse(data) as SidecarCommand;
             this.handleCommand(command).catch((err) => {
-              console.error("[ws] Command handler error:", err);
+              logger.error("ws", `Command handler error: ${err}`);
             });
           } catch (err) {
-            console.error("[ws] Failed to parse command:", err);
+            logger.error("ws", `Failed to parse command: ${err}`);
           }
         },
         close: (ws) => {
           this.clients.delete(ws);
-          console.log(`[ws] Swift client disconnected (total: ${this.clients.size})`);
+          logger.info("ws", `Swift client disconnected (total: ${this.clients.size})`);
         },
       },
     });
 
-    console.log(`[ws] WebSocket server listening on ws://localhost:${port}`);
+    logger.info("ws", `WebSocket server listening on ws://localhost:${port}`);
   }
 
   private async handleCommand(command: SidecarCommand): Promise<void> {
@@ -85,15 +86,26 @@ export class WsServer {
         break;
       case "session.updateCwd":
         this.sessionManager.updateSessionCwd(command.sessionId, command.workingDirectory);
-        console.log(`[ws] Updated cwd for ${command.sessionId} → ${command.workingDirectory}`);
+        logger.info("ws", `Updated cwd for ${command.sessionId} → ${command.workingDirectory}`);
         break;
       case "session.bulkResume":
         await this.sessionManager.bulkResume(command.sessions);
         break;
       case "agent.register":
         for (const def of command.agents) {
-          this.ctx.agentDefinitions.set(def.name, def.config);
-          console.log(`[ws] Registered agent definition: ${def.name}`);
+          const configWithPolicy = { ...def.config };
+          if (def.instancePolicy) {
+            if (def.instancePolicy.startsWith("pool:")) {
+              configWithPolicy.instancePolicy = "pool";
+              configWithPolicy.instancePolicyPoolMax = parseInt(def.instancePolicy.substring(5), 10);
+            } else if (def.instancePolicy === "singleton") {
+              configWithPolicy.instancePolicy = "singleton";
+            } else {
+              configWithPolicy.instancePolicy = "spawn";
+            }
+          }
+          this.ctx.agentDefinitions.set(def.name, configWithPolicy);
+          logger.info("ws", `Registered agent definition: ${def.name}`);
         }
         break;
 
@@ -114,7 +126,7 @@ export class WsServer {
 
       case "generate.agent":
         this.handleGenerateAgent(command).catch((err) => {
-          console.error("[ws] generate.agent handler error:", err);
+          logger.error("ws", `generate.agent handler error: ${err}`);
           this.broadcast({
             type: "generate.agent.error",
             requestId: command.requestId,
@@ -130,9 +142,37 @@ export class WsServer {
           command.selectedOptions,
         );
         if (resolved) {
-          console.log(`[ws] session.questionAnswer: resolved question ${command.questionId} for session ${command.sessionId}`);
+          logger.info("ws", `session.questionAnswer: resolved question ${command.questionId} for session ${command.sessionId}`);
         } else {
-          console.warn(`[ws] session.questionAnswer: no pending question found for ${command.questionId}`);
+          logger.warn("ws", `session.questionAnswer: no pending question found for ${command.questionId}`);
+        }
+        break;
+      }
+
+      case "task.create": {
+        const task = this.ctx.taskBoard.create(command.task);
+        this.broadcast({ type: "task.created", task });
+        logger.info("ws", `task.create: created "${task.title}" (${task.id})`);
+        break;
+      }
+      case "task.update": {
+        const task = this.ctx.taskBoard.update(command.taskId, command.updates);
+        if (task) {
+          this.broadcast({ type: "task.updated", task });
+          logger.info("ws", `task.update: updated ${command.taskId} → ${task.status}`);
+        }
+        break;
+      }
+      case "task.list": {
+        const tasks = this.ctx.taskBoard.list(command.filter);
+        this.broadcast({ type: "task.list.result", tasks });
+        break;
+      }
+      case "task.claim": {
+        const task = this.ctx.taskBoard.claim(command.taskId, command.agentName);
+        if (task) {
+          this.broadcast({ type: "task.updated", task });
+          logger.info("ws", `task.claim: ${command.agentName} claimed ${command.taskId}`);
         }
         break;
       }
@@ -145,10 +185,17 @@ export class WsServer {
           command.modifiedAction,
         );
         if (confirmed) {
-          console.log(`[ws] session.confirmationAnswer: resolved confirmation ${command.confirmationId} approved=${command.approved}`);
+          logger.info("ws", `session.confirmationAnswer: resolved confirmation ${command.confirmationId} approved=${command.approved}`);
         } else {
-          console.warn(`[ws] session.confirmationAnswer: no pending confirmation found for ${command.confirmationId}`);
+          logger.warn("ws", `session.confirmationAnswer: no pending confirmation found for ${command.confirmationId}`);
         }
+        break;
+      }
+
+      case "config.setLogLevel": {
+        const { setLogLevel } = await import("./logger.js");
+        setLogLevel(command.level as any);
+        logger.info("ws", `config.setLogLevel: level set to ${command.level}`);
         break;
       }
     }
@@ -157,7 +204,7 @@ export class WsServer {
   private async handleDelegateTask(command: Extract<SidecarCommand, { type: "delegate.task" }>): Promise<void> {
     const config = this.ctx.agentDefinitions.get(command.toAgent);
     if (!config) {
-      console.error(`[ws] delegate.task: agent definition not found for "${command.toAgent}"`);
+      logger.error("ws", `delegate.task: agent definition not found for "${command.toAgent}"`);
       this.broadcast({
         type: "session.error",
         sessionId: command.sessionId,
@@ -165,6 +212,13 @@ export class WsServer {
       });
       return;
     }
+
+    // Inherit the source session's working directory so delegated agents
+    // work in the same place as the group (e.g. shared workspace).
+    const sourceConfig = this.ctx.sessions.getConfig(command.sessionId);
+    const effectiveConfig = sourceConfig?.workingDirectory
+      ? { ...config, workingDirectory: sourceConfig.workingDirectory }
+      : config;
 
     const prompt = command.context
       ? `${command.task}\n\n## Context\n${command.context}`
@@ -177,12 +231,54 @@ export class WsServer {
       task: command.task,
     });
 
+    // Instance policy routing: singleton reuses existing session, pool routes when at capacity
+    const existingSessions = this.ctx.sessions.findByAgentName(config.name);
+    if (config.instancePolicy === "singleton" && existingSessions.length > 0) {
+      const target = existingSessions[0];
+      this.ctx.messages.push(target.id, {
+        id: crypto.randomUUID(),
+        from: command.sessionId,
+        fromAgent: this.ctx.sessions.get(command.sessionId)?.agentName ?? command.sessionId,
+        to: target.id,
+        text: `[Delegated Task] ${command.task}${command.context ? `\n\nContext: ${command.context}` : ""}`,
+        priority: "urgent",
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      logger.info("ws", `delegate.task: reused singleton session ${target.id} for ${command.toAgent}`);
+      return;
+    }
+
+    if (config.instancePolicy === "pool") {
+      const poolMax = config.instancePolicyPoolMax ?? 1;
+      if (existingSessions.length >= poolMax) {
+        let leastBusy = existingSessions[0];
+        for (const s of existingSessions) {
+          if (this.ctx.messages.peek(s.id) < this.ctx.messages.peek(leastBusy.id)) {
+            leastBusy = s;
+          }
+        }
+        this.ctx.messages.push(leastBusy.id, {
+          id: crypto.randomUUID(),
+          from: command.sessionId,
+          fromAgent: this.ctx.sessions.get(command.sessionId)?.agentName ?? command.sessionId,
+          to: leastBusy.id,
+          text: `[Delegated Task] ${command.task}${command.context ? `\n\nContext: ${command.context}` : ""}`,
+          priority: "urgent",
+          timestamp: new Date().toISOString(),
+          read: false,
+        });
+        logger.info("ws", `delegate.task: pool routed to ${leastBusy.id} for ${command.toAgent}`);
+        return;
+      }
+    }
+
     const newSessionId = crypto.randomUUID();
     try {
-      await this.ctx.spawnSession(newSessionId, config, prompt, command.waitForResult);
-      console.log(`[ws] delegate.task: spawned new session ${newSessionId} for ${command.toAgent}`);
+      await this.ctx.spawnSession(newSessionId, effectiveConfig, prompt, command.waitForResult);
+      logger.info("ws", `delegate.task: spawned new session ${newSessionId} for ${command.toAgent}`);
     } catch (err: any) {
-      console.error(`[ws] delegate.task: spawn failed:`, err);
+      logger.error("ws", `delegate.task: spawn failed: ${err}`);
       this.broadcast({
         type: "session.error",
         sessionId: command.sessionId,
@@ -253,7 +349,7 @@ ${skillsCatalog}
 ## Available MCP Servers
 ${mcpsCatalog}`;
 
-    console.log(`[ws] generate.agent: generating agent from prompt: "${command.prompt.substring(0, 100)}..."`);
+    logger.info("ws", `generate.agent: generating agent from prompt: "${command.prompt.substring(0, 100)}..."`);
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -285,7 +381,7 @@ ${mcpsCatalog}`;
     if (!validColors.includes(spec.color)) spec.color = "blue";
     if (!["sonnet", "opus", "haiku"].includes(spec.model)) spec.model = "sonnet";
 
-    console.log(`[ws] generate.agent: generated "${spec.name}" with ${spec.matchedSkillIds?.length ?? 0} skills, ${spec.matchedMCPIds?.length ?? 0} MCPs`);
+    logger.info("ws", `generate.agent: generated "${spec.name}" with ${spec.matchedSkillIds?.length ?? 0} skills, ${spec.matchedMCPIds?.length ?? 0} MCPs`);
 
     this.broadcast({
       type: "generate.agent.result",

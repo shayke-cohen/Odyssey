@@ -13,6 +13,8 @@ import { BlackboardStore } from "../../src/stores/blackboard-store.js";
 import { MessageStore } from "../../src/stores/message-store.js";
 import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
+import { TaskBoardStore } from "../../src/stores/task-board-store.js";
+import { PeerRegistry } from "../../src/stores/peer-registry.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import type { AgentConfig, SidecarEvent } from "../../src/types.js";
 
@@ -44,10 +46,17 @@ beforeAll(() => {
 
   ctx = {
     blackboard: new BlackboardStore(`ws-test-${Date.now()}`),
+    taskBoard: new TaskBoardStore(`ws-test-${Date.now()}`),
     sessions: new SessionRegistry(),
     messages: new MessageStore(),
     channels: new ChatChannelStore(),
     workspaces: new WorkspaceStore(),
+    peerRegistry: new PeerRegistry(),
+    relayClient: {
+      isConnected: () => false,
+      connect: async () => {},
+      sendCommand: async () => ({}),
+    } as any,
     broadcast: () => {},
     spawnSession: async (sid, config, prompt, wait) => ({ sessionId: sid }),
     agentDefinitions: new Map<string, AgentConfig>(),

@@ -17,7 +17,8 @@ export type SidecarCommand =
   | { type: "task.create"; task: TaskWire }
   | { type: "task.update"; taskId: string; updates: Partial<TaskWire> }
   | { type: "task.list"; filter?: { status?: string } }
-  | { type: "task.claim"; taskId: string; agentName: string };
+  | { type: "task.claim"; taskId: string; agentName: string }
+  | { type: "config.setLogLevel"; level: string };
 
 export interface PeerAgentWire {
   name: string;
@@ -33,6 +34,7 @@ export interface BulkResumeEntry {
 export interface AgentDefinition {
   name: string;
   config: AgentConfig;
+  instancePolicy?: string; // "spawn" | "singleton" | "pool:N"
 }
 
 export interface AgentConfig {
@@ -47,6 +49,8 @@ export interface AgentConfig {
   workingDirectory: string;
   skills: SkillContent[];
   interactive?: boolean;
+  instancePolicy?: "spawn" | "singleton" | "pool";
+  instancePolicyPoolMax?: number;
 }
 
 export interface MCPServerConfig {
@@ -119,6 +123,7 @@ export type SidecarEvent =
   | { type: "stream.progress"; sessionId: string; progressId: string; title: string; steps: ProgressStep[] }
   | { type: "stream.suggestions"; sessionId: string; suggestions: SuggestionItem[] }
   | { type: "conversation.inviteAgent"; sessionId: string; agentName: string }
+  | { type: "session.planComplete"; sessionId: string; plan: string | null; allowedPrompts?: { tool: string; prompt: string }[] }
   | { type: "task.created"; task: TaskWire }
   | { type: "task.updated"; task: TaskWire }
   | { type: "task.list.result"; tasks: TaskWire[] };

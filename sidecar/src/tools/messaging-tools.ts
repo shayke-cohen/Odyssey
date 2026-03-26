@@ -205,9 +205,12 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
           };
         }
 
-        const prompt = args.context
-          ? `${args.task}\n\n## Context\n${args.context}`
-          : args.task;
+        // Inherit the calling session's working directory so delegated agents
+        // work in the same place as the group (e.g. shared workspace).
+        const sourceConfig = ctx.sessions.getConfig(callingSessionId);
+        const effectiveConfig = sourceConfig?.workingDirectory
+          ? { ...config, workingDirectory: sourceConfig.workingDirectory }
+          : config;
 
         const senderState = ctx.sessions.get(callingSessionId);
         const waitForResult = args.wait_for_result ?? false;
@@ -219,11 +222,66 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
           task: args.task,
         });
 
+        // Instance policy routing: singleton reuses existing session, pool routes when at capacity
+        const existingSessions = ctx.sessions.findByAgentName(config.name);
+
+        if (config.instancePolicy === "singleton" && existingSessions.length > 0) {
+          const target = existingSessions[0];
+          ctx.messages.push(target.id, {
+            id: randomUUID(),
+            from: callingSessionId,
+            fromAgent: senderState?.agentName ?? callingSessionId,
+            to: target.id,
+            text: `[Delegated Task] ${args.task}${args.context ? `\n\nContext: ${args.context}` : ""}`,
+            priority: "urgent",
+            timestamp: new Date().toISOString(),
+            read: false,
+          });
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({ delegated: true, method: "reused_singleton", sessionId: target.id }),
+            }],
+          };
+        }
+
+        if (config.instancePolicy === "pool") {
+          const poolMax = config.instancePolicyPoolMax ?? 1;
+          if (existingSessions.length >= poolMax) {
+            let leastBusy = existingSessions[0];
+            for (const s of existingSessions) {
+              if (ctx.messages.peek(s.id) < ctx.messages.peek(leastBusy.id)) {
+                leastBusy = s;
+              }
+            }
+            ctx.messages.push(leastBusy.id, {
+              id: randomUUID(),
+              from: callingSessionId,
+              fromAgent: senderState?.agentName ?? callingSessionId,
+              to: leastBusy.id,
+              text: `[Delegated Task] ${args.task}${args.context ? `\n\nContext: ${args.context}` : ""}`,
+              priority: "urgent",
+              timestamp: new Date().toISOString(),
+              read: false,
+            });
+            return {
+              content: [{
+                type: "text" as const,
+                text: JSON.stringify({ delegated: true, method: "pool_routed", sessionId: leastBusy.id }),
+              }],
+            };
+          }
+        }
+
+        const prompt = args.context
+          ? `${args.task}\n\n## Context\n${args.context}`
+          : args.task;
+
         const delegateSessionId = randomUUID();
         try {
           const result = await ctx.spawnSession(
             delegateSessionId,
-            config,
+            effectiveConfig,
             prompt,
             waitForResult,
           );
