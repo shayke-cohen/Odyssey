@@ -43,6 +43,9 @@ final class ConfigSyncService {
             }
         }
 
+        // Ensure any new bundle skills are copied before sync
+        ConfigFileManager.ensureBundleSkillsPresent()
+
         // Full sync to pick up any offline edits or new factory defaults
         performFullSync()
 

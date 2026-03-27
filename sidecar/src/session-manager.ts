@@ -353,6 +353,12 @@ export class SessionManager {
         preset: "claude_code" as const,
         append: appendText,
       };
+      logger.info("session", `[${sessionId}] systemPrompt assembled`, {
+        appendLength: appendText.length,
+        hasGitHub: appendText.includes("GitHub Workspace"),
+        hasSkills: appendText.includes("## Skills"),
+        skillNames: config.skills?.map(s => s.name) ?? [],
+      });
     } else {
       options.systemPrompt = { type: "preset" as const, preset: "claude_code" as const };
     }
@@ -521,6 +527,7 @@ You can also use these markdown features that render as rich cards:
         );
         const remoteUrl = result.stdout.toString().trim();
         if (remoteUrl.includes("github.com")) {
+          logger.info("session", `GitHub detection: found`, { cwd: config.workingDirectory, remoteUrl });
           append += `\n\n## GitHub Workspace
 
 This workspace is a GitHub repository (\`${remoteUrl}\`). You can use the \`gh\` CLI (via Bash tool) to interact with issues, PRs, reviews, and releases.
@@ -528,13 +535,16 @@ This workspace is a GitHub repository (\`${remoteUrl}\`). You can use the \`gh\`
 **Use GitHub for durable, visible work artifacts** (issues for tasks, PRs for code changes, reviews for quality gates). Use PeerBus for real-time agent coordination.
 
 Before using \`gh\` commands, verify auth: \`gh auth status\`. If not authenticated, skip GitHub workflows.\n`;
+        } else {
+          logger.debug("session", `GitHub detection: not a GitHub remote`, { cwd: config.workingDirectory, remoteUrl });
         }
       } catch {
-        // Not a git repo or git not available — skip
+        logger.debug("session", `GitHub detection: not a git repo or git unavailable`, { cwd: config.workingDirectory });
       }
     }
 
     if (config.skills && config.skills.length > 0) {
+      logger.info("session", `Injecting ${config.skills.length} skills`, { skillNames: config.skills.map(s => s.name) });
       append += "\n\n## Skills\n\n";
       for (const skill of config.skills) {
         append += `### ${skill.name}\n${skill.content}\n\n`;

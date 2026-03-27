@@ -399,6 +399,82 @@ enum DefaultsSeeder {
         return map
     }
 
+    // MARK: - Incremental Skill Seeding
+
+    /// Ensures newly added builtin skills are inserted into existing databases.
+    /// Runs on every launch — compares the canonical skill list against what's in SwiftData.
+    static func ensureNewSkills(container: ModelContainer) {
+        let context = ModelContext(container)
+        let existingSkills = (try? context.fetch(FetchDescriptor<Skill>())) ?? []
+        let existingNames = Set(existingSkills.map(\.name))
+
+        let allSkillNames = [
+            "peer-collaboration",
+            "blackboard-patterns",
+            "delegation-patterns",
+            "workspace-collaboration",
+            "agent-identity",
+            "config-editing",
+            "github-workflow"
+        ]
+
+        let missingNames = allSkillNames.filter { !existingNames.contains($0) }
+        guard !missingNames.isEmpty else { return }
+
+        Log.seeder.info("Incremental skill seeding: adding \(missingNames.count) new skill(s): \(missingNames.joined(separator: ", "), privacy: .public)")
+
+        var newSkills: [String: Skill] = [:]
+        for skillName in missingNames {
+            guard let content = loadSkillContent(name: skillName) else {
+                Log.seeder.warning("Skill not found: \(skillName, privacy: .public)")
+                continue
+            }
+            let metadata = parseSkillFrontmatter(content)
+            let skill = Skill(
+                name: metadata.name ?? skillName,
+                skillDescription: metadata.description ?? "",
+                category: metadata.category ?? "ClaudeStudio",
+                content: content
+            )
+            skill.triggers = metadata.triggers
+            skill.source = .builtin
+            context.insert(skill)
+            newSkills[skillName] = skill
+            Log.seeder.info("Seeded new skill: \(skillName, privacy: .public)")
+        }
+
+        // Attach new skills to agents that reference them
+        let agents = (try? context.fetch(FetchDescriptor<Agent>())) ?? []
+        for (skillName, skill) in newSkills {
+            let agentsNeedingSkill = agentNamesForSkill(skillName)
+            for agent in agents where agentsNeedingSkill.contains(agent.name) {
+                if !agent.skillIds.contains(skill.id) {
+                    agent.skillIds.append(skill.id)
+                    Log.seeder.info("Attached \(skillName, privacy: .public) to agent \(agent.name, privacy: .public)")
+                }
+            }
+        }
+
+        do {
+            try context.save()
+            Log.seeder.info("Incremental skill seeding complete")
+        } catch {
+            Log.seeder.error("Failed to save incremental skills: \(error)")
+        }
+    }
+
+    /// Maps skill names to the agent names that should have them.
+    private static func agentNamesForSkill(_ skillName: String) -> Set<String> {
+        switch skillName {
+        case "github-workflow":
+            return ["Coder", "Reviewer", "DevOps", "Product Manager", "Orchestrator", "Release Manager", "Tester"]
+        case "peer-collaboration", "blackboard-patterns", "agent-identity":
+            return ["Coder", "Reviewer", "DevOps", "Product Manager", "Orchestrator", "Tester", "Researcher", "Writer", "Designer", "Analyst"]
+        default:
+            return []
+        }
+    }
+
     // MARK: - Skills
 
     private static func seedSkills(into context: ModelContext) -> [String: Skill] {
@@ -431,6 +507,11 @@ enum DefaultsSeeder {
             context.insert(skill)
             map[skillName] = skill
             Log.seeder.debug("Skill: \(skillName, privacy: .public)")
+        }
+        if map["github-workflow"] != nil {
+            Log.seeder.info("github-workflow skill loaded successfully")
+        } else {
+            Log.seeder.error("github-workflow skill FAILED to load — check DefaultSkills/github-workflow/SKILL.md")
         }
         return map
     }

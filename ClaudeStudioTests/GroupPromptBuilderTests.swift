@@ -748,4 +748,23 @@ final class GroupPromptBuilderTests: XCTestCase {
         )
         XCTAssertTrue(built.contains("A2, A1"))
     }
+
+    // MARK: - GitHub Communication Guidelines
+
+    func testCommunicationGuidelinesIncludeGitHub() {
+        let guidelines = GroupPromptBuilder.communicationGuidelines
+        XCTAssertTrue(guidelines.contains("GitHub (when available)"),
+                       "Communication guidelines should include GitHub section")
+        XCTAssertTrue(guidelines.contains("GitHub issues and PRs"),
+                       "GitHub section should mention issues and PRs")
+    }
+
+    func testCommunicationGuidelinesPreserveExistingSections() {
+        let guidelines = GroupPromptBuilder.communicationGuidelines
+        XCTAssertTrue(guidelines.contains("**Mentions**"))
+        XCTAssertTrue(guidelines.contains("**When to speak**"))
+        XCTAssertTrue(guidelines.contains("**How to reply**"))
+        XCTAssertTrue(guidelines.contains("**Deferring**"))
+        XCTAssertTrue(guidelines.contains("**GitHub (when available)**"))
+    }
 }

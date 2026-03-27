@@ -565,7 +565,7 @@ enum ConfigFileManager {
     }
 
     private static func copyBundleSkills() throws {
-        let skillNames = ["peer-collaboration", "blackboard-patterns", "delegation-patterns", "workspace-collaboration", "agent-identity", "config-editing"]
+        let skillNames = ["peer-collaboration", "blackboard-patterns", "delegation-patterns", "workspace-collaboration", "agent-identity", "config-editing", "github-workflow"]
 
         for name in skillNames {
             guard let content = loadBundleSkillContent(name: name) else { continue }
@@ -574,6 +574,29 @@ enum ConfigFileManager {
             let dir = configDirectory.appendingPathComponent("skills/\(name)")
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             try updatedContent.write(to: dir.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        }
+    }
+
+    /// Ensure any new bundle skills that aren't yet in the config directory get copied.
+    /// Called on every launch before performFullSync to handle incremental additions.
+    static func ensureBundleSkillsPresent() {
+        let allBundleSkills = ["peer-collaboration", "blackboard-patterns", "delegation-patterns", "workspace-collaboration", "agent-identity", "config-editing", "github-workflow"]
+        let fm = FileManager.default
+
+        for name in allBundleSkills {
+            let targetFile = configDirectory.appendingPathComponent("skills/\(name)/SKILL.md")
+            guard !fm.fileExists(atPath: targetFile.path) else { continue }
+            guard let content = loadBundleSkillContent(name: name) else { continue }
+
+            let updatedContent = ensureEnabledInFrontmatter(content)
+            let dir = configDirectory.appendingPathComponent("skills/\(name)")
+            do {
+                try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+                try updatedContent.write(to: dir.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+                Log.configSync.info("Copied missing bundle skill: \(name, privacy: .public)")
+            } catch {
+                Log.configSync.error("Failed to copy bundle skill \(name, privacy: .public): \(error)")
+            }
         }
     }
 
