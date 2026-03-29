@@ -23,7 +23,6 @@ final class Project {
     var canonicalRootPath: String
     var createdAt: Date
     var lastOpenedAt: Date
-    var isPinned: Bool
     var icon: String
     var color: String
     var pinnedAgentIds: [UUID]
@@ -43,7 +42,6 @@ final class Project {
         self.canonicalRootPath = canonicalRootPath
         self.createdAt = now
         self.lastOpenedAt = now
-        self.isPinned = false
         self.icon = icon
         self.color = color
         self.pinnedAgentIds = []
