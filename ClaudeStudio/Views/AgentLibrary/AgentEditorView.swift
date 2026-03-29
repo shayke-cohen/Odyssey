@@ -16,6 +16,7 @@ struct AgentEditorView: View {
     @State private var agentDescription: String
     @State private var icon: String
     @State private var color: String
+    @State private var provider: String
     @State private var model: String
     @State private var maxTurns: String
     @State private var maxBudget: String
@@ -37,7 +38,10 @@ struct AgentEditorView: View {
         _agentDescription = State(initialValue: agent?.agentDescription ?? "")
         _icon = State(initialValue: agent?.icon ?? "cpu")
         _color = State(initialValue: agent?.color ?? "blue")
-        _model = State(initialValue: agent?.model ?? "sonnet")
+        let providerValue = AgentDefaults.normalizedProviderSelection(agent?.provider).rawValue
+        let modelValue = AgentDefaults.preferredModelSelection(agent?.model, providerSelection: providerValue)
+        _provider = State(initialValue: providerValue)
+        _model = State(initialValue: modelValue)
         _maxTurns = State(initialValue: agent?.maxTurns.map(String.init) ?? "")
         _maxBudget = State(initialValue: agent?.maxBudget.map { String(format: "%.2f", $0) } ?? "")
         _workingDirectory = State(initialValue: agent?.defaultWorkingDirectory ?? "")
@@ -69,6 +73,9 @@ struct AgentEditorView: View {
 
             Divider()
             navigationButtons
+        }
+        .onChange(of: provider) { _, newValue in
+            model = AgentDefaults.preferredModelSelection(model, providerSelection: newValue)
         }
     }
 
@@ -144,10 +151,18 @@ struct AgentEditorView: View {
                     }
                 }
                 .xrayId("agentEditor.colorPicker")
+
+                Picker("Provider", selection: $provider) {
+                    ForEach(ProviderSelection.allCases) { choice in
+                        Text(choice.label).tag(choice.rawValue)
+                    }
+                }
+                .xrayId("agentEditor.providerPicker")
+
                 Picker("Model", selection: $model) {
-                    Text("Sonnet").tag("sonnet")
-                    Text("Opus").tag("opus")
-                    Text("Haiku").tag("haiku")
+                    ForEach(AgentDefaults.availableAgentModelChoices(for: provider)) { choice in
+                        Text(choice.label).tag(choice.id)
+                    }
                 }
                 .xrayId("agentEditor.modelPicker")
                 TextField("Max Turns", text: $maxTurns)
@@ -531,7 +546,8 @@ struct AgentEditorView: View {
         target.agentDescription = agentDescription
         target.icon = icon
         target.color = color
-        target.model = model
+        target.provider = AgentDefaults.normalizedProviderSelection(provider).rawValue
+        target.model = AgentDefaults.normalizedModelSelection(model)
         target.maxTurns = Int(maxTurns)
         target.maxBudget = Double(maxBudget)
         target.skillIds = Array(selectedSkillIds)

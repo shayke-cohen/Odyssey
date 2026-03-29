@@ -161,6 +161,7 @@ Dot-separated `viewName.elementName` in camelCase:
 |---|---|
 | MainWindowView | `mainWindow.*` |
 | SidebarView | `sidebar.*` |
+| IntentLibraryHubView | `libraryHub.*` |
 | ChatView | `chat.*` |
 | InspectorView | `inspector.*` |
 | NewSessionSheet | `newSession.*` |

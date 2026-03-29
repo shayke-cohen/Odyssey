@@ -170,7 +170,7 @@ struct PeerNetworkView: View {
                             VStack(alignment: .leading) {
                                 Text(agent.name)
                                     .font(.body)
-                                Text(agent.model)
+                                Text(AgentDefaults.label(for: agent.model))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }

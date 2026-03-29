@@ -1,8 +1,8 @@
-import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import type { ToolContext } from "./tool-context.js";
 import { logger } from "../logger.js";
+import { createTextResult, defineSharedTool } from "./shared-tool.js";
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -34,7 +34,7 @@ export function resolveConfirmation(
 export function createRichDisplayTools(ctx: ToolContext, callingSessionId: string) {
   return [
     // --- render_content (fire-and-forget) ---
-    tool(
+    defineSharedTool(
       "render_content",
       "Display rich content inline in the user's chat. Use for charts, styled reports, visualizations, or any content that benefits from HTML rendering. The content appears as an inline card in the conversation.",
       {
@@ -55,14 +55,12 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
           content: args.content,
           height: args.height,
         });
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ rendered: true, format: args.format }) }],
-        };
+        return createTextResult({ rendered: true, format: args.format });
       },
     ),
 
     // --- confirm_action (blocking) ---
-    tool(
+    defineSharedTool(
       "confirm_action",
       "Request user approval before performing a destructive or important action. Blocks until the user responds with approve or reject. Use this for operations like git push, file deletion, deployments, or any action with significant consequences.",
       {
@@ -96,20 +94,15 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
           },
         );
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              approved: result.approved,
-              modifiedAction: result.modifiedAction,
-            }),
-          }],
-        };
+        return createTextResult({
+          approved: result.approved,
+          modifiedAction: result.modifiedAction,
+        });
       },
     ),
 
     // --- show_progress (fire-and-forget, updateable) ---
-    tool(
+    defineSharedTool(
       "show_progress",
       "Display or update a progress tracker in the chat. Call multiple times with the same id to update step statuses as work progresses.",
       {
@@ -131,14 +124,12 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
           title: args.title,
           steps: args.steps,
         });
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ updated: true, id: args.id }) }],
-        };
+        return createTextResult({ updated: true, id: args.id });
       },
     ),
 
     // --- suggest_actions (fire-and-forget) ---
-    tool(
+    defineSharedTool(
       "suggest_actions",
       "Show clickable follow-up action chips in the chat. The user can tap one to send it as their next message. Use this after completing a task to suggest natural next steps.",
       {
@@ -156,9 +147,7 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
           sessionId: callingSessionId,
           suggestions: args.suggestions,
         });
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ suggested: true, count: args.suggestions.length }) }],
-        };
+        return createTextResult({ suggested: true, count: args.suggestions.length });
       },
     ),
   ];

@@ -67,6 +67,7 @@ final class AppStateRecoveryTests: XCTestCase {
 
     func testRecoverSessions_reconnectsOnlyRecoverableSessions() async throws {
         let activeAgent = makeAgent(name: "ActiveAgent")
+        activeAgent.provider = "codex"
         let pausedAgent = makeAgent(name: "PausedAgent")
         let noClaudeAgent = makeAgent(name: "NoClaudeAgent")
         let completedAgent = makeAgent(name: "CompletedAgent")
@@ -91,6 +92,14 @@ final class AppStateRecoveryTests: XCTestCase {
         XCTAssertEqual(Set(entries.map(\.sessionId)), Set([activeSession.id.uuidString, pausedSession.id.uuidString]))
         XCTAssertEqual(Set(entries.map(\.claudeSessionId)), Set(["claude-active", "claude-paused"]))
         XCTAssertTrue(entries.allSatisfy { !$0.agentConfig.name.isEmpty })
+        XCTAssertEqual(
+            entries.first(where: { $0.sessionId == activeSession.id.uuidString })?.agentConfig.provider,
+            "codex"
+        )
+        XCTAssertEqual(
+            entries.first(where: { $0.sessionId == activeSession.id.uuidString })?.agentConfig.model,
+            "gpt-5-codex"
+        )
 
         XCTAssertEqual(pausedSession.status, .paused)
         XCTAssertEqual(activeSession.status, .interrupted)

@@ -257,6 +257,7 @@ function handleListAgents(ctx: ApiContext): Response {
   for (const [name, config] of ctx.toolCtx.agentDefinitions) {
     agents.push({
       name,
+      provider: config.provider ?? "claude",
       model: config.model,
       workingDirectory: config.workingDirectory,
       skillCount: config.skills?.length ?? 0,
@@ -271,6 +272,7 @@ function handleGetAgent(name: string, ctx: ApiContext): Response {
   if (!config) return apiError("agent_not_found", `No agent registered with name '${name}'`, 404);
   return apiJson({
     name: config.name,
+    provider: config.provider ?? "claude",
     model: config.model,
     systemPrompt: config.systemPrompt,
     allowedTools: config.allowedTools,
@@ -356,6 +358,7 @@ async function handleCreateSession(req: Request, ctx: ApiContext): Promise<Respo
   return apiJson({
     sessionId: result.sessionId,
     agentName: body.agentName,
+    provider: sessionConfig.provider ?? "claude",
     status: "active",
     method: "spawned",
     ...(result.result != null ? { result: result.result } : {}),

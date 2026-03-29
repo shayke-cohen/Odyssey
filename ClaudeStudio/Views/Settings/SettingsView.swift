@@ -37,7 +37,9 @@ struct SettingsView: View {
 private struct GeneralSettingsTab: View {
     @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
     @AppStorage(AppSettings.textSizeKey, store: AppSettings.store) private var textSize = AppSettings.defaultTextSize
-    @AppStorage(AppSettings.defaultModelKey, store: AppSettings.store) private var defaultModel = AppSettings.defaultModel
+    @AppStorage(AppSettings.defaultProviderKey, store: AppSettings.store) private var defaultProvider = AppSettings.defaultProvider
+    @AppStorage(AppSettings.defaultClaudeModelKey, store: AppSettings.store) private var defaultClaudeModel = AppSettings.defaultClaudeModel
+    @AppStorage(AppSettings.defaultCodexModelKey, store: AppSettings.store) private var defaultCodexModel = AppSettings.defaultCodexModel
     @AppStorage(AppSettings.defaultMaxTurnsKey, store: AppSettings.store) private var defaultMaxTurns = AppSettings.defaultMaxTurns
     @AppStorage(AppSettings.defaultMaxBudgetKey, store: AppSettings.store) private var defaultMaxBudget = AppSettings.defaultMaxBudget
     @AppStorage(AppSettings.quickActionUsageOrderKey, store: AppSettings.store) private var quickActionUsageOrder = true
@@ -49,10 +51,24 @@ private struct GeneralSettingsTab: View {
         )
     }
 
-    private var selectedModel: Binding<ClaudeModel> {
+    private var selectedProvider: Binding<ProviderSelection> {
         Binding(
-            get: { ClaudeModel(rawValue: defaultModel) ?? .sonnet },
-            set: { defaultModel = $0.rawValue }
+            get: { ProviderSelection(rawValue: defaultProvider) ?? .claude },
+            set: { defaultProvider = $0.rawValue }
+        )
+    }
+
+    private var selectedClaudeModel: Binding<ClaudeModel> {
+        Binding(
+            get: { ClaudeModel(rawValue: AgentDefaults.normalizedModelSelection(defaultClaudeModel)) ?? .sonnet },
+            set: { defaultClaudeModel = $0.rawValue }
+        )
+    }
+
+    private var selectedCodexModel: Binding<CodexModel> {
+        Binding(
+            get: { CodexModel(rawValue: AgentDefaults.normalizedModelSelection(defaultCodexModel)) ?? .gpt5Codex },
+            set: { defaultCodexModel = $0.rawValue }
         )
     }
 
@@ -87,12 +103,26 @@ private struct GeneralSettingsTab: View {
             }
 
             Section("Defaults") {
-                Picker("Default Model", selection: selectedModel) {
+                Picker("Default Provider", selection: selectedProvider) {
+                    ForEach([ProviderSelection.claude, ProviderSelection.codex]) { provider in
+                        Text(provider.label).tag(provider)
+                    }
+                }
+                .xrayId("settings.general.defaultProviderPicker")
+
+                Picker("Default Claude Model", selection: selectedClaudeModel) {
                     ForEach(ClaudeModel.allCases) { model in
                         Text(model.label).tag(model)
                     }
                 }
-                .xrayId("settings.general.defaultModelPicker")
+                .xrayId("settings.general.defaultClaudeModelPicker")
+
+                Picker("Default Codex Model", selection: selectedCodexModel) {
+                    ForEach(CodexModel.allCases) { model in
+                        Text(model.label).tag(model)
+                    }
+                }
+                .xrayId("settings.general.defaultCodexModelPicker")
 
                 Stepper("Default Max Turns: \(defaultMaxTurns)", value: $defaultMaxTurns, in: 1...200)
                     .xrayId("settings.general.defaultMaxTurnsStepper")

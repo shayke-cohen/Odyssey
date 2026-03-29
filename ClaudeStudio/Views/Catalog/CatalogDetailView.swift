@@ -88,7 +88,7 @@ struct CatalogDetailView: View {
             switch item {
             case .agent(let agent):
                 chip(agent.category, color: .purple)
-                chip(agent.model, color: .blue)
+                chip(AgentDefaults.label(for: agent.model), color: .blue)
             case .skill(let skill):
                 chip(skill.category, color: .blue)
             case .mcp(let mcp):

@@ -111,7 +111,16 @@ describe("WebSocket Connection", () => {
 // ─── Command Dispatch ───────────────────────────────────────────────
 
 describe("WebSocket Command Dispatch", () => {
-  test("session.create dispatches to SessionManager", async () => {
+  test.each([
+    {
+      provider: "claude",
+      model: "claude-sonnet-4-6",
+    },
+    {
+      provider: "codex",
+      model: "gpt-5-codex",
+    },
+  ])("session.create dispatches $provider provider config to SessionManager", async ({ provider, model }) => {
     const ws = await wsConnect();
     try {
       await ws.waitFor((m) => m.type === "sidecar.ready");
@@ -125,7 +134,8 @@ describe("WebSocket Command Dispatch", () => {
           systemPrompt: "test",
           allowedTools: [],
           mcpServers: [],
-          model: "claude-sonnet-4-6",
+          provider,
+          model,
           maxTurns: 1,
           workingDirectory: "/tmp",
           skills: [],
@@ -135,6 +145,8 @@ describe("WebSocket Command Dispatch", () => {
       await new Promise((r) => setTimeout(r, 200));
       expect(sessionCreateCalls.length).toBe(prevCount + 1);
       expect(sessionCreateCalls[sessionCreateCalls.length - 1].id).toBe("ws-test-create");
+      expect(sessionCreateCalls[sessionCreateCalls.length - 1].config.provider).toBe(provider);
+      expect(sessionCreateCalls[sessionCreateCalls.length - 1].config.model).toBe(model);
     } finally {
       ws.close();
     }
@@ -505,7 +517,7 @@ describe("WebSocket Delegation Policy Routing", () => {
     }
   });
 
-  test("session.bulkResume dispatches the exact recovery payload to SessionManager", async () => {
+  test("session.bulkResume dispatches the exact mixed-provider recovery payload to SessionManager", async () => {
     const ws = await wsConnect();
     try {
       await ws.waitFor((m) => m.type === "sidecar.ready");
@@ -522,6 +534,7 @@ describe("WebSocket Delegation Policy Routing", () => {
               systemPrompt: "test",
               allowedTools: [],
               mcpServers: [],
+              provider: "claude",
               model: "claude-sonnet-4-6",
               maxTurns: 2,
               workingDirectory: "/tmp/recover-a",
@@ -536,7 +549,8 @@ describe("WebSocket Delegation Policy Routing", () => {
               systemPrompt: "test",
               allowedTools: [],
               mcpServers: [],
-              model: "claude-sonnet-4-6",
+              provider: "codex",
+              model: "gpt-5-codex",
               maxTurns: 3,
               workingDirectory: "/tmp/recover-b",
               skills: [],
@@ -556,6 +570,7 @@ describe("WebSocket Delegation Policy Routing", () => {
             systemPrompt: "test",
             allowedTools: [],
             mcpServers: [],
+            provider: "claude",
             model: "claude-sonnet-4-6",
             maxTurns: 2,
             workingDirectory: "/tmp/recover-a",
@@ -570,7 +585,8 @@ describe("WebSocket Delegation Policy Routing", () => {
             systemPrompt: "test",
             allowedTools: [],
             mcpServers: [],
-            model: "claude-sonnet-4-6",
+            provider: "codex",
+            model: "gpt-5-codex",
             maxTurns: 3,
             workingDirectory: "/tmp/recover-b",
             skills: [],

@@ -8,6 +8,7 @@ struct AgentConfigDTO: Codable {
     let name: String
     var enabled: Bool = true
     let agentDescription: String
+    let provider: String
     let model: String
     let icon: String
     let color: String
@@ -23,6 +24,7 @@ struct AgentConfigDTO: Codable {
 
     enum CodingKeys: String, CodingKey {
         case name, enabled, agentDescription, model, icon, color
+        case provider
         case skillNames, mcpServerNames, permissionSetName
         case systemPromptTemplate, systemPromptVariables
         case maxTurns, maxBudget, maxThinkingTokens
@@ -34,6 +36,7 @@ struct AgentConfigDTO: Codable {
         name = try c.decode(String.self, forKey: .name)
         enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
         agentDescription = try c.decode(String.self, forKey: .agentDescription)
+        provider = try c.decodeIfPresent(String.self, forKey: .provider) ?? ProviderSelection.system.rawValue
         model = try c.decode(String.self, forKey: .model)
         icon = try c.decode(String.self, forKey: .icon)
         color = try c.decode(String.self, forKey: .color)
@@ -49,7 +52,7 @@ struct AgentConfigDTO: Codable {
     }
 
     init(
-        name: String, enabled: Bool = true, agentDescription: String, model: String, icon: String, color: String,
+        name: String, enabled: Bool = true, agentDescription: String, provider: String = ProviderSelection.system.rawValue, model: String, icon: String, color: String,
         skillNames: [String], mcpServerNames: [String], permissionSetName: String,
         systemPromptTemplate: String?, systemPromptVariables: [String: String]?,
         maxTurns: Int?, maxBudget: Double?, maxThinkingTokens: Int?,
@@ -58,6 +61,7 @@ struct AgentConfigDTO: Codable {
         self.name = name
         self.enabled = enabled
         self.agentDescription = agentDescription
+        self.provider = provider
         self.model = model
         self.icon = icon
         self.color = color

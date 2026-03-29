@@ -1,0 +1,1348 @@
+{
+  "state": {},
+  "id": "root",
+  "accessibilityLabel": "ClaudeStudio \u2014 test-prj2",
+  "handlers": [],
+  "props": {},
+  "children": [
+    {
+      "type": "Window",
+      "props": {},
+      "name": "ClaudeStudio \u2014 test-prj2",
+      "depth": 1,
+      "id": "w71",
+      "isVisible": true,
+      "state": {},
+      "accessibilityLabel": "ClaudeStudio \u2014 test-prj2",
+      "handlers": [],
+      "children": [
+        {
+          "children": [],
+          "name": "",
+          "depth": 2,
+          "handlers": [],
+          "state": {},
+          "id": "n1",
+          "isVisible": true,
+          "props": {},
+          "accessibilityLabel": "",
+          "bounds": {
+            "width": 1200,
+            "y": 0,
+            "height": 800,
+            "x": 0
+          },
+          "type": "NSHostingView<ModifiedContent<AnyView, RootModifier>>"
+        },
+        {
+          "name": "",
+          "state": {},
+          "children": [
+            {
+              "type": "SwiftUIAppKitButton",
+              "isVisible": true,
+              "handlers": [],
+              "accessibilityLabel": "",
+              "id": "n3",
+              "props": {},
+              "state": {},
+              "children": [
+                {
+                  "type": "NSButtonBezelView",
+                  "name": "",
+                  "isVisible": true,
+                  "handlers": [],
+                  "depth": 4,
+                  "bounds": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 45,
+                    "height": 40
+                  },
+                  "props": {},
+                  "state": {},
+                  "children": [],
+                  "accessibilityLabel": "",
+                  "id": "n4"
+                },
+                {
+                  "props": {},
+                  "handlers": [],
+                  "bounds": {
+                    "x": 0,
+                    "width": 23.5,
+                    "y": 0,
+                    "height": 18.5
+                  },
+                  "isVisible": true,
+                  "state": {},
+                  "type": "ContentViewHost",
+                  "id": "n5",
+                  "depth": 4,
+                  "accessibilityLabel": "",
+                  "children": [
+                    {
+                      "isVisible": true,
+                      "state": {},
+                      "handlers": [],
+                      "accessibilityLabel": "",
+                      "type": "_NSShapeHitTestingView",
+                      "id": "n6",
+                      "props": {},
+                      "children": [],
+                      "bounds": {
+                        "width": 19.5,
+                        "height": 15.5,
+                        "y": 0,
+                        "x": 0
+                      },
+                      "name": "",
+                      "depth": 5
+                    }
+                  ],
+                  "name": ""
+                }
+              ],
+              "name": "",
+              "depth": 3,
+              "bounds": {
+                "y": 0,
+                "width": 45.5,
+                "height": 40,
+                "x": 0
+              }
+            }
+          ],
+          "handlers": [],
+          "id": "n2",
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "depth": 2,
+          "accessibilityLabel": "",
+          "isVisible": true,
+          "bounds": {
+            "width": 33.5,
+            "height": 28,
+            "y": 0,
+            "x": 0
+          },
+          "props": {}
+        },
+        {
+          "handlers": [],
+          "id": "n7",
+          "depth": 2,
+          "state": {},
+          "props": {},
+          "name": "",
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "children": [
+            {
+              "isVisible": true,
+              "accessibilityLabel": "mainWindow.sidecarStatusPill",
+              "id": "n8",
+              "handlers": [],
+              "props": {},
+              "children": [],
+              "state": {},
+              "bounds": {
+                "width": 80,
+                "x": 0,
+                "y": 0,
+                "height": 19
+              },
+              "type": "XrayTrackerView",
+              "name": "mainWindow.sidecarStatusPill",
+              "depth": 3
+            },
+            {
+              "type": "_NSShapeHitTestingView",
+              "depth": 3,
+              "bounds": {
+                "y": 0,
+                "x": 0,
+                "width": 80,
+                "height": 19
+              },
+              "handlers": [],
+              "props": {},
+              "accessibilityLabel": "",
+              "name": "",
+              "id": "n9",
+              "isVisible": true,
+              "state": {},
+              "children": []
+            },
+            {
+              "handlers": [],
+              "accessibilityLabel": "",
+              "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 7,
+                "height": 7
+              },
+              "children": [],
+              "props": {},
+              "depth": 3,
+              "type": "_NSShapeHitTestingView",
+              "state": {},
+              "isVisible": true,
+              "id": "n10",
+              "name": ""
+            },
+            {
+              "type": "CGDrawingView",
+              "props": {},
+              "state": {},
+              "accessibilityLabel": "",
+              "id": "n11",
+              "isVisible": true,
+              "children": [],
+              "depth": 3,
+              "name": "",
+              "handlers": [],
+              "bounds": {
+                "x": 0,
+                "y": 0,
+                "height": 11,
+                "width": 54
+              }
+            },
+            {
+              "type": "_FocusRingView",
+              "name": "",
+              "isVisible": true,
+              "handlers": [],
+              "state": {},
+              "children": [],
+              "props": {},
+              "id": "n12",
+              "depth": 3,
+              "accessibilityLabel": "",
+              "bounds": {
+                "width": 80,
+                "x": 0,
+                "y": 0,
+                "height": 19
+              }
+            },
+            {
+              "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 85.5,
+                "height": 19
+              },
+              "id": "n13",
+              "isVisible": true,
+              "props": {},
+              "children": [],
+              "name": "",
+              "depth": 3,
+              "type": "KeyViewProxy",
+              "state": {},
+              "accessibilityLabel": "",
+              "handlers": []
+            }
+          ],
+          "bounds": {
+            "width": 80,
+            "y": 0,
+            "x": 0,
+            "height": 19
+          },
+          "accessibilityLabel": "",
+          "isVisible": true
+        },
+        {
+          "children": [
+            {
+              "depth": 3,
+              "state": {},
+              "props": {},
+              "id": "n15",
+              "type": "XrayTrackerView",
+              "handlers": [],
+              "bounds": {
+                "x": 0,
+                "height": 28,
+                "width": 31,
+                "y": 0
+              },
+              "children": [],
+              "accessibilityLabel": "mainWindow.settingsButton",
+              "name": "mainWindow.settingsButton",
+              "isVisible": true
+            },
+            {
+              "type": "SwiftUIAppKitButton",
+              "children": [
+                {
+                  "id": "n17",
+                  "name": "",
+                  "props": {},
+                  "accessibilityLabel": "",
+                  "bounds": {
+                    "y": 0,
+                    "width": 43,
+                    "x": 0,
+                    "height": 40
+                  },
+                  "depth": 4,
+                  "type": "NSButtonBezelView",
+                  "handlers": [],
+                  "children": [],
+                  "isVisible": true,
+                  "state": {}
+                },
+                {
+                  "depth": 4,
+                  "children": [
+                    {
+                      "id": "n19",
+                      "type": "_NSShapeHitTestingView",
+                      "state": {},
+                      "accessibilityLabel": "",
+                      "bounds": {
+                        "width": 18,
+                        "y": 0,
+                        "height": 18,
+                        "x": 0
+                      },
+                      "children": [],
+                      "name": "",
+                      "depth": 5,
+                      "isVisible": true,
+                      "props": {},
+                      "handlers": []
+                    }
+                  ],
+                  "bounds": {
+                    "y": 0,
+                    "height": 21,
+                    "x": 0,
+                    "width": 21
+                  },
+                  "isVisible": true,
+                  "accessibilityLabel": "",
+                  "type": "ContentViewHost",
+                  "props": {},
+                  "state": {},
+                  "id": "n18",
+                  "name": "",
+                  "handlers": []
+                }
+              ],
+              "props": {},
+              "name": "",
+              "id": "n16",
+              "handlers": [],
+              "depth": 3,
+              "bounds": {
+                "width": 43,
+                "height": 40,
+                "y": 0,
+                "x": 0
+              },
+              "state": {},
+              "accessibilityLabel": "",
+              "isVisible": true
+            }
+          ],
+          "name": "",
+          "state": {},
+          "bounds": {
+            "height": 28,
+            "y": 0,
+            "width": 31,
+            "x": 0
+          },
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "props": {},
+          "depth": 2,
+          "handlers": [],
+          "accessibilityLabel": "",
+          "id": "n14",
+          "isVisible": true
+        },
+        {
+          "bounds": {
+            "x": 0,
+            "width": 107,
+            "height": 28,
+            "y": 0
+          },
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "name": "",
+          "isVisible": true,
+          "state": {},
+          "children": [
+            {
+              "state": {},
+              "handlers": [],
+              "name": "mainWindow.newSessionButton",
+              "isVisible": true,
+              "bounds": {
+                "y": 0,
+                "height": 28,
+                "x": 0,
+                "width": 107
+              },
+              "props": {},
+              "accessibilityLabel": "mainWindow.newSessionButton",
+              "id": "n21",
+              "type": "XrayTrackerView",
+              "depth": 3,
+              "children": []
+            },
+            {
+              "isVisible": true,
+              "bounds": {
+                "x": 0,
+                "height": 40,
+                "y": 0,
+                "width": 119
+              },
+              "handlers": [],
+              "type": "SwiftUIAppKitButton",
+              "state": {},
+              "props": {},
+              "depth": 3,
+              "accessibilityLabel": "",
+              "id": "n22",
+              "name": "",
+              "children": [
+                {
+                  "handlers": [],
+                  "isVisible": true,
+                  "type": "NSButtonBezelView",
+                  "props": {},
+                  "state": {},
+                  "id": "n23",
+                  "name": "",
+                  "children": [],
+                  "accessibilityLabel": "",
+                  "bounds": {
+                    "height": 40,
+                    "x": 0,
+                    "y": 0,
+                    "width": 119
+                  },
+                  "depth": 4
+                },
+                {
+                  "state": {},
+                  "name": "",
+                  "id": "n24",
+                  "isVisible": true,
+                  "depth": 4,
+                  "props": {},
+                  "handlers": [],
+                  "type": "ContentViewHost",
+                  "children": [
+                    {
+                      "state": {},
+                      "handlers": [],
+                      "name": "",
+                      "children": [],
+                      "props": {},
+                      "bounds": {
+                        "height": 18,
+                        "y": 0,
+                        "x": 0,
+                        "width": 19
+                      },
+                      "depth": 5,
+                      "accessibilityLabel": "",
+                      "isVisible": true,
+                      "id": "n25",
+                      "type": "CGDrawingView"
+                    },
+                    {
+                      "state": {},
+                      "depth": 5,
+                      "name": "",
+                      "bounds": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 69,
+                        "height": 12
+                      },
+                      "handlers": [],
+                      "accessibilityLabel": "",
+                      "isVisible": true,
+                      "id": "n26",
+                      "type": "CGDrawingView",
+                      "props": {},
+                      "children": []
+                    }
+                  ],
+                  "accessibilityLabel": "",
+                  "bounds": {
+                    "y": 0,
+                    "width": 97,
+                    "x": 0,
+                    "height": 20
+                  }
+                }
+              ]
+            }
+          ],
+          "handlers": [],
+          "accessibilityLabel": "",
+          "id": "n20",
+          "depth": 2,
+          "props": {}
+        },
+        {
+          "handlers": [],
+          "name": "",
+          "depth": 2,
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "state": {},
+          "id": "n27",
+          "children": [
+            {
+              "state": {},
+              "handlers": [],
+              "type": "XrayTrackerView",
+              "name": "mainWindow.newGroupThreadButton",
+              "id": "n28",
+              "isVisible": true,
+              "bounds": {
+                "width": 122,
+                "x": 0,
+                "height": 28,
+                "y": 0
+              },
+              "depth": 3,
+              "props": {},
+              "accessibilityLabel": "mainWindow.newGroupThreadButton",
+              "children": []
+            },
+            {
+              "state": {},
+              "id": "n29",
+              "depth": 3,
+              "props": {},
+              "handlers": [],
+              "children": [
+                {
+                  "state": {},
+                  "children": [],
+                  "id": "n30",
+                  "name": "",
+                  "depth": 4,
+                  "props": {},
+                  "bounds": {
+                    "width": 134,
+                    "y": 0,
+                    "x": 0,
+                    "height": 40
+                  },
+                  "isVisible": true,
+                  "handlers": [],
+                  "type": "NSButtonBezelView",
+                  "accessibilityLabel": ""
+                },
+                {
+                  "type": "ContentViewHost",
+                  "isVisible": true,
+                  "depth": 4,
+                  "props": {},
+                  "handlers": [],
+                  "accessibilityLabel": "",
+                  "children": [
+                    {
+                      "type": "CGDrawingView",
+                      "isVisible": true,
+                      "state": {},
+                      "children": [],
+                      "props": {},
+                      "accessibilityLabel": "",
+                      "handlers": [],
+                      "id": "n32",
+                      "name": "",
+                      "depth": 5,
+                      "bounds": {
+                        "width": 24,
+                        "x": 0,
+                        "height": 19,
+                        "y": 0
+                      }
+                    },
+                    {
+                      "children": [],
+                      "bounds": {
+                        "width": 80,
+                        "height": 14,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "handlers": [],
+                      "depth": 5,
+                      "type": "CGDrawingView",
+                      "id": "n33",
+                      "isVisible": true,
+                      "accessibilityLabel": "",
+                      "state": {},
+                      "props": {},
+                      "name": ""
+                    }
+                  ],
+                  "name": "",
+                  "state": {},
+                  "id": "n31",
+                  "bounds": {
+                    "y": 0,
+                    "x": 0,
+                    "height": 23,
+                    "width": 112
+                  }
+                }
+              ],
+              "name": "",
+              "type": "SwiftUIAppKitButton",
+              "isVisible": true,
+              "bounds": {
+                "y": 0,
+                "width": 134,
+                "x": 0,
+                "height": 40
+              },
+              "accessibilityLabel": ""
+            }
+          ],
+          "bounds": {
+            "x": 0,
+            "width": 122,
+            "y": 0,
+            "height": 28
+          },
+          "props": {},
+          "accessibilityLabel": "",
+          "isVisible": true
+        },
+        {
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "depth": 2,
+          "isVisible": true,
+          "props": {},
+          "state": {},
+          "handlers": [],
+          "id": "n34",
+          "bounds": {
+            "y": 0,
+            "x": 0,
+            "width": 100.5,
+            "height": 28
+          },
+          "accessibilityLabel": "",
+          "name": "",
+          "children": [
+            {
+              "depth": 3,
+              "handlers": [],
+              "id": "n35",
+              "props": {},
+              "isVisible": true,
+              "bounds": {
+                "width": 100.5,
+                "x": 0,
+                "height": 28,
+                "y": 0
+              },
+              "children": [],
+              "accessibilityLabel": "mainWindow.quickChatButton",
+              "name": "mainWindow.quickChatButton",
+              "type": "XrayTrackerView",
+              "state": {}
+            },
+            {
+              "handlers": [],
+              "props": {},
+              "name": "",
+              "depth": 3,
+              "bounds": {
+                "x": 0,
+                "width": 112.5,
+                "height": 40,
+                "y": 0
+              },
+              "id": "n36",
+              "accessibilityLabel": "",
+              "children": [
+                {
+                  "depth": 4,
+                  "bounds": {
+                    "width": 112,
+                    "y": 0,
+                    "height": 40,
+                    "x": 0
+                  },
+                  "props": {},
+                  "isVisible": true,
+                  "type": "NSButtonBezelView",
+                  "handlers": [],
+                  "name": "",
+                  "id": "n37",
+                  "accessibilityLabel": "",
+                  "state": {},
+                  "children": []
+                },
+                {
+                  "handlers": [],
+                  "bounds": {
+                    "height": 20.5,
+                    "y": 0,
+                    "width": 90.5,
+                    "x": 0
+                  },
+                  "accessibilityLabel": "",
+                  "isVisible": true,
+                  "id": "n38",
+                  "state": {},
+                  "props": {},
+                  "type": "ContentViewHost",
+                  "children": [
+                    {
+                      "state": {},
+                      "isVisible": true,
+                      "props": {},
+                      "handlers": [],
+                      "accessibilityLabel": "",
+                      "children": [],
+                      "id": "n39",
+                      "name": "",
+                      "depth": 5,
+                      "bounds": {
+                        "y": 0,
+                        "x": 0,
+                        "height": 18,
+                        "width": 19
+                      },
+                      "type": "CGDrawingView"
+                    },
+                    {
+                      "children": [],
+                      "type": "CGDrawingView",
+                      "bounds": {
+                        "x": 0,
+                        "height": 12,
+                        "y": 0,
+                        "width": 64
+                      },
+                      "isVisible": true,
+                      "accessibilityLabel": "",
+                      "props": {},
+                      "depth": 5,
+                      "state": {},
+                      "id": "n40",
+                      "name": "",
+                      "handlers": []
+                    }
+                  ],
+                  "name": "",
+                  "depth": 4
+                }
+              ],
+              "isVisible": true,
+              "type": "SwiftUIAppKitButton",
+              "state": {}
+            }
+          ]
+        },
+        {
+          "name": "",
+          "id": "n41",
+          "depth": 2,
+          "bounds": {
+            "x": 0,
+            "height": 28,
+            "width": 30,
+            "y": 0
+          },
+          "accessibilityLabel": "",
+          "isVisible": true,
+          "props": {},
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "state": {},
+          "children": [
+            {
+              "accessibilityLabel": "mainWindow.schedulesButton",
+              "props": {},
+              "bounds": {
+                "height": 28,
+                "x": 0,
+                "y": 0,
+                "width": 30
+              },
+              "id": "n42",
+              "depth": 3,
+              "name": "mainWindow.schedulesButton",
+              "state": {},
+              "isVisible": true,
+              "type": "XrayTrackerView",
+              "handlers": [],
+              "children": []
+            },
+            {
+              "bounds": {
+                "y": 0,
+                "width": 42,
+                "x": 0,
+                "height": 40
+              },
+              "depth": 3,
+              "state": {},
+              "children": [
+                {
+                  "props": {},
+                  "state": {},
+                  "children": [],
+                  "isVisible": true,
+                  "accessibilityLabel": "",
+                  "handlers": [],
+                  "bounds": {
+                    "height": 40,
+                    "width": 42,
+                    "y": 0,
+                    "x": 0
+                  },
+                  "type": "NSButtonBezelView",
+                  "id": "n44",
+                  "depth": 4,
+                  "name": ""
+                },
+                {
+                  "handlers": [],
+                  "accessibilityLabel": "",
+                  "props": {},
+                  "children": [
+                    {
+                      "state": {},
+                      "name": "",
+                      "bounds": {
+                        "x": 0,
+                        "height": 17,
+                        "y": 0,
+                        "width": 18
+                      },
+                      "handlers": [],
+                      "children": [],
+                      "isVisible": true,
+                      "accessibilityLabel": "",
+                      "props": {},
+                      "depth": 5,
+                      "type": "CGDrawingView",
+                      "id": "n46"
+                    }
+                  ],
+                  "bounds": {
+                    "y": 0,
+                    "x": 0,
+                    "width": 20,
+                    "height": 21
+                  },
+                  "name": "",
+                  "isVisible": true,
+                  "type": "ContentViewHost",
+                  "state": {},
+                  "id": "n45",
+                  "depth": 4
+                }
+              ],
+              "name": "",
+              "type": "SwiftUIAppKitButton",
+              "isVisible": true,
+              "id": "n43",
+              "handlers": [],
+              "accessibilityLabel": "",
+              "props": {}
+            }
+          ],
+          "handlers": []
+        },
+        {
+          "depth": 2,
+          "children": [
+            {
+              "accessibilityLabel": "mainWindow.agentCommsButton",
+              "children": [],
+              "isVisible": true,
+              "type": "XrayTrackerView",
+              "props": {},
+              "name": "mainWindow.agentCommsButton",
+              "state": {},
+              "id": "n48",
+              "handlers": [],
+              "depth": 3,
+              "bounds": {
+                "height": 28,
+                "y": 0,
+                "x": 0,
+                "width": 30.5
+              }
+            },
+            {
+              "type": "SwiftUIAppKitButton",
+              "name": "",
+              "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 42.5,
+                "height": 40
+              },
+              "accessibilityLabel": "",
+              "props": {},
+              "state": {},
+              "children": [
+                {
+                  "bounds": {
+                    "x": 0,
+                    "width": 42,
+                    "height": 40,
+                    "y": 0
+                  },
+                  "accessibilityLabel": "",
+                  "id": "n50",
+                  "name": "",
+                  "handlers": [],
+                  "depth": 4,
+                  "isVisible": true,
+                  "children": [],
+                  "type": "NSButtonBezelView",
+                  "props": {},
+                  "state": {}
+                },
+                {
+                  "name": "",
+                  "bounds": {
+                    "height": 18.5,
+                    "width": 20.5,
+                    "y": 0,
+                    "x": 0
+                  },
+                  "props": {},
+                  "depth": 4,
+                  "children": [
+                    {
+                      "handlers": [],
+                      "id": "n52",
+                      "name": "",
+                      "depth": 5,
+                      "children": [],
+                      "bounds": {
+                        "y": 0,
+                        "height": 16,
+                        "x": 0,
+                        "width": 18
+                      },
+                      "accessibilityLabel": "",
+                      "isVisible": true,
+                      "state": {},
+                      "type": "CGDrawingView",
+                      "props": {}
+                    }
+                  ],
+                  "handlers": [],
+                  "state": {},
+                  "id": "n51",
+                  "type": "ContentViewHost",
+                  "isVisible": true,
+                  "accessibilityLabel": ""
+                }
+              ],
+              "id": "n49",
+              "isVisible": true,
+              "depth": 3,
+              "handlers": []
+            }
+          ],
+          "isVisible": true,
+          "name": "",
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "props": {},
+          "state": {},
+          "handlers": [],
+          "accessibilityLabel": "",
+          "bounds": {
+            "width": 30.5,
+            "y": 0,
+            "height": 28,
+            "x": 0
+          },
+          "id": "n47"
+        },
+        {
+          "state": {},
+          "bounds": {
+            "y": 0,
+            "height": 28,
+            "width": 30,
+            "x": 0
+          },
+          "accessibilityLabel": "",
+          "depth": 2,
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "props": {},
+          "id": "n53",
+          "isVisible": true,
+          "handlers": [],
+          "name": "",
+          "children": [
+            {
+              "type": "XrayTrackerView",
+              "isVisible": true,
+              "handlers": [],
+              "children": [],
+              "props": {},
+              "depth": 3,
+              "bounds": {
+                "width": 30,
+                "height": 28,
+                "x": 0,
+                "y": 0
+              },
+              "accessibilityLabel": "mainWindow.peerNetworkButton",
+              "name": "mainWindow.peerNetworkButton",
+              "id": "n54",
+              "state": {}
+            },
+            {
+              "children": [
+                {
+                  "type": "NSButtonBezelView",
+                  "id": "n56",
+                  "state": {},
+                  "depth": 4,
+                  "isVisible": true,
+                  "handlers": [],
+                  "children": [],
+                  "props": {},
+                  "bounds": {
+                    "height": 40,
+                    "x": 0,
+                    "y": 0,
+                    "width": 42
+                  },
+                  "name": "",
+                  "accessibilityLabel": ""
+                },
+                {
+                  "name": "",
+                  "bounds": {
+                    "x": 0,
+                    "height": 20,
+                    "y": 0,
+                    "width": 20
+                  },
+                  "id": "n57",
+                  "handlers": [],
+                  "type": "ContentViewHost",
+                  "props": {},
+                  "children": [
+                    {
+                      "isVisible": true,
+                      "handlers": [],
+                      "props": {},
+                      "state": {},
+                      "type": "_NSShapeHitTestingView",
+                      "depth": 5,
+                      "bounds": {
+                        "width": 17,
+                        "height": 17,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "children": [],
+                      "accessibilityLabel": "",
+                      "id": "n58",
+                      "name": ""
+                    }
+                  ],
+                  "state": {},
+                  "accessibilityLabel": "",
+                  "depth": 4,
+                  "isVisible": true
+                }
+              ],
+              "bounds": {
+                "width": 42,
+                "y": 0,
+                "height": 40,
+                "x": 0
+              },
+              "depth": 3,
+              "type": "SwiftUIAppKitButton",
+              "id": "n55",
+              "isVisible": true,
+              "props": {},
+              "handlers": [],
+              "state": {},
+              "name": "",
+              "accessibilityLabel": ""
+            }
+          ]
+        },
+        {
+          "state": {},
+          "children": [
+            {
+              "bounds": {
+                "height": 28,
+                "x": 0,
+                "y": 0,
+                "width": 33
+              },
+              "accessibilityLabel": "mainWindow.debugLogButton",
+              "handlers": [],
+              "type": "XrayTrackerView",
+              "depth": 3,
+              "state": {},
+              "children": [],
+              "isVisible": true,
+              "id": "n60",
+              "name": "mainWindow.debugLogButton",
+              "props": {}
+            },
+            {
+              "children": [
+                {
+                  "accessibilityLabel": "",
+                  "depth": 4,
+                  "handlers": [],
+                  "bounds": {
+                    "width": 45,
+                    "x": 0,
+                    "y": 0,
+                    "height": 40
+                  },
+                  "children": [],
+                  "id": "n62",
+                  "name": "",
+                  "type": "NSButtonBezelView",
+                  "props": {},
+                  "isVisible": true,
+                  "state": {}
+                },
+                {
+                  "bounds": {
+                    "height": 23,
+                    "x": 0,
+                    "width": 23,
+                    "y": 0
+                  },
+                  "id": "n63",
+                  "accessibilityLabel": "",
+                  "handlers": [],
+                  "state": {},
+                  "children": [
+                    {
+                      "isVisible": true,
+                      "props": {},
+                      "bounds": {
+                        "x": 0,
+                        "height": 20,
+                        "y": 0,
+                        "width": 19
+                      },
+                      "accessibilityLabel": "",
+                      "handlers": [],
+                      "id": "n64",
+                      "name": "",
+                      "depth": 5,
+                      "type": "_NSShapeHitTestingView",
+                      "state": {},
+                      "children": []
+                    }
+                  ],
+                  "type": "ContentViewHost",
+                  "name": "",
+                  "depth": 4,
+                  "isVisible": true,
+                  "props": {}
+                }
+              ],
+              "bounds": {
+                "y": 0,
+                "x": 0,
+                "width": 45,
+                "height": 40
+              },
+              "type": "SwiftUIAppKitButton",
+              "name": "",
+              "props": {},
+              "handlers": [],
+              "isVisible": true,
+              "depth": 3,
+              "accessibilityLabel": "",
+              "id": "n61",
+              "state": {}
+            }
+          ],
+          "accessibilityLabel": "",
+          "name": "",
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "isVisible": true,
+          "handlers": [],
+          "props": {},
+          "id": "n59",
+          "depth": 2,
+          "bounds": {
+            "height": 28,
+            "width": 33,
+            "y": 0,
+            "x": 0
+          }
+        },
+        {
+          "isVisible": true,
+          "depth": 2,
+          "type": "ToolbarItemHostingView<_ViewList_View>",
+          "props": {},
+          "state": {},
+          "handlers": [],
+          "bounds": {
+            "height": 28,
+            "y": 0,
+            "width": 33.5,
+            "x": 0
+          },
+          "id": "n65",
+          "children": [
+            {
+              "depth": 3,
+              "state": {},
+              "accessibilityLabel": "mainWindow.inspectorToggle",
+              "props": {},
+              "type": "XrayTrackerView",
+              "name": "mainWindow.inspectorToggle",
+              "handlers": [],
+              "bounds": {
+                "x": 0,
+                "width": 33.5,
+                "y": 0,
+                "height": 28
+              },
+              "isVisible": true,
+              "id": "n66",
+              "children": []
+            },
+            {
+              "isVisible": true,
+              "id": "n67",
+              "props": {},
+              "children": [
+                {
+                  "name": "",
+                  "id": "n68",
+                  "type": "NSButtonBezelView",
+                  "depth": 4,
+                  "children": [],
+                  "isVisible": true,
+                  "accessibilityLabel": "",
+                  "props": {},
+                  "state": {},
+                  "bounds": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 45,
+                    "height": 40
+                  },
+                  "handlers": []
+                },
+                {
+                  "handlers": [],
+                  "depth": 4,
+                  "isVisible": true,
+                  "bounds": {
+                    "x": 0,
+                    "width": 23.5,
+                    "y": 0,
+                    "height": 18.5
+                  },
+                  "props": {},
+                  "children": [
+                    {
+                      "isVisible": true,
+                      "depth": 5,
+                      "children": [],
+                      "name": "",
+                      "props": {},
+                      "bounds": {
+                        "y": 0,
+                        "height": 15.5,
+                        "width": 19.5,
+                        "x": 0
+                      },
+                      "accessibilityLabel": "",
+                      "id": "n70",
+                      "type": "_NSShapeHitTestingView",
+                      "state": {},
+                      "handlers": []
+                    }
+                  ],
+                  "state": {},
+                  "accessibilityLabel": "",
+                  "name": "",
+                  "type": "ContentViewHost",
+                  "id": "n69"
+                }
+              ],
+              "name": "",
+              "type": "SwiftUIAppKitButton",
+              "bounds": {
+                "x": 0,
+                "height": 40,
+                "y": 0,
+                "width": 45.5
+              },
+              "accessibilityLabel": "",
+              "depth": 3,
+              "handlers": [],
+              "state": {}
+            }
+          ],
+          "accessibilityLabel": "",
+          "name": ""
+        }
+      ]
+    },
+    {
+      "id": "w73",
+      "depth": 1,
+      "isVisible": true,
+      "type": "Window",
+      "props": {},
+      "children": [
+        {
+          "children": [],
+          "isVisible": true,
+          "type": "NSHostingView<SheetContent>",
+          "id": "n72",
+          "bounds": {
+            "y": 0,
+            "x": 0,
+            "height": 760,
+            "width": 760
+          },
+          "depth": 2,
+          "accessibilityLabel": "",
+          "props": {},
+          "state": {},
+          "name": "",
+          "handlers": []
+        }
+      ],
+      "accessibilityLabel": "",
+      "state": {},
+      "handlers": [],
+      "name": ""
+    }
+  ],
+  "depth": 0,
+  "isVisible": true,
+  "name": "ClaudeStudio \u2014 test-prj2",
+  "type": "Application"
+}

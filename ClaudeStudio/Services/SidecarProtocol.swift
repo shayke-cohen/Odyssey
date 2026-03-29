@@ -300,6 +300,7 @@ struct AgentConfig: Codable, Sendable {
     let systemPrompt: String
     let allowedTools: [String]
     let mcpServers: [MCPServerConfig]
+    var provider: String = "claude"
     let model: String
     let maxTurns: Int?
     let maxBudget: Double?

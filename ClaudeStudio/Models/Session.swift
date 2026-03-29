@@ -19,6 +19,8 @@ enum SessionMode: String, Codable, Sendable {
 final class Session {
     var id: UUID
     var claudeSessionId: String?
+    var provider: String = AppSettings.defaultProvider
+    var model: String?
     var agent: Agent?
     var mission: String?
     var status: SessionStatus
@@ -57,5 +59,7 @@ final class Session {
         self.totalCost = 0
         self.toolCallCount = 0
         self.lastInjectedMessageId = nil
+        self.provider = AgentDefaults.resolveEffectiveProvider(agentSelection: agent?.provider)
+        self.model = AgentDefaults.resolveEffectiveModel(agentSelection: agent?.model, provider: provider)
     }
 }

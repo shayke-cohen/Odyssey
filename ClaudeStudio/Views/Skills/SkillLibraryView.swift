@@ -12,6 +12,11 @@ struct SkillLibraryView: View {
     @State private var editingSkill: Skill?
     @State private var showCatalog = false
     @State private var skillToDelete: Skill?
+    let showsDismissButton: Bool
+
+    init(showsDismissButton: Bool = true) {
+        self.showsDismissButton = showsDismissButton
+    }
 
     private var filteredSkills: [Skill] {
         guard !searchText.isEmpty else { return allSkills }
@@ -125,16 +130,18 @@ struct SkillLibraryView: View {
                 Label("Catalog", systemImage: "square.grid.2x2")
             }
             .xrayId("skillLibrary.catalogButton")
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.secondary)
+            if showsDismissButton {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Close")
+                .xrayId("skillLibrary.closeButton")
+                .accessibilityLabel("Close")
             }
-            .buttonStyle(.borderless)
-            .help("Close")
-            .xrayId("skillLibrary.closeButton")
-            .accessibilityLabel("Close")
         }
         .padding()
     }

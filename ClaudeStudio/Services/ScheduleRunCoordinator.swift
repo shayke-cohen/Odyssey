@@ -139,13 +139,8 @@ final class ScheduleRunCoordinator {
 
             var createConfig: AgentConfig?
             if !appState.createdSessions.contains(sidecarKey) {
-                if let agent = session.agent {
-                    let (config, _) = provisioner.provision(
-                        agent: agent,
-                        mission: session.mission,
-                        workingDirOverride: session.workingDirectory
-                    )
-                    createConfig = config
+                if session.agent != nil {
+                    createConfig = provisioner.config(for: session)
                 } else {
                     createConfig = makeFreeformAgentConfig(workingDirectory: session.workingDirectory)
                 }

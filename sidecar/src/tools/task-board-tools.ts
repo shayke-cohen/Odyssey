@@ -1,6 +1,6 @@
-import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import type { ToolContext } from "./tool-context.js";
+import { createTextResult, defineSharedTool } from "./shared-tool.js";
 
 function resolveSessionId(extra: any, callingSessionId?: string): string | undefined {
   return extra?.sessionId ?? callingSessionId;
@@ -15,7 +15,7 @@ function recordToolCall(ctx: ToolContext, sessionId?: string) {
 
 export function createTaskBoardTools(ctx: ToolContext, callingSessionId?: string) {
   return [
-    tool(
+    defineSharedTool(
       "task_board_list",
       "List tasks on the task board. Optionally filter by status or assigned agent.",
       {
@@ -30,11 +30,11 @@ export function createTaskBoardTools(ctx: ToolContext, callingSessionId?: string
           status: args.status,
           assignedTo: args.assigned_to,
         });
-        return { content: [{ type: "text" as const, text: JSON.stringify(tasks) }] };
+        return createTextResult(tasks);
       },
     ),
 
-    tool(
+    defineSharedTool(
       "task_board_create",
       "Create a new task on the task board. Agent-created tasks default to 'ready' status so they can be claimed immediately. Use 'backlog' to save a draft task for later.",
       {
@@ -60,11 +60,11 @@ export function createTaskBoardTools(ctx: ToolContext, callingSessionId?: string
 
         ctx.broadcast({ type: "task.created", sessionId, task });
 
-        return { content: [{ type: "text" as const, text: JSON.stringify({ success: true, task }) }] };
+        return createTextResult({ success: true, task });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "task_board_claim",
       "Atomically claim a ready task. Sets status to inProgress and assigns it to the calling agent. Fails if the task is already claimed or not in 'ready' status.",
       {
@@ -78,21 +78,16 @@ export function createTaskBoardTools(ctx: ToolContext, callingSessionId?: string
 
         const task = ctx.taskBoard.claim(args.task_id, agentName);
         if (!task) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ error: "claim_failed", task_id: args.task_id, reason: "Task not found or not in 'ready' status" }),
-            }],
-          };
+          return createTextResult({ error: "claim_failed", task_id: args.task_id, reason: "Task not found or not in 'ready' status" }, false);
         }
 
         ctx.broadcast({ type: "task.updated", sessionId, task });
 
-        return { content: [{ type: "text" as const, text: JSON.stringify({ success: true, task }) }] };
+        return createTextResult({ success: true, task });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "task_board_update",
       "Update a task's status, result, or linked conversation. Use this to report progress or completion.",
       {
@@ -118,17 +113,12 @@ export function createTaskBoardTools(ctx: ToolContext, callingSessionId?: string
 
         const task = ctx.taskBoard.update(args.task_id, updates);
         if (!task) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ error: "not_found", task_id: args.task_id }),
-            }],
-          };
+          return createTextResult({ error: "not_found", task_id: args.task_id }, false);
         }
 
         ctx.broadcast({ type: "task.updated", sessionId, task });
 
-        return { content: [{ type: "text" as const, text: JSON.stringify({ success: true, task }) }] };
+        return createTextResult({ success: true, task });
       },
     ),
   ];

@@ -176,6 +176,7 @@ export async function waitForHealth(httpPort: number, maxRetries = 30): Promise<
 export function makeAgentConfig(overrides: Partial<{
   name: string;
   systemPrompt: string;
+  provider: string;
   model: string;
   maxTurns: number;
   maxBudget: number;
@@ -189,6 +190,7 @@ export function makeAgentConfig(overrides: Partial<{
   return {
     name: overrides.name ?? "TestAgent",
     systemPrompt: overrides.systemPrompt ?? "You are a test agent.",
+    provider: overrides.provider ?? "claude",
     allowedTools: overrides.allowedTools ?? [],
     mcpServers: overrides.mcpServers ?? [],
     model: overrides.model ?? "claude-sonnet-4-6",

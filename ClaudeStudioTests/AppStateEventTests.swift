@@ -140,6 +140,42 @@ final class AppStateEventTests: XCTestCase {
         }
     }
 
+    func testEH5b_sessionResultEvent_clearsPendingQuestionsAndConfirmations() {
+        let sid = UUID().uuidString
+        appState.pendingQuestions[sid] = AppState.AgentQuestion(
+            id: "question-1",
+            sessionId: sid,
+            question: "Proceed?",
+            options: nil,
+            multiSelect: false,
+            isPrivate: true,
+            timestamp: Date(),
+            inputType: "text",
+            inputConfig: nil
+        )
+        appState.pendingConfirmations[sid] = AppState.AgentConfirmation(
+            id: "confirmation-1",
+            sessionId: sid,
+            action: "Run command",
+            reason: "Needed to continue.",
+            riskLevel: "medium",
+            details: nil,
+            timestamp: Date()
+        )
+
+        appState.handleEventForTesting(.sessionResult(
+            sessionId: sid,
+            result: "done",
+            cost: 0.01,
+            tokenCount: 100,
+            toolCallCount: 5
+        ))
+
+        XCTAssertNil(appState.pendingQuestions[sid])
+        XCTAssertNil(appState.pendingConfirmations[sid])
+        XCTAssertEqual(appState.sessionActivity[sid], .done)
+    }
+
     func testEH6_sessionErrorEvent_capturesError() {
         let sid = UUID()
         appState.activeSessions[sid] = AppState.SessionInfo(id: sid, agentName: "Bot", isStreaming: true)
@@ -152,6 +188,36 @@ final class AppStateEventTests: XCTestCase {
         } else {
             XCTFail("Expected .error session event")
         }
+    }
+
+    func testEH6b_sessionErrorEvent_clearsPendingQuestionsAndConfirmations() {
+        let sid = UUID().uuidString
+        appState.pendingQuestions[sid] = AppState.AgentQuestion(
+            id: "question-1",
+            sessionId: sid,
+            question: "Proceed?",
+            options: nil,
+            multiSelect: false,
+            isPrivate: true,
+            timestamp: Date(),
+            inputType: "text",
+            inputConfig: nil
+        )
+        appState.pendingConfirmations[sid] = AppState.AgentConfirmation(
+            id: "confirmation-1",
+            sessionId: sid,
+            action: "Run command",
+            reason: "Needed to continue.",
+            riskLevel: "high",
+            details: nil,
+            timestamp: Date()
+        )
+
+        appState.handleEventForTesting(.sessionError(sessionId: sid, error: "something broke"))
+
+        XCTAssertNil(appState.pendingQuestions[sid])
+        XCTAssertNil(appState.pendingConfirmations[sid])
+        XCTAssertEqual(appState.sessionActivity[sid], .error("something broke"))
     }
 
     func testEH7_sessionForked_doesNotTouchCommsOrStreaming() {

@@ -1,11 +1,11 @@
-import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import type { ToolContext } from "./tool-context.js";
+import { createTextResult, defineSharedTool } from "./shared-tool.js";
 
 export function createChatTools(ctx: ToolContext, callingSessionId: string) {
   return [
-    tool(
+    defineSharedTool(
       "peer_chat_start",
       "Start a blocking conversation with another agent. Sends the first message and BLOCKS until the other agent replies. Returns the reply or {closed: true} if the conversation ends.",
       {
@@ -16,12 +16,7 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
       async (args) => {
         const targetId = resolveAgentTarget(ctx, args.to_agent, callingSessionId);
         if (!targetId) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ error: "agent_not_found", to: args.to_agent }),
-            }],
-          };
+          return createTextResult({ error: "agent_not_found", to: args.to_agent }, false);
         }
 
         const senderState = ctx.sessions.get(callingSessionId);
@@ -57,28 +52,18 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
 
         const reply = await ctx.channels.waitForReply(channel.id, callingSessionId);
         if ("closed" in reply) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ closed: true, summary: reply.summary, channel_id: channel.id }),
-            }],
-          };
+          return createTextResult({ closed: true, summary: reply.summary, channel_id: channel.id });
         }
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              channel_id: channel.id,
-              reply: reply.text,
-              from_agent: reply.fromAgent,
-            }),
-          }],
-        };
+        return createTextResult({
+          channel_id: channel.id,
+          reply: reply.text,
+          from_agent: reply.fromAgent,
+        });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "peer_chat_reply",
       "Reply to an ongoing conversation. BLOCKS until the other participant responds or the conversation closes.",
       {
@@ -88,12 +73,7 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
       async (args) => {
         const channel = ctx.channels.get(args.channel_id);
         if (!channel) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ error: "channel_not_found", channel_id: args.channel_id }),
-            }],
-          };
+          return createTextResult({ error: "channel_not_found", channel_id: args.channel_id }, false);
         }
 
         const senderState = ctx.sessions.get(callingSessionId);
@@ -101,12 +81,7 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
 
         const msg = ctx.channels.addMessage(args.channel_id, callingSessionId, senderName, args.message);
         if (!msg) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ closed: true, channel_id: args.channel_id }),
-            }],
-          };
+          return createTextResult({ closed: true, channel_id: args.channel_id });
         }
 
         ctx.broadcast({
@@ -119,28 +94,18 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
 
         const reply = await ctx.channels.waitForReply(args.channel_id, callingSessionId);
         if ("closed" in reply) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ closed: true, summary: reply.summary, channel_id: args.channel_id }),
-            }],
-          };
+          return createTextResult({ closed: true, summary: reply.summary, channel_id: args.channel_id });
         }
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              channel_id: args.channel_id,
-              reply: reply.text,
-              from_agent: reply.fromAgent,
-            }),
-          }],
-        };
+        return createTextResult({
+          channel_id: args.channel_id,
+          reply: reply.text,
+          from_agent: reply.fromAgent,
+        });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "peer_chat_listen",
       "Wait for an incoming chat request from another agent. BLOCKS until a request arrives or timeout.",
       {
@@ -153,30 +118,20 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
         );
 
         if (!channel) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ timeout: true, message: "No incoming chat requests within timeout" }),
-            }],
-          };
+          return createTextResult({ timeout: true, message: "No incoming chat requests within timeout" });
         }
 
         const lastMsg = channel.messages[channel.messages.length - 1];
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              channel_id: channel.id,
-              from_agent: lastMsg.fromAgent,
-              message: lastMsg.text,
-              topic: channel.topic,
-            }),
-          }],
-        };
+        return createTextResult({
+          channel_id: channel.id,
+          from_agent: lastMsg.fromAgent,
+          message: lastMsg.text,
+          topic: channel.topic,
+        });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "peer_chat_close",
       "End a conversation. All participants waiting for replies will receive {closed: true}.",
       {
@@ -195,16 +150,11 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
           message: `[closed] ${args.summary ?? "Conversation ended"}`,
         });
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({ closed: true, channel_id: args.channel_id }),
-          }],
-        };
+        return createTextResult({ closed: true, channel_id: args.channel_id });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "peer_chat_invite",
       "Invite another agent into an existing conversation (group chat).",
       {
@@ -215,22 +165,12 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
       async (args) => {
         const targetId = resolveAgentTarget(ctx, args.agent, callingSessionId);
         if (!targetId) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ error: "agent_not_found", agent: args.agent }),
-            }],
-          };
+          return createTextResult({ error: "agent_not_found", agent: args.agent }, false);
         }
 
         const added = ctx.channels.addParticipant(args.channel_id, targetId);
         if (!added) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ error: "channel_not_found_or_closed", channel_id: args.channel_id }),
-            }],
-          };
+          return createTextResult({ error: "channel_not_found_or_closed", channel_id: args.channel_id }, false);
         }
 
         const senderState = ctx.sessions.get(callingSessionId);
@@ -255,16 +195,11 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
           channelId: args.channel_id,
         });
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({ invited: true, agent: args.agent, channel_id: args.channel_id }),
-          }],
-        };
+        return createTextResult({ invited: true, agent: args.agent, channel_id: args.channel_id });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "group_invite_agent",
       "Invite an agent to join your current conversation as a group member. The invited agent will see the full chat transcript and can participate alongside you. Use peer_list_agents() first to see available agents.",
       {
@@ -279,16 +214,11 @@ export function createChatTools(ctx: ToolContext, callingSessionId: string) {
           agentName: args.agent_name,
         });
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              invited: true,
-              agent: args.agent_name,
-              note: "The agent is being added to your conversation. They will see the transcript and can participate.",
-            }),
-          }],
-        };
+        return createTextResult({
+          invited: true,
+          agent: args.agent_name,
+          note: "The agent is being added to your conversation. They will see the transcript and can participate.",
+        });
       },
     ),
   ];

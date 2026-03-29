@@ -243,6 +243,7 @@ final class ConfigSyncService {
                 entity.name = dto.name
                 entity.agentDescription = dto.agentDescription
                 entity.systemPrompt = systemPrompt
+                entity.provider = dto.provider
                 entity.model = dto.model
                 entity.icon = dto.icon
                 entity.color = dto.color
@@ -260,6 +261,7 @@ final class ConfigSyncService {
                     entity.configSlug = slug
                     entity.agentDescription = dto.agentDescription
                     entity.systemPrompt = systemPrompt
+                    entity.provider = dto.provider
                     entity.model = dto.model
                     entity.icon = dto.icon
                     entity.color = dto.color
@@ -272,7 +274,7 @@ final class ConfigSyncService {
                     entity.defaultWorkingDirectory = dto.defaultWorkingDirectory
                     entity.isEnabled = dto.enabled
                 } else {
-                    let entity = Agent(name: dto.name, agentDescription: dto.agentDescription, systemPrompt: systemPrompt, model: dto.model, icon: dto.icon, color: dto.color)
+                    let entity = Agent(name: dto.name, agentDescription: dto.agentDescription, systemPrompt: systemPrompt, provider: dto.provider, model: dto.model, icon: dto.icon, color: dto.color)
                     entity.skillIds = skillIds
                     entity.extraMCPServerIds = mcpIds
                     entity.permissionSetId = permId
@@ -406,6 +408,7 @@ final class ConfigSyncService {
 
         let dto = AgentConfigDTO(
             name: agent.name, enabled: agent.isEnabled, agentDescription: agent.agentDescription,
+            provider: agent.provider,
             model: agent.model, icon: agent.icon, color: agent.color,
             skillNames: skillNames, mcpServerNames: mcpNames, permissionSetName: permName,
             systemPromptTemplate: nil, systemPromptVariables: nil,

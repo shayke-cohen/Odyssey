@@ -14,6 +14,7 @@ final class Agent {
     var name: String
     var agentDescription: String
     var systemPrompt: String
+    var provider: String = ProviderSelection.system.rawValue
     var skillIds: [UUID]
     var extraMCPServerIds: [UUID]
     var permissionSetId: UUID?
@@ -77,7 +78,8 @@ final class Agent {
         name: String,
         agentDescription: String = "",
         systemPrompt: String = "",
-        model: String = "sonnet",
+        provider: String = ProviderSelection.system.rawValue,
+        model: String = AgentDefaults.inheritMarker,
         icon: String = "cpu",
         color: String = "blue"
     ) {
@@ -85,6 +87,7 @@ final class Agent {
         self.name = name
         self.agentDescription = agentDescription
         self.systemPrompt = systemPrompt
+        self.provider = provider
         self.skillIds = []
         self.extraMCPServerIds = []
         self.model = model

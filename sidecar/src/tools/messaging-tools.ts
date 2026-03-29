@@ -1,11 +1,11 @@
-import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import type { ToolContext } from "./tool-context.js";
+import { createTextResult, defineSharedTool } from "./shared-tool.js";
 
 export function createMessagingTools(ctx: ToolContext, callingSessionId: string) {
   return [
-    tool(
+    defineSharedTool(
       "peer_send_message",
       "Send a direct async message to another agent. Returns immediately without waiting for a reply. The target agent will see this in their inbox when they call peer_receive_messages.",
       {
@@ -16,7 +16,7 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
       async (args) => {
         const targetId = resolveAgentId(ctx, args.to_agent);
         if (!targetId) {
-          return { content: [{ type: "text" as const, text: JSON.stringify({ error: "agent_not_found", to: args.to_agent }) }] };
+          return createTextResult({ error: "agent_not_found", to: args.to_agent }, false);
         }
 
         const senderState = ctx.sessions.get(callingSessionId);
@@ -40,11 +40,11 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
           message: args.message,
         });
 
-        return { content: [{ type: "text" as const, text: JSON.stringify({ sent: true, to: args.to_agent }) }] };
+        return createTextResult({ sent: true, to: args.to_agent });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "peer_broadcast",
       "Broadcast a message to all active agents on a named channel. All agents will receive this in their inbox.",
       {
@@ -74,16 +74,11 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
           message: args.message,
         });
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({ broadcast: true, channel: args.channel, recipients: activeIds.length - 1 }),
-          }],
-        };
+        return createTextResult({ broadcast: true, channel: args.channel, recipients: activeIds.length - 1 });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "peer_receive_messages",
       "Check your inbox for async messages and chat requests from other agents. Returns unread messages.",
       {
@@ -91,16 +86,11 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
       },
       async (args) => {
         const messages = ctx.messages.drain(callingSessionId, args.since);
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({ messages, count: messages.length }),
-          }],
-        };
+        return createTextResult({ messages, count: messages.length });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "peer_list_agents",
       "List all running and available agent sessions. Returns each agent's name, status, and session ID.",
       {},
@@ -128,16 +118,11 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
           }))
         );
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({ activeSessions: agents, registeredAgents: registered, remoteAgents }),
-          }],
-        };
+        return createTextResult({ activeSessions: agents, registeredAgents: registered, remoteAgents });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "peer_delegate_task",
       "Delegate a task to another agent. Spawns a new session for the delegate. If wait_for_result is true, blocks until the delegate finishes and returns the result.",
       {
@@ -163,10 +148,7 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
               read: false,
             });
             return {
-              content: [{
-                type: "text" as const,
-                text: JSON.stringify({ delegated: true, method: "inbox", sessionId: existingSession }),
-              }],
+              ...createTextResult({ delegated: true, method: "inbox", sessionId: existingSession }),
             };
           }
           // Check remote peers before giving up
@@ -185,26 +167,15 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
                 waitForResult: args.wait_for_result ?? false,
               });
               return {
-                content: [{
-                  type: "text" as const,
-                  text: JSON.stringify({ delegated: true, method: "remote_relay", peer: remotePeer.peer.name, result }),
-                }],
+                ...createTextResult({ delegated: true, method: "remote_relay", peer: remotePeer.peer.name, result }),
               };
             } catch (err: any) {
               return {
-                content: [{
-                  type: "text" as const,
-                  text: JSON.stringify({ error: "remote_relay_failed", peer: remotePeer.peer.name, message: err.message }),
-                }],
+                ...createTextResult({ error: "remote_relay_failed", peer: remotePeer.peer.name, message: err.message }, false),
               };
             }
           }
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ error: "agent_not_found", agent: args.to_agent, hint: "Use peer_list_agents to see available agents" }),
-            }],
-          };
+          return createTextResult({ error: "agent_not_found", agent: args.to_agent, hint: "Use peer_list_agents to see available agents" }, false);
         }
 
         // Inherit the calling session's working directory so delegated agents
@@ -241,10 +212,7 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
             read: false,
           });
           return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ delegated: true, method: "reused_singleton", sessionId: target.id }),
-            }],
+            ...createTextResult({ delegated: true, method: "reused_singleton", sessionId: target.id }),
           };
         }
 
@@ -267,12 +235,7 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
               timestamp: new Date().toISOString(),
               read: false,
             });
-            return {
-              content: [{
-                type: "text" as const,
-                text: JSON.stringify({ delegated: true, method: "pool_routed", sessionId: leastBusy.id }),
-              }],
-            };
+            return createTextResult({ delegated: true, method: "pool_routed", sessionId: leastBusy.id });
           }
         }
 
@@ -288,25 +251,15 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
             prompt,
             waitForResult,
           );
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({
-                delegated: true,
-                method: "spawned",
-                sessionId: result.sessionId,
-                waitedForResult: waitForResult,
-                result: result.result,
-              }),
-            }],
-          };
+          return createTextResult({
+            delegated: true,
+            method: "spawned",
+            sessionId: result.sessionId,
+            waitedForResult: waitForResult,
+            result: result.result,
+          });
         } catch (err: any) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ error: "delegation_failed", message: err.message }),
-            }],
-          };
+          return createTextResult({ error: "delegation_failed", message: err.message }, false);
         }
       },
     ),

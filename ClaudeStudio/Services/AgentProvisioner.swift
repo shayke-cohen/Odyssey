@@ -9,14 +9,38 @@ final class AgentProvisioner {
         self.modelContext = modelContext
     }
 
-    func provision(agent: Agent, mission: String?, workingDirOverride: String? = nil) -> (AgentConfig, Session) {
+    func provision(
+        agent: Agent,
+        mission: String?,
+        workingDirOverride: String? = nil,
+        providerOverride: String? = nil,
+        modelOverride: String? = nil
+    ) -> (AgentConfig, Session) {
         let session = Session(
             agent: agent,
             mission: mission,
             mode: .interactive,
             workingDirectory: resolveWorkingDirectory(override: workingDirOverride)
         )
+        session.provider = AgentDefaults.resolveEffectiveProvider(
+            sessionOverride: providerOverride,
+            agentSelection: agent.provider
+        )
+        session.model = AgentDefaults.resolveEffectiveModel(
+            sessionOverride: modelOverride,
+            agentSelection: agent.model,
+            provider: session.provider
+        )
 
+        return (buildConfig(agent: agent, session: session), session)
+    }
+
+    func config(for session: Session) -> AgentConfig? {
+        guard let agent = session.agent else { return nil }
+        return buildConfig(agent: agent, session: session)
+    }
+
+    private func buildConfig(agent: Agent, session: Session) -> AgentConfig {
         let skills = resolveSkills(ids: agent.skillIds)
         let mcpServers = resolveMCPServers(ids: agent.extraMCPServerIds)
         let permissions = resolvePermissions(id: agent.permissionSetId)
@@ -43,11 +67,11 @@ final class AgentProvisioner {
                 systemPrompt += "\n## \(skill.name)\n\(skill.content)\n"
             }
         }
-        if let mission = mission {
+        if let mission = session.mission {
             systemPrompt += "\n\n# Current Mission\n\(mission)\n"
         }
 
-        let config = AgentConfig(
+        return AgentConfig(
             name: agent.name,
             systemPrompt: systemPrompt,
             allowedTools: allowedTools,
@@ -63,7 +87,11 @@ final class AgentProvisioner {
                     )
                 }
             },
-            model: agent.model,
+            provider: session.provider,
+            model: session.model ?? AgentDefaults.resolveEffectiveModel(
+                agentSelection: agent.model,
+                provider: session.provider
+            ),
             maxTurns: agent.maxTurns,
             maxBudget: agent.maxBudget,
             maxThinkingTokens: agent.maxThinkingTokens,
@@ -71,8 +99,6 @@ final class AgentProvisioner {
             skills: skills.map { AgentConfig.SkillContent(name: $0.name, content: $0.content) },
             interactive: isInteractive ? true : nil
         )
-
-        return (config, session)
     }
 
     private func resolveWorkingDirectory(override: String?) -> String {

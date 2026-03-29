@@ -42,6 +42,7 @@ export interface AgentConfig {
   systemPrompt: string;
   allowedTools: string[];
   mcpServers: MCPServerConfig[];
+  provider?: AgentProvider;
   model: string;
   maxTurns?: number;
   maxBudget?: number;
@@ -52,6 +53,8 @@ export interface AgentConfig {
   instancePolicy?: "spawn" | "singleton" | "pool";
   instancePolicyPoolMax?: number;
 }
+
+export type AgentProvider = "claude" | "codex";
 
 export interface MCPServerConfig {
   name: string;
@@ -170,6 +173,7 @@ export interface SuggestionItem {
 export interface SessionState {
   id: string;
   agentName: string;
+  provider: AgentProvider;
   status: "active" | "paused" | "completed" | "failed";
   claudeSessionId?: string;
   tokenCount: number;

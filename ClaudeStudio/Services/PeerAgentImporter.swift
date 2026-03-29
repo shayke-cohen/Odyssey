@@ -34,6 +34,7 @@ enum PeerAgentImporter {
             name: uniqueName,
             agentDescription: w.agentDescription,
             systemPrompt: w.systemPrompt,
+            provider: w.provider,
             model: w.model,
             icon: w.icon,
             color: w.color

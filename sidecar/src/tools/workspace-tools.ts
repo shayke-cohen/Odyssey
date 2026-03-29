@@ -1,10 +1,10 @@
-import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import type { ToolContext } from "./tool-context.js";
+import { createTextResult, defineSharedTool } from "./shared-tool.js";
 
 export function createWorkspaceTools(ctx: ToolContext, callingSessionId: string) {
   return [
-    tool(
+    defineSharedTool(
       "workspace_create",
       "Create a new shared workspace directory that multiple agents can read/write to using their standard file tools. Returns the workspace ID and filesystem path.",
       {
@@ -22,20 +22,15 @@ export function createWorkspaceTools(ctx: ToolContext, callingSessionId: string)
           agentName: senderState?.agentName ?? callingSessionId,
         });
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              workspace_id: workspace.id,
-              path: workspace.path,
-              name: workspace.name,
-            }),
-          }],
-        };
+        return createTextResult({
+          workspace_id: workspace.id,
+          path: workspace.path,
+          name: workspace.name,
+        });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "workspace_join",
       "Join an existing shared workspace. Returns the filesystem path so you can read/write files there.",
       {
@@ -44,12 +39,7 @@ export function createWorkspaceTools(ctx: ToolContext, callingSessionId: string)
       async (args) => {
         const workspace = ctx.workspaces.join(args.workspace_id, callingSessionId);
         if (!workspace) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({ error: "workspace_not_found", workspace_id: args.workspace_id }),
-            }],
-          };
+          return createTextResult({ error: "workspace_not_found", workspace_id: args.workspace_id }, false);
         }
 
         const senderState = ctx.sessions.get(callingSessionId);
@@ -61,21 +51,16 @@ export function createWorkspaceTools(ctx: ToolContext, callingSessionId: string)
           agentName: senderState?.agentName ?? callingSessionId,
         });
 
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              workspace_id: workspace.id,
-              path: workspace.path,
-              name: workspace.name,
-              participants: workspace.participantSessionIds.length,
-            }),
-          }],
-        };
+        return createTextResult({
+          workspace_id: workspace.id,
+          path: workspace.path,
+          name: workspace.name,
+          participants: workspace.participantSessionIds.length,
+        });
       },
     ),
 
-    tool(
+    defineSharedTool(
       "workspace_list",
       "List all available shared workspaces with their IDs, paths, and participant counts.",
       {},
@@ -87,12 +72,7 @@ export function createWorkspaceTools(ctx: ToolContext, callingSessionId: string)
           participants: ws.participantSessionIds.length,
           createdAt: ws.createdAt,
         }));
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({ workspaces }),
-          }],
-        };
+        return createTextResult({ workspaces });
       },
     ),
   ];

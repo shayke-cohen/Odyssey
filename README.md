@@ -1,6 +1,6 @@
 # ClaudeStudio
 
-A native macOS developer tool for orchestrating Claude AI agent sessions around **projects**. Each project owns its threads, tasks, schedules, and working context, while agents can still chat with users and with each other, share knowledge through a blackboard, collaborate on files through worktrees, and discover peers across the local network.
+A native macOS developer tool for orchestrating Claude AI agent sessions around **projects**. Each project owns its threads, tasks, schedules, and working context, while agents can still chat with users and with each other, share knowledge through a blackboard, collaborate on files through worktrees, and discover peers across the local network. Reusable agents, groups, skills, and integrations are managed through an intent-first library hub with `Run`, `Build`, and `Discover` modes.
 
 ![ClaudeStudio](docs/welcome-screen.png)
 
@@ -68,10 +68,13 @@ ClaudeStudio/
 │   │   ├── ConfigFileManager.swift # Bundle resource loading for defaults
 │   │   └── ConfigSyncService.swift # Config synchronization service
 │   ├── Views/
-│   │   ├── MainWindow/           # Project-first shell: utilities, projects, threads, inspector
+│   │   ├── MainWindow/           # Project-first shell: welcome, sidebar, chat, inspector, library hub
+│   │   │   ├── IntentLibraryHubView.swift  # Intent-first library sheet (Run / Build / Discover)
 │   │   │   ├── TaskCreationSheet.swift
 │   │   │   └── TaskEditSheet.swift
-│   │   ├── AgentLibrary/         # Agent grid + editor
+│   │   ├── AgentLibrary/         # Supporting agent CRUD/editor surfaces used by the hub
+│   │   ├── GroupLibrary/         # Supporting group CRUD/editor surfaces used by the hub
+│   │   ├── Catalog/              # Catalog detail/install surfaces backing Discover
 │   │   ├── Debug/                # DebugLogView — unified log viewer with filters
 │   │   └── Components/           # MessageBubble, ToolCallView, TreeNode, etc.
 │   └── Resources/
@@ -359,7 +362,8 @@ See [`system-plan-vision.md` Section 11](system-plan-vision.md#11-built-in-ecosy
 - SidecarManager with process lifecycle and auto-reconnect
 - AgentProvisioner composing configs from SwiftData models
 - Main window with project-first NavigationSplitView (global utilities + projects + threads + inspector)
-- Agent library with editor (Start button launches sessions)
+- Intent-first library hub with `Run`, `Build`, and `Discover` modes
+- Agent and group editors, plus agent creation entry flow (`Create Blank` / `From Prompt`)
 - Blackboard with HTTP REST API and disk persistence
 - Working directory resolution (explicit, GitHub clone, agent default, ephemeral)
 - New Session sheet with agent picker, model/mode/mission/directory options (Cmd+N)
@@ -375,7 +379,7 @@ See [`system-plan-vision.md` Section 11](system-plan-vision.md#11-built-in-ecosy
 - Streaming images, file cards, and extended thinking from sidecar
 - Multi-instance support (isolated data, ports, settings per instance)
 - Launch parameters (CLI args + `claudestudio://` URL scheme)
-- Catalog system: 30 agents, 101 skills, 100 MCPs with cascading install
+- Catalog system: 30 agents, 101 skills, 100 MCPs with cascading install, surfaced through `Discover`
 - Full accessibility coverage (347+ identifiers)
 - Rich display tools: ask_user (form/options/toggle/rating), render_content, show_progress, suggest_actions
 - Task board: project-scoped task lifecycle management, PeerBus tools, REST API, sidebar integration

@@ -61,7 +61,7 @@ struct WelcomeView: View {
             .padding(32)
             .frame(maxWidth: .infinity)
         }
-        .xrayId("welcome.scrollView")
+        .stableXrayId("welcome.scrollView")
         .background(Color(nsColor: .controlBackgroundColor))
         .onAppear { recentProjects = RecentDirectories.load() }
     }
@@ -176,7 +176,7 @@ struct WelcomeView: View {
                 color: .orange,
                 identifier: "welcome.quickAction.browseAgents"
             ) {
-                windowState.showAgentLibrary = true
+                windowState.openLibrary(.build, buildSection: .agents)
             }
             quickActionCard(
                 title: "Browse Groups",
@@ -186,7 +186,7 @@ struct WelcomeView: View {
                 color: .teal,
                 identifier: "welcome.quickAction.browseGroups"
             ) {
-                windowState.showGroupLibrary = true
+                windowState.openLibrary(.build, buildSection: .groups)
             }
             quickActionCard(
                 title: "Schedules",
@@ -237,7 +237,7 @@ struct WelcomeView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(.quaternary, lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .xrayId(identifier)
+        .appXrayTapProxy(id: identifier, action: action)
         .accessibilityIdentifier(identifier)
         .accessibilityLabel(title)
     }
@@ -280,7 +280,7 @@ struct WelcomeView: View {
                         .font(.callout)
                         .fontWeight(.medium)
                         .lineLimit(1)
-                    Text(agent.model)
+                    Text(AgentDefaults.label(for: agent.model))
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }

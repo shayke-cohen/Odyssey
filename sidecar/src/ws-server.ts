@@ -4,7 +4,6 @@ import type { SessionManager } from "./session-manager.js";
 import type { ToolContext } from "./tools/tool-context.js";
 import { resolveQuestion } from "./tools/ask-user-tool.js";
 import { logger } from "./logger.js";
-import Anthropic from "@anthropic-ai/sdk";
 
 export class WsServer {
   private clients = new Set<ServerWebSocket<unknown>>();
@@ -136,11 +135,18 @@ export class WsServer {
         break;
 
       case "session.questionAnswer": {
-        const resolved = resolveQuestion(
-          command.questionId,
-          command.answer,
-          command.selectedOptions,
-        );
+        const resolved =
+          await this.sessionManager.answerQuestion?.(
+            command.sessionId,
+            command.questionId,
+            command.answer,
+            command.selectedOptions,
+          ) ||
+          resolveQuestion(
+            command.questionId,
+            command.answer,
+            command.selectedOptions,
+          );
         if (resolved) {
           logger.info("ws", `session.questionAnswer: resolved question ${command.questionId} for session ${command.sessionId}`);
         } else {
@@ -179,11 +185,18 @@ export class WsServer {
 
       case "session.confirmationAnswer": {
         const { resolveConfirmation } = await import("./tools/rich-display-tools.js");
-        const confirmed = resolveConfirmation(
-          command.confirmationId,
-          command.approved,
-          command.modifiedAction,
-        );
+        const confirmed =
+          await this.sessionManager.answerConfirmation?.(
+            command.sessionId,
+            command.confirmationId,
+            command.approved,
+            command.modifiedAction,
+          ) ||
+          resolveConfirmation(
+            command.confirmationId,
+            command.approved,
+            command.modifiedAction,
+          );
         if (confirmed) {
           logger.info("ws", `session.confirmationAnswer: resolved confirmation ${command.confirmationId} approved=${command.approved}`);
         } else {

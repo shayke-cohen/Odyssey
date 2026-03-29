@@ -6,6 +6,9 @@ enum AppSettings {
     static let appearanceKey = "claudestudio.appearance"
     static let textSizeKey = "claudestudio.textSize"
     static let defaultModelKey = "claudestudio.defaultModel"
+    static let defaultProviderKey = "claudestudio.defaultProvider"
+    static let defaultClaudeModelKey = defaultModelKey
+    static let defaultCodexModelKey = "claudestudio.defaultCodexModel"
     static let defaultMaxTurnsKey = "claudestudio.defaultMaxTurns"
     static let defaultMaxBudgetKey = "claudestudio.defaultMaxBudget"
     static let autoConnectSidecarKey = "claudestudio.autoConnectSidecar"
@@ -49,7 +52,9 @@ enum AppSettings {
     static let defaultHttpPort = 9850
     static let defaultMaxTurns = 30
     static let defaultMaxBudget = 0.0
-    static let defaultModel = "claude-sonnet-4-6"
+    static let defaultProvider = ProviderSelection.claude.rawValue
+    static let defaultClaudeModel = ClaudeModel.sonnet.rawValue
+    static let defaultCodexModel = CodexModel.gpt5Codex.rawValue
     static let defaultTextSize = AppTextSize.standard.rawValue
     static let defaultDataDirectory = "~/.claudestudio"
     static let defaultLogLevel = "info"
@@ -59,7 +64,8 @@ enum AppSettings {
 
     static var allKeys: [String] {
         [
-            appearanceKey, textSizeKey, defaultModelKey, defaultMaxTurnsKey,
+            appearanceKey, textSizeKey, defaultProviderKey, defaultClaudeModelKey,
+            defaultCodexModelKey, defaultMaxTurnsKey,
             defaultMaxBudgetKey, autoConnectSidecarKey,
             instanceWorkingDirectoryKey,
             wsPortKey, httpPortKey, bunPathOverrideKey, sidecarPathKey,

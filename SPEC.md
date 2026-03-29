@@ -2,8 +2,8 @@
 
 Living specification tracking implemented features, user flows, and requirements.
 
-**Version:** 0.14.0
-**Status:** Phase 14 — Project-first shell, project-scoped threads/tasks/schedules, documentation reset
+**Version:** 0.14.1
+**Status:** Phase 14 — Project-first shell plus intent-first library hub (`Run`, `Build`, `Discover`)
 
 ---
 
@@ -18,7 +18,7 @@ ClaudeStudio is a native macOS developer tool for managing Claude AI agent sessi
 ### Core Value Proposition
 - **Multi-agent orchestration** — run multiple Claude sessions simultaneously with different configurations
 - **Composable agents** — build agents from reusable skills, MCP servers, and permission presets
-- **Curated catalog** — browse and install from 30 agents, 101 skills, and 100 MCP servers with cascading dependency resolution
+- **Intent-first library hub** — launch agents or groups quickly in `Run`, manage reusable definitions in `Build`, and browse/install templates, skills, and integrations in `Discover`
 - **Project-first shell** — each project owns its threads, tasks, schedules, and working context
 - **Persistent threads** — thread history survives app restarts, resumable via Claude session IDs
 - **Recurring missions** — save agent, group, or thread missions and run them on hourly or daily schedules
@@ -195,11 +195,12 @@ Unified conversation model supporting user-to-agent and agent-to-agent communica
 | FR-6.14: Inspector toggle button in toolbar (sidebar.trailing icon, ⌘⌥0) | Done |
 | FR-6.15: Chat area expands to fill inspector space when inspector is hidden | Done |
 | FR-6.16: Sidecar status pill in toolbar center with popover (status, URL, connect/stop/reconnect) | Done |
-| FR-6.17: Global utility rows expose New Thread, Plugins, Automations, and Settings above projects | Done |
+| FR-6.17: Global utility rows expose New Thread, Library, and Add Project above projects | Done |
 | FR-6.18: Chat header with tappable agent icon, mission preview, Fork/Rename in overflow menu | Done |
 | FR-6.19: Settings reorganized: General / Connection (with live sidecar status) / Developer tabs | Done |
 | FR-6.20: New Session sheet with recent agents row, collapsible options, mode tooltips | Done |
 | FR-6.21: Agent Editor consolidated from 5 steps to 3 (Identity, Capabilities, System Prompt) | Done |
+| FR-6.22: Library hub defaults to `Run` and adapts between left-rail and compact top-nav layouts based on sheet width | Done |
 
 ### FR-7: Blackboard
 
@@ -312,11 +313,11 @@ Users can attach images and documents (txt, md, pdf) to chat messages via the at
 | FR-11.16: File size validation (5MB images, 10MB documents) | Done |
 | FR-11.17: Wire protocol supports attachments with mediaType and fileName | Done |
 
-### FR-12: Catalog System
+### FR-12: Catalog and Discover System
 
 **Status:** Implemented
 
-Browsable catalog of pre-built agents (30), skills (101), and MCP servers (100) with one-click installation and cascading dependency resolution.
+Browsable catalog of pre-built agents (30), skills (101), and MCP servers (100) with one-click installation and cascading dependency resolution. The primary user-facing surface is the `Discover` mode inside the library hub, not a standalone top-level catalog browser.
 
 | Requirement | Status |
 |---|---|
@@ -337,11 +338,11 @@ Browsable catalog of pre-built agents (30), skills (101), and MCP servers (100) 
 | FR-12.15: Dependency resolution for agents (lists uninstalled skills + MCPs needed) | Done |
 | FR-12.16: Dependency resolution for skills (lists uninstalled MCPs needed) | Done |
 | FR-12.17: Installed status check by catalogId across all three types | Done |
-| FR-12.18: CatalogBrowserView with tab-based navigation (Agents, Skills, MCPs) | Done |
-| FR-12.19: Search and category filter in catalog browser | Done |
-| FR-12.20: Catalog cards with icon, name, truncated description, category, tags, install status | Done |
-| FR-12.21: Tap catalog card to open detail sheet | Done |
-| FR-12.22: CatalogDetailView with full item information (header, chips, tags, description) | Done |
+| FR-12.18: `Discover` mode presents tab-based navigation (Agent Templates, Skills, Integrations) inside the library hub | Done |
+| FR-12.19: Search and category filter in Discover | Done |
+| FR-12.20: Discover cards show icon, name, truncated description, category, tags, install status, and preview/install actions | Done |
+| FR-12.21: Tap or preview a catalog card to open detail or preview UI | Done |
+| FR-12.22: CatalogDetailView remains available for full item information (header, chips, tags, description) | Done |
 | FR-12.23: Agent detail shows resolved required skills and extra MCPs by name | Done |
 | FR-12.24: Agent detail shows collapsible system prompt preview (DisclosureGroup) | Done |
 | FR-12.25: Skill detail shows required MCPs, triggers (FlowLayout wrapping), and full content | Done |
@@ -349,7 +350,24 @@ Browsable catalog of pre-built agents (30), skills (101), and MCP servers (100) 
 | FR-12.27: Detail view footer with Install/Uninstall button and installed status badge | Done |
 | FR-12.28: Install/uninstall from detail view refreshes catalog browser card status | Done |
 | FR-12.29: Data integrity — all agent skill references and skill MCP references resolve | Done |
-| FR-12.30: Catalog accessible from toolbar | Done |
+| FR-12.30: Catalog content is accessible from the library hub (`Discover`) and related welcome/sidebar entry points | Done |
+
+### FR-12A: Intent-First Library Hub
+
+**Status:** Implemented
+
+Single-sheet library experience that separates launch, management, and installation intents.
+
+| Requirement | Status |
+|---|---|
+| FR-12A.1: Top-level library sections are `Run`, `Build`, and `Discover` | Done |
+| FR-12A.2: `Run` prioritizes quick actions, recent launches, and compact start rows for agents and groups | Done |
+| FR-12A.3: `Build` manages reusable definitions with `Agents` and `Groups` sub-sections | Done |
+| FR-12A.4: `Build` supports start/edit/duplicate for existing agents and groups | Done |
+| FR-12A.5: New agent flow starts with `Create Blank` vs `From Prompt` entry choices | Done |
+| FR-12A.6: `Discover` hosts catalog browsing for agent templates, skills, and integrations | Done |
+| FR-12A.7: Library shell adapts between wide left-rail and compact top-nav layouts | Done |
+| FR-12A.8: Main library landing state defaults to `Run` | Done |
 
 ### FR-13: Test Infrastructure
 
@@ -798,8 +816,8 @@ Swift-owned recurring automation system for saving missions against an agent, gr
 **As a** developer, **I want to** browse a curated catalog of agents, skills, and MCP servers and install them with one click, **so that** I can quickly assemble powerful agent configurations without manual setup.
 
 **Acceptance criteria:**
-- [x] Can open the catalog browser from the toolbar
-- [x] Can browse agents, skills, and MCPs in separate tabs
+- [x] Can open the library hub from welcome or sidebar entry points and reach `Discover`
+- [x] Can browse agent templates, skills, and integrations in separate Discover tabs
 - [x] Can search by name and filter by category
 - [x] Cards show key info (icon, name, description, tags, install status)
 - [x] Tapping a card opens a detail sheet with full information
@@ -1104,11 +1122,11 @@ flowchart TD
     Claude --> Response["Response streamed back"]
 ```
 
-### Flow 9: Browse Catalog and Install Agent
+### Flow 9: Discover and Install Agent Template
 
 ```mermaid
 flowchart TD
-    Open([User clicks Catalog\nin toolbar]) --> Browser["CatalogBrowserView opens\nTabs: Agents / Skills / MCPs"]
+    Open([User opens Library\nand switches to Discover]) --> Browser["Discover opens\nTabs: Agent Templates / Skills / Integrations"]
     Browser --> Search["Optional: search by name\nor filter by category"]
     Search --> Tap["User taps agent card"]
     Tap --> Detail["CatalogDetailView sheet opens\nFull description, skills, MCPs,\nsystem prompt preview"]
@@ -1120,11 +1138,11 @@ flowchart TD
     Install -->|No| Close["Dismiss sheet"]
 ```
 
-### Flow 10: Install Skill with MCP Dependencies
+### Flow 10: Install Skill with Integration Dependencies
 
 ```mermaid
 flowchart TD
-    Tab([User switches to\nSkills tab]) --> Browse["Browse 101 skills\nacross categories"]
+    Tab([User switches to\nDiscover > Skills]) --> Browse["Browse 101 skills\nacross categories"]
     Browse --> Tap["User taps skill card"]
     Tap --> Detail["Skill detail:\nrequired MCPs, triggers,\nfull content markdown"]
     Detail --> Install["Click Install"]
@@ -1301,6 +1319,7 @@ flowchart TD
 | 2026-03-21 | File attachments: added txt/md/pdf support alongside images. Text/markdown files inlined in prompt, images/PDFs via temp files. Generalized wire protocol from WireImageAttachment to WireAttachment. Document thumbnails with icon+name+size. Sidebar shows context-aware attachment icons. | FR-5.9, FR-10, US-9, Flow 7 |
 | 2026-03-21 | Multi-instance support: InstanceConfig parses `--instance <name>`, namespaces SwiftData/blackboard/logs/UserDefaults per instance, dynamic port allocation for non-default instances, CLAUDESTUDIO_DATA_DIR env var for sidecar, window title with instance name. | FR-10, US-10, Flow 7, NFR |
 | 2026-03-21 | Catalog system: directory-based catalog with 30 agents, 101 skills, 100 MCPs. CatalogService with loading, find, install/uninstall, cascading dependency resolution. CatalogBrowserView with tabs, search, category filter. CatalogDetailView with full item information, collapsible system prompt, FlowLayout triggers, install/uninstall actions. Per-agent .md system prompts. Agent → Skill → MCP hierarchy. | FR-2.15-2.18, FR-12, US-11, Flow 9, Flow 10 |
+| 2026-03-29 | Intent-first library hub: replaced object-first library navigation with `Run`, `Build`, and `Discover`; groups promoted as first-class reusable teams; catalog browsing repositioned under Discover; added adaptive compact layout for narrower library sheets; added agent creation entry flow (`Create Blank` / `From Prompt`). | FR-6.22, FR-12A, FR-12.18-12.30 |
 | 2026-03-21 | Test infrastructure: ClaudeStudioTests XCTest target with 61 tests covering catalog model decoding, service operations (install/uninstall/cascading/idempotent/dependency resolution), data integrity (unique IDs, valid cross-references), InstanceConfig (directories, UserDefaults, ports). Fixed catalog skill ID case mismatches across 20 agent files. Added InstanceConfig.swift to project, fixed Swift 6 concurrency warning in AppSettings. | FR-13, NFR |
 | 2026-03-21 | Initial spec created from implemented codebase | All sections |
 | 2026-03-21 | Phase 4: Inter-Agent Communication. Full PeerBus tool suite (17 tools) implemented as in-process MCP server injected into every Agent SDK session. Tools: blackboard_read/write/query/subscribe, peer_send_message/broadcast/receive_messages/list_agents/delegate_task, peer_chat_start/reply/listen/close/invite, workspace_create/join/list. New stores: MessageStore, ChatChannelStore (with deadlock detection), WorkspaceStore. Refactored sidecar: shared ToolContext, SessionManager accepts injected registry and context, WsServer accepts injected dependencies, agent.register command. Swift: AppState handles all peer/blackboard events, persists to SwiftData, registers agent definitions on connect. New AgentCommsView with filter tabs. Sidebar enhanced with parent-child conversation nesting and type-specific icons. Removed stale ChatHandler references from FR-3 and Flow 6. | FR-3.15-3.18, FR-4.8, FR-7.9-7.11, FR-14, FR-15, US-12, US-13, Flow 6 |

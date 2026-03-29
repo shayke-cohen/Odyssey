@@ -7,6 +7,7 @@ struct MainWindowView: View {
     @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
+    @Query private var conversations: [Conversation]
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     @State private var showStatusPopover = false
     @State private var inspectorVisible = true
@@ -38,12 +39,23 @@ struct MainWindowView: View {
         .frame(minWidth: 900, minHeight: 600)
         .background(WindowTitleSetter(projectName: windowState.projectName))
         .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                SettingsLink {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .help("Settings")
+                .xrayId("mainWindow.settingsButton")
+                .accessibilityIdentifier("mainWindow.settingsButton")
+                .accessibilityLabel("Settings")
+            }
+
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
                     windowState.showNewSessionSheet = true
                 } label: {
-                    Label("New Thread", systemImage: "plus.bubble")
+                    MainToolbarActionLabel(title: "New Thread", systemImage: "plus.bubble")
                 }
+                .buttonStyle(.bordered)
                 .keyboardShortcut("n", modifiers: .command)
                 .help("New thread (⌘N)")
                 .xrayId("mainWindow.newSessionButton")
@@ -51,10 +63,23 @@ struct MainWindowView: View {
                 .accessibilityLabel("New Session")
 
                 Button {
+                    windowState.showNewGroupThreadSheet = true
+                } label: {
+                    MainToolbarActionLabel(title: "Group Thread", systemImage: "bubble.left.and.bubble.right.fill")
+                }
+                .buttonStyle(.bordered)
+                .keyboardShortcut("n", modifiers: [.command, .option])
+                .help("New group thread (⌘⌥N)")
+                .xrayId("mainWindow.newGroupThreadButton")
+                .accessibilityIdentifier("mainWindow.newGroupThreadButton")
+                .accessibilityLabel("New Group Thread")
+
+                Button {
                     createQuickChat()
                 } label: {
-                    Label("Quick Chat", systemImage: "plus.message")
+                    MainToolbarActionLabel(title: "Quick Chat", systemImage: "plus.message")
                 }
+                .buttonStyle(.bordered)
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .help("Quick chat (⌘⇧N)")
                 .xrayId("mainWindow.quickChatButton")
@@ -138,13 +163,16 @@ struct MainWindowView: View {
         .sheet(isPresented: $ws.showNewSessionSheet) {
             NewSessionSheet()
         }
-        .sheet(isPresented: $ws.showAgentLibrary) {
-            AgentLibraryView()
-                .frame(minWidth: 700, minHeight: 500)
+        .sheet(isPresented: $ws.showNewGroupThreadSheet) {
+            NewGroupThreadSheet()
         }
-        .sheet(isPresented: $ws.showGroupLibrary) {
-            GroupLibraryView()
-                .frame(minWidth: 700, minHeight: 500)
+        .sheet(isPresented: $ws.showLibraryHub) {
+            IntentLibraryHubView(
+                selectedSection: $ws.selectedLibrarySection,
+                selectedBuildSection: $ws.selectedLibraryBuildSection,
+                selectedDiscoverSection: $ws.selectedLibraryDiscoverSection
+            )
+                .frame(minWidth: 760, minHeight: 560)
         }
         .sheet(isPresented: $ws.showScheduleLibrary) {
             ScheduleLibraryView()
@@ -186,9 +214,9 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var mainDetailPane: some View {
-        if let conversationId = windowState.selectedConversationId {
-            ChatView(conversationId: conversationId)
-                .id(conversationId)
+        if let conversation = selectedConversation {
+            ChatView(selectedConversation: conversation)
+                .id(conversation.id)
         } else if let groupId = windowState.selectedGroupId {
             GroupDetailView(groupId: groupId)
                 .id(groupId)
@@ -198,21 +226,26 @@ struct MainWindowView: View {
                 onStartAgent: { agent in startSessionWithAgent(agent) },
                 onStartGroup: { group in startGroupChat(group) }
             )
-            .xrayId("mainWindow.welcomeView")
+            .stableXrayId("mainWindow.welcomeView")
         }
     }
 
     @ViewBuilder
     private var inspectorPane: some View {
-        if let conversationId = windowState.selectedConversationId {
-            InspectorView(conversationId: conversationId)
-                .id(conversationId)
+        if let conversation = selectedConversation {
+            InspectorView(conversation: conversation)
+                .id(conversation.id)
         } else {
             Text("Inspector")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .xrayId("mainWindow.inspectorPlaceholder")
         }
+    }
+
+    private var selectedConversation: Conversation? {
+        guard let conversationId = windowState.selectedConversationId else { return nil }
+        return conversations.first { $0.id == conversationId }
     }
 
     // MARK: - Status Pill
@@ -377,6 +410,21 @@ struct MainWindowView: View {
             modelContext: modelContext
         ) {
             windowState.selectedConversationId = convoId
+        }
+    }
+}
+
+private struct MainToolbarActionLabel: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.body)
+            Text(title)
+                .font(.callout)
+                .lineLimit(1)
         }
     }
 }

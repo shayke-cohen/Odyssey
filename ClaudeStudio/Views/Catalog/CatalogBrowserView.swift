@@ -9,9 +9,9 @@ struct CatalogBrowserView: View {
 
         var title: String {
             switch self {
-            case .agents: return "Agents"
+            case .agents: return "Agent Templates"
             case .skills: return "Skills"
-            case .mcps: return "MCPs"
+            case .mcps: return "Integrations"
             }
         }
     }
@@ -28,6 +28,11 @@ struct CatalogBrowserView: View {
     @State private var agentInstallAlertTitle = ""
     @State private var agentInstallAlertMessage = ""
     @State private var selectedItem: CatalogItem?
+    let showsDismissButton: Bool
+
+    init(showsDismissButton: Bool = true) {
+        self.showsDismissButton = showsDismissButton
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,15 +45,17 @@ struct CatalogBrowserView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 180)
                     .xrayId("catalog.searchField")
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                if showsDismissButton {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .xrayId("catalog.closeButton")
+                    .accessibilityLabel("Close")
                 }
-                .buttonStyle(.borderless)
-                .xrayId("catalog.closeButton")
-                .accessibilityLabel("Close")
             }
             .padding()
 
@@ -221,7 +228,7 @@ struct CatalogBrowserView: View {
                     VStack(alignment: .leading) {
                         Text(agent.name)
                             .font(.headline)
-                        Text(agent.model)
+                        Text(AgentDefaults.label(for: agent.model))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }

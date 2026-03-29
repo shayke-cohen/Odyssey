@@ -1,8 +1,8 @@
-import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import type { ToolContext } from "./tool-context.js";
 import { logger } from "../logger.js";
+import { createTextResult, defineSharedTool } from "./shared-tool.js";
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -73,7 +73,7 @@ export function rejectQuestion(questionId: string, reason: string): boolean {
 
 export function createAskUserTool(ctx: ToolContext, callingSessionId: string, onQuestionCreated?: (questionId: string) => void) {
   return [
-    tool(
+    defineSharedTool(
       "ask_user",
       "Ask the user a question and wait for their answer. Blocks until the user responds. Use this when you need clarification, a decision, or confirmation before proceeding. By default, your question is private (not visible to other agents in group chats).",
       {
@@ -161,17 +161,10 @@ export function createAskUserTool(ctx: ToolContext, callingSessionId: string, on
           },
         );
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({
-                answer: result.answer,
-                selectedOptions: result.selectedOptions,
-              }),
-            },
-          ],
-        };
+        return createTextResult({
+          answer: result.answer,
+          selectedOptions: result.selectedOptions,
+        });
       },
     ),
   ];

@@ -48,8 +48,10 @@ SwiftUI app <-> AppState <-> SidecarManager <-> WebSocket JSON <-> WsServer <-> 
 - `ClaudeStudio/App/Log.swift` — centralized `OSLog` categories
 - `ClaudeStudio/Models/` — all SwiftData `@Model` types
 - `ClaudeStudio/Services/` — sidecar lifecycle, protocol, provisioning, git/workspace prep, config sync, logging, P2P
-- `ClaudeStudio/Views/MainWindow/` — main shell: sidebar, chat, inspector, new session, peer network, task sheets
-- `ClaudeStudio/Views/AgentLibrary/` — agent library/editor
+- `ClaudeStudio/Views/MainWindow/` — main shell: welcome, sidebar, chat, inspector, library hub, new session, peer network, task sheets
+- `ClaudeStudio/Views/AgentLibrary/` — supporting agent editor/library surfaces used by the hub
+- `ClaudeStudio/Views/GroupLibrary/` — supporting group editor/library surfaces used by the hub
+- `ClaudeStudio/Views/Catalog/` — catalog detail/install surfaces backing Discover
 - `ClaudeStudio/Views/Components/` — shared UI pieces like `MessageBubble`, `ToolCallView`, `StatusBadge`
 - `ClaudeStudio/Views/Debug/DebugLogView.swift` — unified log viewer
 - `ClaudeStudio/Resources/` — default skills, prompt templates, catalogs, bundled config
@@ -109,14 +111,16 @@ SwiftUI app <-> AppState <-> SidecarManager <-> WebSocket JSON <-> WsServer <-> 
 
 ### Important views
 
-- `ClaudeStudio/Views/MainWindow/MainWindowView.swift` — `NavigationSplitView` shell with sidebar, chat, inspector, toolbar actions
+- `ClaudeStudio/Views/MainWindow/MainWindowView.swift` — `NavigationSplitView` shell with sidebar, chat, inspector, toolbar actions, and library sheet wiring
+- `ClaudeStudio/Views/MainWindow/IntentLibraryHubView.swift` — intent-first library hub (`Run`, `Build`, `Discover`) and adaptive compact/wide layouts
 - `ClaudeStudio/Views/MainWindow/SidebarView.swift` — pinned/active/recent/archived conversation organization, context menus, swipe actions
 - `ClaudeStudio/Views/MainWindow/ChatView.swift` — send flow, session bootstrap, streaming text, group chat sequencing/fan-out
 - `ClaudeStudio/Views/MainWindow/InspectorView.swift` — topic/session metadata, controls, usage counters, editor link
 - `ClaudeStudio/Views/MainWindow/NewSessionSheet.swift` — agent picker, mission, model/mode overrides, working directory picker
 - `ClaudeStudio/Views/MainWindow/PeerNetworkView.swift` — LAN peer discovery/import UI
 - `ClaudeStudio/Views/MainWindow/TaskCreationSheet.swift` and `TaskEditSheet.swift` — task board editing
-- `ClaudeStudio/Views/AgentLibrary/AgentLibraryView.swift` and `AgentEditorView.swift` — agent CRUD
+- `ClaudeStudio/Views/AgentLibrary/AgentEditorView.swift` — agent CRUD editor used from Build and install flows
+- `ClaudeStudio/Views/GroupLibrary/GroupEditorView.swift` — group CRUD editor used from Build flows
 - `ClaudeStudio/Views/Components/AgentCardView.swift` — agent launch card with working Start action
 - `ClaudeStudio/Views/Debug/DebugLogView.swift` — log viewer with filters and search
 
@@ -356,6 +360,7 @@ Key prefixes used in the repo include:
 
 - `mainWindow.*`
 - `sidebar.*`
+- `libraryHub.*`
 - `chat.*`
 - `inspector.*`
 - `newSession.*`

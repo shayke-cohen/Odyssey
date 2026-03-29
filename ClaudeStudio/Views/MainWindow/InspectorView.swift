@@ -11,10 +11,9 @@ enum InspectorTab: String, CaseIterable, Identifiable {
 }
 
 struct InspectorView: View {
-    let conversationId: UUID
+    let conversation: Conversation
     @Environment(\.modelContext) private var modelContext
     @Environment(WindowState.self) private var windowState: WindowState
-    @Query private var allConversations: [Conversation]
     @Query(sort: \Session.startedAt) private var allSessions: [Session]
     @EnvironmentObject private var appState: AppState
     @Query private var allGroups: [AgentGroup]
@@ -23,17 +22,15 @@ struct InspectorView: View {
     @State private var inspectorTab: InspectorTab = .info
     @State private var editingGroup: AgentGroup?
     @State private var instructionExpanded = false
+    @State private var parentConversationTitle: String?
+    @State private var groupRecentConversations: [Conversation] = []
     // editingWorkingDirectory removed — project dir is per-window
     // workingDirectoryDraft removed — project dir is per-window, not editable per-session
 
     private let durationTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    private var conversation: Conversation? {
-        allConversations.first { $0.id == conversationId }
-    }
-
     private var sourceGroup: AgentGroup? {
-        guard let gid = conversation?.sourceGroupId else { return nil }
+        guard let gid = conversation.sourceGroupId else { return nil }
         return allGroups.first { $0.id == gid }
     }
 
@@ -49,13 +46,13 @@ struct InspectorView: View {
     /// Sessions for this conversation — uses the relationship first, falls back to
     /// a manual query when the SwiftData many-to-many inverse returns empty.
     private var orderedSessions: [Session] {
-        let relSessions = conversation?.sessions ?? []
+        let relSessions = conversation.sessions
         if !relSessions.isEmpty {
             return relSessions.sorted { $0.startedAt < $1.startedAt }
         }
         // Fallback: find sessions whose conversations include this one
         return allSessions.filter { session in
-            session.conversations.contains { $0.id == conversationId }
+            session.conversations.contains { $0.id == conversation.id }
         }
     }
 
@@ -90,7 +87,7 @@ struct InspectorView: View {
                 infoContent
             case .files:
                 FileExplorerView(
-                    workingDirectory: conversation?.worktreePath ?? windowState.projectDirectory,
+                    workingDirectory: conversation.worktreePath ?? windowState.projectDirectory,
                     displayPath: windowState.projectDirectory,
                     refreshTrigger: appState.fileTreeRefreshTrigger
                 )
@@ -117,6 +114,16 @@ struct InspectorView: View {
             if isGroupConversation {
                 inspectorTab = .group
             }
+            refreshDerivedInspectorState()
+        }
+        .onChange(of: conversation.id) { _, _ in
+            refreshDerivedInspectorState()
+        }
+        .onChange(of: conversation.parentConversationId) { _, _ in
+            refreshDerivedInspectorState()
+        }
+        .onChange(of: conversation.sourceGroupId) { _, _ in
+            refreshDerivedInspectorState()
         }
         .sheet(item: $editingGroup) { g in
             GroupEditorView(group: g)
@@ -129,10 +136,8 @@ struct InspectorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 if orderedSessions.isEmpty {
-                    if let convo = conversation {
-                        InfoRow(label: "Topic", value: convo.topic ?? "Untitled")
-                        InfoRow(label: "Started", value: convo.startedAt.formatted(.dateTime))
-                    }
+                    InfoRow(label: "Topic", value: conversation.topic ?? "Untitled")
+                    InfoRow(label: "Started", value: conversation.startedAt.formatted(.dateTime))
                 } else if orderedSessions.count == 1, let session = orderedSessions.first {
                     sessionSection(session: session)
                     usageSection(session: session, agent: session.agent)
@@ -162,12 +167,9 @@ struct InspectorView: View {
                 .xrayId("inspector.sessionHeading")
 
             InfoRow(label: "Status", value: appState.sessionActivity[session.id.uuidString]?.displayLabel ?? session.status.rawValue.capitalized)
-            InfoRow(label: "Model", value: modelShortName(session.agent?.model ?? ""))
+            InfoRow(label: "Model", value: modelShortName(session.model ?? session.agent?.model ?? ""))
             InfoRow(label: "Mode", value: session.mode.rawValue.capitalized)
-
-            if let convo = conversation {
-                InfoRow(label: "Duration", value: durationString(from: convo.startedAt))
-            }
+            InfoRow(label: "Duration", value: durationString(from: conversation.startedAt))
         }
     }
 
@@ -232,13 +234,13 @@ struct InspectorView: View {
                 }
             }
             InfoRow(label: "Status", value: statusText)
-            InfoRow(label: "Model", value: modelShortName(agent?.model ?? ""))
+            InfoRow(label: "Model", value: modelShortName(session.model ?? agent?.model ?? ""))
             InfoRow(label: "Tokens", value: formatNumber(liveTokens))
             InfoRow(label: "Cost", value: String(format: "$%.4f", liveCost))
             InfoRow(label: "Tool Calls", value: "\(live?.toolCallCount ?? session.toolCallCount)")
             if let agent {
                 Button {
-                    windowState.showAgentLibrary = true
+                    windowState.openLibrary(.build, buildSection: .agents)
                 } label: {
                     Text("Open \(agent.name) in editor")
                         .font(.caption)
@@ -303,7 +305,7 @@ struct InspectorView: View {
 
             InfoRow(label: "Directory", value: abbreviatePath(windowState.projectDirectory))
 
-            if let branch = conversation?.worktreeBranch {
+            if let branch = conversation.worktreeBranch {
                 InfoRow(label: "Branch", value: branch)
             }
 
@@ -346,7 +348,7 @@ struct InspectorView: View {
                 .xrayId("inspector.agentHeading")
 
             Button {
-                windowState.showAgentLibrary = true
+                windowState.openLibrary(.build, buildSection: .agents)
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: agent.icon)
@@ -400,24 +402,21 @@ struct InspectorView: View {
 
     @ViewBuilder
     private var historySection: some View {
-        if let convo = conversation {
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                Label("History", systemImage: "clock")
-                    .font(.headline)
-                    .xrayId("inspector.historyHeading")
+        Divider()
+        VStack(alignment: .leading, spacing: 8) {
+            Label("History", systemImage: "clock")
+                .font(.headline)
+                .xrayId("inspector.historyHeading")
 
-                InfoRow(label: "Started", value: convo.startedAt.formatted(.relative(presentation: .named)))
-                InfoRow(label: "Messages", value: "\(convo.messages.count)")
+            InfoRow(label: "Started", value: conversation.startedAt.formatted(.relative(presentation: .named)))
+            InfoRow(label: "Messages", value: "\(conversation.messages.count)")
 
-                if let parentId = convo.parentConversationId,
-                   let parent = allConversations.first(where: { $0.id == parentId }) {
-                    InfoRow(label: "Forked from", value: parent.topic ?? "Untitled")
-                }
+            if conversation.parentConversationId != nil {
+                InfoRow(label: "Forked from", value: parentConversationTitle ?? "Loading…")
+            }
 
-                if convo.isPinned {
-                    InfoRow(label: "Pinned", value: "Yes")
-                }
+            if conversation.isPinned {
+                InfoRow(label: "Pinned", value: "Yes")
             }
         }
     }
@@ -514,8 +513,8 @@ struct InspectorView: View {
     @ViewBuilder
     private func groupWorkflowSection(_ steps: [WorkflowStep], group: AgentGroup) -> some View {
         let agentById = Dictionary(uniqueKeysWithValues: allAgents.map { ($0.id, $0) })
-        let currentStep = conversation?.workflowCurrentStep
-        let completedSteps = conversation?.workflowCompletedSteps ?? []
+        let currentStep = conversation.workflowCurrentStep
+        let completedSteps = conversation.workflowCompletedSteps ?? []
 
         VStack(alignment: .leading, spacing: 8) {
             Label("Workflow Progress", systemImage: "arrow.triangle.branch")
@@ -624,29 +623,25 @@ struct InspectorView: View {
 
     @ViewBuilder
     private func groupRecentSection(_ group: AgentGroup) -> some View {
-        let convos = allConversations
-            .filter { $0.sourceGroupId == group.id }
-            .sorted { $0.startedAt > $1.startedAt }
-
         VStack(alignment: .leading, spacing: 6) {
             Label("Recent Chats", systemImage: "clock")
                 .font(.headline)
                 .xrayId("inspector.group.recentHeading")
 
-            if convos.isEmpty {
+            if groupRecentConversations.isEmpty {
                 Text("No conversations yet")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             } else {
-                ForEach(convos.prefix(5)) { conv in
+                ForEach(groupRecentConversations.prefix(5)) { conv in
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(conv.id == conversationId ? Color.accentColor : Color.gray.opacity(0.4))
+                            .fill(conv.id == conversation.id ? Color.accentColor : Color.gray.opacity(0.4))
                             .frame(width: 6, height: 6)
                         Text(conv.topic ?? "Untitled")
                             .font(.caption)
                             .lineLimit(1)
-                            .fontWeight(conv.id == conversationId ? .semibold : .regular)
+                            .fontWeight(conv.id == conversation.id ? .semibold : .regular)
                         Spacer()
                         Text(conv.startedAt, style: .relative)
                             .font(.caption2)
@@ -693,6 +688,33 @@ struct InspectorView: View {
 
     // MARK: - Helpers
 
+    private func refreshDerivedInspectorState() {
+        parentConversationTitle = loadParentConversationTitle()
+        groupRecentConversations = loadRecentGroupConversations()
+    }
+
+    private func loadParentConversationTitle() -> String? {
+        guard let parentId = conversation.parentConversationId else { return nil }
+        let descriptor = FetchDescriptor<Conversation>(
+            predicate: #Predicate<Conversation> { convo in
+                convo.id == parentId
+            }
+        )
+        return try? modelContext.fetch(descriptor).first?.topic ?? "Untitled"
+    }
+
+    private func loadRecentGroupConversations() -> [Conversation] {
+        guard let groupId = conversation.sourceGroupId else { return [] }
+        var descriptor = FetchDescriptor<Conversation>(
+            predicate: #Predicate<Conversation> { convo in
+                convo.sourceGroupId == groupId
+            }
+        )
+        descriptor.sortBy = [SortDescriptor(\Conversation.startedAt, order: .reverse)]
+        descriptor.fetchLimit = 5
+        return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
     private func agentOriginLabel(_ agent: Agent) -> String {
         switch agent.origin {
         case .local: "Local"
@@ -721,10 +743,7 @@ struct InspectorView: View {
     }
 
     private func modelShortName(_ model: String) -> String {
-        if model.contains("sonnet") { return "Sonnet 4.6" }
-        if model.contains("opus") { return "Opus 4.6" }
-        if model.contains("haiku") { return "Haiku 4.5" }
-        return model
+        AgentDefaults.label(for: model)
     }
 
     private func formatNumber(_ n: Int) -> String {

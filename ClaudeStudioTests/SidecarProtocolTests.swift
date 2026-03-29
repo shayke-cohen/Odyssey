@@ -30,7 +30,8 @@ final class SidecarProtocolTests: XCTestCase {
             systemPrompt: "Say hi",
             allowedTools: ["Read"],
             mcpServers: [],
-            model: "claude-sonnet-4-6",
+            provider: "codex",
+            model: "gpt-5-codex",
             maxTurns: 5,
             maxBudget: nil,
             maxThinkingTokens: nil,
@@ -45,7 +46,8 @@ final class SidecarProtocolTests: XCTestCase {
         XCTAssertEqual(json["conversationId"] as? String, "conv-456")
         let agentConfig = json["agentConfig"] as? [String: Any]
         XCTAssertEqual(agentConfig?["name"] as? String, "TestBot")
-        XCTAssertEqual(agentConfig?["model"] as? String, "claude-sonnet-4-6")
+        XCTAssertEqual(agentConfig?["provider"] as? String, "codex")
+        XCTAssertEqual(agentConfig?["model"] as? String, "gpt-5-codex")
     }
 
     func testSessionMessageEncoding() throws {
@@ -64,7 +66,8 @@ final class SidecarProtocolTests: XCTestCase {
             systemPrompt: "Resume safely",
             allowedTools: ["Read"],
             mcpServers: [],
-            model: "claude-sonnet-4-6",
+            provider: "codex",
+            model: "gpt-5-codex",
             maxTurns: 5,
             maxBudget: 1.5,
             maxThinkingTokens: 8000,
@@ -94,6 +97,7 @@ final class SidecarProtocolTests: XCTestCase {
         XCTAssertEqual(sessions[0]["claudeSessionId"] as? String, "claude-a")
         let firstConfig = try XCTUnwrap(sessions[0]["agentConfig"] as? [String: Any])
         XCTAssertEqual(firstConfig["name"] as? String, "RecoveryBot")
+        XCTAssertEqual(firstConfig["provider"] as? String, "codex")
         XCTAssertEqual(firstConfig["workingDirectory"] as? String, "/tmp/recovery")
     }
 

@@ -8,6 +8,11 @@ import { createTaskBoardTools } from "./task-board-tools.js";
 import { createAskUserTool } from "./ask-user-tool.js";
 import { createRichDisplayTools } from "./rich-display-tools.js";
 import { logger } from "../logger.js";
+import {
+  toClaudeTool,
+  toCodexDynamicToolSpec,
+  type SharedToolDefinition,
+} from "./shared-tool.js";
 
 /**
  * Creates the in-process PeerBus MCP server that gives every agent session
@@ -25,21 +30,13 @@ export function createPeerBusServer(
   includeAskUser = false,
   onQuestionCreated?: (questionId: string) => void,
 ) {
-  const tools: any[] = [
-    ...createBlackboardTools(ctx),
-    ...createMessagingTools(ctx, callingSessionId),
-    ...createChatTools(ctx, callingSessionId),
-    ...createWorkspaceTools(ctx, callingSessionId),
-    ...createTaskBoardTools(ctx, callingSessionId),
-  ];
-
-  if (includeAskUser) {
-    tools.push(...createAskUserTool(ctx, callingSessionId, onQuestionCreated));
-    tools.push(...createRichDisplayTools(ctx, callingSessionId));
-    logger.debug("peerbus", `ask_user + rich display tools INCLUDED for session ${callingSessionId}`);
-  } else {
-    logger.debug("peerbus", `ask_user tool NOT included for session ${callingSessionId} (includeAskUser=${includeAskUser})`);
-  }
+  const definitions = createPeerBusToolDefinitions(
+    ctx,
+    callingSessionId,
+    includeAskUser,
+    onQuestionCreated,
+  );
+  const tools = definitions.map((definition) => toClaudeTool(definition));
 
   const toolNames = tools.map((t: any) => t.name).join(", ");
   logger.debug("peerbus", `Creating SDK MCP server with ${tools.length} tools: [${toolNames}]`);
@@ -48,4 +45,49 @@ export function createPeerBusServer(
     name: "peerbus",
     tools,
   });
+}
+
+export function createPeerBusToolDefinitions(
+  ctx: ToolContext,
+  callingSessionId: string,
+  includeAskUser = false,
+  onQuestionCreated?: (questionId: string) => void,
+): SharedToolDefinition[] {
+  const definitions: SharedToolDefinition[] = [
+    ...createBlackboardTools(ctx),
+    ...createMessagingTools(ctx, callingSessionId),
+    ...createChatTools(ctx, callingSessionId),
+    ...createWorkspaceTools(ctx, callingSessionId),
+    ...createTaskBoardTools(ctx, callingSessionId),
+  ];
+
+  if (includeAskUser) {
+    definitions.push(...createAskUserTool(ctx, callingSessionId, onQuestionCreated));
+    definitions.push(...createRichDisplayTools(ctx, callingSessionId));
+    logger.debug("peerbus", `ask_user + rich display tools INCLUDED for session ${callingSessionId}`);
+  } else {
+    logger.debug("peerbus", `ask_user tool NOT included for session ${callingSessionId} (includeAskUser=${includeAskUser})`);
+  }
+
+  return definitions;
+}
+
+export function createCodexDynamicTools(
+  ctx: ToolContext,
+  callingSessionId: string,
+  includeAskUser = false,
+  onQuestionCreated?: (questionId: string) => void,
+) {
+  const definitions = createPeerBusToolDefinitions(
+    ctx,
+    callingSessionId,
+    includeAskUser,
+    onQuestionCreated,
+  );
+
+  return {
+    definitions,
+    specs: definitions.map((definition) => toCodexDynamicToolSpec(definition)),
+    handlers: new Map(definitions.map((definition) => [definition.name, definition] as const)),
+  };
 }

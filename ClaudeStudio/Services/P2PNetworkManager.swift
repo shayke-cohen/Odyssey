@@ -188,6 +188,7 @@ final class P2PNetworkManager: ObservableObject {
                 name: a.name,
                 agentDescription: a.agentDescription,
                 systemPrompt: a.systemPrompt,
+                provider: a.provider,
                 model: a.model,
                 maxTurns: a.maxTurns,
                 maxBudget: a.maxBudget,
@@ -365,4 +366,3 @@ enum P2PClientError: LocalizedError {
         }
     }
 }
-

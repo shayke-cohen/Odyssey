@@ -12,6 +12,11 @@ struct GroupLibraryView: View {
     @State private var filterOrigin: OriginFilter = .all
     @State private var editingGroup: AgentGroup?
     @State private var showingNewGroup = false
+    let showsDismissButton: Bool
+
+    init(showsDismissButton: Bool = true) {
+        self.showsDismissButton = showsDismissButton
+    }
 
     enum OriginFilter: String, CaseIterable {
         case all = "All"
@@ -51,9 +56,11 @@ struct GroupLibraryView: View {
                 }
                 .xrayId("groupLibrary.newGroupButton")
 
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.escape)
-                    .xrayId("groupLibrary.doneButton")
+                if showsDismissButton {
+                    Button("Done") { dismiss() }
+                        .keyboardShortcut(.escape)
+                        .xrayId("groupLibrary.doneButton")
+                }
             }
             .padding()
 

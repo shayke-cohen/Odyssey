@@ -134,6 +134,14 @@ final class QuickActionUsageTracker: ObservableObject {
     }
 }
 
+private struct ChatScrollOffsetPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = .greatestFiniteMagnitude
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 // MARK: - Quick Actions Row (Hybrid Layout)
 
 /// Shows quick action buttons in a single row. Left-side buttons show icon+text labels;
@@ -215,7 +223,7 @@ private struct QuickActionsRow: View {
 }
 
 struct ChatView: View {
-    let conversationId: UUID
+    let selectedConversation: Conversation
     @Environment(\.modelContext) private var modelContext
     @Environment(\.appTextScale) private var appTextScale
     @EnvironmentObject private var appState: AppState
@@ -252,6 +260,7 @@ struct ChatView: View {
     @State private var shareCoordinator: ShareTempFileCoordinator?
     @State private var showAllDoneBanner = false
     @State private var allDoneBannerTimer: Task<Void, Never>?
+    @State private var shouldAutoScroll = true
     private var planModeEnabled: Bool {
         conversation?.planModeEnabled ?? false
     }
@@ -259,13 +268,19 @@ struct ChatView: View {
     @State private var lastPlanResponseMessageId: UUID?
     @FocusState private var topicFieldFocused: Bool
 
-    @Query private var allConversations: [Conversation]
     @Query private var allAgents: [Agent]
     @Query private var allGroups: [AgentGroup]
     @Query(sort: \Session.startedAt) private var allSessions: [Session]
 
+    private let autoScrollThreshold: CGFloat = 120
+    private let bottomScrollAnchor = "chat.bottomAnchor"
+
+    private var conversationId: UUID {
+        selectedConversation.id
+    }
+
     private var conversation: Conversation? {
-        allConversations.first { $0.id == conversationId }
+        selectedConversation
     }
 
     private var captionFont: Font {
@@ -319,7 +334,7 @@ struct ChatView: View {
     }
 
     private var currentModel: String? {
-        primarySession?.agent?.model
+        primarySession?.model ?? primarySession?.agent?.model
     }
 
     private var aggregatedLiveCost: Double {
@@ -771,7 +786,7 @@ struct ChatView: View {
             .xrayId("chat.groupAgentIcons")
         } else if let agent = primarySession?.agent {
             Button {
-                windowState.showAgentLibrary = true
+                windowState.openLibrary(.build, buildSection: .agents)
             } label: {
                 Image(systemName: agent.icon)
                     .foregroundStyle(Color.fromAgentColor(agent.color))
@@ -942,84 +957,129 @@ struct ChatView: View {
     @ViewBuilder
     private var messageList: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    if !hasUserChatMessages && !isProcessing {
-                        chatEmptyState
-                    }
-
-                    ForEach(displayMessages) { message in
-                        MessageBubble(
-                            message: message,
-                            participants: conversation?.participants ?? [],
-                            agentAppearances: participantAppearanceMap,
-                            onTapAttachment: { attachment in
-                                previewAttachment = attachment
-                            },
-                            onForkFromHere: {
-                                forkFromMessage(message)
-                            },
-                            onScheduleFromMessage: {
-                                scheduleDraft = makeScheduleDraft(from: message)
-                                showingScheduleEditor = true
-                            }
-                        )
-                        .id(message.id)
-
-                        if message.id == lastPlanResponseMessageId, !isProcessing {
-                            planActionBar
+            GeometryReader { scrollGeometry in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        if !hasUserChatMessages && !isProcessing {
+                            chatEmptyState
                         }
-                    }
 
-                    if let convo = conversation, convo.sessions.count > 1 {
-                        AgentActivityBar(
-                            sessions: convo.sessions,
-                            sessionActivity: appState.sessionActivity
-                        )
-                        .id("agentActivityBar")
-                    }
-
-                    if isProcessing {
-                        streamingBubble
-                            .id("streaming")
-                    }
-
-                    ForEach(pendingQuestionsForCurrentConversation) { question in
-                        AgentQuestionBubble(
-                            question: question,
-                            agentName: agentNameForQuestion(question),
-                            agentColor: agentColorForQuestion(question)
-                        ) { answer, selectedOptions in
-                            appState.answerQuestion(
-                                sessionId: question.sessionId,
-                                questionId: question.id,
-                                answer: answer,
-                                selectedOptions: selectedOptions
+                        ForEach(displayMessages) { message in
+                            MessageBubble(
+                                message: message,
+                                participants: conversation?.participants ?? [],
+                                agentAppearances: participantAppearanceMap,
+                                onTapAttachment: { attachment in
+                                    previewAttachment = attachment
+                                },
+                                onForkFromHere: {
+                                    forkFromMessage(message)
+                                },
+                                onScheduleFromMessage: {
+                                    scheduleDraft = makeScheduleDraft(from: message)
+                                    showingScheduleEditor = true
+                                }
                             )
-                        }
-                        .id("agentQuestion-\(question.id)")
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
+                            .id(message.id)
 
-                    if showAllDoneBanner {
-                        SessionSummaryCard(
-                            sessions: sessionsForSummary,
-                            toolCalls: toolCallsForSummary,
-                            duration: summaryDuration
-                        )
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .id("allDoneBanner")
+                            if message.id == lastPlanResponseMessageId, !isProcessing {
+                                planActionBar
+                            }
+                        }
+
+                        if let convo = conversation, convo.sessions.count > 1 {
+                            AgentActivityBar(
+                                sessions: convo.sessions,
+                                sessionActivity: appState.sessionActivity
+                            )
+                            .id("agentActivityBar")
+                        }
+
+                        if isProcessing {
+                            streamingBubble
+                                .id("streaming")
+                        }
+
+                        ForEach(pendingQuestionsForCurrentConversation) { question in
+                            AgentQuestionBubble(
+                                question: question,
+                                agentName: agentNameForQuestion(question),
+                                agentColor: agentColorForQuestion(question)
+                            ) { answer, selectedOptions in
+                                appState.answerQuestion(
+                                    sessionId: question.sessionId,
+                                    questionId: question.id,
+                                    answer: answer,
+                                    selectedOptions: selectedOptions
+                                )
+                            }
+                            .id("agentQuestion-\(question.id)")
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+
+                        ForEach(pendingConfirmationsForCurrentConversation) { confirmation in
+                            AgentConfirmationBubble(
+                                confirmation: confirmation,
+                                agentName: agentNameForConfirmation(confirmation),
+                                agentColor: agentColorForConfirmation(confirmation)
+                            ) { approved in
+                                appState.answerConfirmation(
+                                    sessionId: confirmation.sessionId,
+                                    confirmationId: confirmation.id,
+                                    approved: approved
+                                )
+                            }
+                            .id("agentConfirmation-\(confirmation.id)")
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+
+                        if showAllDoneBanner {
+                            SessionSummaryCard(
+                                sessions: sessionsForSummary,
+                                toolCalls: toolCallsForSummary,
+                                duration: summaryDuration
+                            )
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .id("allDoneBanner")
+                        }
+
+                        Color.clear
+                            .frame(height: 1)
+                            .id(bottomScrollAnchor)
+                            .background(
+                                GeometryReader { marker in
+                                    Color.clear.preference(
+                                        key: ChatScrollOffsetPreferenceKey.self,
+                                        value: marker.frame(in: .named("chat.messageScrollView")).maxY - scrollGeometry.size.height
+                                    )
+                                }
+                            )
+                    }
+                    .padding()
+                }
+                .coordinateSpace(name: "chat.messageScrollView")
+                .xrayId("chat.messageScrollView")
+                .onPreferenceChange(ChatScrollOffsetPreferenceKey.self) { distanceFromBottom in
+                    let isNearBottom = distanceFromBottom <= autoScrollThreshold
+                    if isNearBottom {
+                        shouldAutoScroll = true
+                    } else if isProcessing {
+                        shouldAutoScroll = false
                     }
                 }
-                .padding()
-            }
-            .xrayId("chat.messageScrollView")
-            .onChange(of: sortedMessages.count) { _, _ in
-                scrollToBottom(proxy)
-            }
-            .onChange(of: liveStreamingText) { _, _ in
-                if isProcessing {
-                    scrollToBottom(proxy)
+                .onChange(of: sortedMessages.count) { _, _ in
+                    guard shouldAutoScroll || !isProcessing else { return }
+                    scrollToBottom(proxy, animated: true)
+                }
+                .onChange(of: liveStreamingText) { _, _ in
+                    guard isProcessing, shouldAutoScroll else { return }
+                    scrollToBottom(proxy, animated: false)
+                }
+                .onChange(of: isProcessing) { _, processing in
+                    if processing {
+                        shouldAutoScroll = true
+                        scrollToBottom(proxy, animated: false)
+                    }
                 }
             }
         }
@@ -1727,13 +1787,45 @@ struct ChatView: View {
         return Color.fromAgentColor(agent.color)
     }
 
+    private var pendingConfirmationsForCurrentConversation: [AppState.AgentConfirmation] {
+        guard let convo = conversation else { return [] }
+        return convo.sessions.compactMap { session in
+            appState.pendingConfirmations[session.id.uuidString]
+        }
+    }
+
+    private func agentNameForConfirmation(_ confirmation: AppState.AgentConfirmation) -> String {
+        guard let convo = conversation else { return "Agent" }
+        if let session = convo.sessions.first(where: { $0.id.uuidString == confirmation.sessionId }) {
+            return session.agent?.name ?? "Agent"
+        }
+        return "Agent"
+    }
+
+    private func agentColorForConfirmation(_ confirmation: AppState.AgentConfirmation) -> Color? {
+        guard let convo = conversation, convo.sessions.count > 1,
+              let session = convo.sessions.first(where: { $0.id.uuidString == confirmation.sessionId }),
+              let agent = session.agent else { return nil }
+        return Color.fromAgentColor(agent.color)
+    }
+
     // MARK: - Helpers
 
-    private func scrollToBottom(_ proxy: ScrollViewProxy) {
-        if isProcessing {
-            withAnimation { proxy.scrollTo("streaming", anchor: .bottom) }
-        } else if let lastId = sortedMessages.last?.id {
-            withAnimation { proxy.scrollTo(lastId, anchor: .bottom) }
+    private func scrollToBottom(_ proxy: ScrollViewProxy, animated: Bool) {
+        let scrollAction = {
+            proxy.scrollTo(bottomScrollAnchor, anchor: .bottom)
+        }
+
+        if animated {
+            withAnimation {
+                scrollAction()
+            }
+        } else {
+            var transaction = Transaction()
+            transaction.animation = nil
+            withTransaction(transaction) {
+                scrollAction()
+            }
         }
     }
 
@@ -1744,10 +1836,7 @@ struct ChatView: View {
     }
 
     private func modelShortName(_ model: String) -> String {
-        if model.contains("sonnet") { return "sonnet" }
-        if model.contains("opus") { return "opus" }
-        if model.contains("haiku") { return "haiku" }
-        return model
+        AgentDefaults.label(for: model)
     }
 
     private func commitRename() {
@@ -2121,13 +2210,9 @@ struct ChatView: View {
 
             var createConfig: AgentConfig?
             if !appState.createdSessions.contains(sidecarKey) {
-                if let agent = session.agent {
-                    let (cfg, _) = provisioner.provision(
-                        agent: agent,
-                        mission: session.mission,
-                        workingDirOverride: session.workingDirectory
-                    )
-                    createConfig = cfg
+                if session.agent != nil {
+                    session.workingDirectory = session.workingDirectory.isEmpty ? worktreePath : session.workingDirectory
+                    createConfig = provisioner.config(for: session)
                 } else {
                     createConfig = makeFreeformAgentConfig()
                 }
@@ -2330,13 +2415,8 @@ struct ChatView: View {
 
         var createConfig: AgentConfig?
         if !appState.createdSessions.contains(key) {
-            if let agent = other.agent {
-                let (cfg, _) = provisioner.provision(
-                    agent: agent,
-                    mission: other.mission,
-                    workingDirOverride: other.workingDirectory
-                )
-                createConfig = cfg
+            if other.agent != nil {
+                createConfig = provisioner.config(for: other)
             } else {
                 createConfig = makeFreeformAgentConfig()
             }

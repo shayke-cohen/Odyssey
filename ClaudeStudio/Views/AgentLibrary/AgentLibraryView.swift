@@ -13,6 +13,11 @@ struct AgentLibraryView: View {
     @State private var showingFromPrompt = false
     @State private var editingAgent: Agent?
     @State private var showCatalog = false
+    let showsDismissButton: Bool
+
+    init(showsDismissButton: Bool = true) {
+        self.showsDismissButton = showsDismissButton
+    }
 
     enum AgentOriginFilter: String, CaseIterable {
         case all = "All"
@@ -180,14 +185,16 @@ struct AgentLibraryView: View {
             .help("Browse catalog")
             .xrayId("agentLibrary.catalogButton")
 
-            Button { dismiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.secondary)
+            if showsDismissButton {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Close")
+                .xrayId("agentLibrary.closeButton")
+                .accessibilityLabel("Close")
             }
-            .buttonStyle(.borderless)
-            .help("Close")
-            .xrayId("agentLibrary.closeButton")
-            .accessibilityLabel("Close")
         }
         .padding()
     }
@@ -197,6 +204,7 @@ struct AgentLibraryView: View {
             name: "\(agent.name) Copy",
             agentDescription: agent.agentDescription,
             systemPrompt: agent.systemPrompt,
+            provider: agent.provider,
             model: agent.model,
             icon: agent.icon,
             color: agent.color

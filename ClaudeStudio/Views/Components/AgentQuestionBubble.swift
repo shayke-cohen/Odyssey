@@ -478,3 +478,84 @@ struct AnsweredQuestionBubble: View {
         .xrayId("chat.answeredQuestion.\(message.id.uuidString)")
     }
 }
+
+struct AgentConfirmationBubble: View {
+    let confirmation: AppState.AgentConfirmation
+    let agentName: String
+    var agentColor: Color?
+    let onAnswer: (Bool) -> Void
+
+    private var tintColor: Color { agentColor ?? .orange }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.shield.fill")
+                    .font(.caption)
+                    .foregroundStyle(tintColor)
+                Text(agentName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("needs your approval")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(confirmation.riskLevel.capitalized)
+                    .font(.caption2)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(tintColor.opacity(0.12))
+                    .foregroundStyle(tintColor)
+                    .clipShape(Capsule())
+            }
+
+            Text(confirmation.action)
+                .font(.headline)
+
+            Text(confirmation.reason)
+                .font(.body)
+                .textSelection(.enabled)
+
+            if let details = confirmation.details, !details.isEmpty {
+                Text(details)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+
+            HStack(spacing: 12) {
+                Button {
+                    onAnswer(false)
+                } label: {
+                    Label("Deny", systemImage: "xmark.circle.fill")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+                .xrayId("chat.agentConfirmation.denyButton")
+                .accessibilityLabel("Deny agent confirmation")
+
+                Button {
+                    onAnswer(true)
+                } label: {
+                    Label("Approve", systemImage: "checkmark.circle.fill")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(tintColor)
+                .xrayId("chat.agentConfirmation.approveButton")
+                .accessibilityLabel("Approve agent confirmation")
+            }
+        }
+        .padding(12)
+        .background(tintColor.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(tintColor.opacity(0.3), lineWidth: 1)
+        )
+        .xrayId("chat.agentConfirmation.\(confirmation.id)")
+    }
+}

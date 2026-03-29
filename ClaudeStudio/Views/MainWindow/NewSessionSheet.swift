@@ -12,7 +12,8 @@ struct NewSessionSheet: View {
     /// Agents selected for this conversation (one or more = group-capable).
     @State private var selectedAgentIds: Set<UUID> = []
     @State private var isFreeformChat = false
-    @State private var modelOverride = ""
+    @State private var providerOverride = AgentDefaults.inheritMarker
+    @State private var modelOverride = AgentDefaults.inheritMarker
     @State private var sessionMode: SessionMode = .interactive
     @State private var mission = ""
     @State private var showOptions = false
@@ -47,6 +48,21 @@ struct NewSessionSheet: View {
         isFreeformChat || !selectedAgentIds.isEmpty
     }
 
+    private var selectedSingleAgent: Agent? {
+        orderedSelectedAgents.count == 1 ? orderedSelectedAgents.first : nil
+    }
+
+    private var allowsSessionOverrides: Bool {
+        !isFreeformChat && selectedSingleAgent != nil
+    }
+
+    private var effectiveProviderForOverrides: String {
+        AgentDefaults.resolveEffectiveProvider(
+            sessionOverride: providerOverride,
+            agentSelection: selectedSingleAgent?.provider
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -73,6 +89,14 @@ struct NewSessionSheet: View {
             footer
         }
         .frame(width: 620, height: 620)
+        .onChange(of: providerOverride) { _, _ in
+            modelOverride = AgentDefaults.availableThreadModelChoices(
+                for: effectiveProviderForOverrides,
+                inheritLabel: "Inherit from Agent"
+            ).contains(where: { $0.id == AgentDefaults.normalizedModelSelection(modelOverride) })
+                ? AgentDefaults.normalizedModelSelection(modelOverride)
+                : AgentDefaults.inheritMarker
+        }
     }
 
     // MARK: - Project Info
@@ -238,7 +262,8 @@ struct NewSessionSheet: View {
                     Button {
                         isFreeformChat = false
                         selectedAgentIds = [agent.id]
-                        modelOverride = ""
+                        providerOverride = AgentDefaults.inheritMarker
+                        modelOverride = AgentDefaults.inheritMarker
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: agent.icon)
@@ -293,14 +318,15 @@ struct NewSessionSheet: View {
                 ) {
                     isFreeformChat = true
                     selectedAgentIds.removeAll()
-                    modelOverride = "claude-sonnet-4-6"
+                    providerOverride = AgentDefaults.inheritMarker
+                    modelOverride = AgentDefaults.inheritMarker
                 }
 
                 ForEach(enabledAgents) { agent in
                     agentPickerCard(
                         icon: agent.icon,
                         name: agent.name,
-                        detail: agent.model,
+                        detail: AgentDefaults.label(for: agent.model),
                         color: Color.fromAgentColor(agent.color),
                         isSelected: selectedAgentIds.contains(agent.id),
                         identifier: "newSession.agentCard.\(agent.id.uuidString)"
@@ -310,7 +336,8 @@ struct NewSessionSheet: View {
                             selectedAgentIds.remove(agent.id)
                         } else {
                             selectedAgentIds.insert(agent.id)
-                            modelOverride = ""
+                            providerOverride = AgentDefaults.inheritMarker
+                            modelOverride = AgentDefaults.inheritMarker
                         }
                     }
                 }
@@ -361,22 +388,41 @@ struct NewSessionSheet: View {
     private var optionsSection: some View {
         DisclosureGroup("Session Options", isExpanded: $showOptions) {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Model")
-                        .frame(width: 80, alignment: .trailing)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    Picker("", selection: $modelOverride) {
-                        if selectedAgentIds.count <= 1 {
-                            Text("Inherit from Agent").tag("")
+                if allowsSessionOverrides {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Provider")
+                            .frame(width: 80, alignment: .trailing)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        Picker("", selection: $providerOverride) {
+                            Text("Inherit from Agent").tag(AgentDefaults.inheritMarker)
+                            Text("Claude").tag(ProviderSelection.claude.rawValue)
+                            Text("Codex").tag(ProviderSelection.codex.rawValue)
                         }
-                        Text("Sonnet 4.6").tag("claude-sonnet-4-6")
-                        Text("Opus 4.6").tag("claude-opus-4-6")
-                        Text("Haiku 4.5").tag("claude-haiku-4-5-20251001")
+                        .labelsHidden()
+                        .frame(width: 220)
+                        .xrayId("newSession.providerPicker")
                     }
-                    .labelsHidden()
-                    .frame(width: 220)
-                    .xrayId("newSession.modelPicker")
+
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Model")
+                            .frame(width: 80, alignment: .trailing)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        Picker("", selection: $modelOverride) {
+                            ForEach(
+                                AgentDefaults.availableThreadModelChoices(
+                                    for: effectiveProviderForOverrides,
+                                    inheritLabel: "Inherit from Agent"
+                                )
+                            ) { choice in
+                                Text(choice.label).tag(choice.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 220)
+                        .xrayId("newSession.modelPicker")
+                    }
                 }
 
                 HStack(alignment: .firstTextBaseline) {
@@ -514,6 +560,18 @@ struct NewSessionSheet: View {
                 mode: sessionMode,
                 workingDirectory: projectDir
             )
+
+            if selectedList.count == 1 {
+                session.provider = AgentDefaults.resolveEffectiveProvider(
+                    sessionOverride: providerOverride,
+                    agentSelection: agent.provider
+                )
+                session.model = AgentDefaults.resolveEffectiveModel(
+                    sessionOverride: modelOverride,
+                    agentSelection: agent.model,
+                    provider: session.provider
+                )
+            }
 
             session.conversations = [conversation]
             conversation.sessions.append(session)

@@ -193,7 +193,7 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 
 **Sheets opened from MainWindowView:**
 - `NewSessionSheet` via `appState.showNewSessionSheet`
-- `AgentLibraryView` via `appState.showAgentLibrary`
+- `IntentLibraryHubView` via `windowState.showLibraryHub`
 - `AgentCommsView` via `appState.showAgentComms`
 
 ---
@@ -207,9 +207,8 @@ Each table lists every interactive control, its `accessibilityIdentifier`, its `
 |---------|-----------|-------|----------|
 | Sidebar list | `sidebar.conversationList` | — | `@testId("sidebar.conversationList")` |
 | Utility: New Thread | `sidebar.utility.newThread` | — | `@testId("sidebar.utility.newThread")` |
-| Utility: Plugins | `sidebar.utility.plugins` | — | `@testId("sidebar.utility.plugins")` |
-| Utility: Automations | `sidebar.utility.automations` | — | `@testId("sidebar.utility.automations")` |
-| Utility: Settings | `sidebar.utility.settings` | — | `@testId("sidebar.utility.settings")` |
+| Utility: Library | `sidebar.utility.library` | — | `@testId("sidebar.utility.library")` |
+| Utility: Add Project | `sidebar.utility.addProject` | — | `@testId("sidebar.utility.addProject")` |
 | Project row | `sidebar.projectRow.{uuid}` | — | `@testId("sidebar.projectRow.{uuid}")` |
 | Project tasks add | `sidebar.projectTasksAdd.{uuid}` | — | `@testId("sidebar.projectTasksAdd.{uuid}")` |
 | Empty state: New Session | `sidebar.emptyState.newSessionButton` | — | `@testId("sidebar.emptyState.newSessionButton")` |
@@ -457,26 +456,38 @@ The sidebar is now **project-first**: utilities live above projects, and each pr
 
 ---
 
-### 5.10 AgentLibraryView
+### 5.10 IntentLibraryHubView
 
-**File:** `Views/AgentLibrary/AgentLibraryView.swift`
-**Access:** Toolbar button or sidebar "Agents" button.
+**File:** `Views/MainWindow/IntentLibraryHubView.swift`
+**Access:** Sidebar `Library`, welcome `Browse Agents` / `Browse Groups`, chat/inspector shortcuts, or peer import follow-up flows.
 
 | Control | Identifier | Label | Selector |
 |---------|-----------|-------|----------|
-| Title | `agentLibrary.title` | — | `@testId("agentLibrary.title")` |
-| Close button | `agentLibrary.closeButton` | `Close` | `@testId("agentLibrary.closeButton")` |
-| Origin filter picker | `agentLibrary.originFilter` | — | `@testId("agentLibrary.originFilter")` |
-| Search field | `agentLibrary.searchField` | — | `@testId("agentLibrary.searchField")` |
-| New Agent button | `agentLibrary.newAgentButton` | — | `@testId("agentLibrary.newAgentButton")` |
-| Catalog button | `agentLibrary.catalogButton` | — | `@testId("agentLibrary.catalogButton")` |
-| Agent grid | `agentLibrary.agentGrid` | — | `@testId("agentLibrary.agentGrid")` |
-| Agent card wrapper | `agentLibrary.card.{uuid}` | — | `@testId("agentLibrary.card.{uuid}")` |
-| Context: Edit | `agentLibrary.card.context.edit.{uuid}` | — | `@testId("agentLibrary.card.context.edit.{uuid}")` |
-| Context: Duplicate | `agentLibrary.card.context.duplicate.{uuid}` | — | `@testId("agentLibrary.card.context.duplicate.{uuid}")` |
-| Context: Delete | `agentLibrary.card.context.delete.{uuid}` | — | `@testId("agentLibrary.card.context.delete.{uuid}")` |
-| Empty: Browse Catalog | `agentLibrary.emptyState.browseCatalogButton` | — | `@testId("agentLibrary.emptyState.browseCatalogButton")` |
-| Empty: Create Agent | `agentLibrary.emptyState.createAgentButton` | — | `@testId("agentLibrary.emptyState.createAgentButton")` |
+| Sheet root | `libraryHub.sheet` | — | `@testId("libraryHub.sheet")` |
+| Title | `libraryHub.title` | — | `@testId("libraryHub.title")` |
+| Search field | `libraryHub.searchField` | — | `@testId("libraryHub.searchField")` |
+| Close button | `libraryHub.closeButton` | `Close library` | `@testId("libraryHub.closeButton")` |
+| Top-level section: Run | `libraryHub.section.run` | `Run` | `@testId("libraryHub.section.run")` |
+| Top-level section: Build | `libraryHub.section.build` | `Build` | `@testId("libraryHub.section.build")` |
+| Top-level section: Discover | `libraryHub.section.discover` | `Discover` | `@testId("libraryHub.section.discover")` |
+| Summary card | `libraryHub.summaryCard` | — | `@testId("libraryHub.summaryCard")` |
+| Run scroll view | `libraryHub.runScrollView` | — | `@testId("libraryHub.runScrollView")` |
+| Run: Start Agent | `libraryHub.run.startAgentButton` | — | `@testId("libraryHub.run.startAgentButton")` |
+| Run: Start Group | `libraryHub.run.startGroupButton` | — | `@testId("libraryHub.run.startGroupButton")` |
+| Run: Quick Chat | `libraryHub.run.quickChatButton` | — | `@testId("libraryHub.run.quickChatButton")` |
+| Build section picker | `libraryHub.build.sectionPicker` | — | `@testId("libraryHub.build.sectionPicker")` |
+| Build scroll view | `libraryHub.buildScrollView` | — | `@testId("libraryHub.buildScrollView")` |
+| Build filter | `libraryHub.build.filter.{all|mine|shared|builtIn}` | — | `@testId("libraryHub.build.filter.{filter}")` |
+| Build: New Agent | `libraryHub.newAgentButton` | — | `@testId("libraryHub.newAgentButton")` |
+| Build: New Group | `libraryHub.newGroupButton` | — | `@testId("libraryHub.newGroupButton")` |
+| Discover section picker | `libraryHub.discover.sectionPicker` | — | `@testId("libraryHub.discover.sectionPicker")` |
+| Discover scroll view | `libraryHub.discoverScrollView` | — | `@testId("libraryHub.discoverScrollView")` |
+| Discover category row | `libraryHub.discover.categoryRow` | — | `@testId("libraryHub.discover.categoryRow")` |
+| Discover category | `libraryHub.discover.category.{title}` | — | `@testId("libraryHub.discover.category.{title}")` |
+| Discover agent card | `libraryHub.discover.agentCard.{catalogId}` | — | `@testId("libraryHub.discover.agentCard.{catalogId}")` |
+| Discover skill card | `libraryHub.discover.skillCard.{catalogId}` | — | `@testId("libraryHub.discover.skillCard.{catalogId}")` |
+| Discover integration card | `libraryHub.discover.mcpCard.{catalogId}` | — | `@testId("libraryHub.discover.mcpCard.{catalogId}")` |
+| New agent entry sheet | `libraryHub.newAgentEntrySheet` | — | `@testId("libraryHub.newAgentEntrySheet")` |
 
 ---
 
@@ -587,7 +598,7 @@ The sidebar is now **project-first**: utilities live above projects, and each pr
 ### 5.13 CatalogBrowserView
 
 **File:** `Views/Catalog/CatalogBrowserView.swift`
-**Access:** Sidebar "Catalog" button or Agent Library "Catalog" button.
+**Access:** Supporting/legacy catalog surface. Primary user flow now enters catalog content through `IntentLibraryHubView` > `Discover`.
 
 | Control | Identifier | Label | Selector |
 |---------|-----------|-------|----------|
@@ -1138,6 +1149,7 @@ All accessibility identifiers follow a consistent pattern:
 | FileContentView | `inspector.fileContent` |
 | NewSessionSheet | `newSession` |
 | WorkingDirectoryPicker | `directoryPicker` |
+| IntentLibraryHubView | `libraryHub` |
 | AgentLibraryView | `agentLibrary` |
 | AgentEditorView | `agentEditor` |
 | AgentCommsView | `agentComms` |

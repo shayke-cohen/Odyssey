@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClaudeStudio Sidebar Visual Options</title>
+  <style>
+    :root {
+      --page-bg: #f4f0ec;
+      --page-ink: #2f2b29;
+      --muted: #7f7771;
+      --panel: rgba(255, 255, 255, 0.72);
+      --stroke: rgba(70, 58, 50, 0.12);
+      --shadow: 0 18px 48px rgba(55, 41, 30, 0.12);
+      --radius-xl: 28px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+      --blue: #2f7cff;
+      --blue-soft: rgba(47, 124, 255, 0.14);
+      --green: #33be68;
+      --gold: #d49a2f;
+      --rose: #d86b73;
+      --beige: #e9e0d9;
+      --line: rgba(89, 72, 61, 0.1);
+      --font-ui: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-ui);
+      color: var(--page-ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.88), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(241, 210, 175, 0.48), transparent 24%),
+        linear-gradient(180deg, #f7f3ef 0%, #ede5dd 100%);
+    }
+
+    .page {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 40px 28px 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.3fr) minmax(260px, 0.9fr);
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 28px;
+    }
+
+    .hero-card,
+    .summary-card,
+    .option-card {
+      border: 1px solid var(--stroke);
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 246, 238, 0.78)),
+        var(--panel);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(47, 124, 255, 0.1);
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 16px 0 10px;
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.03;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p,
+    .summary-card p,
+    .option-meta p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 15px;
+    }
+
+    .summary-card {
+      border-radius: 24px;
+      padding: 22px 24px;
+    }
+
+    .summary-card h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      letter-spacing: 0.02em;
+    }
+
+    .summary-points {
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-point {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .summary-point strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 14px;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .option-card {
+      border-radius: 26px;
+      overflow: hidden;
+    }
+
+    .option-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 20px 14px;
+    }
+
+    .option-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .option-title {
+      margin: 6px 0 6px;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .chip {
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .chip.recommended {
+      background: rgba(51, 190, 104, 0.14);
+      color: #248b4c;
+    }
+
+    .chip.balanced {
+      background: rgba(212, 154, 47, 0.16);
+      color: #8b671f;
+    }
+
+    .chip.bold {
+      background: rgba(216, 107, 115, 0.16);
+      color: #9f3d45;
+    }
+
+    .mock-wrap {
+      padding: 0 20px 18px;
+    }
+
+    .mock-shell {
+      border-radius: 22px;
+      padding: 14px;
+      border: 1px solid rgba(79, 64, 53, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    .option-a .mock-shell {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(247, 241, 235, 0.96));
+    }
+
+    .option-b .mock-shell {
+      background:
+        linear-gradient(180deg, rgba(247, 244, 240, 0.98), rgba(238, 232, 225, 0.98));
+    }
+
+    .option-c .mock-shell {
+      background:
+        linear-gradient(180deg, rgba(255, 250, 246, 0.96), rgba(240, 233, 226, 0.98));
+    }
+
+    .sidebar {
+      width: 100%;
+      max-width: 286px;
+      min-height: 620px;
+      margin: 0 auto;
+      border-radius: 20px;
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .option-a .sidebar {
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.82), transparent 34%),
+        linear-gradient(180deg, #f5efea 0%, #eee7df 100%);
+      border: 1px solid rgba(111, 93, 79, 0.12);
+    }
+
+    .option-b .sidebar {
+      background:
+        linear-gradient(180deg, #f1ece6 0%, #ebe3db 100%);
+      border: 1px solid rgba(90, 74, 63, 0.1);
+    }
+
+    .option-c .sidebar {
+      background:
+        radial-gradient(circle at 100% 0%, rgba(255, 221, 190, 0.34), transparent 28%),
+        linear-gradient(180deg, #f7f0eb 0%, #eee4dc 100%);
+      border: 1px solid rgba(97, 79, 67, 0.12);
+    }
+
+    .sidebar::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.24), transparent 12%, transparent 82%, rgba(255, 255, 255, 0.12));
+    }
+
+    .sidebar-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 2px 2px 0;
+    }
+
+    .sidebar-top span {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      color: #6b625d;
+    }
+
+    .icon-button,
+    .text-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      background: transparent;
+      color: #7c736d;
+    }
+
+    .icon-button {
+      width: 26px;
+      height: 26px;
+      border-radius: 9px;
+    }
+
+    .icon-button.filled {
+      background: rgba(255, 255, 255, 0.56);
+      border: 1px solid rgba(103, 86, 74, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    .project-card {
+      border-radius: 16px;
+      margin-bottom: 14px;
+    }
+
+    .project-card.compact {
+      opacity: 0.92;
+    }
+
+    .option-a .project-card {
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(98, 83, 70, 0.08);
+    }
+
+    .option-b .project-card {
+      position: relative;
+      padding-left: 16px;
+    }
+
+    .option-b .project-card::before {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 12px;
+      bottom: 52px;
+      width: 2px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(47, 124, 255, 0.34), rgba(47, 124, 255, 0.02));
+    }
+
+    .option-c .project-card {
+      padding: 10px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 248, 242, 0.5));
+      border: 1px solid rgba(113, 92, 77, 0.1);
+      box-shadow: 0 10px 30px rgba(82, 58, 42, 0.08);
+    }
+
+    .option-a .project-card.compact,
+    .option-c .project-card.compact {
+      background: rgba(255, 255, 255, 0.34);
+    }
+
+    .project-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 12px;
+      border-radius: 14px;
+    }
+
+    .option-a .project-row,
+    .option-c .project-row {
+      background: rgba(47, 124, 255, 0.1);
+    }
+
+    .option-b .project-row {
+      background: rgba(255, 255, 255, 0.34);
+      border: 1px solid rgba(47, 124, 255, 0.09);
+    }
+
+    .project-row.inactive {
+      background: rgba(255, 255, 255, 0.28);
+    }
+
+    .project-children {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+      padding-left: 18px;
+    }
+
+    .option-b .project-children {
+      padding-left: 14px;
+    }
+
+    .option-c .project-children {
+      padding-left: 16px;
+    }
+
+    .project-compact-meta {
+      font-size: 11px;
+      color: #857a73;
+      white-space: nowrap;
+    }
+
+    .icon-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #ffffff 0%, #e8f1ff 100%);
+      color: var(--blue);
+      border: 1px solid rgba(47, 124, 255, 0.12);
+      box-shadow: 0 4px 14px rgba(47, 124, 255, 0.12);
+    }
+
+    .project-meta,
+    .row-copy {
+      min-width: 0;
+    }
+
+    .project-title,
+    .row-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .project-title strong,
+    .row-title strong {
+      display: inline-block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: -0.02em;
+    }
+
+    .project-title strong {
+      font-size: 15px;
+    }
+
+    .project-meta small,
+    .row-copy small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .micro-pill {
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid rgba(109, 91, 78, 0.08);
+      color: #72665e;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .action-cluster {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.52);
+      border: 1px solid rgba(109, 91, 78, 0.08);
+    }
+
+    .section-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 10px;
+      border-radius: 13px;
+    }
+
+    .option-a .row {
+      background: rgba(255, 255, 255, 0.42);
+      border: 1px solid rgba(109, 91, 78, 0.06);
+    }
+
+    .option-b .row {
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .option-c .row {
+      background: rgba(255, 250, 246, 0.62);
+      border: 1px solid rgba(109, 91, 78, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+
+    .row-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #6e645e;
+      background: rgba(255, 255, 255, 0.45);
+      border: 1px solid rgba(107, 89, 77, 0.08);
+    }
+
+    .row-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(51, 190, 104, 0.12);
+      margin-top: 5px;
+    }
+
+    .section-card,
+    .section-line {
+      position: relative;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 2px;
+      margin-bottom: 6px;
+      color: #6d645e;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .section-header .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .inline-link {
+      font-size: 12px;
+      font-weight: 700;
+      color: #574f4a;
+      padding: 0;
+      background: transparent;
+      border: 0;
+    }
+
+    .empty {
+      color: #9d938b;
+      font-size: 12px;
+      padding-left: 34px;
+      margin-top: -2px;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .mini-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+      padding-left: 2px;
+    }
+
+    .mini-item .row-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      margin-top: 1px;
+    }
+
+    .mini-copy {
+      min-width: 0;
+    }
+
+    .mini-copy strong {
+      display: block;
+      font-size: 12px;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-copy small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-meta {
+      font-size: 11px;
+      color: #7c736d;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+
+    .mini-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+
+    .mini-tag.ready {
+      background: rgba(47, 124, 255, 0.12);
+      color: #2f6fd8;
+    }
+
+    .mini-tag.progress {
+      background: rgba(212, 154, 47, 0.14);
+      color: #946c1f;
+    }
+
+    .mini-tag.blocked {
+      background: rgba(216, 107, 115, 0.14);
+      color: #a54852;
+    }
+
+    .mini-tag.done {
+      background: rgba(51, 190, 104, 0.14);
+      color: #248b4c;
+    }
+
+    .option-a .section-card,
+    .option-c .section-card {
+      padding: 10px 10px 10px;
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.42);
+      border: 1px solid rgba(103, 86, 74, 0.08);
+    }
+
+    .option-b .section-line {
+      padding: 4px 0 0 0;
+    }
+
+    .option-b .section-line::before {
+      content: "";
+      position: absolute;
+      left: 11px;
+      top: 31px;
+      bottom: 6px;
+      width: 1px;
+      background: linear-gradient(180deg, rgba(109, 91, 78, 0.16), rgba(109, 91, 78, 0.02));
+    }
+
+    .option-meta {
+      padding: 0 20px 20px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .tradeoffs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tradeoffs span {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(98, 84, 72, 0.08);
+      color: #645953;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: none;
+    }
+
+    .solid svg.solid-fill,
+    .solid-fill {
+      fill: currentColor;
+      stroke: none;
+    }
+
+    @media (max-width: 1120px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .options {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.25v9.5M3.25 8h9.5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 16 16"><path d="M1.75 5.5h12.5v6.25a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1z"/><path d="M1.75 5.5V4.75a1 1 0 0 1 1-1H6l1.25 1.5h6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 16 16"><circle cx="3.25" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="12.75" cy="8" r="1"/></symbol>
+    <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.25 6.5 11l6-6.5"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 16 16"><path d="m10.75 3.25 2 2"/><path d="M8 12.5 3 13l.5-5 6-6a1.4 1.4 0 0 1 2 0l1 1a1.4 1.4 0 0 1 0 2z"/></symbol>
+    <symbol id="i-thread" viewBox="0 0 16 16"><path d="M3 4.5h6.5a2.5 2.5 0 0 1 0 5H7.5l-2.5 2v-2H3a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2z"/><path d="M10.5 6.25h2.5A2 2 0 0 1 15 8.25v1a2 2 0 0 1-2 2H11v1.75"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 16 16"><path d="M6.25 4h7.25M6.25 8h7.25M6.25 12h7.25"/><path d="m2.5 4.1.8.8 1.3-1.5M2.5 8.1l.8.8 1.3-1.5M2.5 12.1l.8.8 1.3-1.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.75"/><path d="M8 4.75V8l2.25 1.5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 16 16"><path d="M4 8h8"/><path d="m9 4 4 4-4 4"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 16 16"><path d="M8 2.25 9.35 6.1 13.25 7.5 9.35 8.9 8 12.75 6.65 8.9 2.75 7.5 6.65 6.1z"/></symbol>
+  </svg>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-card">
+        <div class="eyebrow">
+          <svg><use href="#i-spark"></use></svg>
+          Sidebar Preview
+        </div>
+        <h1>Three sharper directions for the project sidebar.</h1>
+        <p>These HTML mockups stay close to the real ClaudeStudio structure from <code>SidebarView.swift</code>, but explore cleaner icon treatment, more intentional spacing, and clearer section grouping before we make any SwiftUI changes.</p>
+      </div>
+      <aside class="summary-card">
+        <h2>What I’m targeting</h2>
+        <div class="summary-points">
+          <div class="summary-point">
+            <div class="icon-badge" style="width:26px;height:26px;border-radius:9px;"><svg><use href="#i-folder"></use></svg></div>
+            <div><strong>Better icon hierarchy</strong><p>Project, thread, task, and schedule icons should read as a system, not a bag of unrelated symbols.</p></div>
+          </div>
+          <div class="summary-point">
+            <div class="icon-badge" style="width:26px;height:26px;border-radius:9px;"><svg><use href="#i-thread"></use></svg></div>
+            <div><strong>Cleaner row density</strong><p>The selected project should feel deliberate, with less visual clutter around timestamps and actions.</p></div>
+          </div>
+          <div class="summary-point">
+            <div class="icon-badge" style="width:26px;height:26px;border-radius:9px;"><svg><use href="#i-tasks"></use></svg></div>
+            <div><strong>Stronger section rhythm</strong><p>Tasks and schedules should feel like useful sub-panels, not leftovers under the thread list.</p></div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="options">
+      <article class="option-card option-a">
+        <div class="option-header">
+          <div>
+            <div class="option-kicker">Option A</div>
+            <h2 class="option-title">Soft Cards</h2>
+          </div>
+          <div class="chip recommended">Recommended</div>
+        </div>
+        <div class="mock-wrap">
+          <div class="mock-shell">
+            <div class="sidebar">
+              <div class="sidebar-top">
+                <span>Projects</span>
+                <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+              </div>
+
+              <div class="project-card">
+                <div class="project-row">
+                  <div class="icon-badge"><svg><use href="#i-folder"></use></svg></div>
+                  <div class="project-meta">
+                    <div class="project-title">
+                      <strong>tes...</strong>
+                    </div>
+                    <small>15 hr ago</small>
+                  </div>
+                  <div class="micro-pill">15 hr</div>
+                  <div class="action-cluster">
+                    <button class="icon-button" aria-hidden="true"><svg><use href="#i-more"></use></svg></button>
+                    <button class="icon-button" aria-hidden="true"><svg><use href="#i-check"></use></svg></button>
+                    <button class="icon-button" aria-hidden="true"><svg><use href="#i-edit"></use></svg></button>
+                  </div>
+                </div>
+                <div class="project-children">
+                  <div class="section-stack">
+                    <div class="row">
+                      <div class="row-icon"><svg><use href="#i-thread"></use></svg></div>
+                      <div class="row-copy">
+                        <div class="row-title"><strong>New Thread</strong></div>
+                        <small>15 hr ago</small>
+                      </div>
+                      <div class="row-actions">
+                        <div class="status-dot"></div>
+                      </div>
+                    </div>
+
+                    <div class="row">
+                      <div class="row-icon"><svg><use href="#i-thread"></use></svg></div>
+                      <div class="row-copy">
+                        <div class="row-title"><strong>Refactor task board API</strong></div>
+                        <small>2 hr ago · 3 files</small>
+                      </div>
+                      <div class="row-actions">
+                        <span class="micro-pill">2h</span>
+                      </div>
+                    </div>
+
+                    <div class="row">
+                      <div class="row-icon"><svg><use href="#i-thread"></use></svg></div>
+                      <div class="row-copy">
+                        <div class="row-title"><strong>Peer sync bug triage</strong></div>
+                        <small>Yesterday · error reproduced</small>
+                      </div>
+                      <div class="row-actions">
+                        <span class="micro-pill">1d</span>
+                      </div>
+                    </div>
+
+                    <div class="section-card">
+                      <div class="section-header">
+                        <div class="label"><svg><use href="#i-tasks"></use></svg> Tasks</div>
+                        <button class="icon-button" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+                      </div>
+                      <div class="mini-list">
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-tasks"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Wire protocol cleanup</strong>
+                            <small>Assigned to Orchestrator</small>
+                          </div>
+                          <div class="mini-tag progress">In Progress</div>
+                        </div>
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-tasks"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Add project archive action</strong>
+                            <small>Ready to run</small>
+                          </div>
+                          <div class="mini-tag ready">Ready</div>
+                        </div>
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-tasks"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Investigate reconnect loop</strong>
+                            <small>Waiting on logs</small>
+                          </div>
+                          <div class="mini-tag blocked">Blocked</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="section-card">
+                      <div class="section-header">
+                        <div class="label"><svg><use href="#i-clock"></use></svg> Schedules</div>
+                        <button class="inline-link" aria-hidden="true">Open</button>
+                      </div>
+                      <div class="mini-list">
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-clock"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Morning review</strong>
+                            <small>Tomorrow at 09:00</small>
+                          </div>
+                          <div class="mini-meta">Daily</div>
+                        </div>
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-clock"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Regression sweep</strong>
+                            <small>Wed at 14:30</small>
+                          </div>
+                          <div class="mini-meta">Weekly</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="project-card compact">
+                <div class="project-row inactive">
+                  <div class="icon-badge"><svg><use href="#i-folder"></use></svg></div>
+                  <div class="project-meta">
+                    <div class="project-title">
+                      <strong>sidecar</strong>
+                    </div>
+                    <small>3 active threads</small>
+                  </div>
+                  <div class="project-compact-meta">4h</div>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-more"></use></svg></button>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+                </div>
+              </div>
+
+              <div class="project-card compact">
+                <div class="project-row inactive">
+                  <div class="icon-badge"><svg><use href="#i-folder"></use></svg></div>
+                  <div class="project-meta">
+                    <div class="project-title">
+                      <strong>builder-ui</strong>
+                    </div>
+                    <small>No open tasks</small>
+                  </div>
+                  <div class="project-compact-meta">2d</div>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-more"></use></svg></button>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="option-meta">
+          <p>Uses contained icons, rounded sub-panels, and a softer selected state. It feels closest to the current app, just more considered and easier to scan.</p>
+          <div class="tradeoffs">
+            <span>Low implementation risk</span>
+            <span>Best hierarchy</span>
+            <span>Still native-feeling</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="option-card option-b">
+        <div class="option-header">
+          <div>
+            <div class="option-kicker">Option B</div>
+            <h2 class="option-title">Explorer Rail</h2>
+          </div>
+          <div class="chip balanced">Balanced</div>
+        </div>
+        <div class="mock-wrap">
+          <div class="mock-shell">
+            <div class="sidebar">
+              <div class="sidebar-top">
+                <span>Projects</span>
+                <button class="icon-button" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+              </div>
+
+              <div class="project-card">
+                <div class="project-row">
+                  <div class="icon-badge"><svg><use href="#i-folder"></use></svg></div>
+                  <div class="project-meta">
+                    <div class="project-title"><strong>tes...</strong></div>
+                    <small>Current workspace</small>
+                  </div>
+                  <div class="micro-pill">15 hr</div>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-more"></use></svg></button>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-edit"></use></svg></button>
+                </div>
+                <div class="project-children">
+                  <div class="section-stack">
+                    <div class="section-line">
+                      <div class="row">
+                        <div class="row-icon"><svg><use href="#i-thread"></use></svg></div>
+                        <div class="row-copy">
+                          <div class="row-title"><strong>New Thread</strong></div>
+                          <small>Last active 15 hr ago</small>
+                        </div>
+                        <div class="status-dot"></div>
+                      </div>
+                    </div>
+
+                    <div class="section-line">
+                      <div class="row">
+                        <div class="row-icon"><svg><use href="#i-thread"></use></svg></div>
+                        <div class="row-copy">
+                          <div class="row-title"><strong>Catalog install polish</strong></div>
+                          <small>Preview cards and empty states</small>
+                        </div>
+                        <div class="mini-meta">4h</div>
+                      </div>
+                    </div>
+
+                    <div class="section-line">
+                      <div class="row">
+                        <div class="row-icon"><svg><use href="#i-thread"></use></svg></div>
+                        <div class="row-copy">
+                          <div class="row-title"><strong>Session resume edge cases</strong></div>
+                          <small>2 agents replied</small>
+                        </div>
+                        <div class="mini-meta">1d</div>
+                      </div>
+                    </div>
+
+                    <div class="section-line">
+                      <div class="section-header">
+                        <div class="label"><svg><use href="#i-tasks"></use></svg> Tasks</div>
+                        <button class="icon-button" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+                      </div>
+                      <div class="mini-list">
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-tasks"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Unify sidebar row spacing</strong>
+                            <small>Design cleanup</small>
+                          </div>
+                          <div class="mini-tag progress">In Progress</div>
+                        </div>
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-tasks"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Audit accessibility ids</strong>
+                            <small>12 controls left</small>
+                          </div>
+                          <div class="mini-tag ready">Ready</div>
+                        </div>
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-tasks"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Fix archived thread state</strong>
+                            <small>Needs reproduction</small>
+                          </div>
+                          <div class="mini-tag blocked">Blocked</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="section-line">
+                      <div class="section-header">
+                        <div class="label"><svg><use href="#i-clock"></use></svg> Schedules</div>
+                        <button class="inline-link" aria-hidden="true">Open</button>
+                      </div>
+                      <div class="mini-list">
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-clock"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Nightly API check</strong>
+                            <small>Tonight at 22:00</small>
+                          </div>
+                          <div class="mini-meta">Daily</div>
+                        </div>
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-clock"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Weekly planning</strong>
+                            <small>Sun at 10:00</small>
+                          </div>
+                          <div class="mini-meta">Weekly</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="project-card compact">
+                <div class="project-row inactive">
+                  <div class="icon-badge"><svg><use href="#i-folder"></use></svg></div>
+                  <div class="project-meta">
+                    <div class="project-title"><strong>mac-shell</strong></div>
+                    <small>2 tasks · no schedules</small>
+                  </div>
+                  <div class="project-compact-meta">6h</div>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-more"></use></svg></button>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+                </div>
+              </div>
+
+              <div class="project-card compact">
+                <div class="project-row inactive">
+                  <div class="icon-badge"><svg><use href="#i-folder"></use></svg></div>
+                  <div class="project-meta">
+                    <div class="project-title"><strong>peer-tools</strong></div>
+                    <small>1 thread · next run Fri</small>
+                  </div>
+                  <div class="project-compact-meta">3d</div>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-more"></use></svg></button>
+                  <button class="icon-button" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="option-meta">
+          <p>Leans more “file navigator”: tighter rows, subtle guide rails, and less card chrome. Strong if you want denser information and a more tool-like posture.</p>
+          <div class="tradeoffs">
+            <span>Most compact</span>
+            <span>Sharper structure</span>
+            <span>Less warm</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="option-card option-c">
+        <div class="option-header">
+          <div>
+            <div class="option-kicker">Option C</div>
+            <h2 class="option-title">Studio Panels</h2>
+          </div>
+          <div class="chip bold">Bolder</div>
+        </div>
+        <div class="mock-wrap">
+          <div class="mock-shell">
+            <div class="sidebar">
+              <div class="sidebar-top">
+                <span>Projects</span>
+                <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+              </div>
+
+              <div class="project-card">
+                <div class="project-row">
+                  <div class="icon-badge"><svg><use href="#i-folder"></use></svg></div>
+                  <div class="project-meta">
+                    <div class="project-title">
+                      <strong>tes...</strong>
+                      <span class="micro-pill" style="padding:2px 7px;">Live</span>
+                    </div>
+                    <small>15 hr since last thread</small>
+                  </div>
+                  <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-more"></use></svg></button>
+                  <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-check"></use></svg></button>
+                  <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-edit"></use></svg></button>
+                </div>
+                <div class="project-children">
+                  <div class="section-stack">
+                    <div class="row">
+                      <div class="row-icon"><svg><use href="#i-thread"></use></svg></div>
+                      <div class="row-copy">
+                        <div class="row-title"><strong>New Thread</strong></div>
+                        <small>Recent activity inside project</small>
+                      </div>
+                      <div class="status-dot"></div>
+                    </div>
+
+                    <div class="row">
+                      <div class="row-icon"><svg><use href="#i-thread"></use></svg></div>
+                      <div class="row-copy">
+                        <div class="row-title"><strong>Launch parameter cleanup</strong></div>
+                        <small>Forked from main flow</small>
+                      </div>
+                      <div class="row-actions">
+                        <span class="micro-pill">Fork</span>
+                      </div>
+                    </div>
+
+                    <div class="row">
+                      <div class="row-icon"><svg><use href="#i-thread"></use></svg></div>
+                      <div class="row-copy">
+                        <div class="row-title"><strong>Group chat prompt tuning</strong></div>
+                        <small>5 messages · 2 agents</small>
+                      </div>
+                      <div class="row-actions">
+                        <span class="micro-pill">Team</span>
+                      </div>
+                    </div>
+
+                    <div class="section-card">
+                      <div class="section-header">
+                        <div class="label"><svg><use href="#i-tasks"></use></svg> Tasks</div>
+                        <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+                      </div>
+                      <div class="mini-list">
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-tasks"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Polish selected-state visuals</strong>
+                            <small>UI sweep</small>
+                          </div>
+                          <div class="mini-tag progress">In Progress</div>
+                        </div>
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-tasks"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Sidebar hover affordances</strong>
+                            <small>Ready for implementation</small>
+                          </div>
+                          <div class="mini-tag ready">Ready</div>
+                        </div>
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-tasks"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Reconnect telemetry</strong>
+                            <small>Done and verified</small>
+                          </div>
+                          <div class="mini-tag done">Done</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="section-card">
+                      <div class="section-header">
+                        <div class="label"><svg><use href="#i-clock"></use></svg> Schedules</div>
+                        <button class="text-button inline-link" aria-hidden="true">
+                          Open
+                          <svg style="margin-left:6px;"><use href="#i-arrow"></use></svg>
+                        </button>
+                      </div>
+                      <div class="mini-list">
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-clock"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Daily triage loop</strong>
+                            <small>Tomorrow at 08:30</small>
+                          </div>
+                          <div class="mini-meta">Daily</div>
+                        </div>
+                        <div class="mini-item">
+                          <div class="row-icon"><svg><use href="#i-clock"></use></svg></div>
+                          <div class="mini-copy">
+                            <strong>Friday wrap-up</strong>
+                            <small>Fri at 16:00</small>
+                          </div>
+                          <div class="mini-meta">Weekly</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="project-card compact">
+                <div class="project-row inactive">
+                  <div class="icon-badge"><svg><use href="#i-folder"></use></svg></div>
+                  <div class="project-meta">
+                    <div class="project-title">
+                      <strong>studio-core</strong>
+                    </div>
+                    <small>4 threads · 1 scheduled run</small>
+                  </div>
+                  <div class="project-compact-meta">1h</div>
+                  <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-more"></use></svg></button>
+                  <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+                </div>
+              </div>
+
+              <div class="project-card compact">
+                <div class="project-row inactive">
+                  <div class="icon-badge"><svg><use href="#i-folder"></use></svg></div>
+                  <div class="project-meta">
+                    <div class="project-title">
+                      <strong>automation-lab</strong>
+                    </div>
+                    <small>1 active task · next run Mon</small>
+                  </div>
+                  <div class="project-compact-meta">5d</div>
+                  <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-more"></use></svg></button>
+                  <button class="icon-button filled" aria-hidden="true"><svg><use href="#i-plus"></use></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="option-meta">
+          <p>Pushes further into a premium, paneled look with stronger action buttons and more pronounced surfaces. Good if you want the sidebar to feel more “product” than “list”.</p>
+          <div class="tradeoffs">
+            <span>Most visual personality</span>
+            <span>Higher chrome</span>
+            <span>Biggest SwiftUI delta</span>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

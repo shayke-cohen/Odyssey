@@ -7,6 +7,7 @@ struct WorkshopView: View {
     @EnvironmentObject private var appState: AppState
 
     @Query(sort: \Agent.name) private var agents: [Agent]
+    @Query private var conversations: [Conversation]
 
     @State private var selectedTab: WorkshopTab = .agents
     @State private var selectedEntityContext: String?
@@ -35,9 +36,9 @@ struct WorkshopView: View {
 
                 // Right: Config Agent chat
                 VStack(spacing: 0) {
-                    if let convId = configConversationId {
-                        ChatView(conversationId: convId)
-                            .id(convId)
+                    if let conversation = selectedConfigConversation {
+                        ChatView(selectedConversation: conversation)
+                            .id(conversation.id)
                     } else {
                         configChatPlaceholder
                     }
@@ -89,6 +90,11 @@ struct WorkshopView: View {
             .accessibilityLabel("Close workshop")
         }
         .padding()
+    }
+
+    private var selectedConfigConversation: Conversation? {
+        guard let configConversationId else { return nil }
+        return conversations.first { $0.id == configConversationId }
     }
 
     // MARK: - Config Chat Placeholder

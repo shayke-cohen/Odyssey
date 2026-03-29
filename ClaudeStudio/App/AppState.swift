@@ -358,7 +358,8 @@ final class AppState: ObservableObject {
         group: AgentGroup,
         projectDirectory: String,
         projectId: UUID?,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        missionOverride: String? = nil
     ) -> UUID? {
         guard !group.agentIds.isEmpty else { return nil }
 
@@ -386,7 +387,8 @@ final class AppState: ObservableObject {
         }
 
         let provisioner = AgentProvisioner(modelContext: modelContext)
-        let mission = group.defaultMission
+        let trimmedMissionOverride = missionOverride?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let mission = (trimmedMissionOverride?.isEmpty == false ? trimmedMissionOverride : nil) ?? group.defaultMission
 
         for agent in resolvedAgents {
             let (_, session) = provisioner.provision(agent: agent, mission: mission, workingDirOverride: projectDirectory)
@@ -680,6 +682,11 @@ final class AppState: ObservableObject {
         ))
     }
 
+    private func clearPendingUserInput(for sessionId: String) {
+        pendingQuestions.removeValue(forKey: sessionId)
+        pendingConfirmations.removeValue(forKey: sessionId)
+    }
+
     private func registerAgentDefinitions() {
         guard let ctx = modelContext else { return }
         let descriptor = FetchDescriptor<Agent>()
@@ -812,6 +819,7 @@ final class AppState: ObservableObject {
             }
             lastSessionEvent[sessionId] = .result
             thinkingText.removeValue(forKey: sessionId)
+            clearPendingUserInput(for: sessionId)
             sessionActivity[sessionId] = .done
             markConversationUnreadIfNeeded(sessionId: sessionId)
             notifyIfNeeded(sessionId: sessionId) { name, topic in
@@ -827,6 +835,7 @@ final class AppState: ObservableObject {
             thinkingText.removeValue(forKey: sessionId)
             streamingImages.removeValue(forKey: sessionId)
             streamingFileCards.removeValue(forKey: sessionId)
+            clearPendingUserInput(for: sessionId)
             sessionActivity[sessionId] = .error(error)
             notifyIfNeeded(sessionId: sessionId) { name, _ in
                 ChatNotificationManager.shared.notifySessionError(agentName: name, error: error)
@@ -963,6 +972,7 @@ final class AppState: ObservableObject {
         case .disconnected:
             sidecarStatus = .disconnected
             pendingQuestions.removeAll()
+            pendingConfirmations.removeAll()
             startDisconnectTimer()
         }
     }
@@ -1260,8 +1270,9 @@ final class AppState: ObservableObject {
         let provisioner = AgentProvisioner(modelContext: ctx)
         var entries: [SessionBulkResumeEntry] = []
         for session in resumable {
-            guard let agent = session.agent, let claudeId = session.claudeSessionId else { continue }
-            let (config, _) = provisioner.provision(agent: agent, mission: session.mission)
+            guard session.agent != nil,
+                  let claudeId = session.claudeSessionId,
+                  let config = provisioner.config(for: session) else { continue }
             entries.append(SessionBulkResumeEntry(
                 sessionId: session.id.uuidString,
                 claudeSessionId: claudeId,

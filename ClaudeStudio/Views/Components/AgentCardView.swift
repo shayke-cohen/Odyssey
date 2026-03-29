@@ -45,7 +45,7 @@ struct AgentCardView: View {
                 Label("\(agent.extraMCPServerIds.count)", systemImage: "server.rack")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                Label(agent.model, systemImage: "cpu")
+                Label(AgentDefaults.label(for: agent.model), systemImage: "cpu")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

@@ -8,6 +8,7 @@ export class SessionRegistry {
     const state: SessionState = {
       id,
       agentName: config.name,
+      provider: config.provider ?? "claude",
       status: "active",
       tokenCount: 0,
       cost: 0,

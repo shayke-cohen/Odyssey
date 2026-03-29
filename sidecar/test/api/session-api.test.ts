@@ -17,6 +17,7 @@ import { makeAgentConfig } from "../helpers.js";
 const BASE = "http://localhost/api/v1";
 
 type ResumeCall = { sessionId: string; claudeSessionId: string };
+type SpawnCall = { sessionId: string; config: any; prompt: string; waitForResult: boolean };
 const activeSseManagers: SseManager[] = [];
 
 function makeContext() {
@@ -24,6 +25,7 @@ function makeContext() {
   const sseManager = new SseManager();
   const pauseCalls: string[] = [];
   const resumeCalls: ResumeCall[] = [];
+  const spawnCalls: SpawnCall[] = [];
 
   const toolCtx: ToolContext = {
     blackboard: new BlackboardStore(`session-api-${Date.now()}`),
@@ -39,8 +41,8 @@ function makeContext() {
       sendCommand: async () => ({}),
     } as any,
     broadcast: (event: SidecarEvent) => sseManager.broadcast(event),
-    spawnSession: async (sessionId) => ({ sessionId }),
     agentDefinitions: new Map(),
+    spawnSession: async (sessionId) => ({ sessionId }),
   };
 
   const sessionManager = {
@@ -53,7 +55,10 @@ function makeContext() {
       sessions.update(sessionId, { status: "active", claudeSessionId });
     },
     listSessions: () => sessions.list(),
-    spawnAutonomous: async (sessionId: string) => ({ sessionId }),
+    spawnAutonomous: async (sessionId: string, config: any, prompt: string, waitForResult: boolean) => {
+      spawnCalls.push({ sessionId, config, prompt, waitForResult });
+      return { sessionId };
+    },
   } as any;
 
   const ctx: ApiContext = {
@@ -65,7 +70,7 @@ function makeContext() {
 
   activeSseManagers.push(sseManager);
 
-  return { ctx, sessions, sseManager, pauseCalls, resumeCalls };
+  return { ctx, sessions, sseManager, pauseCalls, resumeCalls, spawnCalls };
 }
 
 async function readChunk(
@@ -93,6 +98,116 @@ afterEach(() => {
 });
 
 describe("Session API recovery routes", () => {
+  test.each([
+    { provider: "claude", model: "claude-sonnet-4-6" },
+    { provider: "codex", model: "gpt-5-codex" },
+  ])("POST /sessions preserves $provider provider on spawned session config", async ({ provider, model }) => {
+    const { ctx, spawnCalls } = makeContext();
+    ctx.toolCtx.agentDefinitions.set(`${provider}-agent`, makeAgentConfig({
+      name: `${provider}-agent`,
+      provider,
+      model,
+      workingDirectory: `/tmp/${provider}-agent`,
+    }));
+
+    const response = await handleApiRequest(
+      new Request(`${BASE}/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentName: `${provider}-agent`,
+          message: `hello from ${provider}`,
+          waitForResult: false,
+        }),
+      }),
+      ctx,
+    );
+
+    expect(response?.status).toBe(201);
+    const body = await response?.json() as any;
+    expect(body.agentName).toBe(`${provider}-agent`);
+    expect(body.provider).toBe(provider);
+    expect(spawnCalls).toHaveLength(1);
+    expect(spawnCalls[0]?.config.provider).toBe(provider);
+    expect(spawnCalls[0]?.config.model).toBe(model);
+    expect(spawnCalls[0]?.prompt).toBe(`hello from ${provider}`);
+  });
+
+  test.each([
+    { provider: "claude", model: "claude-sonnet-4-6" },
+    { provider: "codex", model: "gpt-5-codex" },
+  ])("agent endpoints expose $provider provider metadata", async ({ provider, model }) => {
+    const { ctx } = makeContext();
+    ctx.toolCtx.agentDefinitions.set(`${provider}-agent`, makeAgentConfig({
+      name: `${provider}-agent`,
+      provider,
+      model,
+      workingDirectory: `/tmp/${provider}-agent`,
+    }));
+
+    const getResponse = await handleApiRequest(
+      new Request(`${BASE}/agents/${provider}-agent`, { method: "GET" }),
+      ctx,
+    );
+    expect(getResponse?.status).toBe(200);
+    const agentBody = await getResponse?.json() as any;
+    expect(agentBody.name).toBe(`${provider}-agent`);
+    expect(agentBody.provider).toBe(provider);
+    expect(agentBody.model).toBe(model);
+
+    const listResponse = await handleApiRequest(
+      new Request(`${BASE}/agents`, { method: "GET" }),
+      ctx,
+    );
+    expect(listResponse?.status).toBe(200);
+    const listBody = await listResponse?.json() as any;
+    expect(listBody.agents).toEqual([
+      expect.objectContaining({
+        name: `${provider}-agent`,
+        provider,
+        model,
+      }),
+    ]);
+  });
+
+  test.each([
+    { provider: "claude", model: "claude-sonnet-4-6" },
+    { provider: "codex", model: "gpt-5-codex" },
+  ])("session endpoints expose $provider provider metadata", async ({ provider, model }) => {
+    const { ctx, sessions } = makeContext();
+    const sessionId = `${provider}-session`;
+    sessions.create(sessionId, makeAgentConfig({
+      name: `${provider}-agent`,
+      provider,
+      model,
+      workingDirectory: `/tmp/${provider}-session`,
+    }));
+
+    const getResponse = await handleApiRequest(
+      new Request(`${BASE}/sessions/${sessionId}`, { method: "GET" }),
+      ctx,
+    );
+    expect(getResponse?.status).toBe(200);
+    const sessionBody = await getResponse?.json() as any;
+    expect(sessionBody.id).toBe(sessionId);
+    expect(sessionBody.agentName).toBe(`${provider}-agent`);
+    expect(sessionBody.provider).toBe(provider);
+
+    const listResponse = await handleApiRequest(
+      new Request(`${BASE}/sessions`, { method: "GET" }),
+      ctx,
+    );
+    expect(listResponse?.status).toBe(200);
+    const listBody = await listResponse?.json() as any;
+    expect(listBody.sessions).toEqual([
+      expect.objectContaining({
+        id: sessionId,
+        agentName: `${provider}-agent`,
+        provider,
+      }),
+    ]);
+  });
+
   test("POST /sessions/:id/resume uses stored claudeSessionId when body is empty", async () => {
     const { ctx, sessions, resumeCalls } = makeContext();
     sessions.create("stored-session", makeAgentConfig({ name: "StoredResumeBot" }));

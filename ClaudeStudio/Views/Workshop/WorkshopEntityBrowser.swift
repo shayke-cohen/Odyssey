@@ -87,7 +87,7 @@ struct WorkshopEntityBrowser: View {
                                 name: agent.name,
                                 subtitle: agent.agentDescription,
                                 isEnabled: agent.isEnabled,
-                                badges: [agent.model, "\(agent.skillIds.count) skills"],
+                                badges: [AgentDefaults.label(for: agent.model), "\(agent.skillIds.count) skills"],
                                 entityId: agent.id.uuidString,
                                 onToggleEnabled: {
                                     agent.isEnabled.toggle()
