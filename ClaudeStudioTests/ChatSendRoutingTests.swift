@@ -71,6 +71,16 @@ final class ChatSendRoutingTests: XCTestCase {
         XCTAssertTrue(unknown.isEmpty)
     }
 
+    func testResolveMentionedAgentsIgnoresMentionAllToken() {
+        let a = Agent(name: "Reviewer")
+        let (resolved, unknown) = ChatSendRouting.resolveMentionedAgents(
+            names: ["all", "Reviewer"],
+            agents: [a]
+        )
+        XCTAssertEqual(resolved.map(\.id), [a.id])
+        XCTAssertTrue(unknown.isEmpty)
+    }
+
     func testMentionedAgentNamesPreservesOrder() {
         let names = ChatSendRouting.mentionedAgentNames(in: "@Z @A @M")
         XCTAssertEqual(names, ["Z", "A", "M"])

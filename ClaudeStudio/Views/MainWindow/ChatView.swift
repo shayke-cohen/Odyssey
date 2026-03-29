@@ -361,6 +361,16 @@ struct ChatView: View {
         return allAgents.filter { $0.name.lowercased().hasPrefix(token) }.prefix(8).map { $0 }
     }
 
+    private var mentionAutocompleteToken: String? {
+        guard let r = inputText.range(of: #"@([^\s@]*)$"#, options: .regularExpression) else { return nil }
+        return String(inputText[r]).dropFirst().lowercased()
+    }
+
+    private var shouldShowMentionAllSuggestion: Bool {
+        guard let token = mentionAutocompleteToken else { return false }
+        return token.isEmpty || ChatSendRouting.mentionAllToken.hasPrefix(token)
+    }
+
     private var sendingToSubtitle: String? {
         guard let c = conversation, c.sessions.count > 1 else { return nil }
         let names = c.sessions.compactMap { $0.agent?.name ?? "Assistant" }
@@ -1039,9 +1049,28 @@ struct ChatView: View {
                     .xrayId("chat.sendingToHint")
             }
 
-            if !mentionAutocompleteAgents.isEmpty {
+            if shouldShowMentionAllSuggestion || !mentionAutocompleteAgents.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
+                        if shouldShowMentionAllSuggestion {
+                            Button {
+                                insertMentionCompletion(agentName: ChatSendRouting.mentionAllToken)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("@all")
+                                        .font(captionFont)
+                                    Text("Broadcast to everyone in chat")
+                                        .font(caption2Font)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.quaternary, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .xrayId("chat.mentionSuggestion.all")
+                        }
+
                         ForEach(mentionAutocompleteAgents) { agent in
                             Button {
                                 insertMentionCompletion(agentName: agent.name)

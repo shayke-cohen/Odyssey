@@ -8,6 +8,8 @@ enum ChatSlashCommand: Equatable {
 }
 
 enum ChatSendRouting {
+    static let mentionAllToken = "all"
+
     /// First line only; returns nil if not a slash command.
     static func parseSlashCommand(_ raw: String) -> ChatSlashCommand? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -47,7 +49,7 @@ enum ChatSendRouting {
 
     /// Returns true if the text contains `@all`.
     static func containsMentionAll(in text: String) -> Bool {
-        mentionedAgentNames(in: text).contains { $0.caseInsensitiveCompare("all") == .orderedSame }
+        mentionedAgentNames(in: text).contains { isMentionAllToken($0) }
     }
 
     /// Match mention names to agents (exact name, case-insensitive).
@@ -57,6 +59,7 @@ enum ChatSendRouting {
         for raw in names {
             let key = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !key.isEmpty else { continue }
+            if isMentionAllToken(key) { continue }
             if let a = agents.first(where: { $0.name.caseInsensitiveCompare(key) == .orderedSame }) {
                 if !resolved.contains(where: { $0.id == a.id }) {
                     resolved.append(a)
@@ -66,5 +69,10 @@ enum ChatSendRouting {
             }
         }
         return (resolved, unknown)
+    }
+
+    static func isMentionAllToken(_ text: String) -> Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .caseInsensitiveCompare(mentionAllToken) == .orderedSame
     }
 }
