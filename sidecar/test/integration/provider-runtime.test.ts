@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { SessionManager } from "../../src/session-manager.js";
+import { ClaudeRuntime } from "../../src/providers/claude-runtime.js";
 import { CodexRuntime } from "../../src/providers/codex-runtime.js";
 import { SessionRegistry } from "../../src/stores/session-registry.js";
 import { BlackboardStore } from "../../src/stores/blackboard-store.js";
@@ -51,9 +52,14 @@ describe("Provider runtime integration", () => {
       workingDirectory: "/tmp/codex-session",
       mcpServers: [
         {
-          name: "filesystem",
-          command: "mcp-server-filesystem",
-          args: ["/tmp/codex-session"],
+          name: "Argus",
+          command: "npx",
+          args: ["-y", "-p", "@wix/argus", "argus-mcp"],
+        },
+        {
+          name: "AppXray",
+          command: "npx",
+          args: ["-y", "@wix/appxray-mcp-server"],
         },
       ],
     }));
@@ -62,13 +68,219 @@ describe("Provider runtime integration", () => {
     const options = manager.buildQueryOptionsForTesting("codex-session", 1, true);
 
     expect(state?.provider).toBe("codex");
+    expect(state?.effectiveMcpServers.map((entry) => entry.name)).toEqual(["Argus", "AppXray"]);
     expect(options.provider).toBe("codex");
     expect(options.model).toBe("gpt-5-codex");
     expect(options.cwd).toBe("/tmp/codex-session");
     expect(options.attachmentCount).toBe(1);
-    expect(options.mcpServerCount).toBe(1);
+    expect(options.mcpServerCount).toBe(2);
     expect(options.appServerConfigOverrides).toContain("mcp_servers={}");
-    expect(options.appServerConfigOverrides).toContain(`mcp_servers.session_mcp_0.command="mcp-server-filesystem"`);
+    expect(options.appServerConfigOverrides).toContain(`mcp_servers.session_mcp_0.command="npx"`);
+    expect(options.appServerConfigOverrides).toContain(`mcp_servers.session_mcp_0.args=["-y","-p","@wix/argus","argus-mcp"]`);
+    expect(options.appServerConfigOverrides).toContain(`mcp_servers.session_mcp_1.command="npx"`);
+    expect(options.appServerConfigOverrides).toContain(`mcp_servers.session_mcp_1.args=["-y","@wix/appxray-mcp-server"]`);
+  });
+
+  test("claude sessions attach configured MCPs only through mcpServers in bypass mode", async () => {
+    await manager.createSession("claude-session", makeAgentConfig({
+      name: "Coder",
+      provider: "claude",
+      model: "claude-opus-4-6",
+      workingDirectory: "/tmp/claude-session",
+      mcpServers: [
+        {
+          name: "Argus",
+          command: "npx",
+          args: ["-y", "-p", "@wix/argus", "argus-mcp"],
+        },
+        {
+          name: "AppXray",
+          command: "npx",
+          args: ["-y", "@wix/appxray-mcp-server"],
+        },
+      ],
+    }));
+
+    const options = manager.buildQueryOptionsForTesting("claude-session", 0, false);
+
+    expect(Object.keys(options.mcpServers)).toEqual(["Argus", "AppXray", "peerbus"]);
+    expect(options.mcpServers.Argus.command).toBe("npx");
+    expect(options.mcpServers.Argus.args).toEqual(["-y", "-p", "@wix/argus", "argus-mcp"]);
+    expect(options.mcpServers.AppXray.command).toBe("npx");
+    expect(options.mcpServers.AppXray.args).toEqual(["-y", "@wix/appxray-mcp-server"]);
+    expect(options.allowedTools).toBeUndefined();
+    expect(options.settings).toBeUndefined();
+    expect(options.permissionMode).toBe("bypassPermissions");
+  });
+
+  test("claude sessions capture MCP inventory from system init and observed MCP tool use", async () => {
+    const runtime = new ClaudeRuntime({
+      emit: (event) => events.push(event),
+      registry,
+      toolCtx: ctx,
+    });
+
+    registry.create("claude-session", makeAgentConfig({
+      name: "Coder",
+      provider: "claude",
+      model: "claude-opus-4-6",
+      mcpServers: [
+        {
+          name: "Octocode",
+          command: "npx",
+          args: ["-y", "octocode-mcp@latest"],
+        },
+        {
+          name: "Broken Search",
+          command: "broken-mcp",
+        },
+      ],
+    }) as any);
+
+    await (runtime as any).handleSDKMessage(
+      "claude-session",
+      {
+        type: "system",
+        subtype: "init",
+        session_id: "sdk-session-1",
+        mcp_servers: [
+          { name: "Octocode", status: "connected" },
+          { name: "Broken Search", status: "failed", error: "spawn failed" },
+        ],
+      },
+      () => {},
+      { inputTokens: 0, outputTokens: 0, numTurns: 0 },
+    );
+
+    await (runtime as any).handleSDKMessage(
+      "claude-session",
+      {
+        type: "tool_use",
+        name: "mcp__octocode__local_ripgrep",
+        input: { query: "sled" },
+      },
+      () => {},
+      { inputTokens: 0, outputTokens: 0, numTurns: 0 },
+    );
+
+    const inventory = registry.getMcpInventory("claude-session");
+    expect(inventory).toEqual([
+      {
+        name: "Broken Search",
+        namespace: "broken_search",
+        source: "configured",
+        transport: "stdio",
+        configured: true,
+        availability: "failed",
+        providerStatus: "failed",
+        error: "spawn failed",
+      },
+      {
+        name: "Octocode",
+        namespace: "octocode",
+        source: "configured",
+        transport: "stdio",
+        configured: true,
+        availability: "loaded",
+        providerStatus: "connected",
+        tools: [{ name: "local_ripgrep" }],
+      },
+    ]);
+  });
+
+  test("codex refreshes MCP inventory after thread start and records failures cleanly", async () => {
+    const runtime = new CodexRuntime({
+      emit: (event) => events.push(event),
+      registry,
+      toolCtx: ctx,
+    });
+
+    const config = makeAgentConfig({
+      name: "Coder",
+      provider: "codex",
+      model: "gpt-5-codex",
+      workingDirectory: "/tmp/codex-session",
+      mcpServers: [
+        {
+          name: "Octocode",
+          command: "npx",
+          args: ["-y", "octocode-mcp@latest"],
+        },
+        {
+          name: "Broken Search",
+          command: "broken-mcp",
+        },
+      ],
+    }) as any;
+
+    registry.create("codex-session", config);
+
+    const calls: string[] = [];
+    const fakeClient = {
+      call: async (method: string) => {
+        calls.push(method);
+        if (method === "thread/start") {
+          return { thread: { id: "thr-123" } };
+        }
+        if (method === "mcpServerStatus/list") {
+          return {
+            servers: [
+              {
+                name: "session_mcp_0",
+                status: "connected",
+                tools: [{ name: "package_search", description: "Search packages" }],
+              },
+              {
+                name: "session_mcp_1",
+                status: "failed",
+                error: "spawn failed",
+              },
+            ],
+          };
+        }
+        throw new Error(`Unexpected method ${method}`);
+      },
+    };
+    (runtime as any).clientsBySession.set("codex-session", {
+      client: fakeClient,
+      mcpAliases: new Map([
+        ["session_mcp_0", "Octocode"],
+        ["session_mcp_1", "Broken Search"],
+      ]),
+    });
+
+    await (runtime as any).ensureThread(
+      fakeClient,
+      "codex-session",
+      config,
+      undefined,
+      [],
+      false,
+    );
+
+    expect(calls).toEqual(["thread/start", "mcpServerStatus/list"]);
+    expect(registry.getMcpInventory("codex-session")).toEqual([
+      {
+        name: "Broken Search",
+        namespace: "broken_search",
+        source: "configured",
+        transport: "stdio",
+        configured: true,
+        availability: "failed",
+        providerStatus: "failed",
+        error: "spawn failed",
+      },
+      {
+        name: "Octocode",
+        namespace: "octocode",
+        source: "configured",
+        transport: "stdio",
+        configured: true,
+        availability: "loaded",
+        providerStatus: "connected",
+        tools: [{ name: "package_search", description: "Search packages" }],
+      },
+    ]);
   });
 
   test("Codex notifications normalize into existing sidecar event semantics", async () => {

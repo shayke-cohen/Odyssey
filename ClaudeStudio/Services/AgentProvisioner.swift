@@ -45,20 +45,9 @@ final class AgentProvisioner {
         let mcpServers = resolveMCPServers(ids: agent.extraMCPServerIds)
         let permissions = resolvePermissions(id: agent.permissionSetId)
 
-        var allowedTools = permissions?.allowRules ?? ["Read", "Write", "Bash", "Grep", "Glob"]
-        allowedTools.append(contentsOf: [
-            "peer_chat_start", "peer_chat_reply", "peer_chat_listen",
-            "peer_chat_close", "peer_chat_invite",
-            "peer_send_message", "peer_delegate_task", "peer_receive_messages",
-            "peer_list_agents", "peer_broadcast",
-            "blackboard_read", "blackboard_write", "blackboard_query", "blackboard_subscribe",
-            "workspace_create", "workspace_join", "workspace_list",
-        ])
+        let allowedTools = permissions?.allowRules ?? ["Read", "Write", "Bash", "Grep", "Glob"]
 
         let isInteractive = session.mode == .interactive
-        if isInteractive {
-            allowedTools.append("ask_user")
-        }
 
         var systemPrompt = agent.systemPrompt
         if !skills.isEmpty {

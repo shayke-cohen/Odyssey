@@ -70,7 +70,13 @@ function parseToolResult(result: any): any {
 
 /** Invoke an SDK tool's handler directly, bypassing the SDK runtime. */
 async function call(toolObj: any, args: Record<string, any>, extra: Record<string, any> = {}): Promise<any> {
-  return toolObj.handler(args, extra);
+  if (typeof toolObj.execute === "function") {
+    return toolObj.execute(args, extra);
+  }
+  if (typeof toolObj.handler === "function") {
+    return toolObj.handler(args, extra);
+  }
+  throw new TypeError("Tool object does not expose execute() or handler()");
 }
 
 function findTool(tools: any[], name: string) {
