@@ -11,6 +11,7 @@ import {
   observeMcpToolUse,
   parseQualifiedMcpToolName,
 } from "../mcp-session-state.js";
+import { buildSkillsSection } from "../utils/prompt-builder.js";
 import { createPeerBusServer } from "../tools/peerbus-server.js";
 import type {
   ProviderRuntime,
@@ -383,12 +384,7 @@ This workspace is a GitHub repository (\`${remoteUrl}\`). You can use the \`gh\`
       }
     }
 
-    if (config.skills && config.skills.length > 0) {
-      append += "\n\n## Skills\n\n";
-      for (const skill of config.skills) {
-        append += `### ${skill.name}\n${skill.content}\n\n`;
-      }
-    }
+    append += buildSkillsSection(config.skills ?? []);
 
     return append;
   }

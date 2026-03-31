@@ -11,6 +11,7 @@ import {
   observeMcpToolUse,
   normalizeMcpNamespace,
 } from "../mcp-session-state.js";
+import { buildSkillsSection } from "../utils/prompt-builder.js";
 import { createCodexDynamicTools } from "../tools/peerbus-server.js";
 import { toCodexDynamicToolResponse } from "../tools/shared-tool.js";
 import type { QuestionInputConfig, QuestionOption } from "../types.js";
@@ -361,6 +362,7 @@ export class CodexRuntime implements ProviderRuntime {
     planMode?: boolean,
   ): Record<string, any> {
     const mcpAliases = new Map<string, string>();
+    const developerInstructions = this.buildDeveloperInstructions(config, planMode);
     return {
       provider: "codex",
       backendSessionId,
@@ -368,6 +370,7 @@ export class CodexRuntime implements ProviderRuntime {
       cwd: config.workingDirectory,
       attachmentCount,
       approvalPolicy: "on-request",
+      developerInstructions,
       mcpServerCount: config.mcpServers.length,
       appServerConfigOverrides: this.buildClientConfigOverrides(config, mcpAliases),
     };
@@ -416,12 +419,7 @@ export class CodexRuntime implements ProviderRuntime {
   private buildDeveloperInstructions(config: AgentConfig, planMode?: boolean): string {
     let instructions = config.systemPrompt || "";
 
-    if (config.skills.length > 0) {
-      instructions += "\n\n## Skills\n\n";
-      for (const skill of config.skills) {
-        instructions += `### ${skill.name}\n${skill.content}\n\n`;
-      }
-    }
+    instructions += buildSkillsSection(config.skills ?? []);
 
     if (config.interactive) {
       instructions += `\n\nUse dynamic tools for ask_user, render_content, confirm_action, show_progress, and suggest_actions instead of asking the user in plain text.`;

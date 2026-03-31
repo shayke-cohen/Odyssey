@@ -13,6 +13,10 @@ import type { SidecarEvent } from "../../src/types.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import { makeAgentConfig } from "../helpers.js";
 
+function countOccurrences(haystack: string, needle: string): number {
+  return haystack.split(needle).length - 1;
+}
+
 describe("Provider runtime integration", () => {
   let registry: SessionRegistry;
   let events: SidecarEvent[];
@@ -111,6 +115,30 @@ describe("Provider runtime integration", () => {
     expect(options.allowedTools).toBeUndefined();
     expect(options.settings).toBeUndefined();
     expect(options.permissionMode).toBe("bypassPermissions");
+  });
+
+  test("claude composes configured skills exactly once into the provider prompt append", async () => {
+    await manager.createSession("claude-skill-session", makeAgentConfig({
+      name: "Coder",
+      provider: "claude",
+      model: "claude-opus-4-6",
+      systemPrompt: "Base prompt only.",
+      workingDirectory: "/tmp/claude-skill-session",
+      skills: [
+        { name: "Plan", content: "Plan before editing." },
+        { name: "Verify", content: "Run focused verification." },
+      ],
+      interactive: true,
+    }));
+
+    const options = manager.buildQueryOptionsForTesting("claude-skill-session", 0, true);
+    const append = options.systemPrompt?.append as string;
+
+    expect(append).toContain("Base prompt only.");
+    expect(append).toContain("### Plan\nPlan before editing.");
+    expect(append).toContain("### Verify\nRun focused verification.");
+    expect(countOccurrences(append, "## Skills")).toBe(1);
+    expect(append).toContain("Use `render_content`, `confirm_action`, `show_progress`, and `suggest_actions`");
   });
 
   test("claude sessions capture MCP inventory from system init and observed MCP tool use", async () => {
@@ -281,6 +309,38 @@ describe("Provider runtime integration", () => {
         tools: [{ name: "package_search", description: "Search packages" }],
       },
     ]);
+  });
+
+  test("codex composes configured skills exactly once into developer instructions", async () => {
+    await manager.createSession("codex-skill-session", makeAgentConfig({
+      name: "CodexBot",
+      provider: "codex",
+      model: "gpt-5-codex",
+      systemPrompt: "Base prompt only.",
+      workingDirectory: "/tmp/codex-skill-session",
+      skills: [
+        { name: "Plan", content: "Plan before editing." },
+        { name: "Verify", content: "Run focused verification." },
+      ],
+      mcpServers: [
+        {
+          name: "Argus",
+          command: "npx",
+          args: ["-y", "-p", "@wix/argus", "argus-mcp"],
+        },
+      ],
+      interactive: true,
+    }));
+
+    const options = manager.buildQueryOptionsForTesting("codex-skill-session", 0, true);
+    const developerInstructions = options.developerInstructions as string;
+
+    expect(developerInstructions).toContain("Base prompt only.");
+    expect(developerInstructions).toContain("### Plan\nPlan before editing.");
+    expect(developerInstructions).toContain("### Verify\nRun focused verification.");
+    expect(countOccurrences(developerInstructions, "## Skills")).toBe(1);
+    expect(developerInstructions).toContain("Use dynamic tools for ask_user, render_content, confirm_action, show_progress, and suggest_actions");
+    expect(developerInstructions).toContain("## PLAN MODE — ACTIVE");
   });
 
   test("Codex notifications normalize into existing sidecar event semantics", async () => {

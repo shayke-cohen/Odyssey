@@ -149,6 +149,64 @@ final class AgentDefaultsTests: XCTestCase {
         XCTAssertEqual(config?.workingDirectory, "/tmp/work")
     }
 
+    func testProvisionerKeepsSkillsStructuredAndLeavesSystemPromptForBasePromptAndMission() {
+        let skillA = Skill(name: "Plan Carefully", content: "Always plan before editing.")
+        let skillB = Skill(name: "Review Output", content: "Double-check the final answer.")
+        context.insert(skillA)
+        context.insert(skillB)
+
+        let agent = Agent(name: "Structured", systemPrompt: "Base identity prompt.")
+        agent.skillIds = [skillA.id, skillB.id]
+        context.insert(agent)
+
+        let config = AgentProvisioner(modelContext: context).provision(agent: agent, mission: "Ship feature X").0
+
+        XCTAssertEqual(config.skills.map(\.name), ["Plan Carefully", "Review Output"])
+        XCTAssertEqual(config.systemPrompt, "Base identity prompt.\n\n# Current Mission\nShip feature X\n")
+        XCTAssertFalse(config.systemPrompt.contains("Always plan before editing."))
+        XCTAssertFalse(config.systemPrompt.contains("## Plan Carefully"))
+    }
+
+    func testProvisionerIncludesSkillLinkedMCPsAndDeduplicatesThem() {
+        let argus = MCPServer(name: "Argus", transport: .stdio(command: "npx", args: ["-y", "argus-mcp"], env: [:]))
+        let octocode = MCPServer(name: "Octocode", transport: .stdio(command: "npx", args: ["-y", "octocode-mcp"], env: [:]))
+        let appXray = MCPServer(name: "AppXray", transport: .stdio(command: "npx", args: ["-y", "appxray-mcp"], env: [:]))
+        [argus, octocode, appXray].forEach(context.insert)
+
+        let reviewSkill = Skill(name: "Code Review", content: "Review carefully.")
+        reviewSkill.mcpServerIds = [octocode.id, appXray.id]
+        context.insert(reviewSkill)
+
+        let agent = Agent(name: "Reviewer")
+        agent.skillIds = [reviewSkill.id]
+        agent.extraMCPServerIds = [argus.id, octocode.id]
+        context.insert(agent)
+
+        let config = AgentProvisioner(modelContext: context).provision(agent: agent, mission: nil).0
+
+        XCTAssertEqual(config.mcpServers.map(\.name), ["Argus", "Octocode", "AppXray"])
+    }
+
+    func testProvisionerIgnoresDisabledSkillsAndDoesNotAddTheirMCPs() {
+        let octocode = MCPServer(name: "Octocode", transport: .stdio(command: "npx", args: ["-y", "octocode-mcp"], env: [:]))
+        context.insert(octocode)
+
+        let disabledSkill = Skill(name: "Disabled Skill", content: "Should not be sent.")
+        disabledSkill.isEnabled = false
+        disabledSkill.mcpServerIds = [octocode.id]
+        context.insert(disabledSkill)
+
+        let agent = Agent(name: "DisabledSkillAgent")
+        agent.skillIds = [disabledSkill.id]
+        context.insert(agent)
+
+        let config = AgentProvisioner(modelContext: context).provision(agent: agent, mission: nil).0
+
+        XCTAssertTrue(config.skills.isEmpty)
+        XCTAssertTrue(config.mcpServers.isEmpty)
+        XCTAssertFalse(config.systemPrompt.contains("Should not be sent."))
+    }
+
     func testPeerWireProviderDefaultsToSystemWhenMissing() throws {
         let data = """
         {
