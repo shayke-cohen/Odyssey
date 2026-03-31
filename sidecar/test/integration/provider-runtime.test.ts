@@ -430,7 +430,7 @@ describe("Provider runtime integration", () => {
           id: "item-1",
           tool: "ask_user",
           success: true,
-          contentItems: [{ type: "text", text: "{\"answer\":\"yes\"}" }],
+          contentItems: [{ type: "inputText", text: "{\"answer\":\"yes\"}" }],
         },
       },
     });
@@ -468,7 +468,7 @@ describe("Provider runtime integration", () => {
         tool: "ask_user",
         output: JSON.stringify({
           success: true,
-          contentItems: [{ type: "text", text: "{\"answer\":\"yes\"}" }],
+          contentItems: [{ type: "inputText", text: "{\"answer\":\"yes\"}" }],
         }),
       },
     ]);
@@ -555,6 +555,59 @@ describe("Provider runtime integration", () => {
     ]);
     expect((runtime as any).activeTurnsBySession.has("codex-session")).toBe(false);
     expect((runtime as any).activeTurnsByTurnId.has("turn-race")).toBe(false);
+  });
+
+  test("Codex dynamic tool calls return app-server compatible content items for blackboard writes", async () => {
+    const runtime = new CodexRuntime({
+      emit: (event) => events.push(event),
+      registry,
+      toolCtx: ctx,
+    });
+
+    registry.create("codex-session", makeAgentConfig({
+      name: "CodexBot",
+      provider: "codex",
+      model: "gpt-5-codex",
+    }) as any);
+
+    (runtime as any).threadToSessionId.set("thr-1", "codex-session");
+
+    const response = await (runtime as any).handleServerRequest("codex-session", {
+      id: "tool-1",
+      method: "item/tool/call",
+      params: {
+        threadId: "thr-1",
+        turnId: "turn-1",
+        callId: "call-1",
+        tool: "blackboard_write",
+        arguments: {
+          key: "research.sync.dropbox_drive",
+          value: "{\"status\":\"ok\"}",
+        },
+      },
+    });
+
+    expect(response.success).toBe(true);
+    expect(response.contentItems).toHaveLength(1);
+    expect(response.contentItems[0]).toMatchObject({
+      type: "inputText",
+    });
+    const payload = JSON.parse(response.contentItems[0].text);
+    expect(payload).toMatchObject({
+      success: true,
+      key: "research.sync.dropbox_drive",
+    });
+    expect(typeof payload.updatedAt).toBe("string");
+
+    const entry = ctx.blackboard.read("research.sync.dropbox_drive");
+    expect(entry?.value).toBe("{\"status\":\"ok\"}");
+    expect(events).toContainEqual({
+      type: "blackboard.update",
+      sessionId: "codex-session",
+      key: "research.sync.dropbox_drive",
+      value: "{\"status\":\"ok\"}",
+      writtenBy: "CodexBot",
+    });
   });
 
   test("Codex permission approval requests map into existing confirmation flow", async () => {
