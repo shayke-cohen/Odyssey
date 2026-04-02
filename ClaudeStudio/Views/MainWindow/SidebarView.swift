@@ -1493,6 +1493,12 @@ struct SidebarView: View {
                   systemImage: convo.isUnread ? "envelope.open" : "envelope.badge")
         }
         .xrayId("sidebar.conversationContext.unread.\(convo.id.uuidString)")
+        if let project = projectForConversation(convo) {
+            Button { openProjectInFinder(project) } label: {
+                Label("Open Project Folder", systemImage: "folder")
+            }
+            .xrayId("sidebar.conversationContext.openProject.\(convo.id.uuidString)")
+        }
         Divider()
         if convo.status == .active {
             Button { closeConversation(convo) } label: {
@@ -1697,6 +1703,11 @@ struct SidebarView: View {
 
     private func conversationsForProject(_ project: Project) -> [Conversation] {
         conversations.filter { $0.projectId == project.id }
+    }
+
+    private func projectForConversation(_ convo: Conversation) -> Project? {
+        guard let projectId = convo.projectId else { return nil }
+        return projects.first(where: { $0.id == projectId })
     }
 
     // MARK: - Group Actions
