@@ -173,11 +173,50 @@ final class ScheduleRunCoordinatorTests: XCTestCase {
             context.fetch(FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == conversationId })).first
         )
         XCTAssertEqual(conversation.sourceGroupId, group.id)
-        XCTAssertTrue(conversation.selectiveRepliesEnabled)
+        XCTAssertEqual(conversation.routingMode, .mentionAware)
         XCTAssertEqual(conversation.sessions.count, 2)
         let chatMessages = conversation.messages.filter { $0.type == .chat }
         XCTAssertEqual(chatMessages.count, 3)
         XCTAssertEqual(recorder.commands.count, 4)
+    }
+
+    func testExecuteFreshGroupScheduleMentionAwareUsesCoordinatorFirst() async throws {
+        let agentA = makeAgent(named: "Coder")
+        let agentB = makeAgent(named: "Reviewer")
+        let group = AgentGroup(name: "Full Stack", agentIds: [agentA.id, agentB.id])
+        group.coordinatorAgentId = agentA.id
+        context.insert(group)
+
+        let schedule = ScheduledMission(
+            name: "Morning feature sweep",
+            targetKind: .group,
+            projectDirectory: "/tmp/group-repo",
+            promptTemplate: "Review new work in {{projectDirectory}}"
+        )
+        schedule.targetGroupId = group.id
+        context.insert(schedule)
+        let run = makeRun(for: schedule)
+        try context.save()
+
+        let recorder = CommandRecorder()
+        let coordinator = ScheduleRunCoordinator(
+            appState: appState,
+            modelContext: context,
+            dependencies: makeDependencies(recorder: recorder)
+        )
+
+        await coordinator.execute(schedule: schedule, run: run)
+
+        XCTAssertEqual(run.status, .succeeded)
+        XCTAssertEqual(recorder.commands.count, 2)
+        let sentPrompts = recorder.commands.compactMap { command -> String? in
+            if case .sessionMessage(_, let text, _, _) = command {
+                return text
+            }
+            return nil
+        }
+        XCTAssertEqual(sentPrompts.count, 1)
+        XCTAssertTrue(sentPrompts[0].contains("receiving this turn first because you are the group's coordinator"))
     }
 
     func testExecuteFreshGroupScheduleSuppressesNoReplySentinel() async throws {

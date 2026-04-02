@@ -127,10 +127,17 @@ final class ScheduleRunCoordinator {
             let descriptor = FetchDescriptor<AgentGroup>(predicate: #Predicate { $0.id == groupId })
             return try? modelContext.fetch(descriptor).first
         }
+        let userWavePlan = GroupRoutingPlanner.planUserWave(
+            routingMode: conversation.routingMode,
+            sessions: targetSessions,
+            sourceGroup: sourceGroup,
+            mentionedAgents: [],
+            mentionedAll: false
+        )
 
         var lastAssistantMessage: ConversationMessage?
 
-        for session in targetSessions {
+        for session in targetSessions where userWavePlan.recipientSessionIds.contains(session.id) {
             let sidecarKey = session.id.uuidString
             appState.streamingText.removeValue(forKey: sidecarKey)
             appState.thinkingText.removeValue(forKey: sidecarKey)
@@ -164,9 +171,10 @@ final class ScheduleRunCoordinator {
                 targetSession: session,
                 latestUserMessageText: prompt,
                 participants: participants,
-                highlightedMentionAgentNames: [],
-                mentionedAll: false,
-                selectiveRepliesEnabled: conversation.selectiveRepliesEnabled,
+                highlightedMentionAgentNames: userWavePlan.mentionedAgentNames,
+                mentionedAll: userWavePlan.mentionedAll,
+                routingMode: conversation.routingMode,
+                deliveryReason: userWavePlan.deliveryReason,
                 groupInstruction: sourceGroup?.groupInstruction,
                 role: agentRole,
                 teamMembers: teamMembers

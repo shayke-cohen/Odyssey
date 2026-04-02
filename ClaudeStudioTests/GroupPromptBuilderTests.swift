@@ -439,7 +439,9 @@ final class GroupPromptBuilderTests: XCTestCase {
             latestUserMessageText: "Hello",
             participants: convo.participants,
             highlightedMentionAgentNames: ["A2"],
-            selectiveRepliesEnabled: true
+            routingMode: .broad,
+            deliveryReason: .directMention,
+            allowNoReply: true
         )
         XCTAssertTrue(built.contains(GroupPromptBuilder.noReplySentinel))
         XCTAssertTrue(built.contains("not directly mentioned"))
@@ -474,7 +476,8 @@ final class GroupPromptBuilderTests: XCTestCase {
             latestUserMessageText: "Hello",
             participants: convo.participants,
             highlightedMentionAgentNames: ["A1"],
-            selectiveRepliesEnabled: true
+            routingMode: .mentionAware,
+            deliveryReason: .directMention
         )
         XCTAssertTrue(built.contains("MUST respond substantively"))
         XCTAssertFalse(built.contains("not directly mentioned"))
@@ -509,10 +512,46 @@ final class GroupPromptBuilderTests: XCTestCase {
             latestUserMessageText: "Hello",
             participants: convo.participants,
             mentionedAll: true,
-            selectiveRepliesEnabled: true
+            routingMode: .mentionAware,
+            deliveryReason: .broadcast
         )
         XCTAssertTrue(built.contains("@all"))
         XCTAssertTrue(built.contains(GroupPromptBuilder.noReplySentinel))
+    }
+
+    func testMentionAwareCoordinatorLeadPromptRequiresSubstantiveReply() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let coordinator = Agent(name: "Coordinator")
+        let worker = Agent(name: "Worker")
+        ctx.insert(coordinator)
+        ctx.insert(worker)
+
+        let convo = Conversation()
+        let s1 = Session(agent: coordinator, workingDirectory: "/tmp")
+        let s2 = Session(agent: worker, workingDirectory: "/tmp")
+        s1.conversations = [convo]
+        s2.conversations = [convo]
+        convo.sessions = [s1, s2]
+
+        let user = Participant(type: .user, displayName: "You")
+        user.conversation = convo
+        convo.participants.append(user)
+        ctx.insert(convo)
+        ctx.insert(s1)
+        ctx.insert(s2)
+        ctx.insert(user)
+
+        let built = GroupPromptBuilder.buildMessageText(
+            conversation: convo,
+            targetSession: s1,
+            latestUserMessageText: "Hello",
+            participants: convo.participants,
+            routingMode: .mentionAware,
+            deliveryReason: .coordinatorLead
+        )
+        XCTAssertTrue(built.contains("receiving this turn first because you are the group's coordinator"))
+        XCTAssertTrue(built.contains("MUST respond substantively"))
     }
 
     func testPeerNotifyPrompt() throws {
@@ -864,7 +903,7 @@ final class GroupPromptBuilderTests: XCTestCase {
             peerMessageText: "@all need eyes on this",
             recipientSession: session,
             deliveryReason: .broadcast,
-            selectiveRepliesEnabled: true
+            routingMode: .mentionAware
         )
         XCTAssertTrue(prompt.contains("addressed the whole group with @all"))
         XCTAssertTrue(prompt.contains(GroupPromptBuilder.noReplySentinel))

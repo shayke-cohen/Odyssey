@@ -550,7 +550,7 @@ struct NewSessionSheet: View {
             threadKind: selectedList.count > 1 ? .group : .direct
         )
         if selectedList.count > 1 {
-            conversation.selectiveRepliesEnabled = true
+            conversation.routingMode = .mentionAware
         }
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation

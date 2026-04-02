@@ -11,12 +11,6 @@ enum GroupPromptBuilder {
     static let maxInjectedCharacters = 120_000
     static let noReplySentinel = "<NO_REPLY>"
 
-    enum PeerDeliveryReason {
-        case generic
-        case directMention
-        case broadcast
-    }
-
     // MARK: - Team Roster
 
     struct TeamMemberInfo {
@@ -85,7 +79,8 @@ enum GroupPromptBuilder {
         participants: [Participant],
         highlightedMentionAgentNames: [String] = [],
         mentionedAll: Bool = false,
-        selectiveRepliesEnabled: Bool = false,
+        routingMode: GroupRoutingMode = .broad,
+        deliveryReason: GroupRoutingPlanner.UserDeliveryReason = .broad,
         transcriptBoundaryMessageId: UUID? = nil,
         allowNoReply: Bool = false,
         groupInstruction: String? = nil,
@@ -142,15 +137,25 @@ enum GroupPromptBuilder {
         let directlyMentioned = highlightedMentionAgentNames.contains {
             $0.caseInsensitiveCompare(agentName) == .orderedSame
         }
-        let selectiveInstruction: String = {
-            if directlyMentioned {
-                return "\nYou were directly @mentioned by the user. You MUST respond substantively.\n"
+        let responseOnlyIfMaterial = "Reply only if you can add net-new information that materially advances the conversation or mission. If not, reply with exactly \(noReplySentinel) and nothing else."
+        let deliveryInstruction: String = {
+            switch deliveryReason {
+            case .directMention:
+                if directlyMentioned {
+                    return "\nYou were directly @mentioned by the user. You MUST respond substantively.\n"
+                }
+                guard allowNoReply || routingMode == .mentionAware else { return "" }
+                return "\nYou were not directly mentioned. \(responseOnlyIfMaterial)\n"
+            case .broadcast:
+                return "\nThe whole group was addressed. \(responseOnlyIfMaterial)\n"
+            case .coordinatorLead:
+                return "\nThe user did not mention anyone. You are receiving this turn first because you are the group's coordinator. You MUST respond substantively and help direct the next step.\n"
+            case .implicitFallback:
+                return "\nNo one was directly mentioned and no coordinator is set for this group. \(responseOnlyIfMaterial)\n"
+            case .broad:
+                guard allowNoReply else { return "" }
+                return "\nYou were not directly mentioned. \(responseOnlyIfMaterial)\n"
             }
-            if mentionedAll {
-                return "\nThe whole group was addressed. Reply only if you can add net-new information that materially advances the conversation or mission. If not, reply with exactly \(noReplySentinel) and nothing else.\n"
-            }
-            guard selectiveRepliesEnabled || allowNoReply else { return "" }
-            return "\nYou were not directly mentioned. Reply only if you can add net-new information that materially advances the conversation or mission. If not, reply with exactly \(noReplySentinel) and nothing else.\n"
         }()
         return """
         \(instructionBlock)\(roleBlock)\(rosterBlock)\(communicationGuidelines)--- Group thread (new since your last reply) ---
@@ -158,7 +163,7 @@ enum GroupPromptBuilder {
         --- End ---
         \(mentionNote)
         You are @\(agentName). Respond to the latest user message in this group.
-        \(selectiveInstruction)
+        \(deliveryInstruction)
         Latest user message:
         \"\"\"
         \(latestUserMessageText)
@@ -171,8 +176,8 @@ enum GroupPromptBuilder {
         senderLabel: String,
         peerMessageText: String,
         recipientSession: Session,
-        deliveryReason: PeerDeliveryReason = .generic,
-        selectiveRepliesEnabled: Bool = false,
+        deliveryReason: GroupRoutingPlanner.PeerDeliveryReason = .generic,
+        routingMode: GroupRoutingMode = .broad,
         allowNoReply: Bool = false,
         role: GroupRole? = nil,
         teamMembers: [TeamMemberInfo] = []
@@ -213,7 +218,7 @@ enum GroupPromptBuilder {
         case .directMention:
             roleInstruction = "\(rolePrefix) Another participant directly @mentioned you. You MUST respond substantively.\(role == nil ? "" : roleSuffix)"
         case .broadcast:
-            let suffix = (selectiveRepliesEnabled || allowNoReply)
+            let suffix = (routingMode == .mentionAware || allowNoReply)
                 ? " Reply only if you can add net-new information that materially advances the conversation or mission. If not, reply with exactly \(noReplySentinel) and nothing else."
                 : " Reply if you have something substantive to add; stay concise."
             roleInstruction = "\(rolePrefix) Another participant addressed the whole group with @all.\(suffix)\(role == nil ? "" : roleSuffix)"

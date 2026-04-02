@@ -15,6 +15,25 @@ enum ConversationStatus: String, Codable, Sendable {
     case closed
 }
 
+enum GroupRoutingMode: String, Codable, CaseIterable, Sendable {
+    case mentionAware
+    case broad
+
+    var displayName: String {
+        switch self {
+        case .mentionAware: return "Mention-Aware"
+        case .broad: return "Broad"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .mentionAware: return "Mentions"
+        case .broad: return "Broad"
+        }
+    }
+}
+
 @Model
 final class Project {
     var id: UUID
@@ -68,6 +87,7 @@ final class Conversation {
     var isAutonomous: Bool = false
     var planModeEnabled: Bool = false
     var selectiveRepliesEnabled: Bool = false
+    private var routingModeRaw: String?
     var worktreePath: String?
     var worktreeBranch: String?
     var startedAt: Date
@@ -107,5 +127,19 @@ final class Conversation {
     var threadKind: ThreadKind {
         get { ThreadKind(rawValue: threadKindRaw ?? "") ?? .freeform }
         set { threadKindRaw = newValue.rawValue }
+    }
+
+    var routingMode: GroupRoutingMode {
+        get {
+            if let raw = routingModeRaw, let mode = GroupRoutingMode(rawValue: raw) {
+                return mode
+            }
+            return selectiveRepliesEnabled ? .mentionAware : .broad
+        }
+        set {
+            routingModeRaw = newValue.rawValue
+            // Preserve the legacy flag so older persisted data can migrate lazily.
+            selectiveRepliesEnabled = (newValue == .mentionAware)
+        }
     }
 }
