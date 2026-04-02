@@ -94,7 +94,10 @@ enum GroupRoutingPlanner {
     ) -> PeerWavePlan? {
         let sortedOthers = otherSessions.sorted { $0.startedAt < $1.startedAt }
         let isAllMention = ChatSendRouting.containsMentionAll(in: triggerText)
-        let mentionNames = ChatSendRouting.mentionedAgentNames(in: triggerText)
+        let mentionNames = ChatSendRouting.mentionedAgentNames(
+            in: triggerText,
+            agents: sortedOthers.compactMap(\.agent)
+        )
         let filteredNames = mentionNames.filter { !$0.isEmpty && !ChatSendRouting.isMentionAllToken($0) }
 
         let mentionedSessionIds: Set<UUID>

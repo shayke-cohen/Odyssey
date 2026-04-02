@@ -448,15 +448,28 @@ struct ChatView: View {
     }
 
     private var mentionAutocompleteAgents: [Agent] {
-        guard let r = inputText.range(of: #"@([^\s@]*)$"#, options: .regularExpression) else { return [] }
-        let token = String(inputText[r]).dropFirst().lowercased()
+        guard let r = inputText.range(of: #"@([^@\n]*)$"#, options: .regularExpression) else { return [] }
+        let rawToken = String(inputText[r]).dropFirst()
+        let token = rawToken.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if rawToken.last?.isWhitespace == true &&
+            (allAgents.contains(where: { $0.name.caseInsensitiveCompare(token) == .orderedSame }) ||
+             ChatSendRouting.isMentionAllToken(token)) {
+            return []
+        }
         guard !token.isEmpty else { return Array(allAgents.prefix(8)) }
         return allAgents.filter { $0.name.lowercased().hasPrefix(token) }.prefix(8).map { $0 }
     }
 
     private var mentionAutocompleteToken: String? {
-        guard let r = inputText.range(of: #"@([^\s@]*)$"#, options: .regularExpression) else { return nil }
-        return String(inputText[r]).dropFirst().lowercased()
+        guard let r = inputText.range(of: #"@([^@\n]*)$"#, options: .regularExpression) else { return nil }
+        let rawToken = String(inputText[r]).dropFirst()
+        let token = rawToken.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if rawToken.last?.isWhitespace == true &&
+            (allAgents.contains(where: { $0.name.caseInsensitiveCompare(token) == .orderedSame }) ||
+             ChatSendRouting.isMentionAllToken(token)) {
+            return nil
+        }
+        return token
     }
 
     private var shouldShowMentionAllSuggestion: Bool {
@@ -496,7 +509,7 @@ struct ChatView: View {
 
     private var routingPreviewPlan: GroupRoutingPlanner.UserWavePlan? {
         guard let convo = conversation, convo.sessions.count > 1 else { return nil }
-        let mentionNames = ChatSendRouting.mentionedAgentNames(in: inputText)
+        let mentionNames = ChatSendRouting.mentionedAgentNames(in: inputText, agents: allAgents)
         let mentionedAll = ChatSendRouting.containsMentionAll(in: inputText)
         let (resolvedMentionAgents, _) = ChatSendRouting.resolveMentionedAgents(
             names: mentionNames,
@@ -2965,7 +2978,7 @@ struct ChatView: View {
     }
 
     private func insertMentionCompletion(agentName: String) {
-        guard let r = inputText.range(of: #"@([^\s@]*)$"#, options: .regularExpression) else { return }
+        guard let r = inputText.range(of: #"@([^@\n]*)$"#, options: .regularExpression) else { return }
         inputText.replaceSubrange(r, with: "@\(agentName) ")
     }
 
@@ -3173,7 +3186,7 @@ struct ChatView: View {
         inputText = ""
         pendingAttachments = []
 
-        let mentionNames = ChatSendRouting.mentionedAgentNames(in: text)
+        let mentionNames = ChatSendRouting.mentionedAgentNames(in: text, agents: allAgents)
         let mentionedAll = ChatSendRouting.containsMentionAll(in: text)
         let (resolvedMentionAgents, unknownMentions) = ChatSendRouting.resolveMentionedAgents(
             names: mentionNames,

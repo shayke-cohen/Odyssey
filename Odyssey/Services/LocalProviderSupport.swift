@@ -18,8 +18,10 @@ struct LocalProviderStatusReport: Equatable {
 }
 
 enum LocalProviderSupport {
-    static let bundledHostRelativePath = "local-agent/bin/ClaudeStudioLocalAgentHost"
-    static let packageRelativePath = "Packages/ClaudeStudioLocalAgent"
+    static let bundledHostRelativePath = "local-agent/bin/OdysseyLocalAgentHost"
+    static let packageRelativePath = "Packages/OdysseyLocalAgent"
+    static let sidecarRelativePath = "sidecar/src/index.ts"
+    static let sourceRootInfoKey = "ODYSSEY_SOURCE_ROOT"
 
     static func resolveHostBinaryPath(
         bundleResourcePath: String? = Bundle.main.resourcePath,
@@ -45,16 +47,17 @@ enum LocalProviderSupport {
 
     static func resolvePackagePath(
         currentDirectoryPath: String = FileManager.default.currentDirectoryPath,
-        projectRootOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.sidecarPathKey)
+        projectRootOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.sidecarPathKey),
+        bundledSourceRoot: String? = preferredBundledSourceRoot(),
+        fallbackProjectRoots: [String]? = nil
     ) -> String? {
         let fileManager = FileManager.default
-        let candidates = [
-            projectRootOverride,
-            currentDirectoryPath,
-            NSHomeDirectory().appending("/ClaudPeer"),
-            NSHomeDirectory().appending("/ClaudeStudio"),
-        ]
-            .compactMap { normalizedDirectoryPath($0) }
+        let candidates = preferredProjectRoots(
+            currentDirectoryPath: currentDirectoryPath,
+            projectRootOverride: projectRootOverride,
+            bundledSourceRoot: bundledSourceRoot,
+            fallbackProjectRoots: fallbackProjectRoots
+        )
             .map { URL(fileURLWithPath: $0).appendingPathComponent(packageRelativePath).path }
 
         for candidate in candidates where fileManager.fileExists(atPath: candidate) {
@@ -62,6 +65,39 @@ enum LocalProviderSupport {
         }
 
         return nil
+    }
+
+    static func resolveSidecarPath(
+        bundleResourcePath: String? = Bundle.main.resourcePath,
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath,
+        projectRootOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.sidecarPathKey),
+        bundledSourceRoot: String? = preferredBundledSourceRoot(),
+        fallbackProjectRoots: [String]? = nil
+    ) -> String? {
+        let fileManager = FileManager.default
+
+        if let bundleResourcePath {
+            let bundledSidecarPath = URL(fileURLWithPath: bundleResourcePath)
+                .appendingPathComponent(sidecarRelativePath)
+                .path
+            if fileManager.fileExists(atPath: bundledSidecarPath) {
+                return bundledSidecarPath
+            }
+        }
+
+        let candidatePaths = preferredProjectRoots(
+            currentDirectoryPath: currentDirectoryPath,
+            projectRootOverride: projectRootOverride,
+            bundledSourceRoot: bundledSourceRoot,
+            fallbackProjectRoots: fallbackProjectRoots
+        )
+            .map { URL(fileURLWithPath: $0).appendingPathComponent(sidecarRelativePath).path }
+
+        for candidate in candidatePaths where fileManager.fileExists(atPath: candidate) {
+            return candidate
+        }
+
+        return candidatePaths.first
     }
 
     static func resolveMLXRunnerPath(
@@ -99,6 +135,7 @@ enum LocalProviderSupport {
             projectRootOverride: projectRootOverride,
             hostOverride: hostOverride
         ) {
+            environment["ODYSSEY_LOCAL_AGENT_HOST_BINARY"] = hostBinaryPath
             environment["CLAUDESTUDIO_LOCAL_AGENT_HOST_BINARY"] = hostBinaryPath
         }
 
@@ -106,6 +143,7 @@ enum LocalProviderSupport {
             currentDirectoryPath: currentDirectoryPath,
             projectRootOverride: projectRootOverride
         ) {
+            environment["ODYSSEY_LOCAL_AGENT_PACKAGE_PATH"] = packagePath
             environment["CLAUDESTUDIO_LOCAL_AGENT_PACKAGE_PATH"] = packagePath
         }
 
@@ -113,11 +151,12 @@ enum LocalProviderSupport {
             runnerOverride: mlxRunnerOverride,
             dataDirectoryPath: dataDirectoryPath
         ) {
+            environment["ODYSSEY_MLX_RUNNER"] = mlxRunnerPath
             environment["CLAUDESTUDIO_MLX_RUNNER"] = mlxRunnerPath
         }
-        environment["CLAUDESTUDIO_MLX_DOWNLOAD_DIR"] = LocalProviderInstaller.managedMLXDownloadDirectory(
-            dataDirectoryPath: dataDirectoryPath
-        )
+        let downloadDirectory = LocalProviderInstaller.managedMLXDownloadDirectory(dataDirectoryPath: dataDirectoryPath)
+        environment["ODYSSEY_MLX_DOWNLOAD_DIR"] = downloadDirectory
+        environment["CLAUDESTUDIO_MLX_DOWNLOAD_DIR"] = downloadDirectory
 
         return environment
     }
@@ -260,6 +299,32 @@ enum LocalProviderSupport {
         return URL(fileURLWithPath: NSString(string: trimmed).expandingTildeInPath)
             .standardizedFileURL
             .path
+    }
+
+    private static func preferredBundledSourceRoot(bundle: Bundle = .main) -> String? {
+        normalizedDirectoryPath(bundle.object(forInfoDictionaryKey: sourceRootInfoKey) as? String)
+    }
+
+    private static func preferredProjectRoots(
+        currentDirectoryPath: String,
+        projectRootOverride: String?,
+        bundledSourceRoot: String?,
+        fallbackProjectRoots: [String]?
+    ) -> [String] {
+        let rawFallbacks = fallbackProjectRoots ?? [
+            NSHomeDirectory().appending("/Odyssey"),
+            NSHomeDirectory().appending("/ClaudPeer"),
+        ]
+        let rawCandidates = [
+            projectRootOverride,
+            bundledSourceRoot,
+            currentDirectoryPath,
+        ] + rawFallbacks
+
+        var seen = Set<String>()
+        return rawCandidates
+            .compactMap { normalizedDirectoryPath($0) }
+            .filter { seen.insert($0).inserted }
     }
 
     private static func looksLikeLocalModelPath(_ path: String) -> Bool {

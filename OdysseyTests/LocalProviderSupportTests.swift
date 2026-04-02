@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import ClaudeStudio
+@testable import Odyssey
 
 final class LocalProviderSupportTests: XCTestCase {
     private var tempDirectory: URL!
@@ -23,7 +23,7 @@ final class LocalProviderSupportTests: XCTestCase {
         let resourceDirectory = tempDirectory.appendingPathComponent("Resources")
         let hostDirectory = resourceDirectory.appendingPathComponent("local-agent/bin", isDirectory: true)
         try FileManager.default.createDirectory(at: hostDirectory, withIntermediateDirectories: true)
-        let hostPath = hostDirectory.appendingPathComponent("ClaudeStudioLocalAgentHost")
+        let hostPath = hostDirectory.appendingPathComponent("OdysseyLocalAgentHost")
         FileManager.default.createFile(atPath: hostPath.path, contents: Data("echo host".utf8))
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hostPath.path)
 
@@ -39,7 +39,7 @@ final class LocalProviderSupportTests: XCTestCase {
 
     func testResolvePackagePathFindsPackageUnderProjectOverride() throws {
         let projectRoot = tempDirectory.appendingPathComponent("Project")
-        let packageDirectory = projectRoot.appendingPathComponent("Packages/ClaudeStudioLocalAgent", isDirectory: true)
+        let packageDirectory = projectRoot.appendingPathComponent("Packages/OdysseyLocalAgent", isDirectory: true)
         try FileManager.default.createDirectory(at: packageDirectory, withIntermediateDirectories: true)
 
         let resolved = LocalProviderSupport.resolvePackagePath(
@@ -50,11 +50,56 @@ final class LocalProviderSupportTests: XCTestCase {
         XCTAssertEqual(resolved, packageDirectory.path)
     }
 
+    func testResolvePackagePathPrefersBundledSourceRootOverFallbackRoots() throws {
+        let fallbackRoot = tempDirectory.appendingPathComponent("LegacyWorkspace")
+        let bundledRoot = tempDirectory.appendingPathComponent("CurrentWorkspace")
+        try FileManager.default.createDirectory(
+            at: fallbackRoot.appendingPathComponent("Packages/OdysseyLocalAgent", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: bundledRoot.appendingPathComponent("Packages/OdysseyLocalAgent", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+
+        let resolved = LocalProviderSupport.resolvePackagePath(
+            currentDirectoryPath: "/tmp/does-not-exist",
+            projectRootOverride: nil,
+            bundledSourceRoot: bundledRoot.path,
+            fallbackProjectRoots: [fallbackRoot.path]
+        )
+
+        XCTAssertEqual(
+            resolved,
+            bundledRoot.appendingPathComponent("Packages/OdysseyLocalAgent").path
+        )
+    }
+
+    func testResolveSidecarPathPrefersBundledSourceRootOverFallbackRoots() throws {
+        let fallbackRoot = tempDirectory.appendingPathComponent("LegacyWorkspace")
+        let bundledRoot = tempDirectory.appendingPathComponent("CurrentWorkspace")
+        try makeSidecarWorkspace(at: fallbackRoot)
+        try makeSidecarWorkspace(at: bundledRoot)
+
+        let resolved = LocalProviderSupport.resolveSidecarPath(
+            bundleResourcePath: nil,
+            currentDirectoryPath: "/tmp/does-not-exist",
+            projectRootOverride: nil,
+            bundledSourceRoot: bundledRoot.path,
+            fallbackProjectRoots: [fallbackRoot.path]
+        )
+
+        XCTAssertEqual(
+            resolved,
+            bundledRoot.appendingPathComponent("sidecar/src/index.ts").path
+        )
+    }
+
     func testEnvironmentValuesIncludeDetectedAssets() throws {
         let resourceDirectory = tempDirectory.appendingPathComponent("Resources")
         let hostDirectory = resourceDirectory.appendingPathComponent("local-agent/bin", isDirectory: true)
         try FileManager.default.createDirectory(at: hostDirectory, withIntermediateDirectories: true)
-        let hostPath = hostDirectory.appendingPathComponent("ClaudeStudioLocalAgentHost")
+        let hostPath = hostDirectory.appendingPathComponent("OdysseyLocalAgentHost")
         FileManager.default.createFile(atPath: hostPath.path, contents: Data("echo host".utf8))
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hostPath.path)
 
@@ -71,10 +116,10 @@ final class LocalProviderSupportTests: XCTestCase {
             dataDirectoryPath: tempDirectory.path
         )
 
-        XCTAssertEqual(environment["CLAUDESTUDIO_LOCAL_AGENT_HOST_BINARY"], hostPath.path)
-        XCTAssertEqual(environment["CLAUDESTUDIO_MLX_RUNNER"], runnerPath.path)
+        XCTAssertEqual(environment["ODYSSEY_LOCAL_AGENT_HOST_BINARY"], hostPath.path)
+        XCTAssertEqual(environment["ODYSSEY_MLX_RUNNER"], runnerPath.path)
         XCTAssertEqual(
-            environment["CLAUDESTUDIO_MLX_DOWNLOAD_DIR"],
+            environment["ODYSSEY_MLX_DOWNLOAD_DIR"],
             LocalProviderInstaller.managedMLXDownloadDirectory(dataDirectoryPath: tempDirectory.path)
         )
     }
@@ -103,7 +148,7 @@ final class LocalProviderSupportTests: XCTestCase {
         let resourceDirectory = tempDirectory.appendingPathComponent("Resources")
         let hostDirectory = resourceDirectory.appendingPathComponent("local-agent/bin", isDirectory: true)
         try FileManager.default.createDirectory(at: hostDirectory, withIntermediateDirectories: true)
-        let hostPath = hostDirectory.appendingPathComponent("ClaudeStudioLocalAgentHost")
+        let hostPath = hostDirectory.appendingPathComponent("OdysseyLocalAgentHost")
         FileManager.default.createFile(atPath: hostPath.path, contents: Data("echo host".utf8))
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hostPath.path)
 
@@ -175,5 +220,14 @@ final class LocalProviderSupportTests: XCTestCase {
         let wrapperScript = try String(contentsOfFile: installPath, encoding: .utf8)
         XCTAssertTrue(wrapperScript.contains("DYLD_FRAMEWORK_PATH"))
         XCTAssertTrue(wrapperScript.contains("../runtime/llm-tool-release"))
+    }
+
+    private func makeSidecarWorkspace(at root: URL) throws {
+        let sidecarDirectory = root.appendingPathComponent("sidecar/src", isDirectory: true)
+        try FileManager.default.createDirectory(at: sidecarDirectory, withIntermediateDirectories: true)
+        FileManager.default.createFile(
+            atPath: sidecarDirectory.appendingPathComponent("index.ts").path,
+            contents: Data("export {};".utf8)
+        )
     }
 }

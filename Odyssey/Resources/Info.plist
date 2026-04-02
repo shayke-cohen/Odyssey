@@ -2,14 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>ODYSSEY_SOURCE_ROOT</key>
+	<string>$(SRCROOT)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.claudestudio.app</string>
+			<string>com.odyssey.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>odyssey</string>
+				<!-- Legacy deep links kept for backward compatibility. -->
 				<string>claudestudio</string>
+				<string>claudpeer</string>
 			</array>
 		</dict>
 	</array>

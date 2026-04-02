@@ -112,18 +112,22 @@ final class SidecarManager: ObservableObject, Sendable {
         process.executableURL = URL(fileURLWithPath: bunPath)
         process.arguments = ["run", sidecarPath]
         process.environment = normalizedEnvironment()
+        process.environment?["ODYSSEY_WS_PORT"] = "\(config.wsPort)"
+        process.environment?["ODYSSEY_HTTP_PORT"] = "\(config.httpPort)"
         process.environment?["CLAUDESTUDIO_WS_PORT"] = "\(config.wsPort)"
         process.environment?["CLAUDESTUDIO_HTTP_PORT"] = "\(config.httpPort)"
         if let dataDir = config.dataDirectory {
+            process.environment?["ODYSSEY_DATA_DIR"] = dataDir
             process.environment?["CLAUDESTUDIO_DATA_DIR"] = dataDir
         }
         for (key, value) in localProviderEnvironment() {
             process.environment?[key] = value
         }
         let logLevel = InstanceConfig.userDefaults.string(forKey: AppSettings.logLevelKey) ?? AppSettings.defaultLogLevel
+        process.environment?["ODYSSEY_LOG_LEVEL"] = logLevel
         process.environment?["CLAUDESTUDIO_LOG_LEVEL"] = logLevel
 
-        let logDir = config.logDirectory ?? "\(NSHomeDirectory())/.claudestudio/instances/default/logs"
+        let logDir = config.logDirectory ?? "\(NSHomeDirectory())/.odyssey/instances/default/logs"
         try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
         let logFile = "\(logDir)/sidecar.log"
         FileManager.default.createFile(atPath: logFile, contents: nil)
@@ -303,29 +307,10 @@ final class SidecarManager: ObservableObject, Sendable {
     }
 
     private func findSidecarPath() -> String {
-        let fm = FileManager.default
-
-        if let override = config.sidecarPathOverride {
-            let overridePath = "\(override)/sidecar/src/index.ts"
-            if fm.fileExists(atPath: overridePath) { return overridePath }
-        }
-
-        if let bundlePath = Bundle.main.resourcePath {
-            let inBundle = "\(bundlePath)/sidecar/src/index.ts"
-            if fm.fileExists(atPath: inBundle) { return inBundle }
-        }
-
-        let devPath = "\(fm.currentDirectoryPath)/sidecar/src/index.ts"
-        if fm.fileExists(atPath: devPath) { return devPath }
-
-        let wellKnownPaths = [
-            "\(NSHomeDirectory())/ClaudeStudio/sidecar/src/index.ts",
-            "\(NSHomeDirectory())/ClaudPeer/sidecar/src/index.ts",
-        ]
-        for path in wellKnownPaths {
-            if fm.fileExists(atPath: path) { return path }
-        }
-
-        return wellKnownPaths.first!
+        LocalProviderSupport.resolveSidecarPath(
+            bundleResourcePath: Bundle.main.resourcePath,
+            currentDirectoryPath: FileManager.default.currentDirectoryPath,
+            projectRootOverride: config.sidecarPathOverride
+        ) ?? "\(NSHomeDirectory())/Odyssey/sidecar/src/index.ts"
     }
 }

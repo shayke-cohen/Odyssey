@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudeStudio
+@testable import Odyssey
 
 final class ChatSendRoutingTests: XCTestCase {
 
@@ -26,6 +26,30 @@ final class ChatSendRoutingTests: XCTestCase {
     func testMentionedAgentNames() {
         let names = ChatSendRouting.mentionedAgentNames(in: "Hi @Coder and @Reviewer please")
         XCTAssertEqual(names, ["Coder", "Reviewer"])
+    }
+
+    func testMentionedAgentNamesSupportsAgentNamesWithSpaces() {
+        let productManager = Agent(name: "Product manager")
+        let reviewer = Agent(name: "Reviewer")
+
+        let names = ChatSendRouting.mentionedAgentNames(
+            in: "Loop in @Product manager and @Reviewer.",
+            agents: [productManager, reviewer]
+        )
+
+        XCTAssertEqual(names, ["Product manager", "Reviewer"])
+    }
+
+    func testMentionedAgentNamesPrefersLongestMatchingAgentName() {
+        let product = Agent(name: "Product")
+        let productManager = Agent(name: "Product manager")
+
+        let names = ChatSendRouting.mentionedAgentNames(
+            in: "@Product manager please take point",
+            agents: [product, productManager]
+        )
+
+        XCTAssertEqual(names, ["Product manager"])
     }
 
     func testResolveMentionedAgents() {
