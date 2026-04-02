@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Picker Comparison</title>
+  <style>
+    :root {
+      --bg: #f5efe8;
+      --panel: rgba(255,255,255,0.88);
+      --panel-strong: rgba(255,255,255,0.96);
+      --line: rgba(64,51,42,0.10);
+      --text: #2d241d;
+      --muted: #786e66;
+      --accent: #ca5b38;
+      --accent-soft: rgba(202,91,56,0.12);
+      --blue: #4d7697;
+      --blue-soft: rgba(77,118,151,0.12);
+      --green: #738348;
+      --green-soft: rgba(115,131,72,0.12);
+      --shadow: 0 22px 48px rgba(54,38,24,0.10);
+      --radius: 24px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Display", "Inter", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(202,91,56,0.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(77,118,151,0.16), transparent 22%),
+        linear-gradient(180deg, #fbf7f3 0%, var(--bg) 100%);
+    }
+    .page {
+      max-width: 1550px;
+      margin: 0 auto;
+      padding: 34px 28px 56px;
+    }
+    .hero, .option, .footer {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+    .hero {
+      padding: 26px 28px;
+      margin-bottom: 22px;
+    }
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 36px;
+      line-height: 1.04;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(340px, 1fr));
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+    .option {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .head h2 {
+      margin: 0;
+      font-size: 25px;
+    }
+    .tag {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .tag.today { color: var(--muted); background: rgba(64,51,42,0.08); }
+    .tag.rec { color: var(--accent); background: var(--accent-soft); }
+    .desc {
+      min-height: 64px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .mock {
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,243,238,0.90));
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 22px;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      min-height: 760px;
+    }
+    .topbar {
+      display: flex;
+      gap: 8px;
+      padding: 4px 4px 0;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff5f57;
+    }
+    .dot:nth-child(2) { background: #febc2e; }
+    .dot:nth-child(3) { background: #28c840; }
+    .modal {
+      width: 100%;
+      max-width: 470px;
+      margin: 0 auto;
+      min-height: 670px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 24px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      box-shadow: 0 22px 40px rgba(64,51,42,0.10);
+    }
+    .modal-head {
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid rgba(64,51,42,0.08);
+      display: grid;
+      gap: 6px;
+    }
+    .modal-head h3 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .tabs {
+      padding: 14px 18px 0;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 9px 13px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      background: rgba(64,51,42,0.06);
+    }
+    .tab.active-agent {
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+    .body {
+      padding: 16px 18px 18px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+    .label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: -4px;
+    }
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid rgba(64,51,42,0.08);
+      background: rgba(255,255,255,0.88);
+      color: var(--blue);
+    }
+    .search, .field {
+      padding: 12px;
+      border-radius: 15px;
+      border: 1px solid rgba(64,51,42,0.08);
+      background: rgba(255,255,255,0.90);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .card {
+      border: 1px solid rgba(64,51,42,0.10);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.90);
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+      min-height: 128px;
+    }
+    .card.active {
+      border-color: rgba(77,118,151,0.26);
+      background: linear-gradient(135deg, rgba(77,118,151,0.12), rgba(77,118,151,0.05));
+    }
+    .row-list {
+      display: grid;
+      gap: 10px;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.90);
+      padding: 12px 13px;
+    }
+    .row.active {
+      border-color: rgba(77,118,151,0.24);
+      background: linear-gradient(135deg, rgba(77,118,151,0.12), rgba(77,118,151,0.05));
+    }
+    .icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+    .title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .sub {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .meta {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .mode {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .seg {
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      background: rgba(64,51,42,0.06);
+    }
+    .seg.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .foot {
+      border-top: 1px solid rgba(64,51,42,0.08);
+      padding: 16px 18px 18px;
+      display: grid;
+      gap: 10px;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .ghost, .primary {
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid rgba(64,51,42,0.08);
+      background: rgba(255,255,255,0.84);
+    }
+    .primary {
+      margin-left: auto;
+      color: white;
+      border-color: transparent;
+      background: linear-gradient(135deg, #ca5b38, #b84a2a);
+    }
+    .bullets {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .footer {
+      padding: 20px 22px;
+    }
+    .footer h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+    .footer ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+    .callout {
+      margin-top: 14px;
+      border-radius: 14px;
+      background: rgba(202,91,56,0.08);
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    @media (max-width: 1220px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Picker Comparison Inside Option A</div>
+      <h1>Should the agent/group selection look like today, or become a more guided picker?</h1>
+      <p>
+        The best answer is probably “related, but not identical.” Here’s the direct comparison inside the same unified
+        `Create Thread` flow: a today-like grid versus a more decision-friendly list/card hybrid.
+      </p>
+    </section>
+
+    <section class="grid">
+      <article class="option">
+        <div class="head">
+          <h2>Today-Like Grid</h2>
+          <span class="tag today">Closer To Today</span>
+        </div>
+        <div class="desc">
+          Preserves the current visual language: compact cards, many options visible at once, familiar for existing users.
+        </div>
+        <div class="mock">
+          <div class="topbar"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="modal">
+            <div class="modal-head">
+              <h3>Create Thread</h3>
+              <p>Choose an agent, then set mode and goal.</p>
+            </div>
+            <div class="tabs">
+              <div class="tab">Blank</div>
+              <div class="tab active-agent">Agents</div>
+              <div class="tab">Groups</div>
+            </div>
+            <div class="body">
+              <div class="label">Recent Agents</div>
+              <div class="chips">
+                <div class="chip">Frontend Agent</div>
+                <div class="chip">Research Agent</div>
+                <div class="chip">Security Reviewer</div>
+              </div>
+
+              <div class="label">All Agents</div>
+              <div class="cards-grid">
+                <div class="card active">
+                  <div class="icon">A</div>
+                  <div>
+                    <div class="title">Frontend Agent</div>
+                    <div class="sub">UI work</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="icon">A</div>
+                  <div>
+                    <div class="title">Research Agent</div>
+                    <div class="sub">Synthesis</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="icon">A</div>
+                  <div>
+                    <div class="title">Code Reviewer</div>
+                    <div class="sub">Quality</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="icon">A</div>
+                  <div>
+                    <div class="title">PM Agent</div>
+                    <div class="sub">Planning</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="label">Mode</div>
+              <div class="mode">
+                <div class="seg active">Interactive</div>
+                <div class="seg">Autonomous</div>
+                <div class="seg">Worker</div>
+              </div>
+
+              <div class="label">Goal</div>
+              <div class="field">Review the new thread creation flow and suggest a clearer IA.</div>
+            </div>
+            <div class="foot">
+              <div class="bullets">
+                <div>Good scan density.</div>
+                <div>Feels familiar.</div>
+                <div>Descriptions and differences are easy to under-show.</div>
+              </div>
+              <div class="actions">
+                <button class="ghost">Cancel</button>
+                <button class="primary">Start With Agent</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="option">
+        <div class="head">
+          <h2>List / Card Hybrid</h2>
+          <span class="tag rec">Recommended</span>
+        </div>
+        <div class="desc">
+          Keeps recent chips for speed, but turns `All Agents` into a searchable list with richer comparison context.
+          Better for discovery and picking the right starter.
+        </div>
+        <div class="mock">
+          <div class="topbar"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="modal">
+            <div class="modal-head">
+              <h3>Create Thread</h3>
+              <p>Choose an agent, then set mode and goal.</p>
+            </div>
+            <div class="tabs">
+              <div class="tab">Blank</div>
+              <div class="tab active-agent">Agents</div>
+              <div class="tab">Groups</div>
+            </div>
+            <div class="body">
+              <div class="label">Recent Agents</div>
+              <div class="chips">
+                <div class="chip">Frontend Agent</div>
+                <div class="chip">Research Agent</div>
+                <div class="chip">Security Reviewer</div>
+              </div>
+
+              <div class="label">All Agents</div>
+              <div class="search">Search agents by name, skill, or specialty...</div>
+              <div class="row-list">
+                <div class="row active">
+                  <div class="icon">A</div>
+                  <div>
+                    <div class="title">Frontend Agent</div>
+                    <div class="sub">UI implementation, interaction polish, and component architecture.</div>
+                  </div>
+                  <div class="meta">selected</div>
+                </div>
+                <div class="row">
+                  <div class="icon">A</div>
+                  <div>
+                    <div class="title">Research Agent</div>
+                    <div class="sub">Exploration, synthesis, and framing product or technical ambiguity.</div>
+                  </div>
+                  <div class="meta">Opus</div>
+                </div>
+                <div class="row">
+                  <div class="icon">A</div>
+                  <div>
+                    <div class="title">Code Reviewer</div>
+                    <div class="sub">Behavioral regressions, risk review, and test gap detection.</div>
+                  </div>
+                  <div class="meta">Codex</div>
+                </div>
+              </div>
+
+              <div class="label">Mode</div>
+              <div class="mode">
+                <div class="seg active">Interactive</div>
+                <div class="seg">Autonomous</div>
+                <div class="seg">Worker</div>
+              </div>
+
+              <div class="label">Goal</div>
+              <div class="field">Review the new thread creation flow and suggest a clearer IA.</div>
+            </div>
+            <div class="foot">
+              <div class="bullets">
+                <div>Better discovery and comparison.</div>
+                <div>Stronger sense of what each agent is for.</div>
+                <div>Slightly less dense, but much clearer for choosing well.</div>
+              </div>
+              <div class="actions">
+                <button class="ghost">Cancel</button>
+                <button class="primary">Start With Agent</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="footer">
+      <h3>Recommendation</h3>
+      <ul>
+        <li>Keep the overall product language from today so the app still feels familiar.</li>
+        <li>Use the <strong>list/card hybrid</strong> for `All Agents` and `All Groups` inside the unified create sheet.</li>
+        <li>Keep <strong>Recent</strong> as quick chips to preserve speed for repeat users.</li>
+        <li>If we want denser scanning later, we can make the list rows slightly more compact without returning to the fully ambiguous small-card grid.</li>
+      </ul>
+      <div class="callout">
+        My view: the unified flow should <strong>not</strong> use the exact current picker. It should reuse today’s content, but present it in a more decision-friendly structure.
+      </div>
+    </section>
+  </div>
+</body>
+</html>

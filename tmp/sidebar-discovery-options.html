@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sidebar Discovery Options</title>
+  <style>
+    :root {
+      --bg: #f4efe9;
+      --panel: rgba(255, 255, 255, 0.78);
+      --panel-strong: rgba(255, 255, 255, 0.92);
+      --line: rgba(64, 51, 42, 0.10);
+      --text: #2f261f;
+      --muted: #746a62;
+      --accent: #d85f3a;
+      --accent-soft: rgba(216, 95, 58, 0.12);
+      --teal: #3d7f85;
+      --olive: #79824a;
+      --shadow: 0 18px 40px rgba(54, 38, 24, 0.10);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "SF Pro Display", "Inter", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(216, 95, 58, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(61, 127, 133, 0.18), transparent 24%),
+        linear-gradient(180deg, #fbf7f3 0%, var(--bg) 100%);
+    }
+
+    .page {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 36px 28px 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 28px;
+    }
+
+    .hero-card,
+    .note-card,
+    .option,
+    .legend {
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 28px;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 36px;
+      line-height: 1.02;
+    }
+
+    .hero p,
+    .note-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 15px;
+    }
+
+    .note-card {
+      padding: 24px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .note {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.68);
+      border: 1px solid rgba(64, 51, 42, 0.08);
+    }
+
+    .note strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(280px, 1fr));
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+
+    .option {
+      padding: 20px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .option-head {
+      display: grid;
+      gap: 8px;
+    }
+
+    .option-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .option-title h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .tag {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .tag.rec { background: var(--accent-soft); color: var(--accent); }
+    .tag.safe { background: rgba(121,130,74,0.12); color: var(--olive); }
+    .tag.bold { background: rgba(61,127,133,0.12); color: var(--teal); }
+
+    .summary {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 64px;
+    }
+
+    .mock {
+      background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,244,239,0.88));
+      border: 1px solid rgba(64, 51, 42, 0.08);
+      border-radius: 24px;
+      padding: 14px;
+      min-height: 620px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .window-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 8px 2px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff5f57;
+    }
+
+    .dot:nth-child(2) { background: #febc2e; }
+    .dot:nth-child(3) { background: #28c840; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 278px 1fr;
+      gap: 14px;
+      min-height: 540px;
+    }
+
+    .sidebar {
+      border-radius: 20px;
+      padding: 14px;
+      background: rgba(245, 238, 231, 0.95);
+      border: 1px solid rgba(64, 51, 42, 0.08);
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .content {
+      border-radius: 20px;
+      background: rgba(255,255,255,0.78);
+      border: 1px solid rgba(64, 51, 42, 0.08);
+      padding: 18px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .toolbar-title {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .menu-hero {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(64,51,42,0.08);
+      box-shadow: 0 10px 22px rgba(64, 51, 42, 0.06);
+      font-weight: 650;
+    }
+
+    .menu-hero .plus {
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .menu-hero .caret {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stack,
+    .project-card,
+    .mini-card {
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 16px;
+    }
+
+    .stack {
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .stack-title {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.86);
+    }
+
+    .row .icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgba(121,130,74,0.14);
+      color: var(--olive);
+      flex: 0 0 auto;
+    }
+
+    .row .icon.agent { background: rgba(61,127,133,0.14); color: var(--teal); }
+    .row .icon.group { background: rgba(216,95,58,0.14); color: var(--accent); }
+
+    .row span:last-child {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .project-card {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .project-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+    }
+
+    .badge {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(64,51,42,0.06);
+      padding: 5px 8px;
+      border-radius: 999px;
+    }
+
+    .thread {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(245, 238, 231, 0.9);
+      font-size: 13px;
+    }
+
+    .thread.active {
+      background: linear-gradient(135deg, rgba(216,95,58,0.18), rgba(216,95,58,0.07));
+      border: 1px solid rgba(216,95,58,0.18);
+    }
+
+    .thread .pin {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .quick-pill {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.88);
+      border: 1px solid rgba(64,51,42,0.08);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .quick-pill em {
+      margin-left: auto;
+      font-style: normal;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .hero-panel {
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(216,95,58,0.12), rgba(61,127,133,0.08));
+      border: 1px solid rgba(64,51,42,0.08);
+      display: grid;
+      gap: 10px;
+    }
+
+    .hero-panel h3,
+    .mini-card h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .hero-panel p,
+    .mini-card p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .mini-card {
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .legend {
+      padding: 20px 22px;
+    }
+
+    .legend h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .legend ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .rec-line {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(216,95,58,0.08);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    @media (max-width: 1200px) {
+      .hero,
+      .options {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="hero-card">
+        <div class="eyebrow">Sidebar Discovery Review</div>
+        <h1>`New` got clearer, but agent and group discovery got quieter.</h1>
+        <p>
+          The sidebar now has a strong creation CTA, but it no longer exposes “how do I start with an agent or a group?”
+          as a first-order decision. The fix is not to remove the simpler sidebar, but to bring back one visible path to
+          people and teams without returning to toolbar clutter.
+        </p>
+      </div>
+      <div class="note-card">
+        <div class="note">
+          <strong>Problem</strong>
+          `New Thread` and `Group Thread` are available, but they hide the mental model: agents and groups are reusable assets you can start from.
+        </div>
+        <div class="note">
+          <strong>Goal</strong>
+          Keep the simplified chrome, but make agent/group discovery visible within one glance of the sidebar.
+        </div>
+        <div class="note">
+          <strong>My Lean</strong>
+          Option A is the safest improvement. Option B is strongest if you want more “start from capability” behavior.
+        </div>
+      </div>
+    </section>
+
+    <section class="options">
+      <article class="option">
+        <div class="option-head">
+          <div class="option-title">
+            <h2>Option A</h2>
+            <span class="tag rec">Recommended</span>
+          </div>
+          <div class="summary">
+            Keep the big `New` CTA, but add a visible `Agents` and `Groups` discovery strip directly under it.
+            This restores discoverability fast, with minimal structural change.
+          </div>
+        </div>
+
+        <div class="mock">
+          <div class="window-top">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <div class="app">
+            <div class="sidebar">
+              <div class="toolbar-title">Utilities</div>
+              <div class="menu-hero">
+                <div class="plus">+</div>
+                <div>New</div>
+                <div class="caret">v</div>
+              </div>
+
+              <div class="quick-grid">
+                <div class="quick-pill">Agents <em>12</em></div>
+                <div class="quick-pill">Groups <em>4</em></div>
+              </div>
+
+              <div class="stack">
+                <div class="stack-title">Projects</div>
+                <div class="project-card">
+                  <div class="project-head">Acme Site <span class="badge">selected</span></div>
+                  <div class="thread active">Kickoff with design team <span class="pin">now</span></div>
+                  <div class="thread">Production bug triage <span class="pin">active</span></div>
+                  <div class="thread">Deploy checklist cleanup <span class="pin">history</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="content">
+              <div class="hero-panel">
+                <h3>What changes</h3>
+                <p>`New` stays for thread creation. `Agents` and `Groups` become visible entry points again, but lightweight.</p>
+              </div>
+              <div class="mini-card">
+                <h3>Why it helps</h3>
+                <p>People scanning the sidebar immediately understand there are reusable agents and teams, without opening Library first.</p>
+              </div>
+              <div class="mini-card">
+                <h3>Tradeoff</h3>
+                <p>Slightly more utility chrome than today, but still much calmer than the old top-bar version.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="option">
+        <div class="option-head">
+          <div class="option-title">
+            <h2>Option B</h2>
+            <span class="tag bold">Best Discovery</span>
+          </div>
+          <div class="summary">
+            Replace the single `New` CTA with a starter rail: `Blank`, `Agent`, `Group`.
+            This makes the starting modes explicit and teaches the product model immediately.
+          </div>
+        </div>
+
+        <div class="mock">
+          <div class="window-top">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <div class="app">
+            <div class="sidebar">
+              <div class="toolbar-title">Start</div>
+              <div class="stack">
+                <div class="row"><div class="icon">+</div><div>Blank Thread</div><span>now</span></div>
+                <div class="row"><div class="icon agent">A</div><div>Start with Agent</div><span>browse</span></div>
+                <div class="row"><div class="icon group">G</div><div>Start with Group</div><span>team</span></div>
+              </div>
+
+              <div class="stack">
+                <div class="stack-title">Projects</div>
+                <div class="project-card">
+                  <div class="project-head">Acme Site <span class="badge">selected</span></div>
+                  <div class="thread active">Design review thread <span class="pin">now</span></div>
+                  <div class="thread">SEO migration runbook <span class="pin">active</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="content">
+              <div class="hero-panel">
+                <h3>What changes</h3>
+                <p>Creation becomes mode-based instead of hidden inside one dropdown. Agents and groups stop feeling secondary.</p>
+              </div>
+              <div class="mini-card">
+                <h3>Why it helps</h3>
+                <p>The sidebar literally answers: blank thread, specialist agent, or team conversation?</p>
+              </div>
+              <div class="mini-card">
+                <h3>Tradeoff</h3>
+                <p>More opinionated. Slightly larger visual footprint, and less minimal than the current single-button direction.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="option">
+        <div class="option-head">
+          <div class="option-title">
+            <h2>Option C</h2>
+            <span class="tag safe">Most Conservative</span>
+          </div>
+          <div class="summary">
+            Keep `New` exactly as the main CTA, but add a compact `People & Teams` shelf below it with recent agents and groups.
+            Discovery comes from examples, not extra navigation.
+          </div>
+        </div>
+
+        <div class="mock">
+          <div class="window-top">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <div class="app">
+            <div class="sidebar">
+              <div class="toolbar-title">Utilities</div>
+              <div class="menu-hero">
+                <div class="plus">+</div>
+                <div>New</div>
+                <div class="caret">v</div>
+              </div>
+
+              <div class="stack">
+                <div class="stack-title">People & Teams</div>
+                <div class="row"><div class="icon agent">A</div><div>Frontend Agent</div><span>recent</span></div>
+                <div class="row"><div class="icon agent">A</div><div>Research Agent</div><span>recent</span></div>
+                <div class="row"><div class="icon group">G</div><div>Design Review Group</div><span>team</span></div>
+              </div>
+
+              <div class="stack">
+                <div class="stack-title">Projects</div>
+                <div class="project-card">
+                  <div class="project-head">Acme Site <span class="badge">selected</span></div>
+                  <div class="thread active">Thread hierarchy work <span class="pin">now</span></div>
+                  <div class="thread">Mission editor polish <span class="pin">active</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="content">
+              <div class="hero-panel">
+                <h3>What changes</h3>
+                <p>You still get one primary `New` button, but the next shelf quietly advertises the agent and group system.</p>
+              </div>
+              <div class="mini-card">
+                <h3>Why it helps</h3>
+                <p>It makes reusable assets feel alive through recent examples instead of extra buttons.</p>
+              </div>
+              <div class="mini-card">
+                <h3>Tradeoff</h3>
+                <p>Discovery is softer. It helps returning users most, but teaches new users less directly than Option A or B.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="legend">
+      <h3>Recommendation</h3>
+      <ul>
+        <li>Choose <strong>Option A</strong> if you want the least risky fix: keep the current sidebar pattern, but restore visible discovery for agents and groups.</li>
+        <li>Choose <strong>Option B</strong> if you want the product model to feel more intentional: users start by choosing the kind of conversation they want.</li>
+        <li>Choose <strong>Option C</strong> if you want to preserve the current simplicity almost entirely and just add better signposting.</li>
+      </ul>
+      <div class="rec-line">
+        My strongest recommendation is <strong>Option A</strong>: it solves the discovery problem without undoing the calmer chrome work we just did.
+      </div>
+    </section>
+  </div>
+</body>
+</html>

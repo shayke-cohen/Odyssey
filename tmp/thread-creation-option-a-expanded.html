@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Option A Expanded</title>
+  <style>
+    :root {
+      --bg: #f5efe8;
+      --panel: rgba(255,255,255,0.88);
+      --panel-strong: rgba(255,255,255,0.96);
+      --line: rgba(64,51,42,0.10);
+      --text: #2c241d;
+      --muted: #776d65;
+      --accent: #ce5e39;
+      --accent-soft: rgba(206,94,57,0.12);
+      --blue: #4d7697;
+      --blue-soft: rgba(77,118,151,0.12);
+      --green: #728447;
+      --green-soft: rgba(114,132,71,0.12);
+      --shadow: 0 24px 52px rgba(55,38,24,0.10);
+      --radius: 26px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "SF Pro Display", "Inter", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(206,94,57,0.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(77,118,151,0.16), transparent 22%),
+        linear-gradient(180deg, #fbf8f4 0%, var(--bg) 100%);
+    }
+
+    .page {
+      max-width: 1540px;
+      margin: 0 auto;
+      padding: 34px 28px 52px;
+    }
+
+    .hero, .footer {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 26px 28px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 38px;
+      line-height: 1.02;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(320px, 1fr));
+      gap: 22px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tag {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tag.rec { color: var(--accent); background: var(--accent-soft); }
+    .tag.agent { color: var(--blue); background: var(--blue-soft); }
+    .tag.group { color: var(--green); background: var(--green-soft); }
+
+    .desc {
+      min-height: 64px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .mock {
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,243,238,0.90));
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 24px;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      min-height: 740px;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 8px;
+      padding: 4px 4px 0;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff5f57;
+    }
+
+    .dot:nth-child(2) { background: #febc2e; }
+    .dot:nth-child(3) { background: #28c840; }
+
+    .modal {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 430px;
+      min-height: 650px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 24px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      box-shadow: 0 22px 42px rgba(64,51,42,0.10);
+    }
+
+    .head {
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid rgba(64,51,42,0.08);
+      display: grid;
+      gap: 6px;
+    }
+
+    .head h3 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .tabs {
+      padding: 14px 18px 0;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 9px 13px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      background: rgba(64,51,42,0.06);
+    }
+
+    .tab.active-blank { color: var(--accent); background: var(--accent-soft); }
+    .tab.active-agent { color: var(--blue); background: var(--blue-soft); }
+    .tab.active-group { color: var(--green); background: var(--green-soft); }
+
+    .body {
+      padding: 16px 18px 18px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: -4px;
+    }
+
+    .search, .field {
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 15px;
+      background: rgba(255,255,255,0.88);
+      padding: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid rgba(64,51,42,0.08);
+      background: rgba(255,255,255,0.88);
+    }
+
+    .chip.agent { color: var(--blue); }
+    .chip.group { color: var(--green); }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.90);
+      padding: 12px 13px;
+    }
+
+    .row.active-agent {
+      background: linear-gradient(135deg, rgba(77,118,151,0.12), rgba(77,118,151,0.05));
+      border-color: rgba(77,118,151,0.22);
+    }
+
+    .row.active-group {
+      background: linear-gradient(135deg, rgba(114,132,71,0.12), rgba(114,132,71,0.05));
+      border-color: rgba(114,132,71,0.22);
+    }
+
+    .icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      font-size: 14px;
+      font-weight: 700;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .icon.agent { background: var(--blue-soft); color: var(--blue); }
+    .icon.group { background: var(--green-soft); color: var(--green); }
+
+    .meta {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .title {
+      font-weight: 700;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .sub {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .seg-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .seg {
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      background: rgba(64,51,42,0.06);
+    }
+
+    .seg.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .foot {
+      border-top: 1px solid rgba(64,51,42,0.08);
+      padding: 16px 18px 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .ghost, .primary {
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid rgba(64,51,42,0.08);
+      background: rgba(255,255,255,0.84);
+    }
+
+    .primary {
+      margin-left: auto;
+      border-color: transparent;
+      color: white;
+      background: linear-gradient(135deg, #ce5e39, #bd4f2e);
+    }
+
+    .notes {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .footer {
+      padding: 20px 22px;
+    }
+
+    .footer h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .footer ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .callout {
+      margin-top: 14px;
+      background: rgba(206,94,57,0.08);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 1260px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Expanded Option A</div>
+      <h1>One unified `Create Thread` sheet, with full visibility into blank, agent, and group starts.</h1>
+      <p>
+        This version keeps creation simple at the top level, but does not hide discovery. Agents and groups each get
+        their own tab with both <strong>Recent</strong> and <strong>All</strong> views inside the same sheet, so users
+        never need to bounce to another dialog just to understand what is available.
+      </p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-head">
+          <h2>Blank Tab</h2>
+          <span class="tag rec">Baseline</span>
+        </div>
+        <div class="desc">
+          For quick starts. No agent or group list is shown, so the sheet stays light when someone just wants an empty thread.
+        </div>
+        <div class="mock">
+          <div class="topbar"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="modal">
+            <div class="head">
+              <h3>Create Thread</h3>
+              <p>Start blank, with an agent, or with a saved team.</p>
+            </div>
+            <div class="tabs">
+              <div class="tab active-blank">Blank</div>
+              <div class="tab">Agents</div>
+              <div class="tab">Groups</div>
+            </div>
+            <div class="body">
+              <div class="label">How It Runs</div>
+              <div class="seg-row">
+                <div class="seg active">Interactive</div>
+                <div class="seg">Autonomous</div>
+                <div class="seg">Worker</div>
+              </div>
+
+              <div class="label">Goal</div>
+              <div class="field">Optional: define what this thread is for before you start chatting.</div>
+
+              <div class="label">Why This Feels Clean</div>
+              <div class="notes">
+                <div>No asset picker unless the user asks for one.</div>
+                <div>Best path for quick chat / scratchpad behavior.</div>
+                <div>Still part of the same creation architecture as agent and group starts.</div>
+              </div>
+            </div>
+            <div class="foot">
+              <div class="notes">Fastest path for “I just want a new thread.”</div>
+              <div class="actions">
+                <button class="ghost">Cancel</button>
+                <button class="primary">Start Blank Thread</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Agents Tab</h2>
+          <span class="tag agent">See All Agents</span>
+        </div>
+        <div class="desc">
+          The agent path should make both recents and the full catalog visible. This is where users discover the real bench of specialists.
+        </div>
+        <div class="mock">
+          <div class="topbar"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="modal">
+            <div class="head">
+              <h3>Create Thread</h3>
+              <p>Choose one agent or build an ad hoc multi-agent thread.</p>
+            </div>
+            <div class="tabs">
+              <div class="tab">Blank</div>
+              <div class="tab active-agent">Agents</div>
+              <div class="tab">Groups</div>
+            </div>
+            <div class="body">
+              <div class="label">Recent Agents</div>
+              <div class="chips">
+                <div class="chip agent">Frontend Agent</div>
+                <div class="chip agent">Research Agent</div>
+                <div class="chip agent">Code Reviewer</div>
+              </div>
+
+              <div class="label">All Agents</div>
+              <div class="search">Search agents by name, skill, or role...</div>
+
+              <div class="list">
+                <div class="row active-agent">
+                  <div class="icon agent">A</div>
+                  <div>
+                    <div class="title">Frontend Agent</div>
+                    <div class="sub">UI implementation, interaction polish, and component architecture.</div>
+                  </div>
+                  <div class="meta">selected</div>
+                </div>
+                <div class="row">
+                  <div class="icon agent">A</div>
+                  <div>
+                    <div class="title">Research Agent</div>
+                    <div class="sub">Exploration, synthesis, and finding patterns across product problems.</div>
+                  </div>
+                  <div class="meta">Opus</div>
+                </div>
+                <div class="row">
+                  <div class="icon agent">A</div>
+                  <div>
+                    <div class="title">Security Reviewer</div>
+                    <div class="sub">Threat thinking, auth edge cases, and risky integration review.</div>
+                  </div>
+                  <div class="meta">Codex</div>
+                </div>
+              </div>
+
+              <div class="label">How It Runs</div>
+              <div class="seg-row">
+                <div class="seg active">Interactive</div>
+                <div class="seg">Autonomous</div>
+                <div class="seg">Worker</div>
+              </div>
+
+              <div class="label">Goal</div>
+              <div class="field">Review the chat creation flow and suggest a clearer, more discoverable IA.</div>
+            </div>
+            <div class="foot">
+              <div class="notes">Secondary link here should be `Manage Agents in Library`, not the main discovery path.</div>
+              <div class="actions">
+                <button class="ghost">Cancel</button>
+                <button class="primary">Start With Agent</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Groups Tab</h2>
+          <span class="tag group">See All Groups</span>
+        </div>
+        <div class="desc">
+          Saved groups should feel just as visible as agents. The sheet should show recent teams, full searchable groups, and readiness hints.
+        </div>
+        <div class="mock">
+          <div class="topbar"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="modal">
+            <div class="head">
+              <h3>Create Thread</h3>
+              <p>Launch a saved team with its own roles, defaults, and mission style.</p>
+            </div>
+            <div class="tabs">
+              <div class="tab">Blank</div>
+              <div class="tab">Agents</div>
+              <div class="tab active-group">Groups</div>
+            </div>
+            <div class="body">
+              <div class="label">Recent Groups</div>
+              <div class="chips">
+                <div class="chip group">Design Review Group</div>
+                <div class="chip group">Launch Team</div>
+                <div class="chip group">Research Squad</div>
+              </div>
+
+              <div class="label">All Groups</div>
+              <div class="search">Search groups by team name, mission, or member composition...</div>
+
+              <div class="list">
+                <div class="row active-group">
+                  <div class="icon group">G</div>
+                  <div>
+                    <div class="title">Design Review Group</div>
+                    <div class="sub">4 agents · critique, synthesis, and recommendation framing.</div>
+                  </div>
+                  <div class="meta">ready</div>
+                </div>
+                <div class="row">
+                  <div class="icon group">G</div>
+                  <div>
+                    <div class="title">Launch Team</div>
+                    <div class="sub">3 agents · PM, engineering, QA coordination.</div>
+                  </div>
+                  <div class="meta">coord</div>
+                </div>
+                <div class="row">
+                  <div class="icon group">G</div>
+                  <div>
+                    <div class="title">Growth Pod</div>
+                    <div class="sub">5 agents · acquisition, content, lifecycle, and analytics.</div>
+                  </div>
+                  <div class="meta">worker</div>
+                </div>
+              </div>
+
+              <div class="label">How It Runs</div>
+              <div class="seg-row">
+                <div class="seg active">Interactive</div>
+                <div class="seg">Autonomous</div>
+                <div class="seg">Worker</div>
+              </div>
+
+              <div class="label">Kickoff Goal</div>
+              <div class="field">Prepare a design review thread for the new onboarding UX and align on the top 3 changes.</div>
+            </div>
+            <div class="foot">
+              <div class="notes">Show lightweight metadata here: agent count, coordinator readiness, default mission, last used.</div>
+              <div class="actions">
+                <button class="ghost">Cancel</button>
+                <button class="primary">Start Group Thread</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="footer">
+      <h3>What I’d Implement In The Real UX</h3>
+      <ul>
+        <li>One sheet only: `Create Thread`.</li>
+        <li>Top tabs: `Blank`, `Agents`, `Groups`.</li>
+        <li>Inside `Agents` and `Groups`, always show both `Recent` and searchable `All` in the same sheet.</li>
+        <li>Keep mode and mission below selection, so the flow stays progressive.</li>
+        <li>Add a small `Manage in Library` link, but do not force users into Library for basic discovery.</li>
+        <li>If multi-select stays supported for agents, expose it as `Add another agent` after first selection instead of making the initial grid feel ambiguous.</li>
+      </ul>
+      <div class="callout">
+        Short answer: yes, Option A should absolutely let people see all agents and all groups. That visibility is part of why it works.
+      </div>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Thread Prototype</title>
+  <style>
+    :root {
+      --bg: #f5efe8;
+      --panel: rgba(255,255,255,0.90);
+      --panel-strong: rgba(255,255,255,0.97);
+      --line: rgba(64,51,42,0.10);
+      --text: #2d241d;
+      --muted: #786e66;
+      --accent: #ca5b38;
+      --accent-soft: rgba(202,91,56,0.12);
+      --blue: #4d7697;
+      --blue-soft: rgba(77,118,151,0.12);
+      --green: #738348;
+      --green-soft: rgba(115,131,72,0.12);
+      --shadow: 0 24px 54px rgba(54,38,24,0.10);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "SF Pro Display", "Inter", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(202,91,56,0.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(77,118,151,0.16), transparent 22%),
+        linear-gradient(180deg, #fbf8f4 0%, var(--bg) 100%);
+    }
+
+    .page {
+      max-width: 1260px;
+      margin: 0 auto;
+      padding: 34px 28px 56px;
+    }
+
+    .hero,
+    .prototype,
+    .footer {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 26px 28px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 38px;
+      line-height: 1.03;
+    }
+
+    p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .prototype {
+      padding: 22px;
+      margin-bottom: 22px;
+    }
+
+    .window-top {
+      display: flex;
+      gap: 8px;
+      padding: 2px 2px 14px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff5f57;
+    }
+
+    .dot:nth-child(2) { background: #febc2e; }
+    .dot:nth-child(3) { background: #28c840; }
+
+    .modal {
+      max-width: 540px;
+      margin: 0 auto;
+      min-height: 760px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 26px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      box-shadow: 0 24px 44px rgba(64,51,42,0.10);
+    }
+
+    .modal-head {
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid rgba(64,51,42,0.08);
+      display: grid;
+      gap: 6px;
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 25px;
+    }
+
+    .tab-row {
+      padding: 14px 20px 0;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(64,51,42,0.06);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .tab.active.blank {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .tab.active.agent {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .tab.active.group {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .modal-body {
+      padding: 16px 20px 18px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: -4px;
+    }
+
+    .search,
+    .field,
+    .empty {
+      padding: 12px;
+      border-radius: 15px;
+      border: 1px solid rgba(64,51,42,0.08);
+      background: rgba(255,255,255,0.90);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid rgba(64,51,42,0.08);
+      background: rgba(255,255,255,0.90);
+      color: var(--muted);
+    }
+
+    .chip.agent { color: var(--blue); }
+    .chip.group { color: var(--green); }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+    }
+
+    .view-toggle {
+      display: inline-flex;
+      padding: 4px;
+      gap: 4px;
+      border-radius: 999px;
+      background: rgba(64,51,42,0.06);
+    }
+
+    .view-toggle button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .view-toggle button.active.agent {
+      color: var(--blue);
+      background: white;
+    }
+
+    .view-toggle button.active.group {
+      color: var(--green);
+      background: white;
+    }
+
+    .picker {
+      display: grid;
+      gap: 10px;
+    }
+
+    .picker.cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .picker.list {
+      grid-template-columns: 1fr;
+    }
+
+    .item {
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.92);
+      padding: 12px 13px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      min-height: 110px;
+    }
+
+    .picker.cards .item {
+      display: grid;
+      align-content: start;
+      min-height: 144px;
+    }
+
+    .item.active.agent {
+      border-color: rgba(77,118,151,0.24);
+      background: linear-gradient(135deg, rgba(77,118,151,0.12), rgba(77,118,151,0.05));
+    }
+
+    .item.active.group {
+      border-color: rgba(115,131,72,0.24);
+      background: linear-gradient(135deg, rgba(115,131,72,0.12), rgba(115,131,72,0.05));
+    }
+
+    .icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .icon.agent {
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .icon.group {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    .title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .sub {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .meta {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mode {
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      background: rgba(64,51,42,0.06);
+    }
+
+    .mode.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .modal-foot {
+      border-top: 1px solid rgba(64,51,42,0.08);
+      padding: 16px 20px 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .foot-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .ghost,
+    .primary {
+      border: 1px solid rgba(64,51,42,0.08);
+      background: rgba(255,255,255,0.86);
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .primary {
+      margin-left: auto;
+      border-color: transparent;
+      color: white;
+      background: linear-gradient(135deg, #ca5b38, #b94b2b);
+    }
+
+    .helper {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .footer {
+      padding: 20px 22px;
+    }
+
+    .footer h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .footer ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .callout {
+      margin-top: 14px;
+      border-radius: 14px;
+      background: rgba(202,91,56,0.08);
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Interactive Option A</div>
+      <h1>Unified `Create Thread` with a real `Cards / List` toggle.</h1>
+      <p>
+        This prototype lets you try the creation flow with one sheet and switch between dense cards and a richer list view
+        for both agents and groups. The point is to keep discovery visible while giving power users control over browsing style.
+      </p>
+    </section>
+
+    <section class="prototype">
+      <div class="window-top"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+      <div class="modal">
+        <div class="modal-head">
+          <h2>Create Thread</h2>
+          <p>Start blank, with an agent, or with a saved team.</p>
+        </div>
+
+        <div class="tab-row">
+          <button class="tab blank" data-tab="blank">Blank</button>
+          <button class="tab agent active agent" data-tab="agents">Agents</button>
+          <button class="tab group" data-tab="groups">Groups</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="tab-panel" data-panel="blank">
+            <div class="section-label">How It Runs</div>
+            <div class="mode-row">
+              <div class="mode active">Interactive</div>
+              <div class="mode">Autonomous</div>
+              <div class="mode">Worker</div>
+            </div>
+
+            <div class="section-label">Goal</div>
+            <div class="field">Optional: define what this thread is for before you start chatting.</div>
+
+            <div class="section-label">Why This Exists</div>
+            <div class="empty">This keeps quick chat simple. No agent or group discovery is shown unless the user asks for it.</div>
+          </div>
+
+          <div class="tab-panel" data-panel="agents">
+            <div class="section-label">Recent Agents</div>
+            <div class="chips">
+              <div class="chip agent">Frontend Agent</div>
+              <div class="chip agent">Research Agent</div>
+              <div class="chip agent">Security Reviewer</div>
+            </div>
+
+            <div class="toolbar">
+              <div class="section-label">All Agents</div>
+              <div class="view-toggle" data-target="agents">
+                <button class="active agent" data-view="list">List</button>
+                <button data-view="cards">Cards</button>
+              </div>
+            </div>
+
+            <div class="search">Search agents by name, role, or specialty...</div>
+
+            <div class="picker list" data-picker="agents">
+              <div class="item active agent">
+                <div class="icon agent">A</div>
+                <div class="content">
+                  <div class="title">Frontend Agent</div>
+                  <div class="sub">UI implementation, interaction polish, and component architecture.</div>
+                </div>
+                <div class="meta">selected</div>
+              </div>
+              <div class="item">
+                <div class="icon agent">A</div>
+                <div class="content">
+                  <div class="title">Research Agent</div>
+                  <div class="sub">Exploration, synthesis, and framing product or technical ambiguity.</div>
+                </div>
+                <div class="meta">Opus</div>
+              </div>
+              <div class="item">
+                <div class="icon agent">A</div>
+                <div class="content">
+                  <div class="title">Code Reviewer</div>
+                  <div class="sub">Behavioral regressions, risk review, and test gap detection.</div>
+                </div>
+                <div class="meta">Codex</div>
+              </div>
+              <div class="item">
+                <div class="icon agent">A</div>
+                <div class="content">
+                  <div class="title">PM Agent</div>
+                  <div class="sub">Roadmap thinking, prioritization, and scope shaping for product decisions.</div>
+                </div>
+                <div class="meta">Plan</div>
+              </div>
+            </div>
+
+            <div class="section-label">How It Runs</div>
+            <div class="mode-row">
+              <div class="mode active">Interactive</div>
+              <div class="mode">Autonomous</div>
+              <div class="mode">Worker</div>
+            </div>
+
+            <div class="section-label">Goal</div>
+            <div class="field">Review the thread creation flow and suggest a clearer, more discoverable IA.</div>
+          </div>
+
+          <div class="tab-panel hidden" data-panel="groups">
+            <div class="section-label">Recent Groups</div>
+            <div class="chips">
+              <div class="chip group">Design Review Group</div>
+              <div class="chip group">Launch Team</div>
+              <div class="chip group">Research Squad</div>
+            </div>
+
+            <div class="toolbar">
+              <div class="section-label">All Groups</div>
+              <div class="view-toggle" data-target="groups">
+                <button class="active group" data-view="list">List</button>
+                <button data-view="cards">Cards</button>
+              </div>
+            </div>
+
+            <div class="search">Search groups by team name, mission, or member composition...</div>
+
+            <div class="picker list" data-picker="groups">
+              <div class="item active group">
+                <div class="icon group">G</div>
+                <div class="content">
+                  <div class="title">Design Review Group</div>
+                  <div class="sub">4 agents. Critique, synthesis, and recommendation framing for product and UX reviews.</div>
+                </div>
+                <div class="meta">ready</div>
+              </div>
+              <div class="item">
+                <div class="icon group">G</div>
+                <div class="content">
+                  <div class="title">Launch Team</div>
+                  <div class="sub">3 agents. PM, engineering, and QA coordination around delivery readiness.</div>
+                </div>
+                <div class="meta">coord</div>
+              </div>
+              <div class="item">
+                <div class="icon group">G</div>
+                <div class="content">
+                  <div class="title">Growth Pod</div>
+                  <div class="sub">5 agents. Acquisition, content, lifecycle, and analytics collaboration.</div>
+                </div>
+                <div class="meta">worker</div>
+              </div>
+              <div class="item">
+                <div class="icon group">G</div>
+                <div class="content">
+                  <div class="title">Research Squad</div>
+                  <div class="sub">4 agents. Discovery, insight synthesis, and exploratory product framing.</div>
+                </div>
+                <div class="meta">auto</div>
+              </div>
+            </div>
+
+            <div class="section-label">How It Runs</div>
+            <div class="mode-row">
+              <div class="mode active">Interactive</div>
+              <div class="mode">Autonomous</div>
+              <div class="mode">Worker</div>
+            </div>
+
+            <div class="section-label">Kickoff Goal</div>
+            <div class="field">Prepare a design review thread for the new onboarding UX and align on the top 3 changes.</div>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <div class="helper">
+            `Recent` stays fast for repeat users. `All` stays visible for discovery. `Cards / List` lets people browse the way they prefer.
+          </div>
+          <div class="foot-row">
+            <button class="ghost">Cancel</button>
+            <button class="primary" id="primaryAction">Start With Agent</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer">
+      <h3>Why I Like This Direction</h3>
+      <ul>
+        <li>One creation flow instead of separate agent/group dialogs.</li>
+        <li>Agents and groups stay fully discoverable inside the same sheet.</li>
+        <li>The toggle gives density choice without forcing one browsing style on everyone.</li>
+        <li>We can default to `List` for clarity and let power users switch to `Cards` when they want faster visual scanning.</li>
+      </ul>
+      <div class="callout">
+        If this feels right, the next product decision is simple: should the real app default to `List` or remember the user’s last picker preference?
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab[data-tab]');
+    const panels = document.querySelectorAll('.tab-panel');
+    const primaryAction = document.getElementById('primaryAction');
+
+    function activateTab(tabName) {
+      tabs.forEach(tab => {
+        const active = tab.dataset.tab === tabName;
+        tab.classList.toggle('active', active);
+      });
+
+      panels.forEach(panel => {
+        panel.classList.toggle('hidden', panel.dataset.panel !== tabName);
+      });
+
+      if (tabName === 'blank') primaryAction.textContent = 'Start Blank Thread';
+      if (tabName === 'agents') primaryAction.textContent = 'Start With Agent';
+      if (tabName === 'groups') primaryAction.textContent = 'Start Group Thread';
+    }
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+    });
+
+    document.querySelectorAll('.view-toggle').forEach(toggle => {
+      const target = toggle.dataset.target;
+      const picker = document.querySelector(`[data-picker="${target}"]`);
+      const flavor = target === 'agents' ? 'agent' : 'group';
+
+      toggle.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', () => {
+          toggle.querySelectorAll('button').forEach(b => {
+            b.classList.remove('active', 'agent', 'group');
+          });
+          button.classList.add('active', flavor);
+
+          const view = button.dataset.view;
+          picker.classList.remove('list', 'cards');
+          picker.classList.add(view);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

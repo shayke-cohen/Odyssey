@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thread Creation Flow Options</title>
+  <style>
+    :root {
+      --bg: #f6f1ea;
+      --panel: rgba(255,255,255,0.82);
+      --panel-strong: rgba(255,255,255,0.94);
+      --line: rgba(64,51,42,0.10);
+      --text: #2c241d;
+      --muted: #756b63;
+      --accent: #cf5d39;
+      --accent-soft: rgba(207,93,57,0.12);
+      --blue: #4b7797;
+      --blue-soft: rgba(75,119,151,0.12);
+      --olive: #77824a;
+      --olive-soft: rgba(119,130,74,0.12);
+      --shadow: 0 24px 50px rgba(57,40,25,0.10);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "SF Pro Display", "Inter", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(207,93,57,0.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(75,119,151,0.16), transparent 24%),
+        linear-gradient(180deg, #fbf8f4 0%, var(--bg) 100%);
+    }
+
+    .page {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 34px 28px 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 22px;
+      margin-bottom: 26px;
+    }
+
+    .hero-card, .notes, .option, .footer-note {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card { padding: 28px; }
+    .notes { padding: 22px; display: grid; gap: 12px; }
+    .note {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.74);
+      border: 1px solid rgba(64,51,42,0.07);
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 38px;
+      line-height: 1.02;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    .note strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(300px, 1fr));
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+
+    .option {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .option-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .option-title h2 {
+      margin: 0;
+      font-size: 25px;
+    }
+
+    .tag {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tag.rec { color: var(--accent); background: var(--accent-soft); }
+    .tag.fast { color: var(--blue); background: var(--blue-soft); }
+    .tag.bold { color: var(--olive); background: var(--olive-soft); }
+
+    .summary {
+      min-height: 72px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .mock {
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(248,244,239,0.90));
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 24px;
+      padding: 16px;
+      min-height: 650px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 8px;
+      padding: 4px 4px 0;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff5f57;
+    }
+    .dot:nth-child(2) { background: #febc2e; }
+    .dot:nth-child(3) { background: #28c840; }
+
+    .modal {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 420px;
+      min-height: 570px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 24px;
+      box-shadow: 0 20px 42px rgba(64,51,42,0.10);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .modal-head {
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid rgba(64,51,42,0.08);
+      display: grid;
+      gap: 6px;
+    }
+
+    .modal-head h3 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .modal-body {
+      padding: 16px 18px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .modal-foot {
+      padding: 16px 18px 18px;
+      border-top: 1px solid rgba(64,51,42,0.08);
+      display: grid;
+      gap: 10px;
+    }
+
+    .pill-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill, .seg {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(64,51,42,0.06);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pill.active, .seg.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .choice-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .choice, .card, .field, .list-row {
+      border: 1px solid rgba(64,51,42,0.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.86);
+    }
+
+    .choice {
+      padding: 14px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .choice.active {
+      border-color: rgba(207,93,57,0.26);
+      background: linear-gradient(135deg, rgba(207,93,57,0.12), rgba(207,93,57,0.05));
+    }
+
+    .choice-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+    }
+
+    .choice-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .section-title {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: -4px;
+    }
+
+    .card {
+      padding: 12px 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .icon.blue { color: var(--blue); background: var(--blue-soft); }
+    .icon.green { color: var(--olive); background: var(--olive-soft); }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .field {
+      padding: 12px;
+      min-height: 70px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .list-row {
+      padding: 12px 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .list-row .meta {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .ghost, .primary {
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid rgba(64,51,42,0.08);
+      background: rgba(255,255,255,0.8);
+    }
+
+    .primary {
+      background: linear-gradient(135deg, #cf5d39, #bd5130);
+      color: white;
+      border-color: transparent;
+      margin-left: auto;
+    }
+
+    .pros {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .footer-note {
+      padding: 20px 22px;
+    }
+
+    .footer-note h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .footer-note ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .callout {
+      margin-top: 14px;
+      background: rgba(207,93,57,0.08);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 1220px) {
+      .hero, .options { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="hero-card">
+        <div class="eyebrow">Holistic Create UX</div>
+        <h1>The real issue is that thread creation is split by internal object type, not user intent.</h1>
+        <p>
+          Today the app asks users to choose between `New Thread` and `New Group Thread` too early, then asks them to
+          discover agents or groups inside separate flows. A better UX starts with one question: “How do you want to begin?”
+          and only then reveals the right setup details.
+        </p>
+      </div>
+      <div class="notes">
+        <div class="note">
+          <strong>Current friction</strong>
+          Users have to understand the difference between freeform, single-agent, multi-agent, and saved groups before they can start well.
+        </div>
+        <div class="note">
+          <strong>What should feel obvious</strong>
+          Start blank, start with an agent, or start with a saved team. Those are user-facing intents.
+        </div>
+        <div class="note">
+          <strong>Design principle</strong>
+          Mode and mission should be secondary decisions after choosing the starting shape of the thread.
+        </div>
+      </div>
+    </section>
+
+    <section class="options">
+      <article class="option">
+        <div class="option-title">
+          <h2>Option A</h2>
+          <span class="tag rec">Recommended</span>
+        </div>
+        <div class="summary">
+          Replace both dialogs with one unified `Create Thread` sheet. First row is starter type:
+          `Blank`, `Agent`, `Group`. The lower half then adapts to the chosen type.
+        </div>
+        <div class="mock">
+          <div class="topbar"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="modal">
+            <div class="modal-head">
+              <h3>Create Thread</h3>
+              <p>Choose how you want to begin, then set the goal and run mode.</p>
+            </div>
+            <div class="modal-body">
+              <div class="section-title">Start With</div>
+              <div class="pill-row">
+                <div class="seg">Blank</div>
+                <div class="seg">Agent</div>
+                <div class="seg active">Group</div>
+              </div>
+
+              <div class="section-title">Pick a Group</div>
+              <div class="choice-grid">
+                <div class="choice active">
+                  <div class="choice-title">Design Review Group <span class="small">4 agents</span></div>
+                  <div class="choice-sub">Critique, consolidate, and route design discussions.</div>
+                </div>
+                <div class="choice">
+                  <div class="choice-title">Launch Team <span class="small">3 agents</span></div>
+                  <div class="choice-sub">PM, engineer, and QA collaboration for launch prep.</div>
+                </div>
+              </div>
+
+              <div class="section-title">How It Runs</div>
+              <div class="pill-row">
+                <div class="pill active">Interactive</div>
+                <div class="pill">Autonomous</div>
+                <div class="pill">Worker</div>
+              </div>
+
+              <div class="section-title">Goal</div>
+              <div class="field">Prepare a design review thread for the new onboarding flow and collect feedback on first-run UX.</div>
+            </div>
+            <div class="modal-foot">
+              <div class="small">One flow for every start path. Users learn the model immediately.</div>
+              <div class="footer-actions">
+                <button class="ghost">Cancel</button>
+                <button class="primary">Start Group Thread</button>
+              </div>
+            </div>
+          </div>
+          <div class="pros">
+            <div>Best overall IA: users pick the starting shape first, not the technical dialog.</div>
+            <div>Lets groups be as discoverable as agents inside the same surface.</div>
+            <div>Biggest implementation change, but the cleanest long-term UX.</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="option">
+        <div class="option-title">
+          <h2>Option B</h2>
+          <span class="tag fast">Fastest Upgrade</span>
+        </div>
+        <div class="summary">
+          Keep the existing sheets, but add a shared first-step chooser sheet before either one opens:
+          `Blank Thread`, `With Agent`, `With Group`.
+        </div>
+        <div class="mock">
+          <div class="topbar"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="modal">
+            <div class="modal-head">
+              <h3>Start Something New</h3>
+              <p>Pick the kind of thread you want. We’ll take you to the right setup next.</p>
+            </div>
+            <div class="modal-body">
+              <div class="choice-grid">
+                <div class="choice">
+                  <div class="choice-title">Blank Thread</div>
+                  <div class="choice-sub">Start typing right away with no predefined agent.</div>
+                </div>
+                <div class="choice active">
+                  <div class="choice-title">With Agent</div>
+                  <div class="choice-sub">Choose a single reusable agent or a multi-agent mix.</div>
+                </div>
+                <div class="choice">
+                  <div class="choice-title">With Group</div>
+                  <div class="choice-sub">Launch a saved team with its own roles and defaults.</div>
+                </div>
+              </div>
+
+              <div class="section-title">What happens next</div>
+              <div class="card">
+                <div class="row">
+                  <div class="icon blue">A</div>
+                  <div>
+                    <strong>Agent Setup</strong><br />
+                    <span class="small">Recent agents, all agents, run mode, and goal</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-title">Why this works</div>
+              <div class="field">It fixes the discovery problem immediately without fully rewriting the downstream setup sheets.</div>
+            </div>
+            <div class="modal-foot">
+              <div class="small">Minimal disruption. Best if you want a cleaner bridge from today’s flow.</div>
+              <div class="footer-actions">
+                <button class="ghost">Cancel</button>
+                <button class="primary">Continue</button>
+              </div>
+            </div>
+          </div>
+          <div class="pros">
+            <div>Fastest to ship because the current `NewSessionSheet` and `NewGroupThreadSheet` can largely stay.</div>
+            <div>Discovery improves because “With Group” becomes explicit before users commit to a flow.</div>
+            <div>Still a two-step architecture, so less elegant than Option A.</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="option">
+        <div class="option-title">
+          <h2>Option C</h2>
+          <span class="tag bold">Best for Power Users</span>
+        </div>
+        <div class="summary">
+          Make creation feel more like a launcher: one searchable dialog with top sections for `Recents`, `Agents`, `Groups`, and `Blank`.
+          Users can start from whatever they remember.
+        </div>
+        <div class="mock">
+          <div class="topbar"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="modal">
+            <div class="modal-head">
+              <h3>Create Thread</h3>
+              <p>Search or pick a starting point.</p>
+            </div>
+            <div class="modal-body">
+              <div class="field">Search agents, groups, or recent launches...</div>
+
+              <div class="section-title">Quick Start</div>
+              <div class="list-row"><div class="icon">+</div><div>Blank Thread</div><div class="meta">instant</div></div>
+
+              <div class="section-title">Recent</div>
+              <div class="list-row"><div class="icon blue">A</div><div>Frontend Agent</div><div class="meta">recent</div></div>
+              <div class="list-row"><div class="icon green">G</div><div>Design Review Group</div><div class="meta">recent</div></div>
+
+              <div class="section-title">Popular Groups</div>
+              <div class="list-row"><div class="icon green">G</div><div>Launch Team</div><div class="meta">3 agents</div></div>
+              <div class="list-row"><div class="icon green">G</div><div>Research Squad</div><div class="meta">4 agents</div></div>
+            </div>
+            <div class="modal-foot">
+              <div class="small">Feels fast and modern, but assumes users understand the difference between agents and groups once they see them.</div>
+              <div class="footer-actions">
+                <button class="ghost">Cancel</button>
+                <button class="primary">Select</button>
+              </div>
+            </div>
+          </div>
+          <div class="pros">
+            <div>Strongest for repeat users who want fast recall, recents, and search.</div>
+            <div>Makes agents and groups highly visible in one place.</div>
+            <div>Less guided for first-time users than Option A.</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="footer-note">
+      <h3>My Recommendation</h3>
+      <ul>
+        <li><strong>Option A</strong> is the best long-term UX. It turns creation into one coherent flow and makes `Blank`, `Agent`, and `Group` feel like peer concepts.</li>
+        <li><strong>Option B</strong> is the best bridge if you want faster implementation while preserving most of the current sheet code.</li>
+        <li><strong>Option C</strong> is great if you want a more launcher-style product feel, but it optimizes for returning users over guided clarity.</li>
+      </ul>
+      <div class="callout">
+        If we’re thinking holistically, I’d choose <strong>Option A</strong>: one unified `Create Thread` flow, with starter type first, then run mode and mission second.
+      </div>
+    </section>
+  </div>
+</body>
+</html>
