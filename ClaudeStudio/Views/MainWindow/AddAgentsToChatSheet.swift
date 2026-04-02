@@ -7,6 +7,7 @@ struct AddAgentsToChatSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var sharedRoomService: SharedRoomService
     @Environment(WindowState.self) private var windowState: WindowState
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
@@ -42,7 +43,9 @@ struct AddAgentsToChatSheet: View {
                 .font(.headline)
                 .xrayId("addAgents.title")
 
-            Text("Selected agents or group members join this conversation and receive the next messages.")
+            Text(conversation?.isSharedRoom == true
+                 ? "Selected agents or group members join this shared room and publish from your local workspace."
+                 : "Selected agents or group members join this conversation and receive the next messages.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -171,6 +174,11 @@ struct AddAgentsToChatSheet: View {
             session.workingDirectory = windowState.projectDirectory
         }
         try? modelContext.save()
+        if convo.isSharedRoom {
+            Task {
+                await sharedRoomService.publishLocalParticipants(for: convo)
+            }
+        }
         dismiss()
     }
 }

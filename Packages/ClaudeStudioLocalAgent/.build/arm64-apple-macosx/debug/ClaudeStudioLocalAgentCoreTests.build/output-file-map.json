@@ -1,0 +1,19 @@
+{
+  "": {
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/master.swiftdeps"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentCoreTests.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentCoreTests.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentCoreTests.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentCoreTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentCoreTests.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentCoreTests.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentHostTests.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentHostTests.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentHostTests.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentHostTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentHostTests.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentHostTests.dia"
+  }
+}

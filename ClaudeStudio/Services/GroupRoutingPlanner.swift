@@ -31,6 +31,7 @@ enum GroupRoutingPlanner {
     }
 
     static func planUserWave(
+        executionMode: ConversationExecutionMode = .interactive,
         routingMode: GroupRoutingMode,
         sessions: [Session],
         sourceGroup: AgentGroup?,
@@ -45,7 +46,12 @@ enum GroupRoutingPlanner {
         let deliveryReason: UserDeliveryReason
         let coordinatorAgentName: String?
 
-        if mentionedAll {
+        if executionMode != .interactive {
+            let coordinatorSession = coordinatorSession(in: sortedSessions, sourceGroup: sourceGroup) ?? sortedSessions.first
+            recipients = coordinatorSession.map { [$0] } ?? []
+            deliveryReason = .coordinatorLead
+            coordinatorAgentName = coordinatorSession?.agent?.name
+        } else if mentionedAll {
             recipients = sortedSessions
             deliveryReason = .broadcast
             coordinatorAgentName = nil

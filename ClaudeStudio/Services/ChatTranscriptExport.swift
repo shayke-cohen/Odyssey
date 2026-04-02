@@ -246,6 +246,20 @@ enum ChatTranscriptExport {
                 iconName: agent?.icon,
                 colorName: agent?.color
             )
+        case .remoteUser:
+            return ChatTranscriptSenderPresentation(
+                displayName: participant.displayName,
+                role: .user,
+                iconName: nil,
+                colorName: nil
+            )
+        case .remoteAgent:
+            return ChatTranscriptSenderPresentation(
+                displayName: participant.displayName,
+                role: .agent,
+                iconName: "person.2.wave.2",
+                colorName: nil
+            )
         }
     }
 

@@ -150,7 +150,10 @@ final class WindowState {
     var showScheduleLibrary = false
     var showPeerNetwork = false
     var showAgentComms = false
+    var showSharedRoomInviteSheet = false
+    var showSharedRoomInbox = false
     var showWorkshop = false
+    var sharedRoomInviteConversationId: UUID?
 
     var launchError: String?
     var autoSendText: String?

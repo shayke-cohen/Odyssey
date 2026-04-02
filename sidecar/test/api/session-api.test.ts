@@ -7,6 +7,7 @@ import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
 import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
+import { ConnectorStore } from "../../src/stores/connector-store.js";
 import { SseManager } from "../../src/sse-manager.js";
 import { WebhookManager } from "../../src/webhook-manager.js";
 import type { ApiContext } from "../../src/types.js";
@@ -35,6 +36,7 @@ function makeContext() {
     channels: new ChatChannelStore(),
     workspaces: new WorkspaceStore(),
     peerRegistry: new PeerRegistry(),
+    connectors: new ConnectorStore(),
     relayClient: {
       isConnected: () => false,
       connect: async () => {},

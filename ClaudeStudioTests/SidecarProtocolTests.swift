@@ -40,7 +40,10 @@ final class SidecarProtocolTests: XCTestCase {
             workingDirectory: "/tmp",
             skills: [
                 AgentConfig.SkillContent(name: "Skill A", content: "Follow the skill."),
-            ]
+            ],
+            interactive: nil,
+            instancePolicy: "spawn",
+            instancePolicyPoolMax: nil
         )
         let command = SidecarCommand.sessionCreate(conversationId: "conv-456", agentConfig: config)
         let data = try command.encodeToJSON()
@@ -52,6 +55,7 @@ final class SidecarProtocolTests: XCTestCase {
         XCTAssertEqual(agentConfig?["name"] as? String, "TestBot")
         XCTAssertEqual(agentConfig?["provider"] as? String, "codex")
         XCTAssertEqual(agentConfig?["model"] as? String, "gpt-5-codex")
+        XCTAssertEqual(agentConfig?["instancePolicy"] as? String, "spawn")
         let mcpServers = try XCTUnwrap(agentConfig?["mcpServers"] as? [[String: Any]])
         XCTAssertEqual(mcpServers.count, 1)
         XCTAssertEqual(mcpServers[0]["name"] as? String, "Octocode")
@@ -83,7 +87,7 @@ final class SidecarProtocolTests: XCTestCase {
         )
 
         let command = SidecarCommand.agentRegister(agents: [
-            AgentDefinitionWire(name: "Worker", config: config),
+            AgentDefinitionWire(name: "Worker", config: config, instancePolicy: "singleton"),
         ])
         let data = try command.encodeToJSON()
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
@@ -92,6 +96,7 @@ final class SidecarProtocolTests: XCTestCase {
         let agents = try XCTUnwrap(json["agents"] as? [[String: Any]])
         XCTAssertEqual(agents.count, 1)
         let encodedConfig = try XCTUnwrap(agents[0]["config"] as? [String: Any])
+        XCTAssertEqual(agents[0]["instancePolicy"] as? String, "singleton")
         XCTAssertEqual(encodedConfig["systemPrompt"] as? String, "Base prompt")
         let skills = try XCTUnwrap(encodedConfig["skills"] as? [[String: Any]])
         XCTAssertEqual(skills.map { $0["name"] as? String }, ["Review", "Test"])
@@ -158,6 +163,46 @@ final class SidecarProtocolTests: XCTestCase {
         XCTAssertEqual(json["type"] as? String, "session.fork")
         XCTAssertEqual(json["sessionId"] as? String, "parent-1")
         XCTAssertEqual(json["childSessionId"] as? String, "child-2")
+    }
+
+    func testConnectorCompleteAuthEncodingRedactsIntoStructuredFields() throws {
+        let connection = ConnectorWire(
+            id: "conn-1",
+            provider: "x",
+            installScope: "system",
+            displayName: "X Sandbox",
+            accountId: "acct-1",
+            accountHandle: "@sandbox",
+            accountMetadataJSON: nil,
+            grantedScopes: ["users.read", "tweet.write"],
+            authMode: "pkce-native",
+            writePolicy: "require-approval",
+            status: "connected",
+            statusMessage: "Ready",
+            brokerReference: nil,
+            auditSummary: nil,
+            lastAuthenticatedAt: nil,
+            lastCheckedAt: nil
+        )
+        let credentials = ConnectorCredentialsWire(
+            accessToken: "token-value",
+            refreshToken: "refresh-value",
+            tokenType: "Bearer",
+            expiresAt: "2026-04-02T10:00:00Z",
+            brokerReference: nil
+        )
+
+        let command = SidecarCommand.connectorCompleteAuth(connection: connection, credentials: credentials)
+        let data = try command.encodeToJSON()
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["type"] as? String, "connector.completeAuth")
+        let encodedConnection = try XCTUnwrap(json["connection"] as? [String: Any])
+        XCTAssertEqual(encodedConnection["provider"] as? String, "x")
+        XCTAssertEqual(encodedConnection["writePolicy"] as? String, "require-approval")
+        let encodedCredentials = try XCTUnwrap(json["credentials"] as? [String: Any])
+        XCTAssertEqual(encodedCredentials["tokenType"] as? String, "Bearer")
+        XCTAssertEqual(encodedCredentials["accessToken"] as? String, "token-value")
     }
 
     func testSessionForkedDecoding() throws {
@@ -229,6 +274,23 @@ final class SidecarProtocolTests: XCTestCase {
             XCTAssertEqual(writtenBy, "Orchestrator")
         } else {
             XCTFail("Expected .blackboardUpdate event, got \(String(describing: event))")
+        }
+    }
+
+    func testConnectorStatusChangedDecoding() throws {
+        let jsonStr = """
+        {"type":"connector.statusChanged","connection":{"id":"conn-1","provider":"slack","installScope":"system","displayName":"Slack","grantedScopes":["chat:write"],"authMode":"brokered","writePolicy":"require-approval","status":"connected"}}
+        """
+        let data = jsonStr.data(using: .utf8)!
+        let wire = try JSONDecoder().decode(IncomingWireMessage.self, from: data)
+        let event = wire.toEvent()
+
+        if case .connectorStatusChanged(let connection) = event {
+            XCTAssertEqual(connection.id, "conn-1")
+            XCTAssertEqual(connection.provider, "slack")
+            XCTAssertEqual(connection.status, "connected")
+        } else {
+            XCTFail("Expected .connectorStatusChanged event, got \(String(describing: event))")
         }
     }
 

@@ -20,11 +20,17 @@ final class P2PNetworkManager: ObservableObject {
     private let browserQueue = DispatchQueue(label: "com.claudestudio.p2p.browser")
     private var modelContext: ModelContext?
     weak var sidecarManager: SidecarManager?
+    weak var sharedRoomService: SharedRoomService?
     private var previousPeerNames: Set<String> = []
 
     init() {
         let empty = try! JSONEncoder().encode(WireAgentExportList(agents: []))
         server = PeerCatalogServer(initialJSON: empty)
+        server.onRoomSyncHint = { [weak self] hint in
+            Task { @MainActor in
+                await self?.handleRoomSyncHint(hint)
+            }
+        }
     }
 
     func attach(modelContext: ModelContext) {
@@ -66,6 +72,26 @@ final class P2PNetworkManager: ObservableObject {
 
     func fetchAgents(from peer: DiscoveredLanPeer) async throws -> [WireAgentExport] {
         try await Self.httpGetAgents(endpoint: peer.endpoint)
+    }
+
+    func broadcastRoomSyncHint(roomId: String, hostSequence: Int) async -> Int {
+        guard !peers.isEmpty else { return 0 }
+
+        var deliveredCount = 0
+        for peer in peers {
+            do {
+                try await Self.httpSendRoomSyncHint(
+                    endpoint: peer.endpoint,
+                    roomId: roomId,
+                    hostSequence: hostSequence
+                )
+                deliveredCount += 1
+            } catch {
+                lastError = error.localizedDescription
+            }
+        }
+
+        return deliveredCount
     }
 
     // MARK: - Browser
@@ -140,9 +166,7 @@ final class P2PNetworkManager: ObservableObject {
     /// Fetch a peer's agent catalog and register it with the sidecar.
     func fetchAndRegisterPeer(_ peer: DiscoveredLanPeer, wsPort: Int) async throws -> [WireAgentExport] {
         let agents = try await Self.httpGetAgents(endpoint: peer.endpoint)
-        guard let manager = sidecarManager, let ctx = modelContext else { return agents }
-
-        let provisioner = AgentProvisioner(modelContext: ctx)
+        guard let manager = sidecarManager, modelContext != nil else { return agents }
         let defs: [AgentDefinitionWire] = agents.map { a in
             AgentDefinitionWire(
                 name: a.name,
@@ -227,13 +251,26 @@ final class P2PNetworkManager: ObservableObject {
     // MARK: - HTTP over NWConnection
 
     private static func httpGetAgents(endpoint: NWEndpoint) async throws -> [WireAgentExport] {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[WireAgentExport], Error>) in
             let fetch = P2PHTTPFetch(endpoint: endpoint, continuation: continuation)
             fetch.start()
         }
     }
 
-    fileprivate static func parseAgentsHTTPResponse(_ data: Data) throws -> [WireAgentExport] {
+    private static func httpSendRoomSyncHint(
+        endpoint: NWEndpoint,
+        roomId: String,
+        hostSequence: Int
+    ) async throws {
+        let encodedRoomId = roomId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? roomId
+        let path = "/claudestudio/v1/rooms/sync?roomId=\(encodedRoomId)&hostSequence=\(hostSequence)"
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let request = P2PHTTPStatusPing(endpoint: endpoint, path: path, continuation: continuation)
+            request.start()
+        }
+    }
+
+    nonisolated fileprivate static func parseAgentsHTTPResponse(_ data: Data) throws -> [WireAgentExport] {
         guard let str = String(data: data, encoding: .utf8),
               let range = str.range(of: "\r\n\r\n") else {
             throw P2PClientError.invalidResponse
@@ -242,6 +279,49 @@ final class P2PNetworkManager: ObservableObject {
         let bodyData = Data(body.utf8)
         let decoded = try JSONDecoder().decode(WireAgentExportList.self, from: bodyData)
         return decoded.agents
+    }
+
+    nonisolated fileprivate static func validateHTTPStatusResponse(_ data: Data) throws {
+        guard let str = String(data: data, encoding: .utf8),
+              let firstLine = str.components(separatedBy: "\r\n").first,
+              !firstLine.isEmpty
+        else {
+            throw P2PClientError.invalidResponse
+        }
+
+        let parts = firstLine.split(separator: " ")
+        guard parts.count >= 2,
+              let statusCode = Int(parts[1]),
+              (200..<300).contains(statusCode)
+        else {
+            throw P2PClientError.invalidResponse
+        }
+    }
+
+    private func handleRoomSyncHint(_ hint: RoomSyncHint) async {
+        guard let modelContext,
+              let sharedRoomService
+        else { return }
+
+        let descriptor = FetchDescriptor<Conversation>()
+        guard let conversation = ((try? modelContext.fetch(descriptor)) ?? []).first(where: { $0.roomId == hint.roomId }),
+              conversation.isSharedRoom
+        else { return }
+
+        if hint.hostSequence > 0, conversation.lastRoomHostSequence >= hint.hostSequence {
+            return
+        }
+
+        do {
+            try await sharedRoomService.refreshConversation(conversation)
+            conversation.roomTransportMode = .direct
+            if conversation.roomStatus != .unavailable {
+                conversation.roomStatus = .live
+            }
+            try? modelContext.save()
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 }
 
@@ -261,8 +341,9 @@ private final class P2PHTTPFetch: Sendable {
     func start() {
         let conn = self.conn
         let state = self.state
+        let receiver = self
 
-        conn.stateUpdateHandler = { [weak self] connState in
+        conn.stateUpdateHandler = { connState in
             switch connState {
             case .ready:
                 let req = "GET /claudestudio/v1/agents HTTP/1.1\r\nHost: claudestudio.local\r\nConnection: close\r\n\r\n"
@@ -270,7 +351,7 @@ private final class P2PHTTPFetch: Sendable {
                     if let err {
                         state.complete(with: .failure(err), conn: conn)
                     } else {
-                        self?.receiveMore()
+                        receiver.receiveMore()
                     }
                 })
             case .failed(let err):
@@ -347,6 +428,112 @@ private final class P2PHTTPFetchState: @unchecked Sendable {
         switch result {
         case .success(let agents):
             continuation.resume(returning: agents)
+        case .failure(let error):
+            continuation.resume(throwing: error)
+        }
+    }
+}
+
+private final class P2PHTTPStatusPing: Sendable {
+    private let conn: NWConnection
+    private let queue = DispatchQueue(label: "com.claudestudio.p2p.http.ping")
+    private let state: P2PHTTPStatusPingState
+    private let path: String
+
+    init(endpoint: NWEndpoint, path: String, continuation: CheckedContinuation<Void, Error>) {
+        self.conn = NWConnection(to: endpoint, using: .tcp)
+        self.path = path
+        self.state = P2PHTTPStatusPingState(continuation: continuation)
+    }
+
+    func start() {
+        let conn = self.conn
+        let state = self.state
+        let requestPath = self.path
+        let receiver = self
+
+        conn.stateUpdateHandler = { connState in
+            switch connState {
+            case .ready:
+                let request = "GET \(requestPath) HTTP/1.1\r\nHost: claudestudio.local\r\nConnection: close\r\n\r\n"
+                conn.send(content: Data(request.utf8), completion: .contentProcessed { error in
+                    if let error {
+                        state.complete(with: .failure(error), conn: conn)
+                    } else {
+                        receiver.receiveMore()
+                    }
+                })
+            case .failed(let error):
+                state.complete(with: .failure(error), conn: conn)
+            default:
+                break
+            }
+        }
+
+        conn.start(queue: queue)
+        queue.asyncAfter(deadline: .now() + p2pHTTPTimeoutSeconds) {
+            state.complete(with: .failure(P2PClientError.timeout), conn: conn)
+        }
+    }
+
+    private func receiveMore() {
+        let conn = self.conn
+        let state = self.state
+        conn.receive(minimumIncompleteLength: 1, maximumLength: 131_072) { [weak self] data, _, isComplete, error in
+            if let error {
+                state.complete(with: .failure(error), conn: conn)
+                return
+            }
+            if let data, !data.isEmpty {
+                state.appendData(data)
+            }
+            if isComplete {
+                do {
+                    try P2PNetworkManager.validateHTTPStatusResponse(state.buffer)
+                    state.complete(with: .success(()), conn: conn)
+                } catch {
+                    state.complete(with: .failure(error), conn: conn)
+                }
+            } else {
+                self?.receiveMore()
+            }
+        }
+    }
+}
+
+private final class P2PHTTPStatusPingState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var resumed = false
+    private let continuation: CheckedContinuation<Void, Error>
+    private var _buffer = Data()
+
+    var buffer: Data {
+        lock.lock()
+        let data = _buffer
+        lock.unlock()
+        return data
+    }
+
+    init(continuation: CheckedContinuation<Void, Error>) {
+        self.continuation = continuation
+    }
+
+    func appendData(_ data: Data) {
+        lock.lock()
+        _buffer.append(data)
+        lock.unlock()
+    }
+
+    func complete(with result: Result<Void, Error>, conn: NWConnection) {
+        lock.lock()
+        let shouldResume = !resumed
+        resumed = true
+        lock.unlock()
+        guard shouldResume else { return }
+        conn.cancel()
+        switch result {
+        case .success:
+            continuation.resume()
         case .failure(let error):
             continuation.resume(throwing: error)
         }

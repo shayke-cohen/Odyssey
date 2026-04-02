@@ -10,6 +10,7 @@ import { pendingQuestions, questionsBySession } from "./tools/ask-user-tool.js";
 import { logger } from "./logger.js";
 import { ClaudeRuntime } from "./providers/claude-runtime.js";
 import { CodexRuntime } from "./providers/codex-runtime.js";
+import { LocalAgentRuntime } from "./providers/local-agent-runtime.js";
 import type { ProviderRuntime } from "./providers/runtime.js";
 import { buildMCPPreflightReport } from "./mcp-preflight.js";
 
@@ -18,7 +19,7 @@ type EventEmitter = (event: SidecarEvent) => void;
 export class SessionManager {
   private readonly activeAborts = new Map<string, AbortController>();
   private readonly autonomousResults = new Map<string, { resolve: (result: string) => void }>();
-  private readonly runtimes: Record<"claude" | "codex", ProviderRuntime>;
+  private readonly runtimes: Record<"claude" | "codex" | "foundation" | "mlx", ProviderRuntime>;
 
   constructor(
     private readonly emit: EventEmitter,
@@ -33,6 +34,8 @@ export class SessionManager {
     this.runtimes = {
       claude: new ClaudeRuntime(deps),
       codex: new CodexRuntime(deps),
+      foundation: new LocalAgentRuntime("foundation", deps),
+      mlx: new LocalAgentRuntime("mlx", deps),
     };
   }
 
@@ -197,7 +200,7 @@ export class SessionManager {
       provider: config.provider ?? "claude",
       status: "active",
     });
-    await this.runtimeFor(config).resumeSession(sessionId, claudeSessionId);
+    await this.runtimeFor(config).resumeSession(sessionId, claudeSessionId, config);
   }
 
   async bulkResume(sessions: BulkResumeEntry[]): Promise<void> {
@@ -217,7 +220,7 @@ export class SessionManager {
         provider: normalizedConfig.provider ?? "claude",
         status: "active",
       });
-      await this.runtimeFor(normalizedConfig).resumeSession(entry.sessionId, entry.claudeSessionId);
+      await this.runtimeFor(normalizedConfig).resumeSession(entry.sessionId, entry.claudeSessionId, normalizedConfig);
       restored++;
     }
 

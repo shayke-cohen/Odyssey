@@ -142,6 +142,60 @@ final class GroupRoutingPlannerTests: XCTestCase {
         XCTAssertEqual(plan.deliveryReason, .directMention)
     }
 
+    func testAutonomousUserWaveAlwaysRoutesToCoordinator() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let coder = Agent(name: "Coder")
+        let reviewer = Agent(name: "Reviewer")
+        context.insert(coder)
+        context.insert(reviewer)
+        let group = AgentGroup(name: "Team", agentIds: [coder.id, reviewer.id])
+        group.coordinatorAgentId = reviewer.id
+        group.autonomousCapable = true
+        context.insert(group)
+
+        let plan = GroupRoutingPlanner.planUserWave(
+            executionMode: .autonomous,
+            routingMode: .mentionAware,
+            sessions: [
+                makeSession(agent: coder, startedAt: 1),
+                makeSession(agent: reviewer, startedAt: 2)
+            ],
+            sourceGroup: group,
+            mentionedAgents: [coder],
+            mentionedAll: false
+        )
+
+        XCTAssertEqual(plan.recipientAgentNames, ["Reviewer"])
+        XCTAssertEqual(plan.deliveryReason, .coordinatorLead)
+        XCTAssertEqual(plan.coordinatorAgentName, "Reviewer")
+    }
+
+    func testWorkerUserWaveFallsBackToFirstSessionWithoutCoordinator() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let coder = Agent(name: "Coder")
+        let reviewer = Agent(name: "Reviewer")
+        context.insert(coder)
+        context.insert(reviewer)
+
+        let plan = GroupRoutingPlanner.planUserWave(
+            executionMode: .worker,
+            routingMode: .mentionAware,
+            sessions: [
+                makeSession(agent: coder, startedAt: 1),
+                makeSession(agent: reviewer, startedAt: 2)
+            ],
+            sourceGroup: nil,
+            mentionedAgents: [reviewer],
+            mentionedAll: false
+        )
+
+        XCTAssertEqual(plan.recipientAgentNames, ["Coder"])
+        XCTAssertEqual(plan.deliveryReason, .coordinatorLead)
+        XCTAssertEqual(plan.coordinatorAgentName, "Coder")
+    }
+
     func testMentionAwarePeerWaveRequiresExplicitMention() throws {
         let container = try makeContainer()
         let context = ModelContext(container)

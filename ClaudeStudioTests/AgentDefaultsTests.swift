@@ -14,6 +14,8 @@ final class AgentDefaultsTests: XCTestCase {
         AppSettings.store.removeObject(forKey: AppSettings.defaultProviderKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultClaudeModelKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultCodexModelKey)
+        AppSettings.store.removeObject(forKey: AppSettings.defaultFoundationModelKey)
+        AppSettings.store.removeObject(forKey: AppSettings.defaultMLXModelKey)
         originalDataDir = ProcessInfo.processInfo.environment["CLAUDESTUDIO_DATA_DIR"]
 
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
@@ -28,6 +30,8 @@ final class AgentDefaultsTests: XCTestCase {
         AppSettings.store.removeObject(forKey: AppSettings.defaultProviderKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultClaudeModelKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultCodexModelKey)
+        AppSettings.store.removeObject(forKey: AppSettings.defaultFoundationModelKey)
+        AppSettings.store.removeObject(forKey: AppSettings.defaultMLXModelKey)
         if let originalDataDir {
             setenv("CLAUDESTUDIO_DATA_DIR", originalDataDir, 1)
         } else {
@@ -74,6 +78,44 @@ final class AgentDefaultsTests: XCTestCase {
 
         XCTAssertEqual(session.provider, ProviderSelection.claude.rawValue)
         XCTAssertEqual(session.model, ClaudeModel.haiku.rawValue)
+    }
+
+    func testFoundationProviderUsesFoundationDefaultModelWhenModelInherits() {
+        AppSettings.store.set(ProviderSelection.foundation.rawValue, forKey: AppSettings.defaultProviderKey)
+        AppSettings.store.set(FoundationModel.system.rawValue, forKey: AppSettings.defaultFoundationModelKey)
+
+        let agent = Agent(
+            name: "Foundation Agent",
+            provider: ProviderSelection.foundation.rawValue,
+            model: AgentDefaults.inheritMarker
+        )
+        let session = Session(agent: agent, workingDirectory: "/tmp")
+
+        XCTAssertEqual(session.provider, ProviderSelection.foundation.rawValue)
+        XCTAssertEqual(session.model, FoundationModel.system.rawValue)
+        XCTAssertEqual(AgentDefaults.displayName(forProvider: session.provider), "Foundation")
+    }
+
+    func testMLXProviderUsesMLXDefaultModelWhenModelInherits() {
+        AppSettings.store.set(ProviderSelection.mlx.rawValue, forKey: AppSettings.defaultProviderKey)
+        AppSettings.store.set("mlx-community/test-model", forKey: AppSettings.defaultMLXModelKey)
+
+        let agent = Agent(
+            name: "MLX Agent",
+            provider: ProviderSelection.mlx.rawValue,
+            model: AgentDefaults.inheritMarker
+        )
+        let session = Session(agent: agent, workingDirectory: "/tmp")
+
+        XCTAssertEqual(session.provider, ProviderSelection.mlx.rawValue)
+        XCTAssertEqual(session.model, "mlx-community/test-model")
+        XCTAssertEqual(AgentDefaults.displayName(forProvider: session.provider), "MLX")
+    }
+
+    func testCustomMLXModelIsCompatible() {
+        XCTAssertTrue(AgentDefaults.isModel("mlx-community/custom-model", compatibleWith: ProviderSelection.mlx.rawValue))
+        XCTAssertEqual(AgentDefaults.normalizedModelSelection("   "), AgentDefaults.inheritMarker)
+        XCTAssertTrue(AgentDefaults.isModel("   ", compatibleWith: ProviderSelection.mlx.rawValue))
     }
 
     func testSessionOverrideTakesPrecedenceOverAgentAndSystemProviderDefaults() {

@@ -15,6 +15,7 @@ import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
 import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
+import { ConnectorStore } from "../../src/stores/connector-store.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import type { AgentConfig, SidecarEvent } from "../../src/types.js";
 
@@ -57,6 +58,7 @@ beforeAll(() => {
     channels: new ChatChannelStore(),
     workspaces: new WorkspaceStore(),
     peerRegistry: new PeerRegistry(),
+    connectors: new ConnectorStore(),
     relayClient: {
       isConnected: () => false,
       connect: async () => {},
@@ -372,6 +374,181 @@ describe("WebSocket Command Dispatch", () => {
       expect(event.type).toBe("session.error");
       expect(event.error).toContain("not found");
     } finally {
+      ws.close();
+    }
+  });
+
+  test("connector.completeAuth is listed without exposing credentials", async () => {
+    const ws = await wsConnect();
+    const connectionId = `connector-${Date.now()}`;
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      ws.send({
+        type: "connector.completeAuth",
+        connection: {
+          id: connectionId,
+          provider: "x",
+          installScope: "system",
+          displayName: "X Sandbox",
+          grantedScopes: ["users.read"],
+          authMode: "pkce-native",
+          writePolicy: "require-approval",
+          status: "connected",
+        },
+        credentials: {
+          accessToken: "secret-token",
+        },
+      });
+
+      const changed = await ws.waitFor(
+        (m) => m.type === "connector.statusChanged" && m.connection.id === connectionId,
+        3000,
+      );
+      expect(changed.type).toBe("connector.statusChanged");
+
+      ws.send({ type: "connector.list" });
+      const listed = await ws.waitFor((m) => m.type === "connector.list.result", 3000);
+      expect(listed.type).toBe("connector.list.result");
+      const stored = listed.connections.find((entry: any) => entry.id === connectionId);
+      expect(stored).toBeDefined();
+      expect(stored.accessToken).toBeUndefined();
+      expect(stored.displayName).toBe("X Sandbox");
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("connector.test fails fast when runtime credentials are missing", async () => {
+    const ws = await wsConnect();
+    const connectionId = `connector-missing-${Date.now()}`;
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      ws.send({
+        type: "connector.completeAuth",
+        connection: {
+          id: connectionId,
+          provider: "slack",
+          installScope: "system",
+          displayName: "Slack Sandbox",
+          grantedScopes: ["channels:read"],
+          authMode: "brokered",
+          writePolicy: "require-approval",
+          status: "connected",
+        },
+      });
+      await ws.waitFor((m) => m.type === "connector.statusChanged" && m.connection.id === connectionId, 3000);
+
+      ws.send({ type: "connector.test", connectionId });
+      const changed = await ws.waitFor(
+        (m) => m.type === "connector.statusChanged" && m.connection.id === connectionId && m.connection.status === "failed",
+        3000,
+      );
+      expect(changed.connection.statusMessage).toContain("No runtime credentials");
+
+      const audit = await ws.waitFor(
+        (m) => m.type === "connector.audit" && m.connectionId === connectionId && m.action === "connector.test",
+        3000,
+      );
+      expect(audit.type).toBe("connector.audit");
+      expect(audit.outcome).toBe("failed");
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("connector.revoke updates runtime state to revoked", async () => {
+    const ws = await wsConnect();
+    const connectionId = `connector-revoke-${Date.now()}`;
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      ws.send({
+        type: "connector.completeAuth",
+        connection: {
+          id: connectionId,
+          provider: "facebook",
+          installScope: "system",
+          displayName: "Facebook Sandbox",
+          grantedScopes: ["public_profile"],
+          authMode: "brokered",
+          writePolicy: "read-only",
+          status: "connected",
+        },
+        credentials: {
+          accessToken: "secret-token",
+        },
+      });
+      await ws.waitFor((m) => m.type === "connector.statusChanged" && m.connection.id === connectionId, 3000);
+
+      ws.send({ type: "connector.revoke", connectionId });
+      const changed = await ws.waitFor(
+        (m) => m.type === "connector.statusChanged" && m.connection.id === connectionId && m.connection.status === "revoked",
+        3000,
+      );
+      expect(changed.connection.statusMessage).toBe("Credentials removed.");
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("connector.test succeeds and enriches connector identity metadata", async () => {
+    const ws = await wsConnect();
+    const connectionId = `connector-success-${Date.now()}`;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({
+        data: {
+          id: "user-1",
+          username: "sandbox",
+          name: "Sandbox User",
+        },
+      }), { status: 200 })) as typeof fetch;
+
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      ws.send({
+        type: "connector.completeAuth",
+        connection: {
+          id: connectionId,
+          provider: "x",
+          installScope: "system",
+          displayName: "X Sandbox",
+          grantedScopes: ["users.read"],
+          authMode: "pkce-native",
+          writePolicy: "require-approval",
+          status: "connected",
+        },
+        credentials: {
+          accessToken: "secret-token",
+        },
+      });
+      await ws.waitFor((m) => m.type === "connector.statusChanged" && m.connection.id === connectionId, 3000);
+
+      ws.send({ type: "connector.test", connectionId });
+      const changed = await ws.waitFor(
+        (m) =>
+          m.type === "connector.statusChanged" &&
+          m.connection.id === connectionId &&
+          m.connection.accountId === "user-1",
+        3000,
+      );
+      expect(changed.connection.status).toBe("connected");
+      expect(changed.connection.accountHandle).toBe("@sandbox");
+
+      const audit = await ws.waitFor(
+        (m) =>
+          m.type === "connector.audit" &&
+          m.connectionId === connectionId &&
+          m.action === "connector.test",
+        3000,
+      );
+      expect(audit.type).toBe("connector.audit");
+      expect(audit.outcome).toBe("passed");
+    } finally {
+      globalThis.fetch = originalFetch;
       ws.close();
     }
   });

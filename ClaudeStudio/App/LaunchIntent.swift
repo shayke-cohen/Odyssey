@@ -6,6 +6,7 @@ enum LaunchMode: Sendable, Equatable {
     case agent(name: String)
     case group(name: String)
     case schedule(id: UUID)
+    case roomJoin(payload: SharedRoomService.JoinPayload)
 }
 
 /// A parsed launch intent from CLI args or a `claudpeer://` URL.
@@ -79,6 +80,17 @@ struct LaunchIntent: Sendable {
                 guard i < args.count else { break }
                 scheduleId = UUID(uuidString: args[i])
 
+            case "--room-join":
+                i += 1
+                guard i < args.count else { break }
+                let parts = args[i].split(separator: ":", maxSplits: 2).map(String.init)
+                guard parts.count >= 2 else { break }
+                mode = .roomJoin(payload: .init(
+                    roomId: parts[0],
+                    inviteId: parts[1],
+                    inviteToken: parts.count > 2 ? parts[2] : nil
+                ))
+
             case "--occurrence":
                 i += 1
                 guard i < args.count else { break }
@@ -142,6 +154,17 @@ struct LaunchIntent: Sendable {
         case "schedule":
             guard let id = UUID(uuidString: pathName) else { return nil }
             mode = .schedule(id: id)
+        case "room":
+            guard pathName == "join",
+                  let roomId = queryValue("roomId"),
+                  let inviteId = queryValue("inviteId"),
+                  !roomId.isEmpty,
+                  !inviteId.isEmpty else { return nil }
+            mode = .roomJoin(payload: .init(
+                roomId: roomId,
+                inviteId: inviteId,
+                inviteToken: queryValue("token")
+            ))
         default:
             return nil
         }

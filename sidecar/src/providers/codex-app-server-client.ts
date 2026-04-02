@@ -30,6 +30,7 @@ export interface CodexClientHandlers {
 export interface CodexAppServerClientOptions {
   codexPath?: string;
   configOverrides?: string[];
+  envOverrides?: Record<string, string>;
 }
 
 export class CodexAppServerClient {
@@ -45,10 +46,12 @@ export class CodexAppServerClient {
   private handlers: CodexClientHandlers = {};
   private readonly codexPath: string;
   private readonly configOverrides: string[];
+  private readonly envOverrides: Record<string, string>;
 
   constructor(options: CodexAppServerClientOptions = {}) {
     this.codexPath = options.codexPath || process.env.CODEX_BINARY || "/Applications/Codex.app/Contents/Resources/codex";
     this.configOverrides = options.configOverrides ?? [];
+    this.envOverrides = options.envOverrides ?? {};
   }
 
   setHandlers(handlers: CodexClientHandlers) {
@@ -90,10 +93,16 @@ export class CodexAppServerClient {
   }
 
   private async startInternal(): Promise<void> {
-    logger.info("codex", `Starting codex app-server with ${this.codexPath}`);
-
-    const env = { ...process.env };
+    const env = {
+      ...process.env,
+      ...this.envOverrides,
+    };
     env.PATH = env.PATH?.trim() || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+
+    logger.info("codex", `Starting codex app-server with ${this.codexPath}`, {
+      codexHome: env.CODEX_HOME ?? null,
+      configOverrideCount: this.configOverrides.length,
+    });
 
     const args = ["app-server"];
     for (const override of this.configOverrides) {

@@ -20,6 +20,8 @@ struct AgentEditorView: View {
     @State private var model: String
     @State private var maxTurns: String
     @State private var maxBudget: String
+    @State private var instancePolicy: AgentInstancePolicy
+    @State private var instancePolicyPoolMax: String
     @State private var workingDirectory: String
     @State private var selectedSkillIds: Set<UUID>
     @State private var selectedMCPIds: Set<UUID>
@@ -44,6 +46,8 @@ struct AgentEditorView: View {
         _model = State(initialValue: modelValue)
         _maxTurns = State(initialValue: agent?.maxTurns.map(String.init) ?? "")
         _maxBudget = State(initialValue: agent?.maxBudget.map { String(format: "%.2f", $0) } ?? "")
+        _instancePolicy = State(initialValue: agent?.instancePolicy ?? .agentDefault)
+        _instancePolicyPoolMax = State(initialValue: agent?.instancePolicyPoolMax.map(String.init) ?? "")
         _workingDirectory = State(initialValue: agent?.defaultWorkingDirectory ?? "")
         _selectedSkillIds = State(initialValue: Set(agent?.skillIds ?? []))
         _selectedMCPIds = State(initialValue: Set(agent?.extraMCPServerIds ?? []))
@@ -169,6 +173,18 @@ struct AgentEditorView: View {
                     .xrayId("agentEditor.maxTurnsField")
                 TextField("Max Budget ($)", text: $maxBudget)
                     .xrayId("agentEditor.maxBudgetField")
+
+                Picker("Instance Policy", selection: $instancePolicy) {
+                    ForEach(AgentInstancePolicy.allCases, id: \.self) { policy in
+                        Text(policy.displayName).tag(policy)
+                    }
+                }
+                .xrayId("agentEditor.instancePolicyPicker")
+
+                if instancePolicy == .pool {
+                    TextField("Pool Max", text: $instancePolicyPoolMax)
+                        .xrayId("agentEditor.instancePolicyPoolMaxField")
+                }
             }
 
 
@@ -550,6 +566,8 @@ struct AgentEditorView: View {
         target.model = AgentDefaults.normalizedModelSelection(model)
         target.maxTurns = Int(maxTurns)
         target.maxBudget = Double(maxBudget)
+        target.instancePolicy = instancePolicy
+        target.instancePolicyPoolMax = instancePolicy == .pool ? max(1, Int(instancePolicyPoolMax) ?? 2) : nil
         target.skillIds = Array(selectedSkillIds)
         target.extraMCPServerIds = Array(selectedMCPIds)
         target.permissionSetId = selectedPermissionId

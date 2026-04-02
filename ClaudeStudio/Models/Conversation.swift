@@ -34,6 +34,20 @@ enum GroupRoutingMode: String, Codable, CaseIterable, Sendable {
     }
 }
 
+enum ConversationExecutionMode: String, Codable, CaseIterable, Sendable {
+    case interactive
+    case autonomous
+    case worker
+
+    var displayName: String {
+        switch self {
+        case .interactive: return "Interactive"
+        case .autonomous: return "Autonomous"
+        case .worker: return "Worker"
+        }
+    }
+}
+
 @Model
 final class Project {
     var id: UUID
@@ -88,8 +102,19 @@ final class Conversation {
     var planModeEnabled: Bool = false
     var selectiveRepliesEnabled: Bool = false
     private var routingModeRaw: String?
+    private var executionModeRaw: String?
     var worktreePath: String?
     var worktreeBranch: String?
+    var roomId: String?
+    var roomOwnerUserId: String?
+    var roomShareURL: String?
+    var roomMembershipVersion: Int = 0
+    var lastCloudKitSyncToken: String?
+    var lastRoomHostSequence: Int = 0
+    private var roomRoleRaw: String?
+    private var roomStatusRaw: String?
+    private var roomHistorySyncStateRaw: String?
+    private var roomTransportModeRaw: String?
     var startedAt: Date
     var closedAt: Date?
 
@@ -115,6 +140,8 @@ final class Conversation {
         self.status = .active
         self.isPinned = false
         self.isArchived = false
+        self.roomMembershipVersion = 0
+        self.lastRoomHostSequence = 0
         self.startedAt = Date()
         self.sessions = sessions
     }
@@ -141,5 +168,49 @@ final class Conversation {
             // Preserve the legacy flag so older persisted data can migrate lazily.
             selectiveRepliesEnabled = (newValue == .mentionAware)
         }
+    }
+
+    var executionMode: ConversationExecutionMode {
+        get {
+            if let raw = executionModeRaw, let mode = ConversationExecutionMode(rawValue: raw) {
+                return mode
+            }
+            if sessions.contains(where: { $0.mode == .worker }) {
+                return .worker
+            }
+            if isAutonomous || threadKind == .autonomous || sessions.contains(where: { $0.mode == .autonomous }) {
+                return .autonomous
+            }
+            return .interactive
+        }
+        set {
+            executionModeRaw = newValue.rawValue
+            isAutonomous = (newValue == .autonomous)
+        }
+    }
+
+    var roomRole: SharedRoomRole? {
+        get { roomRoleRaw.flatMap(SharedRoomRole.init(rawValue:)) }
+        set { roomRoleRaw = newValue?.rawValue }
+    }
+
+    var roomStatus: SharedRoomStatus {
+        get { roomStatusRaw.flatMap(SharedRoomStatus.init(rawValue:)) ?? .localOnly }
+        set { roomStatusRaw = newValue.rawValue }
+    }
+
+    var roomHistorySyncState: SharedRoomHistorySyncState {
+        get { roomHistorySyncStateRaw.flatMap(SharedRoomHistorySyncState.init(rawValue:)) ?? .idle }
+        set { roomHistorySyncStateRaw = newValue.rawValue }
+    }
+
+    var roomTransportMode: SharedRoomTransportMode {
+        get { roomTransportModeRaw.flatMap(SharedRoomTransportMode.init(rawValue:)) ?? .cloudSync }
+        set { roomTransportModeRaw = newValue.rawValue }
+    }
+
+    var isSharedRoom: Bool {
+        guard let roomId else { return false }
+        return !roomId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

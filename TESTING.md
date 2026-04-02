@@ -85,6 +85,31 @@ Test files in `sidecar/test/`:
 - `api/ws-protocol.test.ts` — WebSocket protocol conformance
 - `e2e/full-flow.test.ts` — end-to-end session lifecycle
 - `e2e/scenarios.test.ts` — multi-session scenarios (includes **GC-1** group transcript chain and **GC-2** peer-notify prompt shape; live sidecar + API key)
+- `e2e/connector-live.test.ts` — live connector/provider smoke tests (env-gated; WhatsApp read smoke supported, write smoke opt-in)
+
+### Live Connector Smoke
+
+Run the WhatsApp live smoke in read-only mode:
+
+```bash
+CLAUDESTUDIO_CONNECTOR_LIVE=1 \
+WHATSAPP_ACCESS_TOKEN=... \
+WHATSAPP_WABA_ID=... \
+bun test sidecar/test/e2e/connector-live.test.ts
+```
+
+Optional write smoke, only when you intentionally want to send a real template:
+
+```bash
+CLAUDESTUDIO_CONNECTOR_LIVE=1 \
+CLAUDESTUDIO_CONNECTOR_LIVE_WRITE=1 \
+WHATSAPP_ACCESS_TOKEN=... \
+WHATSAPP_WABA_ID=... \
+WHATSAPP_PHONE_NUMBER_ID=... \
+WHATSAPP_TEMPLATE_NAME=... \
+WHATSAPP_TO=... \
+bun test sidecar/test/e2e/connector-live.test.ts
+```
 
 ---
 

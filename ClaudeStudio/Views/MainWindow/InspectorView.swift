@@ -16,6 +16,7 @@ struct InspectorView: View {
     @Environment(WindowState.self) private var windowState: WindowState
     @Query(sort: \Session.startedAt) private var allSessions: [Session]
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var sharedRoomService: SharedRoomService
     @Query private var allGroups: [AgentGroup]
     @Query private var allAgents: [Agent]
     @State private var now = Date()
@@ -206,6 +207,9 @@ struct InspectorView: View {
                 } else {
                     multiSessionsSection
                 }
+                if conversation.isSharedRoom {
+                    sharedRoomSection
+                }
                 if hasWorkingDirectory {
                     workspaceSection
                 }
@@ -217,6 +221,35 @@ struct InspectorView: View {
     }
 
     // MARK: - Session Section
+
+    @ViewBuilder
+    private var sharedRoomSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Shared Room", systemImage: "person.3.sequence")
+                .font(.headline)
+            InfoRow(label: "Room ID", value: conversation.roomId ?? "Pending")
+            InfoRow(label: "Role", value: conversation.roomRole?.rawValue.capitalized ?? "Unknown")
+            InfoRow(label: "Status", value: conversation.roomStatus.rawValue.capitalized)
+            InfoRow(label: "Sync", value: conversation.roomHistorySyncState.rawValue.capitalized)
+            if let owner = conversation.roomOwnerUserId, !owner.isEmpty {
+                InfoRow(label: "Owner", value: owner)
+            }
+            HStack {
+                Button("Invite People") {
+                    windowState.sharedRoomInviteConversationId = conversation.id
+                    windowState.showSharedRoomInviteSheet = true
+                }
+                .buttonStyle(.bordered)
+                .xrayId("inspector.sharedRoom.inviteButton")
+
+                Button("Refresh Room") {
+                    Task { try? await sharedRoomService.refreshConversation(conversation) }
+                }
+                .buttonStyle(.bordered)
+                .xrayId("inspector.sharedRoom.refreshButton")
+            }
+        }
+    }
 
     @ViewBuilder
     private func sessionSection(session: Session) -> some View {

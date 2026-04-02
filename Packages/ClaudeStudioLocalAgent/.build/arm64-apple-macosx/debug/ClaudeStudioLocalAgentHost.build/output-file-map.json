@@ -1,0 +1,19 @@
+{
+  "": {
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/master.swiftdeps"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/LocalAgentHTTPServer.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/LocalAgentHTTPServer.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/LocalAgentHTTPServer.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/LocalAgentHTTPServer~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/LocalAgentHTTPServer.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/LocalAgentHTTPServer.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/main.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/main.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/main.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/main.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/main.dia"
+  }
+}

@@ -1,0 +1,1099 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.xctest/Contents/MacOS/ClaudeStudioLocalAgentPackageTests",
+      "packagePath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent",
+      "productName" : "ClaudeStudioLocalAgentPackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.ClaudeStudioLocalAgentCore-arm64-apple-macosx15.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/sources",
+      "importPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Adapters/ModelAdapters.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/LocalAgentCore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPBridge.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/MLX/ManagedMLXModels.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Protocol/LocalAgentTypes.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/BuiltInTools.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/LocalToolAccessPolicy.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/ToolRuntime.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Transcript/TranscriptCodec.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "ClaudeStudioLocalAgentCore",
+      "moduleOutputPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentCore.swiftmodule",
+      "objects" : [
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ModelAdapters.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentCore.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPBridge.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPClient.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ManagedMLXModels.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentTypes.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/BuiltInTools.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalToolAccessPolicy.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ToolRuntime.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/TranscriptCodec.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j12",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/include/ClaudeStudioLocalAgentCore-Swift.h",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "claudestudiolocalagent"
+      ],
+      "outputFileMapPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ModelAdapters.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentCore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPBridge.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPClient.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ManagedMLXModels.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentTypes.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/BuiltInTools.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalToolAccessPolicy.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ToolRuntime.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/TranscriptCodec.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentCore.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Adapters/ModelAdapters.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/LocalAgentCore.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPBridge.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPClient.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/MLX/ManagedMLXModels.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Protocol/LocalAgentTypes.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/BuiltInTools.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/LocalToolAccessPolicy.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/ToolRuntime.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Transcript/TranscriptCodec.swift"
+      ],
+      "tempsPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.ClaudeStudioLocalAgentCoreTests-arm64-apple-macosx15.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/sources",
+      "importPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentCoreTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentHostTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "ClaudeStudioLocalAgentCoreTests",
+      "moduleOutputPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentCoreTests.swiftmodule",
+      "objects" : [
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentCoreTests.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentHostTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j12",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "claudestudiolocalagent"
+      ],
+      "outputFileMapPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentCoreTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentHostTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentCoreTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentCoreTests.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentHostTests.swift"
+      ],
+      "tempsPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.ClaudeStudioLocalAgentHost-arm64-apple-macosx15.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/sources",
+      "importPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/LocalAgentHTTPServer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/main.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "ClaudeStudioLocalAgentHost",
+      "moduleOutputPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentHost.swiftmodule",
+      "objects" : [
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/LocalAgentHTTPServer.swift.o",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/main.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j12",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "ClaudeStudioLocalAgentHost_main",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "claudestudiolocalagent"
+      ],
+      "outputFileMapPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/LocalAgentHTTPServer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentHost.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/LocalAgentHTTPServer.swift",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/main.swift"
+      ],
+      "tempsPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.ClaudeStudioLocalAgentPackageTests-arm64-apple-macosx15.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/sources",
+      "importPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentCoreTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "ClaudeStudioLocalAgentPackageTests",
+      "moduleOutputPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentPackageTests.swiftmodule",
+      "objects" : [
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j12",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/include/ClaudeStudioLocalAgentPackageTests-Swift.h",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "claudestudiolocalagent"
+      ],
+      "outputFileMapPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules/ClaudeStudioLocalAgentPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "ClaudeStudioLocalAgentCore" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "ClaudeStudioLocalAgentCore",
+      "-package-name",
+      "claudestudiolocalagent",
+      "-c",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Adapters/ModelAdapters.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/LocalAgentCore.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPBridge.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPClient.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/MLX/ManagedMLXModels.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Protocol/LocalAgentTypes.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/BuiltInTools.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/LocalToolAccessPolicy.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/ToolRuntime.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Transcript/TranscriptCodec.swift",
+      "-I",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j12",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/include/ClaudeStudioLocalAgentCore-Swift.h",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "claudestudiolocalagent",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "ClaudeStudioLocalAgentCoreTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "ClaudeStudioLocalAgentCoreTests",
+      "-package-name",
+      "claudestudiolocalagent",
+      "-c",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentCoreTests.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentHostTests.swift",
+      "-I",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j12",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "claudestudiolocalagent",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "ClaudeStudioLocalAgentHost" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "ClaudeStudioLocalAgentHost",
+      "-package-name",
+      "claudestudiolocalagent",
+      "-c",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/LocalAgentHTTPServer.swift",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/main.swift",
+      "-I",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j12",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "ClaudeStudioLocalAgentHost_main",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "claudestudiolocalagent",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "ClaudeStudioLocalAgentPackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "ClaudeStudioLocalAgentPackageTests",
+      "-package-name",
+      "claudestudiolocalagent",
+      "-c",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.derived/runner.swift",
+      "-I",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j12",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/include/ClaudeStudioLocalAgentPackageTests-Swift.h",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "claudestudiolocalagent",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "ClaudeStudioLocalAgentCore" : [
+
+    ],
+    "ClaudeStudioLocalAgentCoreTests" : [
+      "ClaudeStudioLocalAgentCore"
+    ],
+    "ClaudeStudioLocalAgentHost" : [
+      "ClaudeStudioLocalAgentCore"
+    ],
+    "ClaudeStudioLocalAgentPackageTests" : [
+      "ClaudeStudioLocalAgentCoreTests",
+      "ClaudeStudioLocalAgentCore"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Adapters/ModelAdapters.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/LocalAgentCore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPBridge.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/MLX/ManagedMLXModels.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Protocol/LocalAgentTypes.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/BuiltInTools.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/LocalToolAccessPolicy.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/ToolRuntime.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Transcript/TranscriptCodec.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/sources"
+    },
+    "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentCoreTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Tests/ClaudeStudioLocalAgentCoreTests/LocalAgentHostTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/sources"
+    },
+    "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost-entitlement.plist"
+    },
+    "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/LocalAgentHTTPServer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentHost/main.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/sources"
+    },
+    "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/BuiltInTools.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentCore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentTypes.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalToolAccessPolicy.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPBridge.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPClient.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ManagedMLXModels.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ModelAdapters.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ToolRuntime.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/TranscriptCodec.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/LocalAgentHTTPServer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.build/main.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentHost.product/Objects.LinkFileList"
+    },
+    "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/sources"
+    },
+    "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/BuiltInTools.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentCore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentTypes.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalToolAccessPolicy.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPBridge.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPClient.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ManagedMLXModels.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ModelAdapters.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ToolRuntime.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/TranscriptCodec.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentCoreTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCoreTests.build/LocalAgentHostTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/runner.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

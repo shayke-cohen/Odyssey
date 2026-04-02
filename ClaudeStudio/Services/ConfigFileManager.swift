@@ -21,6 +21,8 @@ struct AgentConfigDTO: Codable {
     let maxBudget: Double?
     let maxThinkingTokens: Int?
     let defaultWorkingDirectory: String?
+    let instancePolicy: String?
+    let instancePolicyPoolMax: Int?
 
     enum CodingKeys: String, CodingKey {
         case name, enabled, agentDescription, model, icon, color
@@ -29,6 +31,7 @@ struct AgentConfigDTO: Codable {
         case systemPromptTemplate, systemPromptVariables
         case maxTurns, maxBudget, maxThinkingTokens
         case defaultWorkingDirectory
+        case instancePolicy, instancePolicyPoolMax
     }
 
     init(from decoder: Decoder) throws {
@@ -49,6 +52,8 @@ struct AgentConfigDTO: Codable {
         maxBudget = try c.decodeIfPresent(Double.self, forKey: .maxBudget)
         maxThinkingTokens = try c.decodeIfPresent(Int.self, forKey: .maxThinkingTokens)
         defaultWorkingDirectory = try c.decodeIfPresent(String.self, forKey: .defaultWorkingDirectory)
+        instancePolicy = try c.decodeIfPresent(String.self, forKey: .instancePolicy)
+        instancePolicyPoolMax = try c.decodeIfPresent(Int.self, forKey: .instancePolicyPoolMax)
     }
 
     init(
@@ -56,7 +61,7 @@ struct AgentConfigDTO: Codable {
         skillNames: [String], mcpServerNames: [String], permissionSetName: String,
         systemPromptTemplate: String?, systemPromptVariables: [String: String]?,
         maxTurns: Int?, maxBudget: Double?, maxThinkingTokens: Int?,
-        defaultWorkingDirectory: String?
+        defaultWorkingDirectory: String?, instancePolicy: String? = nil, instancePolicyPoolMax: Int? = nil
     ) {
         self.name = name
         self.enabled = enabled
@@ -74,6 +79,8 @@ struct AgentConfigDTO: Codable {
         self.maxBudget = maxBudget
         self.maxThinkingTokens = maxThinkingTokens
         self.defaultWorkingDirectory = defaultWorkingDirectory
+        self.instancePolicy = instancePolicy
+        self.instancePolicyPoolMax = instancePolicyPoolMax
     }
 }
 

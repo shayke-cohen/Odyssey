@@ -326,6 +326,8 @@ final class ConfigSyncService {
                 entity.maxBudget = effectiveDTO.maxBudget
                 entity.maxThinkingTokens = effectiveDTO.maxThinkingTokens
                 entity.defaultWorkingDirectory = effectiveDTO.defaultWorkingDirectory
+                entity.instancePolicy = AgentInstancePolicy(rawValue: effectiveDTO.instancePolicy ?? "") ?? .agentDefault
+                entity.instancePolicyPoolMax = effectiveDTO.instancePolicyPoolMax
                 entity.isEnabled = effectiveDTO.enabled
             } else {
                 let byName = existing.first { $0.name == effectiveDTO.name && $0.configSlug == nil }
@@ -344,6 +346,8 @@ final class ConfigSyncService {
                     entity.maxBudget = effectiveDTO.maxBudget
                     entity.maxThinkingTokens = effectiveDTO.maxThinkingTokens
                     entity.defaultWorkingDirectory = effectiveDTO.defaultWorkingDirectory
+                    entity.instancePolicy = AgentInstancePolicy(rawValue: effectiveDTO.instancePolicy ?? "") ?? .agentDefault
+                    entity.instancePolicyPoolMax = effectiveDTO.instancePolicyPoolMax
                     entity.isEnabled = effectiveDTO.enabled
                 } else {
                     let entity = Agent(name: effectiveDTO.name, agentDescription: effectiveDTO.agentDescription, systemPrompt: systemPrompt, provider: effectiveDTO.provider, model: effectiveDTO.model, icon: effectiveDTO.icon, color: effectiveDTO.color)
@@ -354,6 +358,8 @@ final class ConfigSyncService {
                     entity.maxBudget = effectiveDTO.maxBudget
                     entity.maxThinkingTokens = effectiveDTO.maxThinkingTokens
                     entity.defaultWorkingDirectory = effectiveDTO.defaultWorkingDirectory
+                    entity.instancePolicy = AgentInstancePolicy(rawValue: effectiveDTO.instancePolicy ?? "") ?? .agentDefault
+                    entity.instancePolicyPoolMax = effectiveDTO.instancePolicyPoolMax
                     entity.isEnabled = effectiveDTO.enabled
                     entity.configSlug = slug
                     entity.origin = .builtin
@@ -445,7 +451,9 @@ final class ConfigSyncService {
             maxTurns: dto.maxTurns,
             maxBudget: dto.maxBudget,
             maxThinkingTokens: dto.maxThinkingTokens,
-            defaultWorkingDirectory: dto.defaultWorkingDirectory
+            defaultWorkingDirectory: dto.defaultWorkingDirectory,
+            instancePolicy: dto.instancePolicy,
+            instancePolicyPoolMax: dto.instancePolicyPoolMax
         )
 
         do {
@@ -579,7 +587,9 @@ final class ConfigSyncService {
             skillNames: skillNames, mcpServerNames: mcpNames, permissionSetName: permName,
             systemPromptTemplate: nil, systemPromptVariables: nil,
             maxTurns: agent.maxTurns, maxBudget: agent.maxBudget, maxThinkingTokens: agent.maxThinkingTokens,
-            defaultWorkingDirectory: agent.defaultWorkingDirectory
+            defaultWorkingDirectory: agent.defaultWorkingDirectory,
+            instancePolicy: agent.instancePolicy == .agentDefault ? nil : agent.instancePolicy.rawValue,
+            instancePolicyPoolMax: agent.instancePolicy == .pool ? agent.instancePolicyPoolMax : nil
         )
 
         isWritingBack = true

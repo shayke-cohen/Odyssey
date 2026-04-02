@@ -14,7 +14,7 @@ final class AppStateEventTests: XCTestCase {
         container = try ModelContainer(
             for: Agent.self, Session.self, Conversation.self,
             ConversationMessage.self, MessageAttachment.self,
-            Participant.self, Skill.self, MCPServer.self,
+            Participant.self, Skill.self, Connection.self, MCPServer.self,
             PermissionSet.self, BlackboardEntry.self,
             configurations: config
         )
@@ -260,6 +260,55 @@ final class AppStateEventTests: XCTestCase {
         appState.handleEventForTesting(.sessionForked(parentSessionId: "parent-uuid", childSessionId: "child-uuid"))
         XCTAssertEqual(appState.commsEvents.count, before)
         XCTAssertTrue(appState.streamingText.isEmpty)
+    }
+
+    func testEH7b_connectorStatusChanged_upsertsConnectionModel() throws {
+        let connection = ConnectorWire(
+            id: UUID().uuidString,
+            provider: "x",
+            installScope: "system",
+            displayName: "X Sandbox",
+            accountId: "acct-1",
+            accountHandle: "@sandbox",
+            accountMetadataJSON: nil,
+            grantedScopes: ["users.read", "tweet.write"],
+            authMode: "pkce-native",
+            writePolicy: "require-approval",
+            status: "connected",
+            statusMessage: "Ready",
+            brokerReference: nil,
+            auditSummary: nil,
+            lastAuthenticatedAt: "2026-04-02T10:00:00Z",
+            lastCheckedAt: "2026-04-02T10:05:00Z"
+        )
+
+        appState.handleEventForTesting(.connectorStatusChanged(connection: connection))
+
+        let connections = try context.fetch(FetchDescriptor<Connection>())
+        XCTAssertEqual(connections.count, 1)
+        XCTAssertEqual(connections.first?.provider, .x)
+        XCTAssertEqual(connections.first?.status, .connected)
+        XCTAssertEqual(connections.first?.displayName, "X Sandbox")
+        XCTAssertEqual(connections.first?.accountHandle, "@sandbox")
+    }
+
+    func testEH7c_connectorAudit_updatesAuditSummary() throws {
+        let connection = Connection(provider: .slack, authMode: .brokered)
+        context.insert(connection)
+        try context.save()
+
+        appState.handleEventForTesting(.connectorAudit(
+            sessionId: nil,
+            connectionId: connection.id.uuidString,
+            provider: "slack",
+            action: "slack_post_message",
+            outcome: "allowed",
+            summary: "Write action approved."
+        ))
+
+        let refreshed = try context.fetch(FetchDescriptor<Connection>()).first
+        XCTAssertEqual(refreshed?.auditSummary, "allowed: Write action approved.")
+        XCTAssertNotNil(refreshed?.lastCheckedAt)
     }
 
     // MARK: - CF: Comms Filtering

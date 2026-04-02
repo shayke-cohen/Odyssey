@@ -7,6 +7,7 @@ import { MessageStore } from "./stores/message-store.js";
 import { ChatChannelStore } from "./stores/chat-channel-store.js";
 import { WorkspaceStore } from "./stores/workspace-store.js";
 import { PeerRegistry } from "./stores/peer-registry.js";
+import { ConnectorStore } from "./stores/connector-store.js";
 import { RelayClient } from "./relay-client.js";
 import { SessionManager } from "./session-manager.js";
 import { SseManager } from "./sse-manager.js";
@@ -30,6 +31,7 @@ const messages = new MessageStore();
 const channels = new ChatChannelStore();
 const workspaces = new WorkspaceStore();
 const peerRegistry = new PeerRegistry();
+const connectors = new ConnectorStore();
 const relayClient = new RelayClient((event) => broadcastFn(event));
 const agentDefinitions = new Map<string, AgentConfig>();
 const sseManager = new SseManager();
@@ -45,6 +47,7 @@ const toolContext: ToolContext = {
   channels,
   workspaces,
   peerRegistry,
+  connectors,
   relayClient,
   broadcast: (event) => broadcastFn(event),
   agentDefinitions,

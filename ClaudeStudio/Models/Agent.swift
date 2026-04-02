@@ -8,6 +8,22 @@ enum AgentOrigin: Sendable, Hashable {
     case builtin
 }
 
+enum AgentInstancePolicy: String, Codable, CaseIterable, Sendable {
+    case agentDefault
+    case spawn
+    case singleton
+    case pool
+
+    var displayName: String {
+        switch self {
+        case .agentDefault: return "Agent Default"
+        case .spawn: return "Spawn"
+        case .singleton: return "Singleton"
+        case .pool: return "Pool"
+        }
+    }
+}
+
 @Model
 final class Agent {
     var id: UUID
@@ -23,6 +39,8 @@ final class Agent {
     var maxTurns: Int?
     var maxBudget: Double?
     var maxThinkingTokens: Int?
+    private var instancePolicyRaw: String?
+    var instancePolicyPoolMax: Int?
     var icon: String
     var color: String
 
@@ -74,6 +92,25 @@ final class Agent {
         }
     }
 
+    @Transient
+    var instancePolicy: AgentInstancePolicy {
+        get { AgentInstancePolicy(rawValue: instancePolicyRaw ?? "") ?? .agentDefault }
+        set { instancePolicyRaw = newValue.rawValue }
+    }
+
+    @Transient
+    var instancePolicyWireValue: String? {
+        switch instancePolicy {
+        case .agentDefault:
+            return nil
+        case .spawn, .singleton:
+            return instancePolicy.rawValue
+        case .pool:
+            let max = max(1, instancePolicyPoolMax ?? 2)
+            return "pool:\(max)"
+        }
+    }
+
     init(
         name: String,
         agentDescription: String = "",
@@ -95,6 +132,8 @@ final class Agent {
         self.maxTurns = nil
         self.maxBudget = nil
         self.maxThinkingTokens = 10000
+        self.instancePolicyRaw = AgentInstancePolicy.agentDefault.rawValue
+        self.instancePolicyPoolMax = nil
         self.icon = icon
         self.color = color
         self.originKind = "local"

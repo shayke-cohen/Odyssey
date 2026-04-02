@@ -93,7 +93,7 @@ export class ClaudeRuntime implements ProviderRuntime {
 
   async createSession(_sessionId: string, _config: AgentConfig): Promise<void> {}
 
-  async resumeSession(_sessionId: string, _backendSessionId: string): Promise<void> {}
+  async resumeSession(_sessionId: string, _backendSessionId: string, _config?: AgentConfig): Promise<void> {}
 
   async forkSession(
     _parentSessionId: string,

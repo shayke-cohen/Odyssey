@@ -38,4 +38,42 @@ final class LaunchIntentTests: XCTestCase {
         }
         XCTAssertNotNil(intent.occurrence)
     }
+
+    func testParsesRoomJoinURL() {
+        let url = URL(string: "claudestudio://room/join?roomId=room-123&inviteId=invite-456&token=secret-789")!
+        let intent = LaunchIntent.fromURL(url)
+
+        guard let intent else {
+            return XCTFail("Expected launch intent")
+        }
+
+        switch intent.mode {
+        case .roomJoin(let payload):
+            XCTAssertEqual(payload.roomId, "room-123")
+            XCTAssertEqual(payload.inviteId, "invite-456")
+            XCTAssertEqual(payload.inviteToken, "secret-789")
+        default:
+            XCTFail("Expected room join launch mode")
+        }
+    }
+
+    func testParsesRoomJoinCLIArgumentsWithToken() {
+        let intent = LaunchIntent.fromArguments([
+            "ClaudeStudio",
+            "--room-join", "room-123:invite-456:secret-789"
+        ])
+
+        guard let intent else {
+            return XCTFail("Expected launch intent")
+        }
+
+        switch intent.mode {
+        case .roomJoin(let payload):
+            XCTAssertEqual(payload.roomId, "room-123")
+            XCTAssertEqual(payload.inviteId, "invite-456")
+            XCTAssertEqual(payload.inviteToken, "secret-789")
+        default:
+            XCTFail("Expected room join launch mode")
+        }
+    }
 }

@@ -71,6 +71,13 @@ final class ConversationMessage {
     var thinkingText: String?
     var workflowStepIndex: Int?
     var isStreaming: Bool
+    var roomMessageId: String?
+    var roomRootMessageId: String?
+    var roomParentMessageId: String?
+    var roomOriginNodeId: String?
+    var roomOriginParticipantId: String?
+    var roomHostSequence: Int = 0
+    private var roomDeliveryModeRaw: String?
     var conversation: Conversation?
 
     @Relationship(deleteRule: .cascade, inverse: \MessageAttachment.message)
@@ -88,6 +95,12 @@ final class ConversationMessage {
         self.timestamp = Date()
         self.type = type
         self.isStreaming = false
+        self.roomHostSequence = 0
         self.conversation = conversation
+    }
+
+    var roomDeliveryMode: SharedRoomMessageDeliveryMode? {
+        get { roomDeliveryModeRaw.flatMap(SharedRoomMessageDeliveryMode.init(rawValue:)) }
+        set { roomDeliveryModeRaw = newValue?.rawValue }
     }
 }

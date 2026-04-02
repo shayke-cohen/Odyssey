@@ -28,6 +28,38 @@ export function resolveConfirmation(
   return true;
 }
 
+export async function requestConfirmation(
+  ctx: ToolContext,
+  callingSessionId: string,
+  args: {
+    action: string;
+    reason: string;
+    riskLevel: "low" | "medium" | "high";
+    details?: string;
+  },
+): Promise<{ approved: boolean; modifiedAction?: string }> {
+  const confirmationId = randomUUID();
+
+  return new Promise<{ approved: boolean; modifiedAction?: string }>((resolve) => {
+    const timer = setTimeout(() => {
+      pendingConfirmations.delete(confirmationId);
+      resolve({ approved: false });
+    }, DEFAULT_TIMEOUT_MS);
+
+    pendingConfirmations.set(confirmationId, { resolve, timer });
+
+    ctx.broadcast({
+      type: "agent.confirmation",
+      sessionId: callingSessionId,
+      confirmationId,
+      action: args.action,
+      reason: args.reason,
+      riskLevel: args.riskLevel,
+      details: args.details,
+    });
+  });
+}
+
 /**
  * Create all rich display tools for a session.
  */
@@ -71,28 +103,12 @@ export function createRichDisplayTools(ctx: ToolContext, callingSessionId: strin
       },
       async (args) => {
         logger.info("tools", `confirm_action action="${args.action}" risk=${args.risk_level} for session ${callingSessionId}`);
-        const confirmationId = randomUUID();
-
-        const result = await new Promise<{ approved: boolean; modifiedAction?: string }>(
-          (resolve) => {
-            const timer = setTimeout(() => {
-              pendingConfirmations.delete(confirmationId);
-              resolve({ approved: false });
-            }, DEFAULT_TIMEOUT_MS);
-
-            pendingConfirmations.set(confirmationId, { resolve, timer });
-
-            ctx.broadcast({
-              type: "agent.confirmation",
-              sessionId: callingSessionId,
-              confirmationId,
-              action: args.action,
-              reason: args.reason,
-              riskLevel: args.risk_level,
-              details: args.details,
-            });
-          },
-        );
+        const result = await requestConfirmation(ctx, callingSessionId, {
+          action: args.action,
+          reason: args.reason,
+          riskLevel: args.risk_level,
+          details: args.details,
+        });
 
         return createTextResult({
           approved: result.approved,

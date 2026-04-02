@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/master.swiftdeps"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.derived/runner.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/runner.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/runner.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentPackageTests.build/runner.dia"
+  }
+}

@@ -353,6 +353,10 @@ enum GroupPromptBuilder {
             return "[You]"
         case .agentSession:
             return p.displayName
+        case .remoteUser:
+            return p.displayName
+        case .remoteAgent:
+            return p.displayName
         }
     }
 

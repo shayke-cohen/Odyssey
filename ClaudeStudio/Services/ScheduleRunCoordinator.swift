@@ -128,6 +128,7 @@ final class ScheduleRunCoordinator {
             return try? modelContext.fetch(descriptor).first
         }
         let userWavePlan = GroupRoutingPlanner.planUserWave(
+            executionMode: conversation.executionMode,
             routingMode: conversation.routingMode,
             sessions: targetSessions,
             sourceGroup: sourceGroup,
@@ -166,7 +167,7 @@ final class ScheduleRunCoordinator {
                     return .init(name: agent.name, description: agent.agentDescription, role: role)
                 }
 
-            let promptText = GroupPromptBuilder.buildMessageText(
+            let basePrompt = GroupPromptBuilder.buildMessageText(
                 conversation: conversation,
                 targetSession: session,
                 latestUserMessageText: prompt,
@@ -179,6 +180,16 @@ final class ScheduleRunCoordinator {
                 role: agentRole,
                 teamMembers: teamMembers
             )
+            let promptText = conversation.sessions.count > 1
+                ? ExecutionModePromptBuilder.wrapCoordinatorPrompt(
+                    basePrompt,
+                    mode: conversation.executionMode,
+                    coordinatorName: userWavePlan.coordinatorAgentName
+                )
+                : ExecutionModePromptBuilder.wrapDirectPrompt(
+                    basePrompt,
+                    mode: conversation.executionMode
+                )
 
             do {
                 if let createConfig {
@@ -293,6 +304,12 @@ final class ScheduleRunCoordinator {
         guard let conversation else { return nil }
         if conversation.projectId == nil {
             conversation.projectId = schedule.projectId
+        }
+        if schedule.usesAutonomousMode {
+            conversation.executionMode = .autonomous
+            for session in conversation.sessions {
+                session.mode = .autonomous
+            }
         }
         conversation.threadKind = .scheduled
         run.conversationId = conversation.id
@@ -487,10 +504,18 @@ final class ScheduleRunCoordinator {
     }
 
     private func makeFreeformAgentConfig(for session: Session) -> AgentConfig {
-        AgentDefaults.makeFreeformAgentConfig(
+        var systemPrompt = AgentDefaults.defaultFreeformSystemPrompt
+        if let mission = session.mission?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !mission.isEmpty {
+            systemPrompt += "\n\n# Current Mission\n\(mission)\n"
+        }
+        return AgentDefaults.makeFreeformAgentConfig(
             provider: session.provider,
             model: session.model,
-            workingDirectory: session.workingDirectory
+            workingDirectory: session.workingDirectory,
+            systemPrompt: systemPrompt,
+            interactive: session.mode == .interactive ? true : nil,
+            instancePolicy: session.mode == .worker ? "singleton" : (session.mode == .autonomous ? "spawn" : nil)
         )
     }
 }

@@ -57,6 +57,9 @@ targets:
         ENABLE_HARDENED_RUNTIME: true
         CODE_SIGN_STYLE: Automatic
         SWIFT_EMIT_LOC_STRINGS: true
+    preBuildScripts:
+      - name: Bundle Local Agent Host
+        path: scripts/build-local-agent-host.sh
     entitlements:
       path: ClaudeStudio/Resources/ClaudeStudio.entitlements
       properties:
@@ -64,6 +67,13 @@ targets:
         com.apple.security.network.client: true
         com.apple.security.network.server: true
         com.apple.security.files.user-selected.read-write: true
+        com.apple.developer.icloud-services:
+          - CloudKit
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.claudestudio.app
+        com.apple.developer.ubiquity-container-identifiers:
+          - iCloud.com.claudestudio.app
+        com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)com.claudestudio.app"
   ClaudeStudioTests:
     type: bundle.unit-test
     platform: macOS

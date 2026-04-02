@@ -1,0 +1,10 @@
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Adapters/ModelAdapters.swift
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/LocalAgentCore.swift
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPBridge.swift
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPClient.swift
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/MLX/ManagedMLXModels.swift
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Protocol/LocalAgentTypes.swift
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/BuiltInTools.swift
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/LocalToolAccessPolicy.swift
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/ToolRuntime.swift
+/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Transcript/TranscriptCodec.swift

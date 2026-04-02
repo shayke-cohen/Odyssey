@@ -194,7 +194,13 @@ export function makeAgentConfig(overrides: Partial<{
     provider: overrides.provider ?? "claude",
     allowedTools: overrides.allowedTools ?? [],
     mcpServers: overrides.mcpServers ?? [],
-    model: overrides.model ?? "claude-sonnet-4-6",
+    model: overrides.model ?? (overrides.provider === "codex"
+      ? "gpt-5-codex"
+      : overrides.provider === "foundation"
+        ? "foundation.system"
+        : overrides.provider === "mlx"
+          ? "mlx-default"
+          : "claude-sonnet-4-6"),
     maxTurns: overrides.maxTurns ?? 3,
     workingDirectory: overrides.workingDirectory ?? "/tmp",
     skills: overrides.skills ?? [],

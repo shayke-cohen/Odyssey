@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
-import { mkdirSync, writeFileSync } from "fs";
-import { join } from "path";
+import { existsSync, mkdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
 import { homedir } from "os";
 import type { AgentConfig, FileAttachment } from "../types.js";
 import { PLAN_MODE_APPEND } from "../prompts/plan-mode.js";
@@ -78,6 +78,9 @@ export class CodexRuntime implements ProviderRuntime {
   private static readonly MCP_STATUS_POLL_INTERVAL_MS = 250;
   private static readonly APPROVAL_POLICY = "never";
   private static readonly SANDBOX_MODE = "danger-full-access";
+  private static readonly DEFAULT_PERMISSIONS_PROFILE = "claudestudio_full_access";
+  private static readonly THREAD_SANDBOX = "danger-full-access";
+  private static readonly TURN_SANDBOX_POLICY = { type: "dangerFullAccess" } as const;
 
   private static readonly pricingByModel: Record<string, {
     inputUsdPerMillion: number;
@@ -104,13 +107,13 @@ export class CodexRuntime implements ProviderRuntime {
     this.getClientContext(sessionId, config);
   }
 
-  async resumeSession(sessionId: string, backendSessionId: string): Promise<void> {
-    const config = this.deps.registry.getConfig(sessionId);
-    if (!config) {
+  async resumeSession(sessionId: string, backendSessionId: string, config?: AgentConfig): Promise<void> {
+    const resolvedConfig = config ?? this.deps.registry.getConfig(sessionId);
+    if (!resolvedConfig) {
       throw new Error(`No Codex config found for session ${sessionId}`);
     }
 
-    this.getClientContext(sessionId, config);
+    this.getClientContext(sessionId, resolvedConfig);
     this.threadToSessionId.set(backendSessionId, sessionId);
   }
 
@@ -172,18 +175,14 @@ export class CodexRuntime implements ProviderRuntime {
     this.pendingQuestions.delete(questionId);
 
     if (pending.kind === "tool") {
-      const answers: Record<string, { answers: string[] }> = {};
-      for (const id of pending.questionIds ?? []) {
-        answers[id] = {
-          answers:
-            id === questionId
-              ? selectedOptions && selectedOptions.length > 0
-                ? selectedOptions
-                : [answer]
-              : [],
-        };
-      }
-      pending.resolve({ answers });
+      pending.resolve({
+        answers: this.buildToolAnswers(
+          (pending.questionIds ?? []).map((id) => ({ id })),
+          selectedOptions && selectedOptions.length > 0 ? selectedOptions[0] ?? answer : answer,
+          questionId,
+          selectedOptions,
+        ),
+      });
       return true;
     }
 
@@ -333,6 +332,7 @@ export class CodexRuntime implements ProviderRuntime {
         cwd: args.config.workingDirectory || undefined,
         model: resolvedModel,
         approvalPolicy: CodexRuntime.APPROVAL_POLICY,
+        sandboxPolicy: CodexRuntime.TURN_SANDBOX_POLICY,
       }).then((turnResponse) => {
         const turnId = turnResponse?.turn?.id as string | undefined;
         if (!turnId) {
@@ -372,8 +372,11 @@ export class CodexRuntime implements ProviderRuntime {
       cwd: config.workingDirectory,
       attachmentCount,
       approvalPolicy: CodexRuntime.APPROVAL_POLICY,
+      threadSandbox: CodexRuntime.THREAD_SANDBOX,
+      turnSandboxPolicy: CodexRuntime.TURN_SANDBOX_POLICY,
       developerInstructions,
       mcpServerCount: config.mcpServers.length,
+      appServerEnvOverrides: this.buildClientEnvOverrides(config),
       appServerConfigOverrides: this.buildClientConfigOverrides(config, mcpAliases),
     };
   }
@@ -394,6 +397,7 @@ export class CodexRuntime implements ProviderRuntime {
         cwd: config.workingDirectory || undefined,
         model: this.resolveModel(config.model, planMode),
         approvalPolicy: CodexRuntime.APPROVAL_POLICY,
+        sandbox: CodexRuntime.THREAD_SANDBOX,
         developerInstructions,
         dynamicTools,
       });
@@ -407,6 +411,7 @@ export class CodexRuntime implements ProviderRuntime {
       modelProvider: "openai",
       cwd: config.workingDirectory || undefined,
       approvalPolicy: CodexRuntime.APPROVAL_POLICY,
+      sandbox: CodexRuntime.THREAD_SANDBOX,
       developerInstructions,
       serviceName: "claudestudio-sidecar",
       experimentalRawEvents: false,
@@ -919,6 +924,16 @@ export class CodexRuntime implements ProviderRuntime {
       return { answers: {} };
     }
 
+    if (this.isCodexToolApprovalPrompt(firstQuestion)) {
+      logger.info("codex", `Auto-approving Codex MCP tool request for session ${sessionId}`, {
+        question: firstQuestion.question,
+        questionId: firstQuestion.id,
+      });
+      return {
+        answers: this.buildToolAnswers(params.questions ?? [], "Accept"),
+      };
+    }
+
     return new Promise((resolve, reject) => {
       this.pendingQuestions.set(String(request.id), {
         sessionId,
@@ -1188,6 +1203,45 @@ export class CodexRuntime implements ProviderRuntime {
     };
   }
 
+  private isCodexToolApprovalPrompt(question: any): boolean {
+    const promptText = String(question?.question ?? "").trim().toLowerCase();
+    const looksLikeMcpPermissionPrompt =
+      promptText.includes("mcp server to run tool") ||
+      (promptText.startsWith("allow the ") && promptText.includes(" to run tool "));
+
+    return looksLikeMcpPermissionPrompt;
+  }
+
+  private buildToolAnswers(
+    questions: Array<{ id?: string }>,
+    answer: string,
+    targetQuestionId?: string,
+    selectedOptions?: string[],
+  ): Record<string, { answers: string[] }> {
+    const normalizedAnswer = answer.trim();
+    const answers: Record<string, { answers: string[] }> = {};
+
+    for (const question of questions) {
+      const id = question.id;
+      if (!id) {
+        continue;
+      }
+
+      answers[id] = {
+        answers:
+          !targetQuestionId || id === targetQuestionId
+            ? selectedOptions && selectedOptions.length > 0
+              ? selectedOptions
+              : normalizedAnswer.length > 0
+                ? [normalizedAnswer]
+                : []
+            : [],
+      };
+    }
+
+    return answers;
+  }
+
   private mapMcpField(
     name: string,
     schema: Record<string, any>,
@@ -1251,6 +1305,7 @@ export class CodexRuntime implements ProviderRuntime {
 
     const mcpAliases = new Map<string, string>();
     const client = new CodexAppServerClient({
+      envOverrides: this.buildClientEnvOverrides(resolvedConfig),
       configOverrides: this.buildClientConfigOverrides(resolvedConfig, mcpAliases),
     });
     client.setHandlers({
@@ -1391,6 +1446,10 @@ export class CodexRuntime implements ProviderRuntime {
 
   private buildClientConfigOverrides(config: AgentConfig, mcpAliases: Map<string, string>): string[] {
     const overrides = [
+      `default_permissions=${JSON.stringify(CodexRuntime.DEFAULT_PERMISSIONS_PROFILE)}`,
+      `permissions.${CodexRuntime.DEFAULT_PERMISSIONS_PROFILE}.filesystem={":project_roots"={"."="write"}}`,
+      `permissions.${CodexRuntime.DEFAULT_PERMISSIONS_PROFILE}.network.enabled=true`,
+      `permissions.${CodexRuntime.DEFAULT_PERMISSIONS_PROFILE}.network.mode="full"`,
       "approval_policy.granular.sandbox_approval=false",
       "approval_policy.granular.rules=false",
       "approval_policy.granular.mcp_elicitations=false",
@@ -1424,6 +1483,85 @@ export class CodexRuntime implements ProviderRuntime {
     return overrides;
   }
 
+  private buildClientEnvOverrides(config: AgentConfig): Record<string, string> {
+    return {
+      CODEX_HOME: this.prepareIsolatedCodexHome(config),
+    };
+  }
+
+  private prepareIsolatedCodexHome(config: AgentConfig): string {
+    const isolatedHome = join(this.sidecarDataDir(), "codex-home");
+    mkdirSync(isolatedHome, { recursive: true });
+
+    // Keep Codex sessions isolated from unrelated user-level MCP configuration.
+    writeFileSync(join(isolatedHome, "config.toml"), this.buildIsolatedCodexConfig(config));
+
+    const sourceCodexHome = process.env.CODEX_HOME?.trim() || join(homedir(), ".codex");
+    this.syncCodexAuthFile(join(sourceCodexHome, "auth.json"), join(isolatedHome, "auth.json"));
+
+    return isolatedHome;
+  }
+
+  private buildIsolatedCodexConfig(config: AgentConfig): string {
+    const lines = [
+      "# Managed by ClaudeStudio sidecar. User-level Codex config is intentionally isolated.",
+      "",
+    ];
+
+    for (const projectPath of this.projectPathsToUntrust(config.workingDirectory)) {
+      lines.push(`[projects.${JSON.stringify(projectPath)}]`);
+      lines.push('trust_level = "untrusted"');
+      lines.push("");
+    }
+
+    return `${lines.join("\n").trimEnd()}\n`;
+  }
+
+  private projectPathsToUntrust(workingDirectory: string | undefined): string[] {
+    const paths = new Set<string>();
+    let current = workingDirectory?.trim();
+    while (current && current !== dirname(current)) {
+      paths.add(current);
+      current = dirname(current);
+    }
+    if (current) {
+      paths.add(current);
+    }
+    return [...paths];
+  }
+
+  private sidecarDataDir(): string {
+    return process.env.CLAUDESTUDIO_DATA_DIR?.trim() || join(homedir(), ".claudestudio", "instances", "default");
+  }
+
+  private syncCodexAuthFile(sourceAuthPath: string, targetAuthPath: string) {
+    if (!existsSync(sourceAuthPath)) {
+      logger.warn("codex", `Codex auth file not found at ${sourceAuthPath}; isolated CODEX_HOME will rely on other login methods.`);
+      return;
+    }
+
+    try {
+      if (existsSync(targetAuthPath)) {
+        try {
+          if (readlinkSync(targetAuthPath) === sourceAuthPath) {
+            return;
+          }
+        } catch {
+          // Replace regular files or stale symlinks below.
+        }
+        rmSync(targetAuthPath, { force: true });
+      }
+
+      symlinkSync(sourceAuthPath, targetAuthPath);
+    } catch (error: any) {
+      logger.warn("codex", `Failed to symlink Codex auth into isolated CODEX_HOME: ${error?.message ?? error}`);
+      try {
+        writeFileSync(targetAuthPath, readFileSync(sourceAuthPath));
+      } catch (copyError: any) {
+        logger.warn("codex", `Failed to copy Codex auth into isolated CODEX_HOME: ${copyError?.message ?? copyError}`);
+      }
+    }
+  }
   private recordToolCall(sessionId: string) {
     const state = this.deps.registry.get(sessionId);
     this.deps.registry.update(sessionId, {

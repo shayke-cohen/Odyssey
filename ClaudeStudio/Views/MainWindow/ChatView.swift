@@ -479,6 +479,9 @@ struct ChatView: View {
             return "\(mode) — broadcasting to everyone: \(recipients)"
         case .coordinatorLead:
             let coordinator = plan.coordinatorAgentName ?? recipients
+            if convo.executionMode != .interactive {
+                return "\(mode) — \(convo.executionMode.rawValue.capitalized) mode routes this turn to @\(coordinator) first"
+            }
             return "\(mode) — no mention, so @\(coordinator) leads first"
         case .implicitFallback:
             return "\(mode) — no coordinator, so sending to everyone: \(recipients)"
@@ -500,6 +503,7 @@ struct ChatView: View {
             agents: allAgents
         )
         return GroupRoutingPlanner.planUserWave(
+            executionMode: convo.executionMode,
             routingMode: convo.routingMode,
             sessions: conversationSessions,
             sourceGroup: sourceGroup(for: convo),
@@ -2974,7 +2978,7 @@ struct ChatView: View {
         if let s = convo.primarySession, s.agent != nil { return s }
         let session = Session(
             agent: nil,
-            mission: nil,
+            mission: currentMissionText,
             mode: .interactive,
             workingDirectory: windowState.projectDirectory.isEmpty ? NSHomeDirectory() : windowState.projectDirectory
         )
@@ -3219,6 +3223,10 @@ struct ChatView: View {
             return
         }
 
+        for session in targetSessions {
+            appState.leaveWorkerStandby(sessionId: session.id.uuidString)
+        }
+
         for session in targetSessions where session.agent == nil {
             syncFreeformParticipantDisplayName(for: session, in: convo)
         }
@@ -3298,6 +3306,7 @@ struct ChatView: View {
         queuedPeerDeliveriesBySession.removeAll()
 
         let userWavePlan = GroupRoutingPlanner.planUserWave(
+            executionMode: convo.executionMode,
             routingMode: convo.routingMode,
             sessions: targetSessions,
             sourceGroup: sourceGroup(for: convo),
@@ -3312,6 +3321,7 @@ struct ChatView: View {
                 rootMessage: message,
                 targetSessions: targetSessions,
                 latestUserText: text,
+                isFirstInteractiveUserTurn: isFirstChat,
                 userWavePlan: userWavePlan,
                 wireAttachments: wireAttachments,
                 manager: manager,
@@ -3340,6 +3350,7 @@ struct ChatView: View {
         rootMessage: ConversationMessage,
         targetSessions: [Session],
         latestUserText: String,
+        isFirstInteractiveUserTurn: Bool,
         userWavePlan: GroupRoutingPlanner.UserWavePlan,
         wireAttachments: [WireAttachment],
         manager: SidecarManager,
@@ -3367,6 +3378,7 @@ struct ChatView: View {
             convo: convo,
             targetSessions: targetSessions,
             latestUserText: latestUserText,
+            isFirstInteractiveUserTurn: isFirstInteractiveUserTurn,
             userWavePlan: userWavePlan,
             wireAttachments: wireAttachments,
             manager: manager,
@@ -3391,12 +3403,30 @@ struct ChatView: View {
     }
 
     private func makeFreeformAgentConfig(for session: Session) -> AgentConfig {
-        AgentDefaults.makeFreeformAgentConfig(
+        var systemPrompt = AgentDefaults.defaultFreeformSystemPrompt
+        if let mission = session.mission?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !mission.isEmpty {
+            systemPrompt += "\n\n# Current Mission\n\(mission)\n"
+        }
+        return AgentDefaults.makeFreeformAgentConfig(
             provider: session.provider,
             model: session.model,
             workingDirectory: session.workingDirectory.isEmpty
                 ? (windowState.projectDirectory.isEmpty ? NSHomeDirectory() : windowState.projectDirectory)
-                : session.workingDirectory
+                : session.workingDirectory,
+            systemPrompt: systemPrompt,
+            interactive: session.mode == .interactive ? true : nil,
+            instancePolicy: {
+                switch session.mode {
+                case .interactive:
+                    return nil
+                case .autonomous:
+                    return "spawn"
+                case .worker:
+                    return "singleton"
+                }
+            }(),
+            instancePolicyPoolMax: nil,
         )
     }
 
@@ -3553,6 +3583,7 @@ struct ChatView: View {
         convo: Conversation,
         targetSessions: [Session],
         latestUserText: String,
+        isFirstInteractiveUserTurn: Bool,
         userWavePlan: GroupRoutingPlanner.UserWavePlan,
         wireAttachments: [WireAttachment],
         manager: SidecarManager,
@@ -3567,7 +3598,7 @@ struct ChatView: View {
         var pending: [PendingGroupCompletion] = []
 
         for session in targetSessions where wave.recipientSessionIds.contains(session.id) {
-            let promptText = GroupPromptBuilder.buildMessageText(
+            let basePrompt = GroupPromptBuilder.buildMessageText(
                 conversation: convo,
                 targetSession: session,
                 latestUserMessageText: latestUserText,
@@ -3582,6 +3613,20 @@ struct ChatView: View {
                 role: groupRole(for: session, sourceGroup: sourceGroup),
                 teamMembers: teamMembers(excluding: session, in: convo, sourceGroup: sourceGroup)
             )
+            let promptText = convo.sessions.count > 1
+                ? ExecutionModePromptBuilder.wrapCoordinatorPrompt(
+                    basePrompt,
+                    mode: convo.executionMode,
+                    coordinatorName: userWavePlan.coordinatorAgentName,
+                    mission: session.mission,
+                    isFirstInteractiveTurn: isFirstInteractiveUserTurn
+                )
+                : ExecutionModePromptBuilder.wrapDirectPrompt(
+                    basePrompt,
+                    mode: convo.executionMode,
+                    mission: session.mission,
+                    isFirstInteractiveTurn: isFirstInteractiveUserTurn
+                )
 
             if let launched = await sendPrompt(
                 to: session,
@@ -3724,6 +3769,9 @@ struct ChatView: View {
                     sidecarKey: completion.sidecarKey,
                     seenThroughMessage: seenThroughMessage
                 ) {
+                    if convo.executionMode == .worker {
+                        appState.enterWorkerStandby(sessionId: completion.sidecarKey)
+                    }
                     if completion.planMode {
                         lastPlanResponseMessageId = reply.id
                     }
@@ -3875,6 +3923,11 @@ struct ChatView: View {
             return
         }
         _ = finalizeAssistantStreamIntoMessage(convo: convo, session: session, sidecarKey: key, errorMessage: errorMessage)
+        if errorMessage == nil, convo.executionMode == .worker {
+            appState.enterWorkerStandby(sessionId: key)
+        } else {
+            appState.leaveWorkerStandby(sessionId: key)
+        }
         isProcessing = false
         finishStreamingState(for: key)
     }

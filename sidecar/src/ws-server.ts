@@ -4,6 +4,7 @@ import type { SessionManager } from "./session-manager.js";
 import type { ToolContext } from "./tools/tool-context.js";
 import { resolveQuestion } from "./tools/ask-user-tool.js";
 import { logger } from "./logger.js";
+import { probeConnector } from "./connectors/provider-runtime.js";
 
 export class WsServer {
   private clients = new Set<ServerWebSocket<unknown>>();
@@ -35,8 +36,8 @@ export class WsServer {
         message: (ws, message) => {
           try {
             const data = typeof message === "string" ? message : new TextDecoder().decode(message);
-            logger.debug("ws", `Received: ${data.substring(0, 200)}`);
             const command = JSON.parse(data) as SidecarCommand;
+            logger.debug("ws", this.describeCommand(command));
             this.handleCommand(command).catch((err) => {
               logger.error("ws", `Command handler error: ${err}`);
             });
@@ -183,6 +184,30 @@ export class WsServer {
         break;
       }
 
+      case "connector.list":
+        this.broadcast({ type: "connector.list.result", connections: this.ctx.connectors.listConfigs() });
+        break;
+      case "connector.beginAuth": {
+        const entry = this.ctx.connectors.markAuthorizing(command.connection);
+        this.broadcast({ type: "connector.statusChanged", connection: entry.connection });
+        break;
+      }
+      case "connector.completeAuth": {
+        const entry = this.ctx.connectors.upsert(command.connection, command.credentials);
+        this.broadcast({ type: "connector.statusChanged", connection: entry.connection });
+        break;
+      }
+      case "connector.revoke": {
+        const entry = this.ctx.connectors.revoke(command.connectionId);
+        if (entry) {
+          this.broadcast({ type: "connector.statusChanged", connection: entry.connection });
+        }
+        break;
+      }
+      case "connector.test":
+        await this.handleConnectorTest(command.connectionId);
+        break;
+
       case "session.confirmationAnswer": {
         const { resolveConfirmation } = await import("./tools/rich-display-tools.js");
         const confirmed =
@@ -211,6 +236,79 @@ export class WsServer {
         logger.info("ws", `config.setLogLevel: level set to ${command.level}`);
         break;
       }
+    }
+  }
+
+  private describeCommand(command: SidecarCommand): string {
+    switch (command.type) {
+      case "connector.completeAuth":
+        return `Received connector.completeAuth for ${command.connection.id} (${command.connection.provider}) [credentials redacted]`;
+      case "connector.beginAuth":
+        return `Received connector.beginAuth for ${command.connection.id} (${command.connection.provider})`;
+      case "connector.revoke":
+      case "connector.test":
+        return `Received ${command.type} for ${command.connectionId}`;
+      default:
+        return `Received ${command.type}`;
+    }
+  }
+
+  private async handleConnectorTest(connectionId: string): Promise<void> {
+    const entry = this.ctx.connectors.get(connectionId);
+    if (!entry) {
+      logger.warn("ws", `connector.test: unknown connector ${connectionId}`);
+      return;
+    }
+
+    if (!entry.credentials?.accessToken && !entry.credentials?.brokerReference) {
+      const connection = {
+        ...entry.connection,
+        status: "failed" as const,
+        statusMessage: "No runtime credentials are currently available.",
+        lastCheckedAt: new Date().toISOString(),
+      };
+      this.ctx.connectors.upsert(connection, entry.credentials);
+      this.broadcast({ type: "connector.statusChanged", connection });
+      this.broadcast({
+        type: "connector.audit",
+        connectionId: connection.id,
+        provider: connection.provider,
+        action: "connector.test",
+        outcome: "failed",
+        summary: "Connector is missing runtime credentials.",
+      });
+      return;
+    }
+
+    try {
+      const probed = await probeConnector(entry);
+      this.ctx.connectors.upsert(probed.connection, entry.credentials);
+      this.broadcast({ type: "connector.statusChanged", connection: probed.connection });
+      this.broadcast({
+        type: "connector.audit",
+        connectionId: probed.connection.id,
+        provider: probed.connection.provider,
+        action: "connector.test",
+        outcome: probed.connection.status === "connected" ? "passed" : "warning",
+        summary: probed.connection.statusMessage ?? "Connector test completed.",
+      });
+    } catch (error) {
+      const connection = {
+        ...entry.connection,
+        status: "failed" as const,
+        statusMessage: error instanceof Error ? error.message : "Connector test failed.",
+        lastCheckedAt: new Date().toISOString(),
+      };
+      this.ctx.connectors.upsert(connection, entry.credentials);
+      this.broadcast({ type: "connector.statusChanged", connection });
+      this.broadcast({
+        type: "connector.audit",
+        connectionId: connection.id,
+        provider: connection.provider,
+        action: "connector.test",
+        outcome: "failed",
+        summary: connection.statusMessage,
+      });
     }
   }
 

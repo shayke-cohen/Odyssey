@@ -1,0 +1,75 @@
+{
+  "": {
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/master.swiftdeps"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Adapters/ModelAdapters.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ModelAdapters.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ModelAdapters.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ModelAdapters~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ModelAdapters.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ModelAdapters.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/LocalAgentCore.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentCore.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentCore.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentCore~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentCore.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentCore.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPBridge.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPBridge.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPBridge.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPBridge~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPBridge.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPBridge.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Agent/MCPClient.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPClient.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPClient.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPClient~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPClient.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/MCPClient.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/MLX/ManagedMLXModels.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ManagedMLXModels.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ManagedMLXModels.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ManagedMLXModels~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ManagedMLXModels.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ManagedMLXModels.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Protocol/LocalAgentTypes.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentTypes.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentTypes.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentTypes~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentTypes.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalAgentTypes.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/BuiltInTools.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/BuiltInTools.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/BuiltInTools.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/BuiltInTools~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/BuiltInTools.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/BuiltInTools.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/LocalToolAccessPolicy.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalToolAccessPolicy.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalToolAccessPolicy.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalToolAccessPolicy~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalToolAccessPolicy.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/LocalToolAccessPolicy.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Tools/ToolRuntime.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ToolRuntime.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ToolRuntime.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ToolRuntime~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ToolRuntime.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/ToolRuntime.dia"
+  },
+  "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/Sources/ClaudeStudioLocalAgentCore/Transcript/TranscriptCodec.swift": {
+    "dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/TranscriptCodec.d",
+    "object": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/TranscriptCodec.swift.o",
+    "swiftmodule": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/TranscriptCodec~partial.swiftmodule",
+    "swift-dependencies": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/TranscriptCodec.swiftdeps",
+    "diagnostics": "/Users/shayco/ClaudPeer/Packages/ClaudeStudioLocalAgent/.build/arm64-apple-macosx/debug/ClaudeStudioLocalAgentCore.build/TranscriptCodec.dia"
+  }
+}

@@ -15,6 +15,7 @@ import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
 import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
+import { ConnectorStore } from "../../src/stores/connector-store.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import type { AgentConfig, SidecarEvent } from "../../src/types.js";
 import { createBlackboardTools } from "../../src/tools/blackboard-tools.js";
@@ -48,6 +49,7 @@ function createTestContext(): {
     channels: new ChatChannelStore(),
     workspaces: new WorkspaceStore(),
     peerRegistry: new PeerRegistry(),
+    connectors: new ConnectorStore(),
     relayClient: {
       isConnected: () => false,
       connect: async () => {},

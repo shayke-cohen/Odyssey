@@ -11,6 +11,8 @@ final class SidecarManager: ObservableObject, Sendable {
         var dataDirectory: String?
         var bunPathOverride: String?
         var sidecarPathOverride: String?
+        var localAgentHostPathOverride: String?
+        var mlxRunnerPathOverride: String?
     }
 
     private var process: Process?
@@ -115,6 +117,9 @@ final class SidecarManager: ObservableObject, Sendable {
         if let dataDir = config.dataDirectory {
             process.environment?["CLAUDESTUDIO_DATA_DIR"] = dataDir
         }
+        for (key, value) in localProviderEnvironment() {
+            process.environment?[key] = value
+        }
         let logLevel = InstanceConfig.userDefaults.string(forKey: AppSettings.logLevelKey) ?? AppSettings.defaultLogLevel
         process.environment?["CLAUDESTUDIO_LOG_LEVEL"] = logLevel
 
@@ -164,6 +169,16 @@ final class SidecarManager: ObservableObject, Sendable {
             .joined(separator: ":")
 
         return environment
+    }
+
+    private func localProviderEnvironment() -> [String: String] {
+        LocalProviderSupport.environmentValues(
+            bundleResourcePath: Bundle.main.resourcePath,
+            currentDirectoryPath: FileManager.default.currentDirectoryPath,
+            projectRootOverride: config.sidecarPathOverride,
+            hostOverride: config.localAgentHostPathOverride,
+            mlxRunnerOverride: config.mlxRunnerPathOverride
+        )
     }
 
     private func connectWebSocket() async throws {

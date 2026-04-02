@@ -16,7 +16,7 @@ struct NewSessionSheet: View {
     @State private var modelOverride = AgentDefaults.inheritMarker
     @State private var sessionMode: SessionMode = .interactive
     @State private var mission = ""
-    @State private var showOptions = false
+    @State private var showAdvancedOptions = false
 
     @State private var showCreateFromPrompt = false
     @State private var createFromPromptText = ""
@@ -63,6 +63,21 @@ struct NewSessionSheet: View {
         )
     }
 
+    private var localProviderReport: LocalProviderStatusReport {
+        LocalProviderSupport.statusReport()
+    }
+
+    private var localProviderSummary: String? {
+        switch effectiveProviderForOverrides {
+        case ProviderSelection.foundation.rawValue:
+            return localProviderReport.foundationSummary
+        case ProviderSelection.mlx.rawValue:
+            return localProviderReport.mlxSummary
+        default:
+            return nil
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -70,6 +85,8 @@ struct NewSessionSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     createFromPromptSection
+                    projectInfoRow
+                    optionsSection
                     if !recentAgents.isEmpty {
                         recentAgentsRow
                     }
@@ -80,8 +97,6 @@ struct NewSessionSheet: View {
                             .foregroundStyle(.secondary)
                             .xrayId("newSession.selectedAgentsSummary")
                     }
-                    projectInfoRow
-                    optionsSection
                 }
                 .padding(24)
             }
@@ -386,100 +401,223 @@ struct NewSessionSheet: View {
 
     @ViewBuilder
     private var optionsSection: some View {
-        DisclosureGroup("Session Options", isExpanded: $showOptions) {
-            VStack(alignment: .leading, spacing: 14) {
-                if allowsSessionOverrides {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("Provider")
-                            .frame(width: 80, alignment: .trailing)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                        Picker("", selection: $providerOverride) {
-                            Text("Inherit from Agent").tag(AgentDefaults.inheritMarker)
-                            Text("Claude").tag(ProviderSelection.claude.rawValue)
-                            Text("Codex").tag(ProviderSelection.codex.rawValue)
-                        }
-                        .labelsHidden()
-                        .frame(width: 220)
-                        .xrayId("newSession.providerPicker")
-                    }
-
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("Model")
-                            .frame(width: 80, alignment: .trailing)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                        Picker("", selection: $modelOverride) {
-                            ForEach(
-                                AgentDefaults.availableThreadModelChoices(
-                                    for: effectiveProviderForOverrides,
-                                    inheritLabel: "Inherit from Agent"
-                                )
-                            ) { choice in
-                                Text(choice.label).tag(choice.id)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(width: 220)
-                        .xrayId("newSession.modelPicker")
-                    }
-                }
-
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Mode")
-                        .frame(width: 80, alignment: .trailing)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    Picker("", selection: $sessionMode) {
-                        Text("Interactive").tag(SessionMode.interactive)
-                            .help("You guide the agent step by step")
-                        Text("Autonomous").tag(SessionMode.autonomous)
-                            .help("Agent works independently toward a goal")
-                        Text("Worker").tag(SessionMode.worker)
-                            .help("Background task with no interaction")
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 280)
-                    .labelsHidden()
-                    .xrayId("newSession.modePicker")
-                }
-
-                modeDescription
-
-                HStack(alignment: .top) {
-                    Text("Mission")
-                        .frame(width: 80, alignment: .trailing)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 2)
-                    TextField("Describe the goal for this session...", text: $mission, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(2...4)
-                        .xrayId("newSession.missionField")
-                }
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Thread Setup")
+                    .font(.headline)
+                    .xrayId("newSession.optionsTitle")
+                Text("Pick how this thread should behave, then give it a clear goal.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .xrayId("newSession.optionsSubtitle")
             }
-            .padding(.top, 8)
+
+            modeCards
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("Goal")
+                        .font(.subheadline.weight(.semibold))
+                        .xrayId("newSession.goalTitle")
+                    Text(goalPromptLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .xrayId("newSession.goalCaption")
+                }
+
+                TextField(goalPlaceholder, text: $mission, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(3...5)
+                    .xrayId("newSession.missionField")
+
+                Text(goalHelpText)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .xrayId("newSession.goalHelp")
+            }
+
+            if allowsSessionOverrides {
+                advancedOverridesSection
+            }
+        }
+        .padding(18)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.secondary.opacity(0.14), lineWidth: 1)
         }
         .xrayId("newSession.optionsDisclosure")
     }
 
     @ViewBuilder
-    private var modeDescription: some View {
-        HStack {
-            Spacer().frame(width: 84)
-            Group {
-                switch sessionMode {
-                case .interactive:
-                    Text("You guide the agent step by step, reviewing each action.")
-                case .autonomous:
-                    Text("The agent works independently toward a goal you define.")
-                case .worker:
-                    Text("Background task that runs without interaction.")
+    private var modeCards: some View {
+        HStack(spacing: 12) {
+            modeCard(
+                mode: .interactive,
+                title: "Interactive",
+                subtitle: "Waits for you",
+                detail: "Opens the thread and lets you steer each turn.",
+                icon: "hand.tap.fill",
+                accent: .blue
+            )
+            modeCard(
+                mode: .autonomous,
+                title: "Autonomous",
+                subtitle: "Runs once",
+                detail: "Starts immediately, works hands-off, then stops when done.",
+                icon: "sparkles.rectangle.stack",
+                accent: .orange
+            )
+            modeCard(
+                mode: .worker,
+                title: "Worker",
+                subtitle: "Stays on call",
+                detail: "Starts now, finishes the first job, then waits in the same thread.",
+                icon: "shippingbox.fill",
+                accent: .green
+            )
+        }
+    }
+
+    private func modeCard(
+        mode: SessionMode,
+        title: String,
+        subtitle: String,
+        detail: String,
+        icon: String,
+        accent: Color
+    ) -> some View {
+        let isSelected = sessionMode == mode
+        return Button {
+            sessionMode = mode
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    Image(systemName: icon)
+                        .font(.headline)
+                        .foregroundStyle(isSelected ? accent : .secondary)
+                        .frame(width: 30, height: 30)
+                        .background(
+                            Circle()
+                                .fill(isSelected ? accent.opacity(0.14) : Color.secondary.opacity(0.08))
+                        )
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.headline)
+                        .foregroundStyle(isSelected ? accent : .secondary.opacity(0.5))
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(subtitle)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(isSelected ? accent : .secondary)
+                }
+
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 140, alignment: .topLeading)
+            .padding(14)
+            .background(isSelected ? accent.opacity(0.10) : Color(nsColor: .windowBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isSelected ? accent.opacity(0.9) : Color.secondary.opacity(0.15), lineWidth: isSelected ? 2 : 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .xrayId("newSession.modeCard.\(mode.rawValue)")
+        .accessibilityIdentifier("newSession.modeCard.\(mode.rawValue)")
+        .accessibilityLabel(title)
+    }
+
+    @ViewBuilder
+    private var advancedOverridesSection: some View {
+        DisclosureGroup("Advanced agent overrides", isExpanded: $showAdvancedOptions) {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Provider")
+                        .font(.subheadline.weight(.semibold))
+                    Picker("", selection: $providerOverride) {
+                        Text("Inherit from Agent").tag(AgentDefaults.inheritMarker)
+                        Text("Claude").tag(ProviderSelection.claude.rawValue)
+                        Text("Codex").tag(ProviderSelection.codex.rawValue)
+                        Text("Foundation").tag(ProviderSelection.foundation.rawValue)
+                        Text("MLX").tag(ProviderSelection.mlx.rawValue)
+                    }
+                    .labelsHidden()
+                    .xrayId("newSession.providerPicker")
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Model")
+                        .font(.subheadline.weight(.semibold))
+                    Picker("", selection: $modelOverride) {
+                        ForEach(
+                            AgentDefaults.availableThreadModelChoices(
+                                for: effectiveProviderForOverrides,
+                                inheritLabel: "Inherit from Agent"
+                            )
+                        ) { choice in
+                            Text(choice.label).tag(choice.id)
+                        }
+                    }
+                    .labelsHidden()
+                    .xrayId("newSession.modelPicker")
+                }
+
+                if let localProviderSummary {
+                    Text(localProviderSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .xrayId("newSession.localProviderSummary")
                 }
             }
-            .font(.caption)
-            .foregroundStyle(.tertiary)
-            .xrayId("newSession.modeDescription")
+            .padding(.top, 10)
+        }
+        .xrayId("newSession.advancedOptionsDisclosure")
+    }
+
+    private var goalPromptLabel: String {
+        switch sessionMode {
+        case .interactive:
+            return "Optional context for the thread"
+        case .autonomous:
+            return "Required if you want it to start right away"
+        case .worker:
+            return "Defines the first job and worker focus"
+        }
+    }
+
+    private var goalPlaceholder: String {
+        switch sessionMode {
+        case .interactive:
+            return "Describe what this thread is for, or leave it blank and start chatting..."
+        case .autonomous:
+            return "What should this thread do immediately?"
+        case .worker:
+            return "What should this worker handle now and be ready to handle again later?"
+        }
+    }
+
+    private var goalHelpText: String {
+        switch sessionMode {
+        case .interactive:
+            return "This becomes shared context in the thread header and initial instructions, but the thread still waits for your first message."
+        case .autonomous:
+            return "The goal is posted into the transcript and sent immediately so the run can begin without another click."
+        case .worker:
+            return "The goal launches the first run now. After it finishes, the same thread returns to standby for the next job."
         }
     }
 
@@ -488,18 +626,24 @@ struct NewSessionSheet: View {
     @ViewBuilder
     private var footer: some View {
         HStack {
-            Text("⌘N this sheet  ·  ⌘⇧N quick chat")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(startActionSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .xrayId("newSession.footerSummary")
+                Text("⌘N this sheet  ·  ⌘⇧N quick chat")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
             Spacer()
             Button("Quick Chat") {
                 createQuickChat()
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
             .xrayId("newSession.quickChatButton")
-                Button("Start Thread") {
-                    Task { await createSessionAsync() }
-                }
+            Button(primaryActionTitle) {
+                Task { await createSessionAsync() }
+            }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.return)
             .disabled(!canStartSession)
@@ -508,11 +652,49 @@ struct NewSessionSheet: View {
         .padding(16)
     }
 
+    private var startActionSummary: String {
+        let selectionSummary: String
+        if isFreeformChat || orderedSelectedAgents.isEmpty {
+            selectionSummary = "Freeform thread"
+        } else if orderedSelectedAgents.count == 1, let agent = orderedSelectedAgents.first {
+            selectionSummary = "\(agent.name)"
+        } else {
+            selectionSummary = "\(orderedSelectedAgents.count)-agent group"
+        }
+
+        switch sessionMode {
+        case .interactive:
+            return "\(selectionSummary) will wait for your first message."
+        case .autonomous:
+            return "\(selectionSummary) will launch the goal as soon as the thread opens."
+        case .worker:
+            return "\(selectionSummary) will run the first job, then stay ready in the same thread."
+        }
+    }
+
+    private var primaryActionTitle: String {
+        switch sessionMode {
+        case .interactive:
+            return "Start Thread"
+        case .autonomous:
+            return "Launch Autonomous Thread"
+        case .worker:
+            return "Start Worker Thread"
+        }
+    }
+
     // MARK: - Actions
 
     private func createSessionAsync() async {
         let missionText = mission.trimmingCharacters(in: .whitespacesAndNewlines)
         let projectDir = windowState.projectDirectory
+        let executionMode: ConversationExecutionMode = {
+            switch sessionMode {
+            case .interactive: return .interactive
+            case .autonomous: return .autonomous
+            case .worker: return .worker
+            }
+        }()
 
         // Freeform chat
         if isFreeformChat || selectedAgentIds.isEmpty {
@@ -521,12 +703,33 @@ struct NewSessionSheet: View {
                 projectId: windowState.selectedProjectId,
                 threadKind: .freeform
             )
+            conversation.executionMode = executionMode
             let userParticipant = Participant(type: .user, displayName: "You")
             userParticipant.conversation = conversation
             conversation.participants.append(userParticipant)
+
+            let session = Session(
+                agent: nil,
+                mission: missionText.isEmpty ? nil : missionText,
+                mode: sessionMode,
+                workingDirectory: projectDir
+            )
+            session.conversations = [conversation]
+            conversation.sessions.append(session)
+            let agentParticipant = Participant(
+                type: .agentSession(sessionId: session.id),
+                displayName: AgentDefaults.displayName(forProvider: session.provider)
+            )
+            agentParticipant.conversation = conversation
+            conversation.participants.append(agentParticipant)
+
+            modelContext.insert(session)
             modelContext.insert(conversation)
             try? modelContext.save()
             windowState.selectedConversationId = conversation.id
+            if executionMode != .interactive, !missionText.isEmpty {
+                windowState.autoSendText = missionText
+            }
             dismiss()
             return
         }
@@ -549,6 +752,7 @@ struct NewSessionSheet: View {
             projectId: windowState.selectedProjectId,
             threadKind: selectedList.count > 1 ? .group : .direct
         )
+        conversation.executionMode = executionMode
         if selectedList.count > 1 {
             conversation.routingMode = .mentionAware
         }
@@ -592,6 +796,9 @@ struct NewSessionSheet: View {
         modelContext.insert(conversation)
         try? modelContext.save()
         windowState.selectedConversationId = conversation.id
+        if executionMode != .interactive, !missionText.isEmpty {
+            windowState.autoSendText = missionText
+        }
         dismiss()
     }
 

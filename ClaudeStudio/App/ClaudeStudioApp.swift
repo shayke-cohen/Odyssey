@@ -9,6 +9,8 @@ import AppXray
 struct ClaudeStudioApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var p2pNetworkManager = P2PNetworkManager()
+    @StateObject private var sharedRoomService: SharedRoomService
+    @StateObject private var sharedRoomTestAPIService: SharedRoomTestAPIService
     @State private var configSyncService = ConfigSyncService()
     @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
     @AppStorage(AppSettings.textSizeKey, store: AppSettings.store) private var textSize = AppSettings.defaultTextSize
@@ -20,6 +22,11 @@ struct ClaudeStudioApp: App {
     private let launchIntent: LaunchIntent?
 
     init() {
+        let sharedRoomService = SharedRoomService()
+        let sharedRoomTestAPIService = SharedRoomTestAPIService()
+        _sharedRoomService = StateObject(wrappedValue: sharedRoomService)
+        _sharedRoomTestAPIService = StateObject(wrappedValue: sharedRoomTestAPIService)
+
         #if DEBUG
         // Avoid the AppXray relay's default port (19400), which can collide with
         // direct-connect tooling when the SDK app also binds there in server mode.
@@ -41,6 +48,7 @@ struct ClaudeStudioApp: App {
                 ConversationMessage.self,
                 MessageAttachment.self,
                 Skill.self,
+                Connection.self,
                 MCPServer.self,
                 PermissionSet.self,
                 SharedWorkspace.self,
@@ -50,6 +58,7 @@ struct ClaudeStudioApp: App {
                 TaskItem.self,
                 ScheduledMission.self,
                 ScheduledMissionRun.self,
+                SharedRoomInvite.self,
             ])
             modelContainer = try ModelContainer(
                 for: schema,
@@ -61,6 +70,12 @@ struct ClaudeStudioApp: App {
 
         launchIntent = LaunchIntent.fromCommandLine()
         Self.performProjectFirstResetIfNeeded(modelContainer: modelContainer)
+        sharedRoomService.configure(modelContext: modelContainer.mainContext)
+        sharedRoomTestAPIService.configure(
+            sharedRoomService: sharedRoomService,
+            modelContext: modelContainer.mainContext
+        )
+        sharedRoomTestAPIService.startIfEnabled()
     }
 
     private var resolvedColorScheme: ColorScheme? {
@@ -82,7 +97,9 @@ struct ClaudeStudioApp: App {
                 launchIntent: launchIntent,
                 autoConnectSidecar: autoConnectSidecar,
                 resolvedColorScheme: resolvedColorScheme,
-                lastProjectDirectory: lastProjectDirectory
+                lastProjectDirectory: lastProjectDirectory,
+                sharedRoomService: sharedRoomService,
+                sharedRoomTestAPIService: sharedRoomTestAPIService
             )
             .environment(\.appTextScale, resolvedTextSize.scaleFactor)
         }
@@ -290,6 +307,8 @@ private struct ProjectWindowContent: View {
     let autoConnectSidecar: Bool
     let resolvedColorScheme: ColorScheme?
     let lastProjectDirectory: String?
+    let sharedRoomService: SharedRoomService
+    let sharedRoomTestAPIService: SharedRoomTestAPIService
 
     @State private var windowState: WindowState?
     @State private var chosenDirectory: String?
@@ -317,6 +336,7 @@ private struct ProjectWindowContent: View {
         }
         .environmentObject(appState)
         .environmentObject(p2pNetworkManager)
+        .environmentObject(sharedRoomService)
         .preferredColorScheme(resolvedColorScheme)
         .onChange(of: effectiveDirectory) { _, newDir in
             if let dir = newDir, windowState == nil {
@@ -330,8 +350,15 @@ private struct ProjectWindowContent: View {
             // Boot shared services (only once across windows)
             appState.modelContext = modelContainer.mainContext
             appState.configSyncService = configSyncService
+            appState.sharedRoomService = sharedRoomService
             configSyncService.start(container: modelContainer)
             appState.configureScheduling(modelContext: modelContainer.mainContext)
+            sharedRoomService.configure(modelContext: modelContainer.mainContext)
+            sharedRoomTestAPIService.configure(
+                sharedRoomService: sharedRoomService,
+                modelContext: modelContainer.mainContext
+            )
+            sharedRoomTestAPIService.startIfEnabled()
 
             if autoConnectSidecar, appState.sidecarStatus == .disconnected {
                 appState.connectSidecar()
@@ -339,6 +366,8 @@ private struct ProjectWindowContent: View {
 
             p2pNetworkManager.attach(modelContext: modelContainer.mainContext)
             p2pNetworkManager.sidecarManager = appState.sidecarManager
+            p2pNetworkManager.sharedRoomService = sharedRoomService
+            sharedRoomService.p2pNetworkManager = p2pNetworkManager
             p2pNetworkManager.setSidecarWsPort(appState.allocatedWsPort)
             p2pNetworkManager.start()
 
@@ -355,6 +384,9 @@ private struct ProjectWindowContent: View {
         }
         .onOpenURL { url in
             guard let ws = windowState else { return }
+            if ConnectorService.handleCallback(url, in: modelContainer.mainContext, appState: appState) {
+                return
+            }
             if let intent = LaunchIntent.fromURL(url) {
                 appState.executeLaunchIntent(intent, modelContext: modelContainer.mainContext, windowState: ws)
             }

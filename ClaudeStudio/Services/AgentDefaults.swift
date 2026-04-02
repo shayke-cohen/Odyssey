@@ -4,6 +4,8 @@ enum ProviderSelection: String, CaseIterable, Identifiable {
     case system
     case claude
     case codex
+    case foundation
+    case mlx
 
     var id: String { rawValue }
 
@@ -12,13 +14,15 @@ enum ProviderSelection: String, CaseIterable, Identifiable {
         case .system: "System"
         case .claude: "Claude"
         case .codex: "Codex"
+        case .foundation: "Foundation"
+        case .mlx: "MLX"
         }
     }
 
     var concreteProvider: String? {
         switch self {
         case .system: nil
-        case .claude, .codex: rawValue
+        case .claude, .codex, .foundation, .mlx: rawValue
         }
     }
 }
@@ -50,6 +54,10 @@ enum AgentDefaults {
             .claude
         case ProviderSelection.codex.rawValue:
             .codex
+        case ProviderSelection.foundation.rawValue:
+            .foundation
+        case ProviderSelection.mlx.rawValue:
+            .mlx
         default:
             .system
         }
@@ -71,6 +79,14 @@ enum AgentDefaults {
             let stored = AppSettings.store.string(forKey: AppSettings.defaultCodexModelKey)
             let normalized = normalizedModelSelection(stored ?? AppSettings.defaultCodexModel)
             return isModel(normalized, compatibleWith: provider) ? normalized : AppSettings.defaultCodexModel
+        case ProviderSelection.foundation.rawValue:
+            let stored = AppSettings.store.string(forKey: AppSettings.defaultFoundationModelKey)
+            let normalized = normalizedModelSelection(stored ?? AppSettings.defaultFoundationModel)
+            return isModel(normalized, compatibleWith: provider) ? normalized : AppSettings.defaultFoundationModel
+        case ProviderSelection.mlx.rawValue:
+            let stored = AppSettings.store.string(forKey: AppSettings.defaultMLXModelKey)
+            let normalized = normalizedModelSelection(stored ?? AppSettings.defaultMLXModel)
+            return isModel(normalized, compatibleWith: provider) ? normalized : AppSettings.defaultMLXModel
         default:
             let stored = AppSettings.store.string(forKey: AppSettings.defaultClaudeModelKey)
             let normalized = normalizedModelSelection(stored ?? AppSettings.defaultClaudeModel)
@@ -131,6 +147,10 @@ enum AgentDefaults {
         switch provider {
         case ProviderSelection.codex.rawValue:
             return CodexModel.allCases.contains { $0.rawValue == normalized }
+        case ProviderSelection.foundation.rawValue:
+            return FoundationModel.allCases.contains { $0.rawValue == normalized }
+        case ProviderSelection.mlx.rawValue:
+            return !normalized.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         default:
             return ClaudeModel.allCases.contains { $0.rawValue == normalized }
         }
@@ -145,9 +165,15 @@ enum AgentDefaults {
             choices.append(contentsOf: ClaudeModel.allCases.map { ModelChoice(id: $0.rawValue, label: $0.label) })
         case .codex:
             choices.append(contentsOf: CodexModel.allCases.map { ModelChoice(id: $0.rawValue, label: $0.label) })
+        case .foundation:
+            choices.append(contentsOf: FoundationModel.allCases.map { ModelChoice(id: $0.rawValue, label: $0.label) })
+        case .mlx:
+            choices.append(contentsOf: mlxConfiguredModelChoices())
         case .system:
             choices.append(contentsOf: ClaudeModel.allCases.map { ModelChoice(id: $0.rawValue, label: $0.label) })
             choices.append(contentsOf: CodexModel.allCases.map { ModelChoice(id: $0.rawValue, label: $0.label) })
+            choices.append(contentsOf: FoundationModel.allCases.map { ModelChoice(id: $0.rawValue, label: $0.label) })
+            choices.append(contentsOf: mlxConfiguredModelChoices())
         }
 
         return choices
@@ -161,6 +187,10 @@ enum AgentDefaults {
         switch provider {
         case ProviderSelection.codex.rawValue:
             choices.append(contentsOf: CodexModel.allCases.map { ModelChoice(id: $0.rawValue, label: $0.label) })
+        case ProviderSelection.foundation.rawValue:
+            choices.append(contentsOf: FoundationModel.allCases.map { ModelChoice(id: $0.rawValue, label: $0.label) })
+        case ProviderSelection.mlx.rawValue:
+            choices.append(contentsOf: mlxConfiguredModelChoices())
         default:
             choices.append(contentsOf: ClaudeModel.allCases.map { ModelChoice(id: $0.rawValue, label: $0.label) })
         }
@@ -185,6 +215,12 @@ enum AgentDefaults {
         if let match = CodexModel.allCases.first(where: { $0.rawValue == normalized }) {
             return match.label
         }
+        if let match = FoundationModel.allCases.first(where: { $0.rawValue == normalized }) {
+            return match.label
+        }
+        if let match = MLXModel.allCases.first(where: { $0.rawValue == normalized }) {
+            return match.label
+        }
         return model ?? inheritMarker
     }
 
@@ -192,6 +228,10 @@ enum AgentDefaults {
         switch concreteProvider(from: provider) {
         case ProviderSelection.codex.rawValue:
             return ProviderSelection.codex.label
+        case ProviderSelection.foundation.rawValue:
+            return ProviderSelection.foundation.label
+        case ProviderSelection.mlx.rawValue:
+            return ProviderSelection.mlx.label
         default:
             return ProviderSelection.claude.label
         }
@@ -205,7 +245,9 @@ enum AgentDefaults {
         maxTurns: Int? = 5,
         maxBudget: Double? = nil,
         maxThinkingTokens: Int? = 10000,
-        interactive: Bool? = true
+        interactive: Bool? = true,
+        instancePolicy: String? = nil,
+        instancePolicyPoolMax: Int? = nil
     ) -> AgentConfig {
         let resolvedProvider = concreteProvider(from: provider)
         let resolvedModel = {
@@ -228,12 +270,26 @@ enum AgentDefaults {
             maxThinkingTokens: maxThinkingTokens,
             workingDirectory: workingDirectory,
             skills: [],
-            interactive: interactive
+            interactive: interactive,
+            instancePolicy: instancePolicy,
+            instancePolicyPoolMax: instancePolicyPoolMax
         )
     }
 
     private static func explicitModelSelection(from value: String?) -> String? {
         let normalized = normalizedModelSelection(value)
         return normalized == inheritMarker ? nil : normalized
+    }
+
+    private static func mlxConfiguredModelChoices() -> [ModelChoice] {
+        let configured = normalizedModelSelection(
+            AppSettings.store.string(forKey: AppSettings.defaultMLXModelKey) ?? AppSettings.defaultMLXModel
+        )
+
+        guard configured != inheritMarker else {
+            return [ModelChoice(id: MLXModel.defaultModel.rawValue, label: MLXModel.defaultModel.label)]
+        }
+
+        return [ModelChoice(id: configured, label: "Configured MLX Model (\(configured))")]
     }
 }

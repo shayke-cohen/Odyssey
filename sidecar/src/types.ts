@@ -18,6 +18,11 @@ export type SidecarCommand =
   | { type: "task.update"; taskId: string; updates: Partial<TaskWire> }
   | { type: "task.list"; filter?: { status?: string } }
   | { type: "task.claim"; taskId: string; agentName: string }
+  | { type: "connector.list" }
+  | { type: "connector.beginAuth"; connection: ConnectorConfig }
+  | { type: "connector.completeAuth"; connection: ConnectorConfig; credentials?: ConnectorCredentials }
+  | { type: "connector.revoke"; connectionId: string }
+  | { type: "connector.test"; connectionId: string }
   | { type: "config.setLogLevel"; level: string };
 
 export interface PeerAgentWire {
@@ -54,7 +59,7 @@ export interface AgentConfig {
   instancePolicyPoolMax?: number;
 }
 
-export type AgentProvider = "claude" | "codex";
+export type AgentProvider = "claude" | "codex" | "foundation" | "mlx";
 
 export interface MCPServerConfig {
   name: string;
@@ -116,6 +121,54 @@ export interface MCPCatalogEntry {
   description: string;
 }
 
+export type ConnectorProvider = "slack" | "linkedin" | "x" | "facebook" | "whatsapp";
+export type ConnectorInstallScope = "system";
+export type ConnectorAuthMode = "pkce-native" | "brokered";
+export type ConnectionWritePolicy = "require-approval" | "autonomous" | "read-only";
+export type ConnectorStatus =
+  | "disconnected"
+  | "authorizing"
+  | "connected"
+  | "needs-attention"
+  | "revoked"
+  | "failed";
+
+export interface ConnectorConfig {
+  id: string;
+  provider: ConnectorProvider;
+  installScope: ConnectorInstallScope;
+  displayName: string;
+  accountId?: string;
+  accountHandle?: string;
+  accountMetadataJSON?: string;
+  grantedScopes: string[];
+  authMode: ConnectorAuthMode;
+  writePolicy: ConnectionWritePolicy;
+  status: ConnectorStatus;
+  statusMessage?: string;
+  brokerReference?: string;
+  auditSummary?: string;
+  lastAuthenticatedAt?: string;
+  lastCheckedAt?: string;
+}
+
+export interface ConnectorCredentials {
+  accessToken?: string;
+  refreshToken?: string;
+  tokenType?: string;
+  expiresAt?: string;
+  brokerReference?: string;
+}
+
+export interface ConnectorCapability {
+  toolName: string;
+  provider: ConnectorProvider;
+  title: string;
+  description: string;
+  access: "read" | "write";
+  requiredScopes: string[];
+}
+
 export interface GeneratedAgentSpec {
   name: string;
   description: string;
@@ -157,7 +210,10 @@ export type SidecarEvent =
   | { type: "session.planComplete"; sessionId: string; plan: string | null; allowedPrompts?: { tool: string; prompt: string }[] }
   | { type: "task.created"; sessionId?: string; task: TaskWire }
   | { type: "task.updated"; sessionId?: string; task: TaskWire }
-  | { type: "task.list.result"; tasks: TaskWire[] };
+  | { type: "task.list.result"; tasks: TaskWire[] }
+  | { type: "connector.list.result"; connections: ConnectorConfig[] }
+  | { type: "connector.statusChanged"; connection: ConnectorConfig }
+  | { type: "connector.audit"; sessionId?: string; connectionId: string; provider: ConnectorProvider; action: string; outcome: string; summary: string };
 
 export interface QuestionOption {
   label: string;

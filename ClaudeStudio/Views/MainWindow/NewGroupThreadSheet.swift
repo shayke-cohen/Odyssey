@@ -12,6 +12,7 @@ struct NewGroupThreadSheet: View {
 
     @State private var selectedGroupId: UUID?
     @State private var mission = ""
+    @State private var executionMode: ConversationExecutionMode = .interactive
 
     private var enabledGroups: [AgentGroup] {
         groups.filter(\.isEnabled)
@@ -37,7 +38,9 @@ struct NewGroupThreadSheet: View {
     }
 
     private var canStart: Bool {
-        selectedGroup != nil
+        guard let selectedGroup else { return false }
+        if executionMode == .interactive { return true }
+        return selectedGroup.coordinatorAgentId != nil || selectedGroup.autonomousCapable
     }
 
     var body: some View {
@@ -46,12 +49,12 @@ struct NewGroupThreadSheet: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    projectInfoRow
+                    setupSection
                     if !recentGroups.isEmpty {
                         recentGroupsRow
                     }
                     groupPicker
-                    projectInfoRow
-                    missionSection
                 }
                 .padding(24)
             }
@@ -240,30 +243,218 @@ struct NewGroupThreadSheet: View {
     }
 
     @ViewBuilder
-    private var missionSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Mission")
-                .font(.headline)
-                .xrayId("newGroupThread.missionTitle")
-            TextField("Optional kickoff mission", text: $mission, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(3...6)
-                .xrayId("newGroupThread.missionField")
-            Text("Starts with the group default when available, but you can tweak it before opening the thread.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .xrayId("newGroupThread.missionHelp")
+    private var setupSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Team Setup")
+                    .font(.headline)
+                    .xrayId("newGroupThread.setupTitle")
+                Text("Choose how the team should work, then set the kickoff goal.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .xrayId("newGroupThread.setupSubtitle")
+            }
+
+            modeCards
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("Kickoff Goal")
+                        .font(.subheadline.weight(.semibold))
+                        .xrayId("newGroupThread.missionTitle")
+                    Text(goalPromptLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .xrayId("newGroupThread.goalCaption")
+                }
+
+                TextField(goalPlaceholder, text: $mission, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(3...6)
+                    .xrayId("newGroupThread.missionField")
+
+                Text(goalHelpText)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .xrayId("newGroupThread.missionHelp")
+            }
+
+            if let modeConstraintText {
+                Label(modeConstraintText, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .xrayId("newGroupThread.modeConstraint")
+            }
         }
+        .padding(18)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.secondary.opacity(0.14), lineWidth: 1)
+        }
+        .xrayId("newGroupThread.setupSection")
+    }
+
+    @ViewBuilder
+    private var modeCards: some View {
+        HStack(spacing: 12) {
+            modeCard(
+                mode: .interactive,
+                title: "Interactive",
+                subtitle: "Whole team chats",
+                detail: "Broadcast user turns across the team using the current routing rules.",
+                icon: "person.3.fill",
+                accent: .blue
+            )
+            modeCard(
+                mode: .autonomous,
+                title: "Autonomous",
+                subtitle: "Coordinator runs once",
+                detail: "Starts immediately and routes future user turns to the coordinator first.",
+                icon: "sparkles.rectangle.stack",
+                accent: .orange
+            )
+            modeCard(
+                mode: .worker,
+                title: "Worker",
+                subtitle: "Coordinator stays ready",
+                detail: "Runs the first job now, then keeps the same group thread ready for the next one.",
+                icon: "shippingbox.fill",
+                accent: .green
+            )
+        }
+    }
+
+    private func modeCard(
+        mode: ConversationExecutionMode,
+        title: String,
+        subtitle: String,
+        detail: String,
+        icon: String,
+        accent: Color
+    ) -> some View {
+        let isSelected = executionMode == mode
+        return Button {
+            executionMode = mode
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    Image(systemName: icon)
+                        .font(.headline)
+                        .foregroundStyle(isSelected ? accent : .secondary)
+                        .frame(width: 30, height: 30)
+                        .background(
+                            Circle()
+                                .fill(isSelected ? accent.opacity(0.14) : Color.secondary.opacity(0.08))
+                        )
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.headline)
+                        .foregroundStyle(isSelected ? accent : .secondary.opacity(0.5))
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(subtitle)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(isSelected ? accent : .secondary)
+                }
+
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 140, alignment: .topLeading)
+            .padding(14)
+            .background(isSelected ? accent.opacity(0.10) : Color(nsColor: .windowBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isSelected ? accent.opacity(0.9) : Color.secondary.opacity(0.15), lineWidth: isSelected ? 2 : 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .xrayId("newGroupThread.modeCard.\(mode.rawValue)")
+        .accessibilityIdentifier("newGroupThread.modeCard.\(mode.rawValue)")
+        .accessibilityLabel(title)
+    }
+
+    private var modeDescription: String {
+        switch executionMode {
+        case .interactive:
+            return "Broadcast user turns across the team using the current group routing rules."
+        case .autonomous:
+            return "Auto-start the mission and route future user turns to the coordinator first."
+        case .worker:
+            return "Auto-start the first job, then keep the same coordinator-led thread ready for future jobs."
+        }
+    }
+
+    private var goalPromptLabel: String {
+        switch executionMode {
+        case .interactive:
+            return "Shared context for the team"
+        case .autonomous:
+            return "Used as the first job right away"
+        case .worker:
+            return "Defines the first job and worker focus"
+        }
+    }
+
+    private var goalPlaceholder: String {
+        switch executionMode {
+        case .interactive:
+            return "What is this team thread for?"
+        case .autonomous:
+            return "What should this team start doing immediately?"
+        case .worker:
+            return "What should this team handle now and be ready to handle again later?"
+        }
+    }
+
+    private var goalHelpText: String {
+        let defaultHint = "Starts with the group default when available, but you can tweak it before opening the thread."
+        switch executionMode {
+        case .interactive:
+            return "\(defaultHint) On the first real turn, the team will treat this as the saved group objective."
+        case .autonomous:
+            return "\(defaultHint) The goal is posted into the thread and sent immediately to the coordinator."
+        case .worker:
+            return "\(defaultHint) The goal launches the first coordinator-led run now, then the same thread returns to standby."
+        }
+    }
+
+    private var modeConstraintText: String? {
+        guard executionMode != .interactive,
+              let selectedGroup,
+              selectedGroup.coordinatorAgentId == nil,
+              !selectedGroup.autonomousCapable else {
+            return nil
+        }
+        return "This team needs a coordinator or autonomous-capable fallback before autonomous or worker mode can start."
     }
 
     @ViewBuilder
     private var footer: some View {
         HStack {
-            Text("Choose a reusable team and start a project thread.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(startActionSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .xrayId("newGroupThread.footerSummary")
+                Text("Choose a reusable team and start a project thread.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
             Spacer()
-            Button("Start Group Thread") {
+            Button(primaryActionTitle) {
                 startGroupThread()
             }
             .buttonStyle(.borderedProminent)
@@ -274,6 +465,29 @@ struct NewGroupThreadSheet: View {
         .padding(16)
     }
 
+    private var startActionSummary: String {
+        let teamName = selectedGroup?.name ?? "Team"
+        switch executionMode {
+        case .interactive:
+            return "\(teamName) will wait for your first message."
+        case .autonomous:
+            return "\(teamName) will launch the kickoff goal through the coordinator immediately."
+        case .worker:
+            return "\(teamName) will run the first job, then stay ready in the same thread."
+        }
+    }
+
+    private var primaryActionTitle: String {
+        switch executionMode {
+        case .interactive:
+            return "Start Group Thread"
+        case .autonomous:
+            return "Launch Autonomous Group"
+        case .worker:
+            return "Start Group Worker"
+        }
+    }
+
     private func startGroupThread() {
         guard let selectedGroup else { return }
         if let conversationId = appState.startGroupChat(
@@ -281,9 +495,14 @@ struct NewGroupThreadSheet: View {
             projectDirectory: windowState.projectDirectory,
             projectId: windowState.selectedProjectId,
             modelContext: modelContext,
-            missionOverride: mission
+            missionOverride: mission,
+            executionMode: executionMode
         ) {
             windowState.selectedConversationId = conversationId
+            let trimmedMission = mission.trimmingCharacters(in: .whitespacesAndNewlines)
+            if executionMode != .interactive, !trimmedMission.isEmpty {
+                windowState.autoSendText = trimmedMission
+            }
         }
         dismiss()
     }

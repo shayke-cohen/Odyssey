@@ -38,7 +38,7 @@ export interface ProviderRuntime {
   readonly provider: AgentProvider;
   createSession(sessionId: string, config: AgentConfig): Promise<void>;
   sendMessage(args: RuntimeSendArgs): Promise<RuntimeSendResult>;
-  resumeSession(sessionId: string, backendSessionId: string): Promise<void>;
+  resumeSession(sessionId: string, backendSessionId: string, config?: AgentConfig): Promise<void>;
   forkSession(
     parentSessionId: string,
     childSessionId: string,

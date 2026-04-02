@@ -19,6 +19,11 @@ enum SidecarCommand: Sendable {
     case taskUpdate(taskId: String, updates: TaskWireSwift)
     case taskList(filter: TaskListFilter?)
     case taskClaim(taskId: String, agentName: String)
+    case connectorList
+    case connectorBeginAuth(connection: ConnectorWire)
+    case connectorCompleteAuth(connection: ConnectorWire, credentials: ConnectorCredentialsWire?)
+    case connectorRevoke(connectionId: String)
+    case connectorTest(connectionId: String)
     case configSetLogLevel(level: String)
 
     func encodeToJSON() throws -> Data {
@@ -102,6 +107,26 @@ enum SidecarCommand: Sendable {
             return try encoder.encode(
                 TaskClaimWire(type: "task.claim", taskId: taskId, agentName: agentName)
             )
+        case .connectorList:
+            return try encoder.encode(
+                ConnectorListWire(type: "connector.list")
+            )
+        case .connectorBeginAuth(let connection):
+            return try encoder.encode(
+                ConnectorBeginAuthWire(type: "connector.beginAuth", connection: connection)
+            )
+        case .connectorCompleteAuth(let connection, let credentials):
+            return try encoder.encode(
+                ConnectorCompleteAuthWire(type: "connector.completeAuth", connection: connection, credentials: credentials)
+            )
+        case .connectorRevoke(let connectionId):
+            return try encoder.encode(
+                ConnectorIdWire(type: "connector.revoke", connectionId: connectionId)
+            )
+        case .connectorTest(let connectionId):
+            return try encoder.encode(
+                ConnectorIdWire(type: "connector.test", connectionId: connectionId)
+            )
         case .configSetLogLevel(let level):
             return try encoder.encode(
                 ConfigSetLogLevelWire(type: "config.setLogLevel", level: level)
@@ -113,6 +138,14 @@ enum SidecarCommand: Sendable {
 struct AgentDefinitionWire: Codable, Sendable {
     let name: String
     let config: AgentConfig
+
+    let instancePolicy: String?
+
+    init(name: String, config: AgentConfig, instancePolicy: String? = nil) {
+        self.name = name
+        self.config = config
+        self.instancePolicy = instancePolicy
+    }
 }
 
 private struct AgentRegisterWire: Encodable {
@@ -290,9 +323,56 @@ private struct TaskClaimWire: Encodable {
     let agentName: String
 }
 
+private struct ConnectorListWire: Encodable {
+    let type: String
+}
+
+private struct ConnectorBeginAuthWire: Encodable {
+    let type: String
+    let connection: ConnectorWire
+}
+
+private struct ConnectorCompleteAuthWire: Encodable {
+    let type: String
+    let connection: ConnectorWire
+    let credentials: ConnectorCredentialsWire?
+}
+
+private struct ConnectorIdWire: Encodable {
+    let type: String
+    let connectionId: String
+}
+
 private struct ConfigSetLogLevelWire: Encodable {
     let type: String
     let level: String
+}
+
+struct ConnectorWire: Codable, Sendable, Identifiable {
+    let id: String
+    let provider: String
+    let installScope: String
+    let displayName: String
+    let accountId: String?
+    let accountHandle: String?
+    let accountMetadataJSON: String?
+    let grantedScopes: [String]
+    let authMode: String
+    let writePolicy: String
+    let status: String
+    let statusMessage: String?
+    let brokerReference: String?
+    let auditSummary: String?
+    let lastAuthenticatedAt: String?
+    let lastCheckedAt: String?
+}
+
+struct ConnectorCredentialsWire: Codable, Sendable {
+    let accessToken: String?
+    let refreshToken: String?
+    let tokenType: String?
+    let expiresAt: String?
+    let brokerReference: String?
 }
 
 struct AgentConfig: Codable, Sendable {
@@ -308,6 +388,8 @@ struct AgentConfig: Codable, Sendable {
     let workingDirectory: String
     let skills: [SkillContent]
     var interactive: Bool?
+    var instancePolicy: String? = nil
+    var instancePolicyPoolMax: Int? = nil
 
     struct MCPServerConfig: Codable, Sendable {
         let name: String
@@ -349,6 +431,9 @@ enum SidecarEvent: Sendable {
     case taskCreated(sessionId: String?, task: TaskWireSwift)
     case taskUpdated(sessionId: String?, task: TaskWireSwift)
     case taskListResult(tasks: [TaskWireSwift])
+    case connectorListResult(connections: [ConnectorWire])
+    case connectorStatusChanged(connection: ConnectorWire)
+    case connectorAudit(sessionId: String?, connectionId: String, provider: String, action: String, outcome: String, summary: String)
     case workspaceCreated(sessionId: String, workspaceName: String, agentName: String)
     case workspaceJoined(sessionId: String, workspaceName: String, agentName: String)
     case agentInvited(sessionId: String, invitedAgent: String, invitedBy: String)
@@ -455,6 +540,12 @@ struct IncomingWireMessage: Codable, Sendable {
     let allowedPrompts: [PlanAllowedPrompt]?
     let taskWire: TaskWireSwift?
     let tasks: [TaskWireSwift]?
+    let connection: ConnectorWire?
+    let connections: [ConnectorWire]?
+    let connectionId: String?
+    let provider: String?
+    let outcome: String?
+    let summary: String?
     let agentName: String?
     let workspaceName: String?
     let workspaceId: String?
@@ -474,6 +565,7 @@ struct IncomingWireMessage: Codable, Sendable {
         case plan, allowedPrompts
         case taskWire = "task"
         case tasks
+        case connection, connections, connectionId, provider, outcome, summary
         case agentName, workspaceName, workspaceId
         case invitedAgent, invitedBy
     }
@@ -556,6 +648,21 @@ struct IncomingWireMessage: Codable, Sendable {
             return .taskUpdated(sessionId: sessionId, task: t)
         case "task.list.result":
             return .taskListResult(tasks: tasks ?? [])
+        case "connector.list.result":
+            return .connectorListResult(connections: connections ?? [])
+        case "connector.statusChanged":
+            guard let connection else { return nil }
+            return .connectorStatusChanged(connection: connection)
+        case "connector.audit":
+            guard let connectionId, let provider, let action, let outcome, let summary else { return nil }
+            return .connectorAudit(
+                sessionId: sessionId,
+                connectionId: connectionId,
+                provider: provider,
+                action: action,
+                outcome: outcome,
+                summary: summary
+            )
         case "workspace.created":
             guard let sid = sessionId, let name = workspaceName, let agent = agentName else { return nil }
             return .workspaceCreated(sessionId: sid, workspaceName: name, agentName: agent)

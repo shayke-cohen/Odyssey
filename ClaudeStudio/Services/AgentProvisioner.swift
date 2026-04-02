@@ -12,6 +12,7 @@ final class AgentProvisioner {
     func provision(
         agent: Agent,
         mission: String?,
+        mode: SessionMode = .interactive,
         workingDirOverride: String? = nil,
         providerOverride: String? = nil,
         modelOverride: String? = nil
@@ -19,7 +20,7 @@ final class AgentProvisioner {
         let session = Session(
             agent: agent,
             mission: mission,
-            mode: .interactive,
+            mode: mode,
             workingDirectory: resolveWorkingDirectory(override: workingDirOverride)
         )
         session.provider = AgentDefaults.resolveEffectiveProvider(
@@ -80,8 +81,31 @@ final class AgentProvisioner {
             maxThinkingTokens: agent.maxThinkingTokens,
             workingDirectory: session.workingDirectory,
             skills: skills.map { AgentConfig.SkillContent(name: $0.name, content: $0.content) },
-            interactive: isInteractive ? true : nil
+            interactive: isInteractive ? true : nil,
+            instancePolicy: resolvedInstancePolicy(agent: agent, session: session),
+            instancePolicyPoolMax: resolvedInstancePolicyPoolMax(agent: agent, session: session)
         )
+    }
+
+    private func resolvedInstancePolicy(agent: Agent, session: Session) -> String? {
+        switch session.mode {
+        case .worker:
+            return AgentInstancePolicy.singleton.rawValue
+        case .autonomous:
+            return AgentInstancePolicy.spawn.rawValue
+        case .interactive:
+            switch agent.instancePolicy {
+            case .agentDefault:
+                return nil
+            case .spawn, .singleton, .pool:
+                return agent.instancePolicy.rawValue
+            }
+        }
+    }
+
+    private func resolvedInstancePolicyPoolMax(agent: Agent, session: Session) -> Int? {
+        guard session.mode == .interactive, agent.instancePolicy == .pool else { return nil }
+        return agent.instancePolicyPoolMax
     }
 
     private func resolveWorkingDirectory(override: String?) -> String {

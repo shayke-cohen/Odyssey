@@ -41,10 +41,12 @@ final class AppState: ObservableObject {
     @Published var progressTrackers: [String: ProgressTracker] = [:]
     @Published var pendingSuggestions: [String: [SuggestionItem]] = [:]
     @Published var completedPlans: [String: CompletedPlan] = [:]
+    @Published private(set) var workerStandbySessions: Set<String> = []
     // launchError and autoSendText moved to WindowState (per-window)
 
     /// File-based config sync service (set by ClaudeStudioApp on appear)
     var configSyncService: ConfigSyncService?
+    weak var sharedRoomService: SharedRoomService?
 
     var createdSessions: Set<String> = []
     var generateAgentRequestId: String?
@@ -181,6 +183,7 @@ final class AppState: ObservableObject {
         "write", "edit", "multiedit", "multi_edit", "create", "mv", "cp",
         "writefile", "createfile", "renamefile", "deletefile"
     ]
+    private static let iso8601 = ISO8601DateFormatter()
 
     private(set) var sidecarManager: SidecarManager?
     private var eventTask: Task<Void, Never>?
@@ -213,18 +216,44 @@ final class AppState: ObservableObject {
         let projectDir = intent.workingDirectory ?? windowState.projectDirectory
 
         switch intent.mode {
+        case .roomJoin(let payload):
+            guard let sharedRoomService else {
+                windowState.launchError = "Shared room service is not available."
+                return
+            }
+            Task { @MainActor in
+                do {
+                    let conversation = try await sharedRoomService.acceptInvite(
+                        roomId: payload.roomId,
+                        inviteId: payload.inviteId,
+                        inviteToken: payload.inviteToken,
+                        projectId: windowState.selectedProjectId
+                    )
+                    windowState.selectedConversationId = conversation.id
+                } catch {
+                    windowState.launchError = error.localizedDescription
+                }
+            }
+            return
         case .chat:
+            let launchMode: ConversationExecutionMode = intent.autonomous ? .autonomous : .interactive
             let conversation = Conversation(
                 topic: "New Thread",
                 projectId: windowState.selectedProjectId,
                 threadKind: .freeform
             )
+            conversation.executionMode = launchMode
             let userParticipant = Participant(type: .user, displayName: "You")
             userParticipant.conversation = conversation
             conversation.participants.append(userParticipant)
 
-            if intent.prompt != nil {
-                let freeformSession = Session(agent: nil, mode: .interactive, workingDirectory: projectDir)
+            if intent.prompt != nil || launchMode != .interactive {
+                let freeformSession = Session(
+                    agent: nil,
+                    mission: intent.prompt,
+                    mode: sessionMode(for: launchMode),
+                    workingDirectory: projectDir
+                )
                 freeformSession.conversations = [conversation]
                 conversation.sessions.append(freeformSession)
                 let agentParticipant = Participant(
@@ -255,14 +284,20 @@ final class AppState: ObservableObject {
             }
 
             let provisioner = AgentProvisioner(modelContext: modelContext)
-            let (_, session) = provisioner.provision(agent: agent, mission: nil, workingDirOverride: projectDir)
-            if intent.autonomous { session.mode = .autonomous }
+            let launchMode: ConversationExecutionMode = intent.autonomous ? .autonomous : .interactive
+            let (_, session) = provisioner.provision(
+                agent: agent,
+                mission: intent.prompt,
+                mode: sessionMode(for: launchMode),
+                workingDirOverride: projectDir
+            )
 
             let conversation = Conversation(
                 topic: agent.name,
                 projectId: windowState.selectedProjectId,
                 threadKind: .direct
             )
+            conversation.executionMode = launchMode
             let userParticipant = Participant(type: .user, displayName: "You")
             let agentParticipant = Participant(
                 type: .agentSession(sessionId: session.id),
@@ -301,6 +336,7 @@ final class AppState: ObservableObject {
                     modelContext: modelContext
                 )
                 windowState.selectedConversationId = convoId
+                windowState.autoSendText = prompt
             } else {
                 let convoId = startGroupChat(
                     group: group,
@@ -359,18 +395,29 @@ final class AppState: ObservableObject {
         projectDirectory: String,
         projectId: UUID?,
         modelContext: ModelContext,
-        missionOverride: String? = nil
+        missionOverride: String? = nil,
+        executionMode: ConversationExecutionMode = .interactive
     ) -> UUID? {
         guard !group.agentIds.isEmpty else { return nil }
+        if executionMode != .interactive,
+           group.coordinatorAgentId == nil,
+           !group.autonomousCapable {
+            return nil
+        }
 
         let allAgents = (try? modelContext.fetch(FetchDescriptor<Agent>())) ?? []
         let agentById = Dictionary(uniqueKeysWithValues: allAgents.map { ($0.id, $0) })
         let resolvedAgents = group.agentIds.compactMap { agentById[$0] }
         guard !resolvedAgents.isEmpty else { return nil }
 
-        let conversation = Conversation(topic: group.name, projectId: projectId, threadKind: .group)
+        let conversation = Conversation(
+            topic: executionMode == .autonomous ? "\(group.name) — Autonomous" : group.name,
+            projectId: projectId,
+            threadKind: executionMode == .autonomous ? .autonomous : .group
+        )
         conversation.routingMode = .mentionAware
         conversation.sourceGroupId = group.id
+        conversation.executionMode = executionMode
 
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation
@@ -392,7 +439,12 @@ final class AppState: ObservableObject {
         let mission = (trimmedMissionOverride?.isEmpty == false ? trimmedMissionOverride : nil) ?? group.defaultMission
 
         for agent in resolvedAgents {
-            let (_, session) = provisioner.provision(agent: agent, mission: mission, workingDirOverride: projectDirectory)
+            let (_, session) = provisioner.provision(
+                agent: agent,
+                mission: mission,
+                mode: sessionMode(for: executionMode),
+                workingDirOverride: projectDirectory
+            )
             session.conversations = [conversation]
             conversation.sessions.append(session)
 
@@ -418,56 +470,40 @@ final class AppState: ObservableObject {
         projectId: UUID?,
         modelContext: ModelContext
     ) -> UUID? {
-        guard group.autonomousCapable, !group.agentIds.isEmpty else { return nil }
-
-        let allAgents = (try? modelContext.fetch(FetchDescriptor<Agent>())) ?? []
-        let agentById = Dictionary(uniqueKeysWithValues: allAgents.map { ($0.id, $0) })
-        let resolvedAgents = group.agentIds.compactMap { agentById[$0] }
-        guard !resolvedAgents.isEmpty else { return nil }
-
-        let conversation = Conversation(
-            topic: "\(group.name) — Autonomous",
+        guard group.autonomousCapable else { return nil }
+        return startGroupChat(
+            group: group,
+            projectDirectory: projectDirectory,
             projectId: projectId,
-            threadKind: .autonomous
+            modelContext: modelContext,
+            missionOverride: mission,
+            executionMode: .autonomous
         )
-        conversation.routingMode = .mentionAware
-        conversation.sourceGroupId = group.id
-        conversation.isAutonomous = true
+    }
 
-        let userParticipant = Participant(type: .user, displayName: "You")
-        userParticipant.conversation = conversation
-        conversation.participants.append(userParticipant)
+    func enterWorkerStandby(sessionId: String) {
+        workerStandbySessions.insert(sessionId)
+        sessionActivity[sessionId] = .idle
+        lastSessionEvent.removeValue(forKey: sessionId)
+    }
 
-        let instruction = group.groupInstruction.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !instruction.isEmpty {
-            let sysMsg = ConversationMessage(
-                senderParticipantId: nil,
-                text: instruction,
-                type: .system,
-                conversation: conversation
-            )
-            conversation.messages.append(sysMsg)
+    func leaveWorkerStandby(sessionId: String) {
+        workerStandbySessions.remove(sessionId)
+    }
+
+    func isWorkerStandingBy(sessionId: String) -> Bool {
+        workerStandbySessions.contains(sessionId)
+    }
+
+    private func sessionMode(for executionMode: ConversationExecutionMode) -> SessionMode {
+        switch executionMode {
+        case .interactive:
+            return .interactive
+        case .autonomous:
+            return .autonomous
+        case .worker:
+            return .worker
         }
-
-        let provisioner = AgentProvisioner(modelContext: modelContext)
-
-        for agent in resolvedAgents {
-            let (_, session) = provisioner.provision(agent: agent, mission: mission, workingDirOverride: projectDirectory)
-            session.conversations = [conversation]
-            conversation.sessions.append(session)
-
-            let agentParticipant = Participant(
-                type: .agentSession(sessionId: session.id),
-                displayName: agent.name
-            )
-            agentParticipant.conversation = conversation
-            conversation.participants.append(agentParticipant)
-            modelContext.insert(session)
-        }
-
-        modelContext.insert(conversation)
-        try? modelContext.save()
-        return conversation.id
     }
 
     func connectSidecar() {
@@ -483,6 +519,8 @@ final class AppState: ObservableObject {
         let preferredHttpPort = defaults.object(forKey: AppSettings.httpPortKey) as? Int ?? AppSettings.defaultHttpPort
         let bunOverride = defaults.string(forKey: AppSettings.bunPathOverrideKey)
         let sidecarPathOverride = defaults.string(forKey: AppSettings.sidecarPathKey)
+        let localAgentHostOverride = defaults.string(forKey: AppSettings.localAgentHostPathOverrideKey)
+        let mlxRunnerOverride = defaults.string(forKey: AppSettings.mlxRunnerPathOverrideKey)
 
         let wsPort = InstanceConfig.isDefault ? preferredWsPort : InstanceConfig.findFreePort()
         let httpPort = InstanceConfig.isDefault ? preferredHttpPort : InstanceConfig.findFreePort()
@@ -495,7 +533,9 @@ final class AppState: ObservableObject {
             logDirectory: InstanceConfig.logDirectory.path,
             dataDirectory: InstanceConfig.baseDirectory.path,
             bunPathOverride: bunOverride?.isEmpty == true ? nil : bunOverride,
-            sidecarPathOverride: sidecarPathOverride?.isEmpty == true ? nil : sidecarPathOverride
+            sidecarPathOverride: sidecarPathOverride?.isEmpty == true ? nil : sidecarPathOverride,
+            localAgentHostPathOverride: localAgentHostOverride?.isEmpty == true ? nil : localAgentHostOverride,
+            mlxRunnerPathOverride: mlxRunnerOverride?.isEmpty == true ? nil : mlxRunnerOverride
         )
         let manager = SidecarManager(config: config)
         self.sidecarManager = manager
@@ -505,6 +545,7 @@ final class AppState: ObservableObject {
                 sidecarStatus = .connected
                 listenForEvents(from: manager)
                 registerAgentDefinitions()
+                registerConnections()
             } catch {
                 sidecarStatus = .error(error.localizedDescription)
             }
@@ -689,6 +730,14 @@ final class AppState: ObservableObject {
         pendingConfirmations.removeValue(forKey: sessionId)
     }
 
+    func syncConnectionToSidecar(_ connection: Connection) {
+        let credentials = try? ConnectionVault.loadCredentials(connectionId: connection.id)
+        sendToSidecar(.connectorCompleteAuth(
+            connection: connection.asWire(),
+            credentials: credentials?.asWire()
+        ))
+    }
+
     private func registerAgentDefinitions() {
         guard let ctx = modelContext else { return }
         let descriptor = FetchDescriptor<Agent>()
@@ -697,11 +746,33 @@ final class AppState: ObservableObject {
         let provisioner = AgentProvisioner(modelContext: ctx)
         let defs: [AgentDefinitionWire] = agents.compactMap { agent in
             let (config, _) = provisioner.provision(agent: agent, mission: nil)
-            return AgentDefinitionWire(name: agent.name, config: config)
+            return AgentDefinitionWire(
+                name: agent.name,
+                config: config,
+                instancePolicy: agent.instancePolicyWireValue
+            )
         }
 
         sendToSidecar(.agentRegister(agents: defs))
         Log.appState.info("Registered \(defs.count) agent definitions with sidecar")
+    }
+
+    private func registerConnections() {
+        guard let ctx = modelContext else { return }
+        let descriptor = FetchDescriptor<Connection>()
+        guard let connections = try? ctx.fetch(descriptor), !connections.isEmpty else { return }
+
+        for connection in connections {
+            let credentials = try? ConnectionVault.loadCredentials(connectionId: connection.id)
+            if connection.status == .authorizing {
+                sendToSidecar(.connectorBeginAuth(connection: connection.asWire()))
+            } else {
+                sendToSidecar(.connectorCompleteAuth(
+                    connection: connection.asWire(),
+                    credentials: credentials?.asWire()
+                ))
+            }
+        }
     }
 
     private func registerAgentDefinitionsAwait() async {
@@ -712,7 +783,11 @@ final class AppState: ObservableObject {
         let provisioner = AgentProvisioner(modelContext: ctx)
         let defs: [AgentDefinitionWire] = agents.compactMap { agent in
             let (config, _) = provisioner.provision(agent: agent, mission: nil)
-            return AgentDefinitionWire(name: agent.name, config: config)
+            return AgentDefinitionWire(
+                name: agent.name,
+                config: config,
+                instancePolicy: agent.instancePolicyWireValue
+            )
         }
 
         try? await sendToSidecarAwait(.agentRegister(agents: defs))
@@ -812,6 +887,7 @@ final class AppState: ObservableObject {
             sessionActivity[sessionId] = .waitingForResult
 
         case .sessionResult(let sessionId, let resultText, let cost, let tokenCount, let toolCallCount):
+            workerStandbySessions.remove(sessionId)
             if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
                 activeSessions[uuid]?.isStreaming = false
                 activeSessions[uuid]?.cost = cost
@@ -834,6 +910,7 @@ final class AppState: ObservableObject {
             cleanupWorktreeIfNeeded(sessionId: sessionId)
 
         case .sessionError(let sessionId, let error):
+            workerStandbySessions.remove(sessionId)
             if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
                 activeSessions[uuid]?.isStreaming = false
             }
@@ -959,6 +1036,15 @@ final class AppState: ObservableObject {
         case .taskListResult(let tasks):
             for task in tasks { persistTask(task, sessionId: nil) }
 
+        case .connectorListResult:
+            break
+
+        case .connectorStatusChanged(let connection):
+            upsertConnection(connection)
+
+        case .connectorAudit(_, let connectionId, _, _, let outcome, let summary):
+            recordConnectorAudit(connectionId: connectionId, outcome: outcome, summary: summary)
+
         case .workspaceCreated(let sessionId, let workspaceName, let agentName):
             persistWorkspaceEvent(sessionId: sessionId, workspaceName: workspaceName, agentName: agentName, action: "created")
 
@@ -981,6 +1067,54 @@ final class AppState: ObservableObject {
             pendingConfirmations.removeAll()
             startDisconnectTimer()
         }
+    }
+
+    private func upsertConnection(_ wire: ConnectorWire) {
+        guard let ctx = modelContext else { return }
+        let connectionId = UUID(uuidString: wire.id) ?? UUID()
+        let descriptor = FetchDescriptor<Connection>(predicate: #Predicate { connection in
+            connection.id == connectionId
+        })
+        let fetched = try? ctx.fetch(descriptor).first
+        let connection = fetched ?? Connection(
+            provider: ConnectionProvider(rawValue: wire.provider) ?? .slack,
+            authMode: ConnectionAuthMode(rawValue: wire.authMode) ?? .brokered
+        )
+
+        if fetched == nil {
+            connection.id = connectionId
+            ctx.insert(connection)
+        }
+
+        connection.provider = ConnectionProvider(rawValue: wire.provider) ?? connection.provider
+        connection.installScope = ConnectionInstallScope(rawValue: wire.installScope) ?? .system
+        connection.displayName = wire.displayName
+        connection.accountId = wire.accountId
+        connection.accountHandle = wire.accountHandle
+        connection.accountMetadataJSON = wire.accountMetadataJSON
+        connection.grantedScopes = wire.grantedScopes
+        connection.authMode = ConnectionAuthMode(rawValue: wire.authMode) ?? connection.authMode
+        connection.writePolicy = ConnectionWritePolicy(rawValue: wire.writePolicy) ?? connection.writePolicy
+        connection.status = ConnectionStatus(rawValue: wire.status) ?? connection.status
+        connection.statusMessage = wire.statusMessage
+        connection.brokerReference = wire.brokerReference
+        connection.auditSummary = wire.auditSummary
+        connection.lastAuthenticatedAt = wire.lastAuthenticatedAt.flatMap(Self.iso8601.date(from:))
+        connection.lastCheckedAt = wire.lastCheckedAt.flatMap(Self.iso8601.date(from:))
+        connection.updatedAt = Date()
+        try? ctx.save()
+    }
+
+    private func recordConnectorAudit(connectionId: String, outcome: String, summary: String) {
+        guard let ctx = modelContext, let uuid = UUID(uuidString: connectionId) else { return }
+        let descriptor = FetchDescriptor<Connection>(predicate: #Predicate { connection in
+            connection.id == uuid
+        })
+        guard let connection = try? ctx.fetch(descriptor).first else { return }
+        connection.auditSummary = "\(outcome): \(summary)"
+        connection.lastCheckedAt = Date()
+        connection.updatedAt = Date()
+        try? ctx.save()
     }
 
     // MARK: - Group Invite Agent
