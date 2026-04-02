@@ -12,6 +12,7 @@ struct MessageBubble: View {
     /// Per-participant appearance map for multi-agent conversations. `nil` for single-agent.
     var agentAppearances: [UUID: AgentAppearance]?
     var onTapAttachment: ((MessageAttachment) -> Void)?
+    var onOpenLocalReference: ((String) -> Void)?
     /// When set, shows “Fork from here” in the context menu (chat bubbles only).
     var onForkFromHere: (() -> Void)?
     var onScheduleFromMessage: (() -> Void)?
@@ -130,7 +131,7 @@ struct MessageBubble: View {
                         .fontWeight(.medium)
                         .foregroundStyle(.secondary)
                 }
-                MarkdownContent(text: content)
+                MarkdownContent(text: content, onOpenLocalReference: onOpenLocalReference)
             }
         default:
             InlineHTMLCard(title: title, html: content, maxHeight: maxHeight)
@@ -265,7 +266,7 @@ struct MessageBubble: View {
                 .font(bodyFont)
                 .textSelection(.enabled)
         } else {
-            MarkdownContent(text: message.text)
+            MarkdownContent(text: message.text, onOpenLocalReference: onOpenLocalReference)
         }
     }
 

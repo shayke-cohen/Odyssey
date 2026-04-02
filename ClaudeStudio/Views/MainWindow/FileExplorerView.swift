@@ -4,6 +4,8 @@ struct FileExplorerView: View {
     let workingDirectory: String
     var displayPath: String?
     let refreshTrigger: Int
+    var selectionRequest: InspectorFileSelectionRequest?
+    var onConsumeSelectionRequest: ((UUID) -> Void)?
 
     @State private var selectedFile: FileNode?
     @State private var changesOnly = false
@@ -34,6 +36,9 @@ struct FileExplorerView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: selectionRequest?.id) {
+            applySelectionRequestIfNeeded()
+        }
     }
 
     // MARK: - Toolbar
@@ -137,5 +142,24 @@ struct FileExplorerView: View {
             var error: NSDictionary?
             appleScript.executeAndReturnError(&error)
         }
+    }
+
+    private func applySelectionRequestIfNeeded() {
+        guard let selectionRequest else { return }
+        defer {
+            onConsumeSelectionRequest?(selectionRequest.id)
+        }
+
+        let requestedURL = selectionRequest.url.standardizedFileURL.resolvingSymlinksInPath()
+        let normalizedRootURL = rootURL.standardizedFileURL.resolvingSymlinksInPath()
+        guard requestedURL.path == normalizedRootURL.path || requestedURL.path.hasPrefix(normalizedRootURL.path + "/") else {
+            return
+        }
+
+        guard let node = FileSystemService.node(at: requestedURL), !node.isDirectory else {
+            return
+        }
+
+        selectedFile = node
     }
 }

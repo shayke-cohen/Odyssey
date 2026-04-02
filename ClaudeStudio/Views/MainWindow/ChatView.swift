@@ -357,6 +357,16 @@ struct ChatView: View {
         primarySession?.model ?? primarySession?.agent?.model
     }
 
+    private var inspectorWorkspaceRoot: String? {
+        if let worktreePath = conversation?.worktreePath,
+           WorktreeManager.isUsableWorktree(at: worktreePath) {
+            return worktreePath
+        }
+
+        let trimmedProjectDirectory = windowState.projectDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedProjectDirectory.isEmpty ? nil : trimmedProjectDirectory
+    }
+
     private var aggregatedLiveCost: Double {
         guard let convo = conversation else { return 0 }
         var sum = 0.0
@@ -1084,7 +1094,10 @@ struct ChatView: View {
                                     participants: conversation?.participants ?? [],
                                     agentAppearances: participantAppearanceMap,
                                     onTapAttachment: { attachment in
-                                        previewAttachment = attachment
+                                        handleAttachmentTap(attachment)
+                                    },
+                                    onOpenLocalReference: { reference in
+                                        openLocalFileReference(reference)
                                     },
                                     onForkFromHere: {
                                         forkFromMessage(message)
@@ -1164,7 +1177,11 @@ struct ChatView: View {
                                 SessionSummaryCard(
                                     sessions: sessionsForSummary,
                                     toolCalls: toolCallsForSummary,
-                                    duration: summaryDuration
+                                    duration: summaryDuration,
+                                    workspaceRoot: inspectorWorkspaceRoot,
+                                    onOpenFile: { path in
+                                        openLocalFileReference(path)
+                                    }
                                 )
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                                 .id("allDoneBanner")
@@ -1867,7 +1884,7 @@ struct ChatView: View {
                 }
 
                 if let text, !text.isEmpty {
-                    MarkdownContent(text: text)
+                    MarkdownContent(text: text, onOpenLocalReference: openLocalFileReference)
                 } else if thinking?.isEmpty != false {
                     StreamingIndicator()
                 }
@@ -3113,6 +3130,27 @@ struct ChatView: View {
         appState.thinkingText.removeValue(forKey: sidecarKey)
         appState.lastSessionEvent.removeValue(forKey: sidecarKey)
         expandedStreamingThinkingSessionKeys.remove(sidecarKey)
+    }
+
+    private func handleAttachmentTap(_ attachment: MessageAttachment) {
+        if attachment.isImage {
+            previewAttachment = attachment
+            return
+        }
+
+        if let localFilePath = attachment.localFilePath, !localFilePath.isEmpty {
+            openLocalFileReference(localFilePath)
+        } else {
+            NSWorkspace.shared.open(AttachmentStore.url(for: attachment))
+        }
+    }
+
+    private func openLocalFileReference(_ reference: String) {
+        LocalFileReferenceSupport.open(
+            rawReference: reference,
+            workspaceRoot: inspectorWorkspaceRoot,
+            windowState: windowState
+        )
     }
 
     // MARK: - Actions

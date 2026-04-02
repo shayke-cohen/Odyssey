@@ -269,6 +269,9 @@ The sidebar is now **project-first**: utilities live above projects, and each pr
 | Delegate button | `chat.delegateButton` | `Delegate to agent` | `@testId("chat.delegateButton")` |
 | Streaming bubble | `chat.streamingBubble` | — | `@testId("chat.streamingBubble")` |
 | Streaming thinking toggle | `chat.streamingThinkingToggle` | `Expand/Collapse thinking` | `@testId("chat.streamingThinkingToggle")` |
+| Session summary card | `chat.sessionSummaryCard` | — | `@testId("chat.sessionSummaryCard")` |
+| Session summary header | `chat.sessionSummaryCard.header` | — | `@testId("chat.sessionSummaryCard.header")` |
+| Session summary file row | `chat.sessionSummaryCard.file.{index}` | `Open file {displayPath}` | `@testId("chat.sessionSummaryCard.file.{index}")` |
 
 **Note:** The inner `NSTextField` of `PasteableTextField` also exposes `pasteableTextField.input` at the AppKit level. **Return** submits when there is text or pending attachments (and the session is not processing); **Shift+Return** inserts a newline; **⌘↩** also submits; the Send button submits as well. Opening a chat restores the last in-window reading position when available; otherwise it opens at the latest message.
 

@@ -57,6 +57,16 @@ enum WindowInspectorTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+struct InspectorFileSelectionRequest: Equatable {
+    let id: UUID
+    let url: URL
+
+    init(id: UUID = UUID(), url: URL) {
+        self.id = id
+        self.url = url
+    }
+}
+
 enum ProjectRecords {
     static func canonicalPath(for path: String) -> String {
         URL(fileURLWithPath: path)
@@ -129,6 +139,7 @@ final class WindowState {
 
     var inspectorVisible = true
     var selectedInspectorTab: WindowInspectorTab = .info
+    var inspectorFileSelectionRequest: InspectorFileSelectionRequest?
 
     var showNewSessionSheet = false
     var showNewGroupThreadSheet = false
@@ -182,6 +193,7 @@ final class WindowState {
             selectedConversationId = nil
             selectedGroupId = nil
         }
+        inspectorFileSelectionRequest = nil
     }
 
     private func markConversationRead(id: UUID) {
@@ -214,6 +226,19 @@ final class WindowState {
         inspectorVisible = true
     }
 
+    func openInspectorFile(at url: URL) {
+        inspectorFileSelectionRequest = InspectorFileSelectionRequest(
+            url: url.standardizedFileURL.resolvingSymlinksInPath()
+        )
+        selectedInspectorTab = .files
+        inspectorVisible = true
+    }
+
+    func consumeInspectorFileSelectionRequest(id: UUID) {
+        guard inspectorFileSelectionRequest?.id == id else { return }
+        inspectorFileSelectionRequest = nil
+    }
+
     func chatScrollAnchor(for conversationId: UUID) -> UUID? {
         chatScrollAnchorIds[conversationId]
     }
@@ -233,5 +258,6 @@ final class WindowState {
         selectedConversationId = nil
         selectedGroupId = nil
         selectedInspectorTab = .info
+        inspectorFileSelectionRequest = nil
     }
 }

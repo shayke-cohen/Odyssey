@@ -49,6 +49,22 @@ enum FileSystemService {
         }
     }
 
+    static func node(at url: URL) -> FileNode? {
+        let normalizedURL = url.standardizedFileURL.resolvingSymlinksInPath()
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey]
+        guard let values = try? normalizedURL.resourceValues(forKeys: keys) else {
+            return nil
+        }
+
+        return FileNode(
+            name: normalizedURL.lastPathComponent,
+            url: normalizedURL,
+            isDirectory: values.isDirectory ?? false,
+            size: Int64(values.fileSize ?? 0),
+            modifiedDate: values.contentModificationDate
+        )
+    }
+
     static func readFileContents(at url: URL, maxBytes: Int = 512_000) -> String? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }

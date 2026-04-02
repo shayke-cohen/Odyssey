@@ -135,7 +135,11 @@ struct InspectorView: View {
             case .files:
                 FileExplorerView(
                     workingDirectory: fileExplorerDirectoryPath,
-                    refreshTrigger: appState.fileTreeRefreshTrigger
+                    refreshTrigger: appState.fileTreeRefreshTrigger,
+                    selectionRequest: windowState.inspectorFileSelectionRequest,
+                    onConsumeSelectionRequest: { requestId in
+                        windowState.consumeInspectorFileSelectionRequest(id: requestId)
+                    }
                 )
                 .id(fileExplorerDirectoryPath)
             case .group:

@@ -82,6 +82,7 @@
 		5FF8E1ECE0E321F4FAE93FE1 /* InstanceConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C41B36D0B3A9CCAD0070D8E3 /* InstanceConfigTests.swift */; };
 		641784F2A2B5509E16FF2B3F /* ConfigSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62219DAA93FFEACE713BF5D /* ConfigSyncService.swift */; };
 		67A00AF3C1105BE1403F6BC1 /* FileExplorerIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A93995150DCED4699A40413F /* FileExplorerIntegrationTests.swift */; };
+		67AE8D71C8DFFD07A5783B3B /* LocalFileReferenceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49CA2B0C908AE9463846912D /* LocalFileReferenceSupport.swift */; };
 		6801ADF07A5EB0080BAE5150 /* Skill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047ECAD82B852ED6748031CB /* Skill.swift */; };
 		68352D90996A99581FA7A3E5 /* NewGroupThreadSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F87AFCC3D8F622294DB773 /* NewGroupThreadSheet.swift */; };
 		6B42EEA9962B45338B5CA1FC /* SkillEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4DE0C1956D734CEA7108136 /* SkillEditorView.swift */; };
@@ -121,6 +122,7 @@
 		A10A30EC5B4C817AC7590E36 /* DefaultMCPs.json in Resources */ = {isa = PBXBuildFile; fileRef = C7086B28D25525F4C4CBF115 /* DefaultMCPs.json */; };
 		A4893514EEA5CE0FC9C1B617 /* GroupSidebarRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA69F613E97210417D417AFC /* GroupSidebarRowView.swift */; };
 		A6D3CD6D70E820C6CECE31CD /* ChatNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B9FF5DB5F7D53619744B852 /* ChatNotificationManager.swift */; };
+		A706A67A3D5D49A857A15F46 /* LocalFileReferenceSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE6A823BA7A879A8C10E709 /* LocalFileReferenceSupportTests.swift */; };
 		A7C16C3A12A1DEB55BC4F1BC /* SharedWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA557BB1DF9B6F523ABBE198 /* SharedWorkspace.swift */; };
 		A823AC8368AD14973641C9CE /* BlackboardSnapshotClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542E614FBE63F349979D85B2 /* BlackboardSnapshotClientTests.swift */; };
 		A8D6F7F1603FF1141BE02F6D /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = F526C0AB3148FC8F089BFF95 /* Session.swift */; };
@@ -246,6 +248,7 @@
 		436F1D27AC7E834ADFF909CA /* SidebarActivityIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarActivityIndicator.swift; sourceTree = "<group>"; };
 		443498F5BBF4FB616ECD3C0F /* ScheduledMissionDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledMissionDraft.swift; sourceTree = "<group>"; };
 		47CA8D198D06F50C8356C289 /* AgentActivityBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentActivityBar.swift; sourceTree = "<group>"; };
+		49CA2B0C908AE9463846912D /* LocalFileReferenceSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileReferenceSupport.swift; sourceTree = "<group>"; };
 		4B9FF5DB5F7D53619744B852 /* ChatNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatNotificationManager.swift; sourceTree = "<group>"; };
 		4D107A75EEC2EF1F7347D96F /* BlackboardEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlackboardEntry.swift; sourceTree = "<group>"; };
 		5019C3026A3D60E830C019F8 /* PeerAgentImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerAgentImporter.swift; sourceTree = "<group>"; };
@@ -325,6 +328,7 @@
 		B961C5CD65E71B5EF5742341 /* AgentSuggestions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSuggestions.swift; sourceTree = "<group>"; };
 		BA557BB1DF9B6F523ABBE198 /* SharedWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedWorkspace.swift; sourceTree = "<group>"; };
 		BB96F5672FC298016445A40D /* MarkdownContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownContent.swift; sourceTree = "<group>"; };
+		BBE6A823BA7A879A8C10E709 /* LocalFileReferenceSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileReferenceSupportTests.swift; sourceTree = "<group>"; };
 		BC42E9C9A21766F267E1E25B /* AutonomousGroupEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutonomousGroupEngine.swift; sourceTree = "<group>"; };
 		BE89DD5EF19C544E0B763A29 /* GroupSummaryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSummaryBuilder.swift; sourceTree = "<group>"; };
 		BFA1952F30E8B04FA52DD3FF /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
@@ -537,6 +541,7 @@
 				D9094A1AACFFBE215E3D5163 /* GroupWorkflowTests.swift */,
 				C41B36D0B3A9CCAD0070D8E3 /* InstanceConfigTests.swift */,
 				09ED5DD80AEB6BAD27B53C4D /* LaunchIntentTests.swift */,
+				BBE6A823BA7A879A8C10E709 /* LocalFileReferenceSupportTests.swift */,
 				3C808617DA55743109FE0269 /* PeerChannelMessageTests.swift */,
 				278665BFD5B86F5FF0D0F729 /* RichChatComponentTests.swift */,
 				290C6F267FE54EC7C5A82FD1 /* ScheduledMissionSupportTests.swift */,
@@ -671,6 +676,7 @@
 				74E2ABC20E3AAED6DBAF5A1E /* GroupPromptBuilder.swift */,
 				BE89DD5EF19C544E0B763A29 /* GroupSummaryBuilder.swift */,
 				3CEEC91570997635B41DB3F8 /* GroupWorkflowEngine.swift */,
+				49CA2B0C908AE9463846912D /* LocalFileReferenceSupport.swift */,
 				959ABF7F25AF9B73AF08B77B /* LogAggregator.swift */,
 				7D1FC1A7DDC31D543971FD92 /* P2PNetworkManager.swift */,
 				5019C3026A3D60E830C019F8 /* PeerAgentImporter.swift */,
@@ -854,6 +860,7 @@
 				E426B8FDC7206CD3939346AB /* GroupWorkflowTests.swift in Sources */,
 				5FF8E1ECE0E321F4FAE93FE1 /* InstanceConfigTests.swift in Sources */,
 				1AB0443EBF30947C35FFAA26 /* LaunchIntentTests.swift in Sources */,
+				A706A67A3D5D49A857A15F46 /* LocalFileReferenceSupportTests.swift in Sources */,
 				9D5DCFD877D70D0F5FDC22F4 /* PeerChannelMessageTests.swift in Sources */,
 				46BD6BE8606F7355195C74DF /* RichChatComponentTests.swift in Sources */,
 				477483719E146267B44CF111 /* ScheduleEngineTests.swift in Sources */,
@@ -942,6 +949,7 @@
 				E52313F74C537370EFC4822E /* InstanceConfig.swift in Sources */,
 				F75B340B8266EE030EB7A607 /* IntentLibraryHubView.swift in Sources */,
 				551D90EB34050B7DB6EDAC67 /* LaunchIntent.swift in Sources */,
+				67AE8D71C8DFFD07A5783B3B /* LocalFileReferenceSupport.swift in Sources */,
 				3FEF9CD772C7016DF8197057 /* Log.swift in Sources */,
 				4E47D347270445FF19FD2F9F /* LogAggregator.swift in Sources */,
 				9F14D4CA8030F72CEE30D7E6 /* MCPEditorView.swift in Sources */,

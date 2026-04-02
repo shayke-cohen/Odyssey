@@ -170,6 +170,18 @@ final class FileExplorerIntegrationTests: XCTestCase {
         XCTAssertTrue(nodes.isEmpty)
     }
 
+    func testNodeAtURLBuildsExactFileNode() throws {
+        createFile("Sources/Feature.swift", content: "print(\"hi\")")
+        let fileURL = tempDir.appendingPathComponent("Sources/Feature.swift")
+
+        let node = try XCTUnwrap(FileSystemService.node(at: fileURL))
+
+        XCTAssertEqual(node.name, "Feature.swift")
+        XCTAssertEqual(node.url.path, fileURL.path)
+        XCTAssertFalse(node.isDirectory)
+        XCTAssertGreaterThan(node.size ?? 0, 0)
+    }
+
     // MARK: - FileSystemService Language Mapping
 
     func testLanguageForAllCommonExtensions() {

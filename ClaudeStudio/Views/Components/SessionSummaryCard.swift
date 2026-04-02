@@ -3,9 +3,17 @@ import SwiftUI
 /// Compact summary card shown at the end of a completed session,
 /// displaying cost, tokens, tool calls, duration, and files touched.
 struct SessionSummaryCard: View {
+    struct TouchedFile: Hashable, Identifiable {
+        let path: String
+
+        var id: String { path }
+    }
+
     let sessions: [AppState.SessionInfo]
     let toolCalls: [String: [AppState.ToolCallInfo]]
     let duration: TimeInterval?
+    var workspaceRoot: String?
+    var onOpenFile: ((String) -> Void)?
     @AppStorage(AppSettings.showSessionSummaryKey, store: AppSettings.store) private var showSessionSummary = true
     @State private var isExpanded = false
 
@@ -162,16 +170,24 @@ struct SessionSummaryCard: View {
                     Text("Files touched")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    ForEach(Array(filesTouched.prefix(10)), id: \.self) { file in
-                        HStack(spacing: 4) {
-                            Image(systemName: "doc.fill")
-                                .font(.system(size: 9))
-                                .foregroundStyle(.orange.opacity(0.7))
-                            Text(file)
-                                .font(.system(.caption2, design: .monospaced))
-                                .lineLimit(1)
-                                .truncationMode(.middle)
+                    ForEach(Array(filesTouched.prefix(10).enumerated()), id: \.element.id) { index, file in
+                        Button {
+                            onOpenFile?(file.path)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "doc.fill")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.orange.opacity(0.7))
+                                Text(LocalFileReferenceSupport.displayPath(for: file.path, workspaceRoot: workspaceRoot))
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Spacer(minLength: 0)
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .xrayId("chat.sessionSummaryCard.file.\(index)")
+                        .accessibilityLabel("Open file \(LocalFileReferenceSupport.displayPath(for: file.path, workspaceRoot: workspaceRoot))")
                     }
                     if filesTouched.count > 10 {
                         Text("... and \(filesTouched.count - 10) more")
@@ -199,19 +215,22 @@ struct SessionSummaryCard: View {
         sessions.reduce(0) { $0 + $1.toolCallCount }
     }
 
-    private var filesTouched: [String] {
+    private var filesTouched: [TouchedFile] {
+        Self.touchedFiles(from: toolCalls)
+    }
+
+    static func touchedFiles(from toolCalls: [String: [AppState.ToolCallInfo]]) -> [TouchedFile] {
         var files: Set<String> = []
         for (_, calls) in toolCalls {
-            for call in calls where Self.fileTools.contains(call.tool.lowercased()) {
+            for call in calls where fileTools.contains(call.tool.lowercased()) {
                 if let data = call.input.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let path = json["file_path"] as? String {
-                    let name = (path as NSString).lastPathComponent
-                    files.insert(name)
+                    files.insert(path)
                 }
             }
         }
-        return files.sorted()
+        return files.sorted().map(TouchedFile.init(path:))
     }
 
     // MARK: - Formatting
