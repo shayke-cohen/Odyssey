@@ -57,8 +57,8 @@ struct NewSessionSheet: View {
     @State private var selectedStartKind: CreateThreadStartKind
     @State private var selectedAgentIds: Set<UUID> = []
     @State private var selectedGroupId: UUID?
-    @State private var providerOverride = AgentDefaults.inheritMarker
-    @State private var modelOverride = AgentDefaults.inheritMarker
+    @State private var providerOverridesByAgentId: [UUID: String] = [:]
+    @State private var modelOverridesByAgentId: [UUID: String] = [:]
     @State private var sessionMode: SessionMode = .interactive
     @State private var mission = ""
     @State private var showCreateFromPrompt = false
@@ -132,9 +132,6 @@ struct NewSessionSheet: View {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    private var selectedSingleAgent: Agent? {
-        orderedSelectedAgents.count == 1 ? orderedSelectedAgents.first : nil
-    }
 
     private var selectedGroup: AgentGroup? {
         guard let selectedGroupId else { return nil }
@@ -162,41 +159,112 @@ struct NewSessionSheet: View {
         }
     }
 
-    private var effectiveProviderForOverrides: String {
-        AgentDefaults.resolveEffectiveProvider(
-            sessionOverride: providerOverride,
-            agentSelection: selectedSingleAgent?.provider
-        )
+    private func providerOverrideSelection(for agent: Agent) -> String {
+        AgentDefaults.normalizedProviderSelection(providerOverridesByAgentId[agent.id]).rawValue
     }
 
-    private var localProviderReport: LocalProviderStatusReport {
-        LocalProviderSupport.statusReport()
+    private func modelOverrideSelection(for agent: Agent) -> String {
+        AgentDefaults.normalizedModelSelection(modelOverridesByAgentId[agent.id])
     }
 
-    private var localProviderSummary: String? {
-        switch effectiveProviderForOverrides {
-        case ProviderSelection.foundation.rawValue:
-            return localProviderReport.foundationSummary
-        case ProviderSelection.mlx.rawValue:
-            return localProviderReport.mlxSummary
-        default:
-            return nil
-        }
+    private func effectiveProviderForOverrides(agent: Agent) -> String {
+        resolvedProviderForSession(agent: agent)
     }
 
-    private var providerDefaultLabel: String {
-        guard let selectedSingleAgent else { return "Default" }
-        let provider = AgentDefaults.resolveEffectiveProvider(agentSelection: selectedSingleAgent.provider)
-        return "Default (\(AgentDefaults.displayName(forProvider: provider)))"
+    private func providerDefaultLabel(for agent: Agent) -> String {
+        "Default (\(AgentDefaults.displayName(forProvider: derivedProviderForAgent(agent))))"
     }
 
-    private var modelDefaultLabel: String {
-        guard let selectedSingleAgent else { return "Default" }
+    private func modelDefaultLabel(for agent: Agent) -> String {
         let model = AgentDefaults.resolveEffectiveModel(
-            agentSelection: selectedSingleAgent.model,
-            provider: effectiveProviderForOverrides
+            agentSelection: agent.model,
+            provider: effectiveProviderForOverrides(agent: agent)
         )
         return "Default (\(AgentDefaults.label(for: model)))"
+    }
+
+    private func resolvedProviderForSession(agent: Agent?) -> String {
+        guard let agent else { return AgentDefaults.defaultProvider() }
+        let overrideSelection = AgentDefaults.normalizedProviderSelection(providerOverridesByAgentId[agent.id])
+        if let concreteProvider = overrideSelection.concreteProvider {
+            return concreteProvider
+        }
+        return derivedProviderForAgent(agent)
+    }
+
+    private func derivedProviderForAgent(_ agent: Agent?) -> String {
+        guard let agent else { return AgentDefaults.defaultProvider() }
+        if let explicitProvider = AgentDefaults.normalizedProviderSelection(agent.provider).concreteProvider {
+            return explicitProvider
+        }
+        if let inferredProvider = inferredProvider(fromModel: agent.model) {
+            return inferredProvider
+        }
+        return AgentDefaults.defaultProvider()
+    }
+
+    private func inferredProvider(fromModel model: String?) -> String? {
+        let normalizedModel = AgentDefaults.normalizedModelSelection(model)
+        guard normalizedModel != AgentDefaults.inheritMarker else { return nil }
+
+        if CodexModel.allCases.contains(where: { $0.rawValue == normalizedModel }) {
+            return ProviderSelection.codex.rawValue
+        }
+        if FoundationModel.allCases.contains(where: { $0.rawValue == normalizedModel }) {
+            return ProviderSelection.foundation.rawValue
+        }
+        if ClaudeModel.allCases.contains(where: { $0.rawValue == normalizedModel }) {
+            return ProviderSelection.claude.rawValue
+        }
+        if MLXModel.allCases.contains(where: { $0.rawValue == normalizedModel }) {
+            return ProviderSelection.mlx.rawValue
+        }
+
+        return nil
+    }
+
+    private func providerSelectionBinding(for agent: Agent) -> Binding<String> {
+        Binding(
+            get: { providerOverrideSelection(for: agent) },
+            set: { newValue in
+                let normalizedProvider = AgentDefaults.normalizedProviderSelection(newValue)
+                if normalizedProvider == .system {
+                    providerOverridesByAgentId.removeValue(forKey: agent.id)
+                } else {
+                    providerOverridesByAgentId[agent.id] = normalizedProvider.rawValue
+                }
+
+                let normalizedModel = modelOverrideSelection(for: agent)
+                let availableModels = AgentDefaults.availableThreadModelChoices(
+                    for: effectiveProviderForOverrides(agent: agent),
+                    inheritLabel: "Inherit from Agent"
+                )
+
+                if availableModels.contains(where: { $0.id == normalizedModel }) {
+                    if normalizedModel == AgentDefaults.inheritMarker {
+                        modelOverridesByAgentId.removeValue(forKey: agent.id)
+                    } else {
+                        modelOverridesByAgentId[agent.id] = normalizedModel
+                    }
+                } else {
+                    modelOverridesByAgentId.removeValue(forKey: agent.id)
+                }
+            }
+        )
+    }
+
+    private func modelSelectionBinding(for agent: Agent) -> Binding<String> {
+        Binding(
+            get: { modelOverrideSelection(for: agent) },
+            set: { newValue in
+                let normalizedModel = AgentDefaults.normalizedModelSelection(newValue)
+                if normalizedModel == AgentDefaults.inheritMarker {
+                    modelOverridesByAgentId.removeValue(forKey: agent.id)
+                } else {
+                    modelOverridesByAgentId[agent.id] = normalizedModel
+                }
+            }
+        )
     }
 
     private var modePromptLabel: String {
@@ -366,14 +434,6 @@ struct NewSessionSheet: View {
                 mission = ""
             }
         }
-        .onChange(of: providerOverride) { _, _ in
-            modelOverride = AgentDefaults.availableThreadModelChoices(
-                for: effectiveProviderForOverrides,
-                inheritLabel: "Inherit from Agent"
-            ).contains(where: { $0.id == AgentDefaults.normalizedModelSelection(modelOverride) })
-                ? AgentDefaults.normalizedModelSelection(modelOverride)
-                : AgentDefaults.inheritMarker
-        }
     }
 
     @ViewBuilder
@@ -511,8 +571,6 @@ struct NewSessionSheet: View {
                             ForEach(recentAgents) { agent in
                                 Button {
                                     selectedAgentIds = [agent.id]
-                                    providerOverride = AgentDefaults.inheritMarker
-                                    modelOverride = AgentDefaults.inheritMarker
                                 } label: {
                                     HStack(spacing: 6) {
                                         Image(systemName: agent.icon)
@@ -742,7 +800,7 @@ struct NewSessionSheet: View {
     @ViewBuilder
     private func agentListRow(_ agent: Agent) -> some View {
         let isSelected = selectedAgentIds.contains(agent.id)
-        let showInlineOverrides = selectedSingleAgent?.id == agent.id
+        let showInlineOverrides = isSelected
 
         HStack(alignment: .top, spacing: showInlineOverrides ? 14 : 0) {
             Button {
@@ -803,7 +861,7 @@ struct NewSessionSheet: View {
     @ViewBuilder
     private func agentCard(_ agent: Agent) -> some View {
         let isSelected = selectedAgentIds.contains(agent.id)
-        let showInlineOverrides = selectedSingleAgent?.id == agent.id
+        let showInlineOverrides = isSelected
 
         VStack(alignment: .leading, spacing: 12) {
             Button {
@@ -1137,8 +1195,6 @@ struct NewSessionSheet: View {
                             try? modelContext.save()
                             selectedStartKind = .agents
                             selectedAgentIds = [agent.id]
-                            providerOverride = AgentDefaults.inheritMarker
-                            modelOverride = AgentDefaults.inheritMarker
                             appState.generatedAgentSpec = nil
                             appState.generateAgentError = nil
                         },
@@ -1147,8 +1203,6 @@ struct NewSessionSheet: View {
                             try? modelContext.save()
                             selectedStartKind = .agents
                             selectedAgentIds = [agent.id]
-                            providerOverride = AgentDefaults.inheritMarker
-                            modelOverride = AgentDefaults.inheritMarker
                             appState.generatedAgentSpec = nil
                             appState.generateAgentError = nil
                             Task { await createSessionAsync() }
@@ -1306,6 +1360,9 @@ struct NewSessionSheet: View {
 
     @ViewBuilder
     private func selectedAgentOverridesPanel(for agent: Agent, compact: Bool) -> some View {
+        let providerXrayId = "newSession.providerPicker.\(agent.id.uuidString)"
+        let modelXrayId = "newSession.modelPicker.\(agent.id.uuidString)"
+
         VStack(alignment: .leading, spacing: compact ? 10 : 12) {
             Text("Launch Defaults")
                 .font(.caption.weight(.semibold))
@@ -1315,58 +1372,50 @@ struct NewSessionSheet: View {
                 VStack(alignment: .leading, spacing: 10) {
                     overridePickerColumn(
                         title: "Provider",
-                        selection: $providerOverride,
+                        selection: providerSelectionBinding(for: agent),
                         options: [
-                            ModelChoice(id: AgentDefaults.inheritMarker, label: providerDefaultLabel),
+                            ModelChoice(id: AgentDefaults.inheritMarker, label: providerDefaultLabel(for: agent)),
                             ModelChoice(id: ProviderSelection.claude.rawValue, label: ProviderSelection.claude.label),
                             ModelChoice(id: ProviderSelection.codex.rawValue, label: ProviderSelection.codex.label),
                             ModelChoice(id: ProviderSelection.foundation.rawValue, label: ProviderSelection.foundation.label),
                             ModelChoice(id: ProviderSelection.mlx.rawValue, label: ProviderSelection.mlx.label)
                         ],
-                        xrayId: "newSession.providerPicker"
+                        xrayId: providerXrayId
                     )
                     overridePickerColumn(
                         title: "Model",
-                        selection: $modelOverride,
+                        selection: modelSelectionBinding(for: agent),
                         options: AgentDefaults.availableThreadModelChoices(
-                            for: effectiveProviderForOverrides,
-                            inheritLabel: modelDefaultLabel
+                            for: effectiveProviderForOverrides(agent: agent),
+                            inheritLabel: modelDefaultLabel(for: agent)
                         ),
-                        xrayId: "newSession.modelPicker"
+                        xrayId: modelXrayId
                     )
                 }
             } else {
                 HStack(alignment: .top, spacing: 10) {
                     overridePickerColumn(
                         title: "Provider",
-                        selection: $providerOverride,
+                        selection: providerSelectionBinding(for: agent),
                         options: [
-                            ModelChoice(id: AgentDefaults.inheritMarker, label: providerDefaultLabel),
+                            ModelChoice(id: AgentDefaults.inheritMarker, label: providerDefaultLabel(for: agent)),
                             ModelChoice(id: ProviderSelection.claude.rawValue, label: ProviderSelection.claude.label),
                             ModelChoice(id: ProviderSelection.codex.rawValue, label: ProviderSelection.codex.label),
                             ModelChoice(id: ProviderSelection.foundation.rawValue, label: ProviderSelection.foundation.label),
                             ModelChoice(id: ProviderSelection.mlx.rawValue, label: ProviderSelection.mlx.label)
                         ],
-                        xrayId: "newSession.providerPicker"
+                        xrayId: providerXrayId
                     )
                     overridePickerColumn(
                         title: "Model",
-                        selection: $modelOverride,
+                        selection: modelSelectionBinding(for: agent),
                         options: AgentDefaults.availableThreadModelChoices(
-                            for: effectiveProviderForOverrides,
-                            inheritLabel: modelDefaultLabel
+                            for: effectiveProviderForOverrides(agent: agent),
+                            inheritLabel: modelDefaultLabel(for: agent)
                         ),
-                        xrayId: "newSession.modelPicker"
+                        xrayId: modelXrayId
                     )
                 }
-            }
-
-            if let localProviderSummary {
-                Text(localProviderSummary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .xrayId("newSession.localProviderSummary")
             }
         }
         .padding(compact ? 12 : 14)
@@ -1449,8 +1498,6 @@ struct NewSessionSheet: View {
         } else {
             selectedAgentIds.insert(agent.id)
         }
-        providerOverride = AgentDefaults.inheritMarker
-        modelOverride = AgentDefaults.inheritMarker
     }
 
     private func selectGroup(_ group: AgentGroup) {
@@ -1598,17 +1645,12 @@ struct NewSessionSheet: View {
                 workingDirectory: projectDir
             )
 
-            if selectedList.count == 1 {
-                session.provider = AgentDefaults.resolveEffectiveProvider(
-                    sessionOverride: providerOverride,
-                    agentSelection: agent.provider
-                )
-                session.model = AgentDefaults.resolveEffectiveModel(
-                    sessionOverride: modelOverride,
-                    agentSelection: agent.model,
-                    provider: session.provider
-                )
-            }
+            session.provider = resolvedProviderForSession(agent: agent)
+            session.model = AgentDefaults.resolveEffectiveModel(
+                sessionOverride: modelOverrideSelection(for: agent),
+                agentSelection: agent.model,
+                provider: session.provider
+            )
 
             session.conversations = [conversation]
             conversation.sessions.append(session)
