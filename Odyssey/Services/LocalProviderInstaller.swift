@@ -156,69 +156,69 @@ enum LocalProviderInstaller {
     static let mlxSwiftExamplesURL = "https://github.com/ml-explore/mlx-swift-examples.git"
 
     static func recommendedMLXPresets() -> [ManagedMLXModelPreset] {
-    [
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen3-14B-4bit",
-            label: "Qwen3 14B",
-            summary: "Recommended default for everyday local Odyssey agent work with meaningfully stronger reasoning and tool use.",
-            parameterSize: "14B params",
-            downloadSize: "~8.3 GB",
-            bestFor: "Daily local agent work, repo navigation, web help, and dependable tool use.",
-            agentSuitability: "Strong for agents",
-            recommended: true
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen2.5-7B-Instruct-4bit",
-            label: "Qwen2.5 7B Instruct",
-            summary: "Smallest general-purpose model we recommend for real agent and tool workflows.",
-            parameterSize: "7B params",
-            downloadSize: "~4.3 GB",
-            bestFor: "Smaller Macs that still need usable agent behavior and tool follow-through.",
-            agentSuitability: "Good for agents",
-            recommended: false
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen3-30B-A3B-4bit-DWQ-053125",
-            label: "Qwen3 30B A3B",
-            summary: "High-end agent model with stronger planning, reasoning, and tool use if your Mac can handle it.",
-            parameterSize: "30B total / 3.3B active",
-            downloadSize: "~17.2 GB",
-            bestFor: "Best local agent quality on larger-memory Macs.",
-            agentSuitability: "Excellent for agents",
-            recommended: false
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
-            label: "Qwen2.5 Coder 7B Instruct",
-            summary: "Smallest coding model we recommend for code edits, shell usage, and repository work.",
-            parameterSize: "7B params",
-            downloadSize: "~4.3 GB",
-            bestFor: "Coding-focused local sessions on smaller Macs.",
-            agentSuitability: "Good for coding agents",
-            recommended: false
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit",
-            label: "Qwen3 Coder 30B A3B",
-            summary: "Recommended coding model with strong repo understanding, editing, and agentic tool use.",
-            parameterSize: "30B total / 3.3B active",
-            downloadSize: "~17.2 GB",
-            bestFor: "Serious local coding, repo navigation, and code-writing tasks.",
-            agentSuitability: "Excellent for coding agents",
-            recommended: false
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen3-Coder-Next-4bit",
-            label: "Qwen3 Coder Next",
-            summary: "Flagship local coding model for bigger Macs when you want the strongest coding-agent behavior.",
-            parameterSize: "80B total / 3B active",
-            downloadSize: "~44.8 GB",
-            bestFor: "Top-end coding and long-horizon local agent workflows.",
-            agentSuitability: "Best for coding agents",
-            recommended: false
-        ),
-    ]
-}
+        [
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                label: "Qwen3 4B Instruct 2507",
+                summary: "Recommended default for everyday local Odyssey work with strong reasoning and tool use.",
+                parameterSize: "4B params",
+                downloadSize: "~2.6 GB",
+                bestFor: "Daily local agent work, repo navigation, coding help, and tool use.",
+                agentSuitability: "Strong for agents",
+                recommended: true
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+                label: "Qwen2.5 1.5B Instruct",
+                summary: "Lightweight fallback for quick local chat and faster first-time setup.",
+                parameterSize: "1.5B params",
+                downloadSize: "~1.0 GB",
+                bestFor: "Quick chats, lightweight edits, and smaller laptops.",
+                agentSuitability: "Okay for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen2.5-7B-Instruct-4bit",
+                label: "Qwen2.5 7B Instruct",
+                summary: "Stronger local reasoning and tool use when you can afford a larger model.",
+                parameterSize: "7B params",
+                downloadSize: "~4.3 GB",
+                bestFor: "Longer reasoning, stronger coding help, and beefier Macs.",
+                agentSuitability: "Strong for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+                label: "Qwen2.5 Coder 7B Instruct",
+                summary: "Code-focused local model for heavier repository work.",
+                parameterSize: "7B params",
+                downloadSize: "~4.3 GB",
+                bestFor: "Code edits, debugging, and coding-focused local sessions.",
+                agentSuitability: "Strong for coding agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit",
+                label: "DeepSeek R1 Distill Qwen 7B",
+                summary: "Reasoning-oriented option when you want a more deliberate local model.",
+                parameterSize: "7B params",
+                downloadSize: "~4.5 GB",
+                bestFor: "Harder reasoning, step-by-step thinking, and deliberate problem solving.",
+                agentSuitability: "Strong for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Llama-3.2-3B-Instruct-4bit",
+                label: "Llama 3.2 3B Instruct",
+                summary: "Alternative medium-size general model for local assistant tasks.",
+                parameterSize: "3B params",
+                downloadSize: "~2.0 GB",
+                bestFor: "General local assistant work and an alternative instruction tune.",
+                agentSuitability: "Good for agents",
+                recommended: false
+            ),
+        ]
+    }
 
     static func managedToolsDirectory(
         dataDirectoryPath: String = InstanceConfig.userDefaults.string(forKey: AppSettings.dataDirectoryKey)

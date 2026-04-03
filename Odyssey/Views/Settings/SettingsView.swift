@@ -473,6 +473,43 @@ private struct ModelsSettingsTab: View {
         catalogPresets.compactMap { descriptor(for: $0.modelIdentifier) }
     }
 
+    private var libraryModelDescriptors: [MLXModelDescriptor] {
+        var descriptorsByIdentifier = Dictionary(
+            uniqueKeysWithValues: recommendedModelDescriptors.map { ($0.modelIdentifier, $0) }
+        )
+
+        for installedModel in installedModels {
+            guard let descriptor = descriptor(for: installedModel.modelIdentifier, installedModel: installedModel) else {
+                continue
+            }
+            descriptorsByIdentifier[descriptor.modelIdentifier] = descriptor
+        }
+
+        return Array(descriptorsByIdentifier.values).sorted { lhs, rhs in
+            let lhsIsDefault = lhs.defaultSelectionValue == defaultMLXModel
+            let rhsIsDefault = rhs.defaultSelectionValue == defaultMLXModel
+            if lhsIsDefault != rhsIsDefault {
+                return lhsIsDefault
+            }
+
+            let lhsIsDownloading = state.installingModelId == lhs.modelIdentifier
+            let rhsIsDownloading = state.installingModelId == rhs.modelIdentifier
+            if lhsIsDownloading != rhsIsDownloading {
+                return lhsIsDownloading
+            }
+
+            if lhs.isInstalled != rhs.isInstalled {
+                return lhs.isInstalled
+            }
+
+            if lhs.recommended != rhs.recommended {
+                return lhs.recommended
+            }
+
+            return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+        }
+    }
+
     private var customModelSource: ManagedMLXInstallSource? {
         LocalProviderInstaller.installSource(from: state.customModelInput)
     }
@@ -505,8 +542,7 @@ private struct ModelsSettingsTab: View {
         Form {
             cloudAndDefaultModelsSection
             localMLXSetupSection
-            recommendedMLXLibrarySection
-            installedMLXModelsSection
+            mlxLibrarySection
         }
         .formStyle(.grouped)
         .settingsDetailLayout()
@@ -705,16 +741,16 @@ private struct ModelsSettingsTab: View {
         }
     }
 
-    private var recommendedMLXLibrarySection: some View {
-        Section("Recommended MLX Library") {
+    private var mlxLibrarySection: some View {
+        Section("MLX Model Library") {
             VStack(alignment: .leading, spacing: 16) {
                 modelSurface {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Recommended Downloads")
+                        Text("One library, all MLX models")
                             .font(.headline)
-                        Text("Pick one model that matches how you want to work.")
+                        Text("Browse curated presets and your installed models in one place.")
                             .font(.subheadline.weight(.medium))
-                        Text("Each card calls out size, download cost, best use, and whether it’s a good fit for autonomous agent work.")
+                        Text("Each row shows the right actions for its current state, including download, set default, test, reveal, and delete.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -724,8 +760,29 @@ private struct ModelsSettingsTab: View {
                     downloadProgressCard(installProgress)
                 }
 
-                ForEach(recommendedModelDescriptors) { descriptor in
-                    recommendedModelCard(descriptor)
+                HStack {
+                    Spacer()
+                    Button("Open Models Folder") {
+                        openPathInFinder(LocalProviderInstaller.managedMLXModelsDirectory(dataDirectoryPath: dataDirectory))
+                    }
+                    .xrayId("settings.models.openMLXModelsDirectoryButtonLibrary")
+                }
+
+                if libraryModelDescriptors.isEmpty {
+                    modelSurface {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("No MLX models are available right now.")
+                                .font(.subheadline.weight(.semibold))
+                            Text("Refresh the catalog or add a model from a URL to get started.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .xrayId("settings.models.noLibraryModels")
+                } else {
+                    ForEach(libraryModelDescriptors) { descriptor in
+                        mlxModelLibraryCard(descriptor)
+                    }
                 }
 
                 modelSurface {
@@ -747,49 +804,18 @@ private struct ModelsSettingsTab: View {
                             .foregroundStyle(customModelValidation.isError ? .red : .secondary)
                     }
                 }
-            }
 
-            if state.isLoadingCatalog {
-                ProgressView("Refreshing MLX model library…")
-                    .xrayId("settings.models.loadingCatalog")
-            }
-
-            if let catalogMessage = state.catalogMessage {
-                Text(catalogMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                    .xrayId("settings.models.catalogMessage")
-            }
-        }
-    }
-
-    private var installedMLXModelsSection: some View {
-        Section("Installed MLX Models") {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Spacer()
-                    Button("Open Models Folder") {
-                        openPathInFinder(LocalProviderInstaller.managedMLXModelsDirectory(dataDirectoryPath: dataDirectory))
-                    }
-                    .xrayId("settings.models.openMLXModelsDirectoryButtonInstalled")
+                if state.isLoadingCatalog {
+                    ProgressView("Refreshing MLX model library…")
+                        .xrayId("settings.models.loadingCatalog")
                 }
 
-                if installedModels.isEmpty {
-                    modelSurface {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("No managed MLX models are installed yet.")
-                                .font(.subheadline.weight(.semibold))
-                            Text("Download or import a model above and it will appear here with smoke test, reveal, and delete actions.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .xrayId("settings.models.noInstalledModels")
-                    }
-                } else {
-                    ForEach(installedModelDescriptors) { descriptor in
-                        installedModelCard(descriptor)
-                    }
+                if let catalogMessage = state.catalogMessage {
+                    Text(catalogMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .xrayId("settings.models.catalogMessage")
                 }
             }
         }
@@ -918,7 +944,7 @@ private struct ModelsSettingsTab: View {
     }
 
     @ViewBuilder
-    private func recommendedModelCard(_ descriptor: MLXModelDescriptor) -> some View {
+    private func mlxModelLibraryCard(_ descriptor: MLXModelDescriptor) -> some View {
         modelSurface {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -938,57 +964,13 @@ private struct ModelsSettingsTab: View {
                             .padding(.vertical, 3)
                             .background(Color.green.opacity(0.12), in: Capsule())
                     }
-                    if descriptor.modelIdentifier == defaultMLXModel {
-                        Text("Default")
+                    if state.installingModelId == descriptor.modelIdentifier {
+                        Text("Downloading")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(Color.orange.opacity(0.12), in: Capsule())
+                            .background(Color.accentColor.opacity(0.12), in: Capsule())
                     }
-                }
-
-                Text(descriptor.modelIdentifier)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-
-                metadataPills(for: descriptor)
-
-                Text(descriptor.summary)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Text("Best for: \(descriptor.bestFor)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                HStack {
-                    Button(state.installingModelId == descriptor.modelIdentifier ? "Downloading…" : (descriptor.isInstalled ? "Downloaded" : "Download")) {
-                        installManagedModel(descriptor.modelIdentifier)
-                    }
-                    .disabled(state.installingModelId != nil || descriptor.isInstalled)
-                    .xrayId("settings.models.downloadPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
-
-                    Button("Set as Default") {
-                        defaultMLXModel = descriptor.modelIdentifier
-                    }
-                    .xrayId("settings.models.setDefaultPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
-                }
-
-                if let installProgress = state.installProgress, installProgress.installToken == descriptor.modelIdentifier {
-                    downloadProgressSummary(installProgress)
-                }
-            }
-        }
-        .xrayId("settings.models.presetCard.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
-    }
-
-    @ViewBuilder
-    private func installedModelCard(_ descriptor: MLXModelDescriptor) -> some View {
-        modelSurface {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(descriptor.title)
-                        .font(.headline)
                     if descriptor.defaultSelectionValue == defaultMLXModel {
                         Text("Default")
                             .font(.caption2.weight(.semibold))
@@ -1027,34 +1009,51 @@ private struct ModelsSettingsTab: View {
                 }
 
                 HStack {
-                    Button("Set as Default") {
-                        defaultMLXModel = descriptor.defaultSelectionValue
-                    }
-                    .xrayId("settings.models.setDefaultInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
-
-                    Button(state.smokeTestingModelId == descriptor.id ? "Testing…" : "Smoke Test") {
-                        if let installedModel = installedModelLookup[descriptor.modelIdentifier] {
-                            smokeTestManagedModel(installedModel, descriptor: descriptor)
+                    if descriptor.isInstalled {
+                        Button("Set as Default") {
+                            defaultMLXModel = descriptor.defaultSelectionValue
                         }
-                    }
-                    .disabled(state.smokeTestingModelId != nil)
-                    .xrayId("settings.models.smokeTestInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+                        .xrayId("settings.models.setDefaultInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
 
-                    if let revealPath = descriptor.managedPath {
-                        Button("Reveal") {
-                            openPathInFinder(revealPath)
+                        Button(state.smokeTestingModelId == descriptor.id ? "Testing…" : "Smoke Test") {
+                            if let installedModel = installedModelLookup[descriptor.modelIdentifier] {
+                                smokeTestManagedModel(installedModel, descriptor: descriptor)
+                            }
                         }
-                        .xrayId("settings.models.revealInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
-                    }
+                        .disabled(state.smokeTestingModelId != nil)
+                        .xrayId("settings.models.smokeTestInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
 
-                    Button(state.deletingModelId == descriptor.id ? "Deleting…" : "Delete") {
-                        if let installedModel = installedModelLookup[descriptor.modelIdentifier] {
-                            state.deleteConfirmationModel = installedModel
+                        if let revealPath = descriptor.managedPath {
+                            Button("Reveal") {
+                                openPathInFinder(revealPath)
+                            }
+                            .xrayId("settings.models.revealInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
                         }
+
+                        Button(state.deletingModelId == descriptor.id ? "Deleting…" : "Delete") {
+                            if let installedModel = installedModelLookup[descriptor.modelIdentifier] {
+                                state.deleteConfirmationModel = installedModel
+                            }
+                        }
+                        .disabled(state.deletingModelId != nil)
+                        .foregroundStyle(.red)
+                        .xrayId("settings.models.deleteInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+                    } else {
+                        Button(state.installingModelId == descriptor.modelIdentifier ? "Downloading…" : "Download") {
+                            installManagedModel(descriptor.modelIdentifier)
+                        }
+                        .disabled(state.installingModelId != nil)
+                        .xrayId("settings.models.downloadPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+
+                        Button("Set as Default") {
+                            defaultMLXModel = descriptor.modelIdentifier
+                        }
+                        .xrayId("settings.models.setDefaultPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
                     }
-                    .disabled(state.deletingModelId != nil)
-                    .foregroundStyle(.red)
-                    .xrayId("settings.models.deleteInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+                }
+
+                if let installProgress = state.installProgress, installProgress.installToken == descriptor.modelIdentifier {
+                    downloadProgressSummary(installProgress)
                 }
 
                 if let smokeTestResult = state.smokeTestResults[descriptor.modelIdentifier] {
@@ -1062,7 +1061,9 @@ private struct ModelsSettingsTab: View {
                 }
             }
         }
-        .xrayId("settings.models.installedCard.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+        .xrayId(
+            "\(descriptor.isInstalled ? "settings.models.installedCard" : "settings.models.presetCard").\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))"
+        )
     }
 
     private func refreshCatalog() async {
@@ -1310,6 +1311,14 @@ private struct ModelsSettingsTab: View {
     }
 
     private func downloadProgressLabel(for progress: ModelsInstallProgress) -> String {
+        if progress.downloadedBytes == 0 {
+            if let expectedBytes = progress.expectedBytes {
+                let expected = ByteCountFormatter.string(fromByteCount: expectedBytes, countStyle: .file)
+                return "Preparing download of about \(expected)"
+            }
+            return "Preparing download"
+        }
+
         let downloaded = ByteCountFormatter.string(fromByteCount: progress.downloadedBytes, countStyle: .file)
         if let expectedBytes = progress.expectedBytes {
             let expected = ByteCountFormatter.string(fromByteCount: expectedBytes, countStyle: .file)

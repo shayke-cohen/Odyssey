@@ -7,6 +7,15 @@ final class LocalAgentHostTests: XCTestCase {
         let outputPipe: Pipe
     }
 
+    private struct LiveLocalAgentEnvironment {
+        let runnerPath: String
+        let modelIdentifier: String
+        let downloadDirectory: String
+        let blackboardPort: Int
+        let bunPath: String
+        let blackboardMCPServerPath: String
+    }
+
     private var tempDirectory: URL!
 
     override func setUp() {
@@ -529,11 +538,153 @@ final class LocalAgentHostTests: XCTestCase {
         XCTAssertTrue(transcript.contains(where: { $0["role"] as? String == "user" && $0["text"] as? String == "hello from resume" }))
     }
 
+    func testLiveRESTAgentSupportsRealMLXModelAndBlackboardMCP() async throws {
+        let live = try requireLiveLocalAgentEnvironment()
+        let port = Int.random(in: 58001...61000)
+        let server = try startHostServer(
+            port: port,
+            environment: [
+                "ODYSSEY_MLX_RUNNER": live.runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": live.downloadDirectory,
+            ]
+        )
+        defer {
+            server.process.terminate()
+        }
+
+        try await waitForHealth(port: port, server: server)
+
+        let sessionID = "live-mlx-mcp-\(UUID().uuidString)"
+        let blackboardKey = "live.local-agent.\(UUID().uuidString)"
+        let blackboardValue = "hello from live mcp"
+
+        let createResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions")!,
+            method: "POST",
+            body: [
+                "sessionId": sessionID,
+                "config": [
+                    "name": "Live MLX MCP",
+                    "provider": "mlx",
+                    "model": live.modelIdentifier,
+                    "systemPrompt": "You are a local coding agent.",
+                    "workingDirectory": packageRoot.path,
+                    "allowedTools": ["Read"],
+                    "mcpServers": [[
+                        "name": "blackboard",
+                        "command": live.bunPath,
+                        "args": ["run", live.blackboardMCPServerPath],
+                        "env": [
+                            "ODYSSEY_HTTP_PORT": String(live.blackboardPort),
+                        ],
+                    ]],
+                    "skills": [],
+                    "toolDefinitions": [],
+                ],
+            ]
+        )
+        XCTAssertNotNil(createResponse["backendSessionId"] as? String)
+
+        let inferenceResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/\(sessionID)/messages")!,
+            method: "POST",
+            body: [
+                "text": "What is 2+2? Answer in one short sentence.",
+            ]
+        )
+        XCTAssertTrue((inferenceResponse["resultText"] as? String)?.contains("4") == true)
+
+        let writeResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/\(sessionID)/messages")!,
+            method: "POST",
+            body: [
+                "text": "please [[tool:blackboard_write {\"key\":\"\(blackboardKey)\",\"value\":\"\(blackboardValue)\"}]] now",
+            ]
+        )
+        let writeEvents = try XCTUnwrap(writeResponse["events"] as? [[String: Any]])
+        XCTAssertTrue(writeEvents.contains(where: { event in
+            event["type"] as? String == "toolCall" && event["tool"] as? String == "blackboard_write"
+        }))
+        XCTAssertTrue((writeResponse["resultText"] as? String)?.contains(blackboardValue) == true)
+
+        let readResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/agent/sessions/\(sessionID)/messages")!,
+            method: "POST",
+            body: [
+                "text": "please [[tool:blackboard_read {\"key\":\"\(blackboardKey)\"}]] now",
+            ]
+        )
+        let readEvents = try XCTUnwrap(readResponse["events"] as? [[String: Any]])
+        XCTAssertTrue(readEvents.contains(where: { event in
+            event["type"] as? String == "toolCall" && event["tool"] as? String == "blackboard_read"
+        }))
+        XCTAssertTrue((readResponse["resultText"] as? String)?.contains(blackboardValue) == true)
+
+        let encodedKey = blackboardKey.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? blackboardKey
+        let blackboardHTTPResponse = try await request(
+            url: URL(string: "http://127.0.0.1:\(live.blackboardPort)/blackboard/read?key=\(encodedKey)")!,
+            method: "GET"
+        )
+        XCTAssertEqual(blackboardHTTPResponse["key"] as? String, blackboardKey)
+        XCTAssertEqual(blackboardHTTPResponse["value"] as? String, blackboardValue)
+    }
+
     private var packageRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
+    }
+
+    private var repoRoot: URL {
+        packageRoot.deletingLastPathComponent().deletingLastPathComponent()
+    }
+
+    private func requireLiveLocalAgentEnvironment() throws -> LiveLocalAgentEnvironment {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["ODYSSEY_LIVE_LOCAL_AGENT"] == "1" else {
+            throw XCTSkip("Set ODYSSEY_LIVE_LOCAL_AGENT=1 to run live MLX and MCP tests")
+        }
+
+        let runnerPath = environment["ODYSSEY_LIVE_MLX_RUNNER"]
+            ?? environment["ODYSSEY_MLX_RUNNER"]
+            ?? "/Users/shayco/.odyssey/local-agent/bin/llm-tool"
+        guard FileManager.default.isExecutableFile(atPath: runnerPath) else {
+            throw XCTSkip("Live MLX runner is missing at \(runnerPath)")
+        }
+
+        let downloadDirectory = environment["ODYSSEY_LIVE_MLX_DOWNLOAD_DIR"]
+            ?? environment["ODYSSEY_MLX_DOWNLOAD_DIR"]
+            ?? "/Users/shayco/.odyssey/local-agent/models/huggingface"
+        guard FileManager.default.fileExists(atPath: downloadDirectory) else {
+            throw XCTSkip("Live MLX download directory is missing at \(downloadDirectory)")
+        }
+
+        let modelIdentifier = environment["ODYSSEY_LIVE_MLX_MODEL"] ?? "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+        let blackboardPort = Int(environment["ODYSSEY_LIVE_BLACKBOARD_PORT"] ?? "9850") ?? 9850
+        let bunPath = environment["ODYSSEY_LIVE_BUN"] ?? "/opt/homebrew/bin/bun"
+        guard FileManager.default.isExecutableFile(atPath: bunPath) else {
+            throw XCTSkip("Bun is missing at \(bunPath)")
+        }
+
+        let blackboardMCPServerPath = repoRoot.appendingPathComponent("sidecar/src/blackboard-mcp-server.ts").path
+        guard FileManager.default.fileExists(atPath: blackboardMCPServerPath) else {
+            throw XCTSkip("Blackboard MCP server not found at \(blackboardMCPServerPath)")
+        }
+
+        let healthURL = URL(string: "http://127.0.0.1:\(blackboardPort)/health")!
+        guard (try? Data(contentsOf: healthURL)) != nil else {
+            throw XCTSkip("Odyssey sidecar blackboard API is not reachable on port \(blackboardPort)")
+        }
+
+        return LiveLocalAgentEnvironment(
+            runnerPath: runnerPath,
+            modelIdentifier: modelIdentifier,
+            downloadDirectory: downloadDirectory,
+            blackboardPort: blackboardPort,
+            bunPath: bunPath,
+            blackboardMCPServerPath: blackboardMCPServerPath
+        )
     }
 
     private func runHost(arguments: [String], environment: [String: String] = [:]) throws -> String {

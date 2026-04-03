@@ -214,69 +214,69 @@ public enum ManagedMLXModels {
     public static let legacyDownloadDirectoryEnvironmentKey = "CLAUDESTUDIO_MLX_DOWNLOAD_DIR"
 
     public static func presets() -> [ManagedMLXModelPreset] {
-    [
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen3-14B-4bit",
-            label: "Qwen3 14B",
-            summary: "Recommended default for everyday local Odyssey agent work with meaningfully stronger reasoning and tool use.",
-            parameterSize: "14B params",
-            downloadSize: "~8.3 GB",
-            bestFor: "Daily local agent work, repo navigation, web help, and dependable tool use.",
-            agentSuitability: "Strong for agents",
-            recommended: true
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen2.5-7B-Instruct-4bit",
-            label: "Qwen2.5 7B Instruct",
-            summary: "Smallest general-purpose model we recommend for real agent and tool workflows.",
-            parameterSize: "7B params",
-            downloadSize: "~4.3 GB",
-            bestFor: "Smaller Macs that still need usable agent behavior and tool follow-through.",
-            agentSuitability: "Good for agents",
-            recommended: false
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen3-30B-A3B-4bit-DWQ-053125",
-            label: "Qwen3 30B A3B",
-            summary: "High-end agent model with stronger planning, reasoning, and tool use if your Mac can handle it.",
-            parameterSize: "30B total / 3.3B active",
-            downloadSize: "~17.2 GB",
-            bestFor: "Best local agent quality on larger-memory Macs.",
-            agentSuitability: "Excellent for agents",
-            recommended: false
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
-            label: "Qwen2.5 Coder 7B Instruct",
-            summary: "Smallest coding model we recommend for code edits, shell usage, and repository work.",
-            parameterSize: "7B params",
-            downloadSize: "~4.3 GB",
-            bestFor: "Coding-focused local sessions on smaller Macs.",
-            agentSuitability: "Good for coding agents",
-            recommended: false
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit",
-            label: "Qwen3 Coder 30B A3B",
-            summary: "Recommended coding model with strong repo understanding, editing, and agentic tool use.",
-            parameterSize: "30B total / 3.3B active",
-            downloadSize: "~17.2 GB",
-            bestFor: "Serious local coding, repo navigation, and code-writing tasks.",
-            agentSuitability: "Excellent for coding agents",
-            recommended: false
-        ),
-        ManagedMLXModelPreset(
-            modelIdentifier: "mlx-community/Qwen3-Coder-Next-4bit",
-            label: "Qwen3 Coder Next",
-            summary: "Flagship local coding model for bigger Macs when you want the strongest coding-agent behavior.",
-            parameterSize: "80B total / 3B active",
-            downloadSize: "~44.8 GB",
-            bestFor: "Top-end coding and long-horizon local agent workflows.",
-            agentSuitability: "Best for coding agents",
-            recommended: false
-        ),
-    ]
-}
+        [
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen3-14B-4bit",
+                label: "Qwen3 14B",
+                summary: "Recommended default for everyday local Odyssey agent work with meaningfully stronger reasoning and tool use.",
+                parameterSize: "14B params",
+                downloadSize: "~8.3 GB",
+                bestFor: "Daily local agent work, repo navigation, web help, and dependable tool use.",
+                agentSuitability: "Strong for agents",
+                recommended: true
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen2.5-7B-Instruct-4bit",
+                label: "Qwen2.5 7B Instruct",
+                summary: "Smallest general-purpose model we recommend for real agent and tool workflows.",
+                parameterSize: "7B params",
+                downloadSize: "~4.3 GB",
+                bestFor: "Smaller Macs that still need usable agent behavior and tool follow-through.",
+                agentSuitability: "Good for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen3-30B-A3B-4bit-DWQ-053125",
+                label: "Qwen3 30B A3B",
+                summary: "High-end agent model with stronger planning, reasoning, and tool use if your Mac can handle it.",
+                parameterSize: "30B total / 3.3B active",
+                downloadSize: "~17.2 GB",
+                bestFor: "Best local agent quality on larger-memory Macs.",
+                agentSuitability: "Excellent for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+                label: "Qwen2.5 Coder 7B Instruct",
+                summary: "Smallest coding model we recommend for code edits, shell usage, and repository work.",
+                parameterSize: "7B params",
+                downloadSize: "~4.3 GB",
+                bestFor: "Coding-focused local sessions on smaller Macs.",
+                agentSuitability: "Good for coding agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit",
+                label: "Qwen3 Coder 30B A3B",
+                summary: "High-end local coding model for tougher multi-file changes, tool use, and code-heavy planning.",
+                parameterSize: "30B total / 3.3B active",
+                downloadSize: "~17.2 GB",
+                bestFor: "Best local coding-agent quality on larger-memory Macs.",
+                agentSuitability: "Excellent for coding agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen3-Coder-Next-4bit",
+                label: "Qwen3 Coder Next",
+                summary: "Maximum local coding performance for big-memory Macs when you want the strongest open coding model in the list.",
+                parameterSize: "Large frontier coding model",
+                downloadSize: "~44.8 GB",
+                bestFor: "Top-end local coding, agent loops, and longer code execution workflows.",
+                agentSuitability: "Best for coding agents",
+                recommended: false
+            ),
+        ]
+    }
 
     public static func listModels(
         downloadDirectory explicitDownloadDirectory: String? = nil,
@@ -342,7 +342,8 @@ public enum ManagedMLXModels {
                     "--max-tokens", "1",
                     "--quiet",
                 ],
-                extraEnvironment: [downloadDirectoryEnvironmentKey: downloadDirectory]
+                extraEnvironment: [downloadDirectoryEnvironmentKey: downloadDirectory],
+                timeout: nil
             )
 
             let installedAt = Date()
@@ -595,7 +596,7 @@ public enum ManagedMLXModels {
         arguments: [String],
         currentDirectory: String? = nil,
         extraEnvironment: [String: String] = [:],
-        timeout: TimeInterval = 60
+        timeout: TimeInterval? = 60
     ) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
@@ -629,17 +630,21 @@ public enum ManagedMLXModels {
         }
 
         try process.run()
-        let deadline = Date().addingTimeInterval(timeout)
-        while process.isRunning && Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.05)
-        }
+        if let timeout {
+            let deadline = Date().addingTimeInterval(timeout)
+            while process.isRunning && Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
 
-        if process.isRunning {
-            process.terminate()
-            _ = readerGroup.wait(timeout: .now() + 2)
-            throw ManagedMLXModelsError.installFailed(
-                "Process timed out after \(Int(timeout))s: \(URL(fileURLWithPath: executable).lastPathComponent) \(arguments.joined(separator: " "))"
-            )
+            if process.isRunning {
+                process.terminate()
+                _ = readerGroup.wait(timeout: .now() + 2)
+                throw ManagedMLXModelsError.installFailed(
+                    "Process timed out after \(Int(timeout))s: \(URL(fileURLWithPath: executable).lastPathComponent) \(arguments.joined(separator: " "))"
+                )
+            }
+        } else {
+            process.waitUntilExit()
         }
 
         readerGroup.wait()
