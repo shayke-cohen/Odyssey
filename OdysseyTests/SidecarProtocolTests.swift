@@ -165,6 +165,23 @@ final class SidecarProtocolTests: XCTestCase {
         XCTAssertEqual(json["childSessionId"] as? String, "child-2")
     }
 
+    func testSessionUpdateModeEncoding() throws {
+        let command = SidecarCommand.sessionUpdateMode(
+            sessionId: "session-42",
+            interactive: false,
+            instancePolicy: "spawn",
+            instancePolicyPoolMax: nil
+        )
+        let data = try command.encodeToJSON()
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["type"] as? String, "session.updateMode")
+        XCTAssertEqual(json["sessionId"] as? String, "session-42")
+        XCTAssertEqual(json["interactive"] as? Bool, false)
+        XCTAssertEqual(json["instancePolicy"] as? String, "spawn")
+        XCTAssertNil(json["instancePolicyPoolMax"])
+    }
+
     func testConnectorCompleteAuthEncodingRedactsIntoStructuredFields() throws {
         let connection = ConnectorWire(
             id: "conn-1",

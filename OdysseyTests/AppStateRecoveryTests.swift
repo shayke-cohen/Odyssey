@@ -160,6 +160,65 @@ final class AppStateRecoveryTests: XCTestCase {
         XCTAssertEqual(claudeSessionId, "claude-999")
     }
 
+    func testUpdateExecutionMode_setsAutonomousStateAndSendsModeUpdates() async throws {
+        let agent = makeAgent(name: "ModeAgent")
+        agent.instancePolicy = .pool
+        agent.instancePolicyPoolMax = 3
+        let session = makeSession(agent: agent, status: .completed, claudeSessionId: "claude-mode")
+        guard let conversation = session.conversations.first else {
+            return XCTFail("Expected conversation")
+        }
+
+        var commands: [SidecarCommand] = []
+        appState.commandCaptureForTesting = { commands.append($0) }
+        appState.commandSendOverrideForTesting = { _ in }
+
+        await appState.updateExecutionMode(.autonomous, for: conversation)
+
+        XCTAssertEqual(conversation.executionMode, .autonomous)
+        XCTAssertTrue(conversation.isAutonomous)
+        XCTAssertEqual(session.mode, .autonomous)
+
+        guard let lastCommand = commands.last,
+              case .sessionUpdateMode(let sessionId, let interactive, let instancePolicy, let poolMax) = lastCommand else {
+            return XCTFail("Expected session.updateMode command")
+        }
+        XCTAssertEqual(sessionId, session.id.uuidString)
+        XCTAssertFalse(interactive)
+        XCTAssertEqual(instancePolicy, "spawn")
+        XCTAssertNil(poolMax)
+    }
+
+    func testUpdateExecutionMode_restoresInteractiveAgentPolicy() async throws {
+        let agent = makeAgent(name: "InteractiveAgent")
+        agent.instancePolicy = .pool
+        agent.instancePolicyPoolMax = 2
+        let session = makeSession(agent: agent, status: .completed, claudeSessionId: "claude-interactive")
+        session.mode = .autonomous
+        guard let conversation = session.conversations.first else {
+            return XCTFail("Expected conversation")
+        }
+        conversation.executionMode = .autonomous
+
+        var commands: [SidecarCommand] = []
+        appState.commandCaptureForTesting = { commands.append($0) }
+        appState.commandSendOverrideForTesting = { _ in }
+
+        await appState.updateExecutionMode(.interactive, for: conversation)
+
+        XCTAssertEqual(conversation.executionMode, .interactive)
+        XCTAssertFalse(conversation.isAutonomous)
+        XCTAssertEqual(session.mode, .interactive)
+
+        guard let lastCommand = commands.last,
+              case .sessionUpdateMode(_, let interactive, let instancePolicy, let poolMax) = lastCommand else {
+            return XCTFail("Expected session.updateMode command")
+        }
+        XCTAssertTrue(interactive)
+        XCTAssertEqual(instancePolicy, "pool")
+        XCTAssertEqual(poolMax, 2)
+    }
+
     func testSessionResultEvent_persistsCompletedStatus() throws {
         let agent = makeAgent(name: "ResultAgent")
         let session = makeSession(agent: agent, status: .active, claudeSessionId: "claude-result")

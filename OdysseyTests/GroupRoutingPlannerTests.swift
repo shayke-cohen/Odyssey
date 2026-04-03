@@ -236,4 +236,22 @@ final class GroupRoutingPlannerTests: XCTestCase {
         XCTAssertEqual(plan.candidateSessionIds.count, 2)
         XCTAssertEqual(Set(plan.deliveryReasons.values), Set([.generic]))
     }
+
+    func testAutonomousModeLaunchPlanUsesSavedMissionWhenDraftDiffers() {
+        let plan = ChatExecutionModeSwitchPlanner.launchPlan(
+            savedMission: "Refactor the parser",
+            draftText: "Something else"
+        )
+
+        XCTAssertEqual(plan, .useSavedMission("Refactor the parser"))
+    }
+
+    func testAutonomousModeLaunchPlanReusesMatchingDraft() {
+        let plan = ChatExecutionModeSwitchPlanner.launchPlan(
+            savedMission: "Refactor the parser",
+            draftText: "  Refactor the parser  "
+        )
+
+        XCTAssertEqual(plan, .useCurrentDraft)
+    }
 }

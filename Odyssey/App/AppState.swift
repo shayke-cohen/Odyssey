@@ -506,6 +506,31 @@ final class AppState: ObservableObject {
         }
     }
 
+    func updateExecutionMode(
+        _ executionMode: ConversationExecutionMode,
+        for conversation: Conversation
+    ) async {
+        let targetSessionMode = sessionMode(for: executionMode)
+        conversation.executionMode = executionMode
+
+        let updates = conversation.sessions.map { session -> (sessionId: String, settings: AgentProvisioner.RuntimeModeSettings) in
+            session.mode = targetSessionMode
+            let settings = AgentProvisioner.runtimeModeSettings(agent: session.agent, mode: targetSessionMode)
+            return (session.id.uuidString, settings)
+        }
+
+        try? modelContext?.save()
+
+        for update in updates {
+            try? await sendToSidecarAwait(.sessionUpdateMode(
+                sessionId: update.sessionId,
+                interactive: update.settings.interactive,
+                instancePolicy: update.settings.instancePolicy,
+                instancePolicyPoolMax: update.settings.instancePolicyPoolMax
+            ))
+        }
+    }
+
     func connectSidecar() {
         guard sidecarStatus == .disconnected || {
             if case .error = sidecarStatus { return true }

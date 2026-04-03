@@ -26,6 +26,12 @@ let sessionCreateCalls: Array<{ id: string; config: any }>;
 let sessionMessageCalls: Array<{ id: string; text: string }>;
 let forkSessionCalls: Array<{ parent: string; child: string }>;
 let sessionBulkResumeCalls: Array<{ sessions: any[] }>;
+let sessionUpdateModeCalls: Array<{
+  sessionId: string;
+  interactive: boolean;
+  instancePolicy?: string;
+  instancePolicyPoolMax?: number;
+}>;
 
 const mockSessionManager = {
   createSession: async (id: string, config: any) => {
@@ -38,6 +44,9 @@ const mockSessionManager = {
   bulkResume: async (sessions: any[]) => {
     sessionBulkResumeCalls.push({ sessions });
   },
+  updateSessionMode: (sessionId: string, interactive: boolean, instancePolicy?: string, instancePolicyPoolMax?: number) => {
+    sessionUpdateModeCalls.push({ sessionId, interactive, instancePolicy, instancePolicyPoolMax });
+  },
   forkSession: async (parent: string, child: string) => {
     forkSessionCalls.push({ parent, child });
   },
@@ -49,6 +58,7 @@ beforeAll(() => {
   sessionMessageCalls = [];
   forkSessionCalls = [];
   sessionBulkResumeCalls = [];
+  sessionUpdateModeCalls = [];
 
   ctx = {
     blackboard: new BlackboardStore(`ws-test-${Date.now()}`),
@@ -191,6 +201,32 @@ describe("WebSocket Command Dispatch", () => {
       expect(forkSessionCalls[forkSessionCalls.length - 1]).toEqual({
         parent: "ws-fork-parent",
         child: "ws-fork-child",
+      });
+    } finally {
+      ws.close();
+    }
+  });
+
+  test("session.updateMode dispatches runtime mode updates to SessionManager", async () => {
+    const ws = await wsConnect();
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      const prev = sessionUpdateModeCalls.length;
+      ws.send({
+        type: "session.updateMode",
+        sessionId: "ws-mode-session",
+        interactive: false,
+        instancePolicy: "spawn",
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      expect(sessionUpdateModeCalls.length).toBe(prev + 1);
+      expect(sessionUpdateModeCalls[prev]).toEqual({
+        sessionId: "ws-mode-session",
+        interactive: false,
+        instancePolicy: "spawn",
+        instancePolicyPoolMax: undefined,
       });
     } finally {
       ws.close();

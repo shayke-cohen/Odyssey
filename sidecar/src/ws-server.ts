@@ -84,6 +84,18 @@ export class WsServer {
       case "session.pause":
         await this.sessionManager.pauseSession(command.sessionId);
         break;
+      case "session.updateMode":
+        this.sessionManager.updateSessionMode(
+          command.sessionId,
+          command.interactive,
+          command.instancePolicy,
+          command.instancePolicyPoolMax,
+        );
+        logger.info(
+          "ws",
+          `Updated mode for ${command.sessionId} (interactive=${command.interactive}, instancePolicy=${command.instancePolicy ?? "default"})`,
+        );
+        break;
       case "session.updateCwd":
         this.sessionManager.updateSessionCwd(command.sessionId, command.workingDirectory);
         logger.info("ws", `Updated cwd for ${command.sessionId} → ${command.workingDirectory}`);

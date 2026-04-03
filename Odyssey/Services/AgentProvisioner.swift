@@ -3,6 +3,12 @@ import SwiftData
 
 @MainActor
 final class AgentProvisioner {
+    struct RuntimeModeSettings: Sendable, Equatable {
+        let interactive: Bool
+        let instancePolicy: String?
+        let instancePolicyPoolMax: Int?
+    }
+
     private let modelContext: ModelContext
 
     init(modelContext: ModelContext) {
@@ -51,7 +57,7 @@ final class AgentProvisioner {
 
         let allowedTools = permissions?.allowRules ?? ["Read", "Write", "Bash", "Grep", "Glob"]
 
-        let isInteractive = session.mode == .interactive
+        let runtimeSettings = Self.runtimeModeSettings(agent: agent, mode: session.mode)
 
         var systemPrompt = agent.systemPrompt
         if let mission = session.mission {
@@ -84,31 +90,46 @@ final class AgentProvisioner {
             maxThinkingTokens: agent.maxThinkingTokens,
             workingDirectory: session.workingDirectory,
             skills: skills.map { AgentConfig.SkillContent(name: $0.name, content: $0.content) },
-            interactive: isInteractive ? true : nil,
-            instancePolicy: resolvedInstancePolicy(agent: agent, session: session),
-            instancePolicyPoolMax: resolvedInstancePolicyPoolMax(agent: agent, session: session)
+            interactive: runtimeSettings.interactive ? true : nil,
+            instancePolicy: runtimeSettings.instancePolicy,
+            instancePolicyPoolMax: runtimeSettings.instancePolicyPoolMax
         )
     }
 
-    private func resolvedInstancePolicy(agent: Agent, session: Session) -> String? {
-        switch session.mode {
+    static func runtimeModeSettings(agent: Agent?, mode: SessionMode) -> RuntimeModeSettings {
+        switch mode {
         case .worker:
-            return AgentInstancePolicy.singleton.rawValue
+            return RuntimeModeSettings(
+                interactive: false,
+                instancePolicy: AgentInstancePolicy.singleton.rawValue,
+                instancePolicyPoolMax: nil
+            )
         case .autonomous:
-            return AgentInstancePolicy.spawn.rawValue
+            return RuntimeModeSettings(
+                interactive: false,
+                instancePolicy: AgentInstancePolicy.spawn.rawValue,
+                instancePolicyPoolMax: nil
+            )
         case .interactive:
+            guard let agent else {
+                return RuntimeModeSettings(interactive: true, instancePolicy: nil, instancePolicyPoolMax: nil)
+            }
+
+            let instancePolicy: String?
             switch agent.instancePolicy {
             case .agentDefault:
-                return nil
+                instancePolicy = nil
             case .spawn, .singleton, .pool:
-                return agent.instancePolicy.rawValue
+                instancePolicy = agent.instancePolicy.rawValue
             }
-        }
-    }
 
-    private func resolvedInstancePolicyPoolMax(agent: Agent, session: Session) -> Int? {
-        guard session.mode == .interactive, agent.instancePolicy == .pool else { return nil }
-        return agent.instancePolicyPoolMax
+            let poolMax = agent.instancePolicy == .pool ? agent.instancePolicyPoolMax : nil
+            return RuntimeModeSettings(
+                interactive: true,
+                instancePolicy: instancePolicy,
+                instancePolicyPoolMax: poolMax
+            )
+        }
     }
 
     private func resolveWorkingDirectory(override: String?) -> String {

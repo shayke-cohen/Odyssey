@@ -7,6 +7,7 @@ enum SidecarCommand: Sendable {
     case sessionBulkResume(sessions: [SessionBulkResumeEntry])
     case sessionFork(parentSessionId: String, childSessionId: String)
     case sessionPause(sessionId: String)
+    case sessionUpdateMode(sessionId: String, interactive: Bool, instancePolicy: String?, instancePolicyPoolMax: Int?)
     case agentRegister(agents: [AgentDefinitionWire])
     case delegateTask(sessionId: String, toAgent: String, task: String, context: String?, waitForResult: Bool)
     case peerRegister(name: String, endpoint: String, agents: [AgentDefinitionWire])
@@ -58,6 +59,16 @@ enum SidecarCommand: Sendable {
         case .sessionPause(let sessionId):
             return try encoder.encode(
                 SessionIdWire(type: "session.pause", sessionId: sessionId)
+            )
+        case .sessionUpdateMode(let sessionId, let interactive, let instancePolicy, let instancePolicyPoolMax):
+            return try encoder.encode(
+                SessionUpdateModeWire(
+                    type: "session.updateMode",
+                    sessionId: sessionId,
+                    interactive: interactive,
+                    instancePolicy: instancePolicy,
+                    instancePolicyPoolMax: instancePolicyPoolMax
+                )
             )
         case .agentRegister(let agents):
             return try encoder.encode(
@@ -205,6 +216,14 @@ private struct SessionUpdateCwdWire: Encodable {
     let type: String
     let sessionId: String
     let workingDirectory: String
+}
+
+private struct SessionUpdateModeWire: Encodable {
+    let type: String
+    let sessionId: String
+    let interactive: Bool
+    let instancePolicy: String?
+    let instancePolicyPoolMax: Int?
 }
 
 private struct DelegateTaskWire: Encodable {

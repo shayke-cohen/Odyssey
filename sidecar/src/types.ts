@@ -5,6 +5,7 @@ export type SidecarCommand =
   | { type: "session.resume"; sessionId: string; claudeSessionId: string }
   | { type: "session.fork"; sessionId: string; childSessionId: string }
   | { type: "session.pause"; sessionId: string }
+  | { type: "session.updateMode"; sessionId: string; interactive: boolean; instancePolicy?: "spawn" | "singleton" | "pool"; instancePolicyPoolMax?: number }
   | { type: "session.bulkResume"; sessions: BulkResumeEntry[] }
   | { type: "agent.register"; agents: AgentDefinition[] }
   | { type: "delegate.task"; sessionId: string; toAgent: string; task: string; context?: string; waitForResult: boolean }

@@ -269,6 +269,26 @@ struct ChatComposerAvailability {
     }
 }
 
+enum AutonomousModeLaunchPlan: Equatable {
+    case none
+    case useCurrentDraft
+    case useSavedMission(String)
+}
+
+enum ChatExecutionModeSwitchPlanner {
+    static func launchPlan(savedMission: String?, draftText: String) -> AutonomousModeLaunchPlan {
+        let trimmedMission = savedMission?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmedMission.isEmpty else { return .none }
+
+        let trimmedDraft = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedDraft == trimmedMission {
+            return .useCurrentDraft
+        }
+
+        return .useSavedMission(trimmedMission)
+    }
+}
+
 struct ChatView: View {
     let selectedConversation: Conversation
     @Environment(\.modelContext) private var modelContext
@@ -309,6 +329,7 @@ struct ChatView: View {
     @State private var mentionErrorDetail = ""
     @State private var showRecoveryError = false
     @State private var recoveryErrorDetail = ""
+    @State private var showAutonomousSwitchConfirmation = false
     @State private var showAddAgentsSheet = false
     @State private var showingScheduleEditor = false
     @State private var scheduleDraft = ScheduledMissionDraft()
@@ -638,6 +659,38 @@ struct ChatView: View {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    private var supportsExecutionModeToggle: Bool {
+        guard let convo = conversation else { return false }
+        return convo.executionMode != .worker
+    }
+
+    private var isAutonomousModeEnabled: Bool {
+        conversation?.executionMode == .autonomous
+    }
+
+    private var executionModeButtonLabel: String {
+        isAutonomousModeEnabled ? "Autonomous" : "Interactive"
+    }
+
+    private var executionModeButtonIcon: String {
+        isAutonomousModeEnabled ? "bolt.fill" : "person.fill"
+    }
+
+    private var executionModeButtonTint: Color {
+        isAutonomousModeEnabled ? .orange : .secondary
+    }
+
+    private var canLaunchSavedMissionFromModeSwitch: Bool {
+        currentMissionText != nil
+    }
+
+    private var pendingAutonomousLaunchPlan: AutonomousModeLaunchPlan {
+        ChatExecutionModeSwitchPlanner.launchPlan(
+            savedMission: currentMissionText,
+            draftText: inputText
+        )
+    }
+
     private var shouldShowContextualQuickActions: Bool {
         guard !isProcessing,
               mentionAutocompleteAgents.isEmpty,
@@ -836,6 +889,27 @@ struct ChatView: View {
         } message: {
             Text(recoveryErrorDetail)
         }
+        .confirmationDialog(
+            "Enable Autonomous Mode?",
+            isPresented: $showAutonomousSwitchConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Switch mode only") {
+                applyExecutionModeChange(.autonomous)
+            }
+            if canLaunchSavedMissionFromModeSwitch {
+                Button("Switch and launch saved goal now") {
+                    applyExecutionModeChange(.autonomous, launchSavedMission: true)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if canLaunchSavedMissionFromModeSwitch {
+                Text("Autonomous mode avoids follow-up questions unless progress is blocked. You can switch modes only, or switch and launch the saved goal.")
+            } else {
+                Text("Autonomous mode avoids follow-up questions unless progress is blocked. The next turn will run autonomously after you switch.")
+            }
+        }
     }
 
     // MARK: - Chat Header
@@ -885,6 +959,8 @@ struct ChatView: View {
                         .background(sharedRoomStatusColor(for: convo), in: Capsule())
                         .xrayId("chat.sharedRoomStatusBadge")
                 }
+
+                executionModeToggleButton
 
                 if conversationSessions.count > 1 {
                     Menu {
@@ -1354,6 +1430,8 @@ struct ChatView: View {
                     .accessibilityLabel("Restore agent context")
                 }
             }
+
+            executionModeToggleButton
         }
     }
 
@@ -1651,6 +1729,40 @@ struct ChatView: View {
         .xrayId("chat.sessionMenu")
         .accessibilityIdentifier("chat.sessionMenu")
         .accessibilityLabel("Session menu")
+    }
+
+    @ViewBuilder
+    private var executionModeToggleButton: some View {
+        if supportsExecutionModeToggle {
+            Button {
+                handleExecutionModeToggle()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: executionModeButtonIcon)
+                    Text(executionModeButtonLabel)
+                }
+                .font(.caption2)
+                .fontWeight(.medium)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(
+                    isAutonomousModeEnabled
+                        ? AnyShapeStyle(executionModeButtonTint.opacity(0.18))
+                        : AnyShapeStyle(.quaternary)
+                )
+                .foregroundStyle(
+                    isAutonomousModeEnabled
+                        ? AnyShapeStyle(executionModeButtonTint)
+                        : AnyShapeStyle(.secondary)
+                )
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .help(isAutonomousModeEnabled ? "Switch this thread back to interactive mode" : "Switch this thread to autonomous mode")
+            .xrayId("chat.executionModeToggle")
+            .accessibilityIdentifier("chat.executionModeToggle")
+            .accessibilityLabel(isAutonomousModeEnabled ? "Switch thread to interactive mode" : "Switch thread to autonomous mode")
+        }
     }
 
     @ViewBuilder
@@ -3067,13 +3179,53 @@ struct ChatView: View {
         inputText = text
         Task { @MainActor in
             for _ in 0..<30 {
-                if appState.sidecarStatus == .connected { break }
+                if appState.sidecarStatus == .connected && !isProcessing { break }
                 try? await Task.sleep(for: .milliseconds(500))
             }
-            if appState.sidecarStatus == .connected {
+            if appState.sidecarStatus == .connected && !isProcessing {
                 sendMessage()
             }
         }
+    }
+
+    private func handleExecutionModeToggle() {
+        guard let convo = conversation else { return }
+
+        switch convo.executionMode {
+        case .interactive:
+            showAutonomousSwitchConfirmation = true
+        case .autonomous:
+            applyExecutionModeChange(.interactive)
+        case .worker:
+            break
+        }
+    }
+
+    private func applyExecutionModeChange(
+        _ executionMode: ConversationExecutionMode,
+        launchSavedMission: Bool = false
+    ) {
+        guard let convo = conversation else { return }
+
+        Task { @MainActor in
+            await appState.updateExecutionMode(executionMode, for: convo)
+            guard launchSavedMission else { return }
+            queueAutonomousMissionLaunch()
+        }
+    }
+
+    private func queueAutonomousMissionLaunch() {
+        switch pendingAutonomousLaunchPlan {
+        case .none:
+            return
+        case .useCurrentDraft:
+            let trimmedDraft = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedDraft.isEmpty else { return }
+            windowState.autoSendText = trimmedDraft
+        case .useSavedMission(let mission):
+            windowState.autoSendText = mission
+        }
+        consumeAutoSendText()
     }
 
     private var latestUserChatMessage: ConversationMessage? {

@@ -309,6 +309,28 @@ export class SessionManager {
     this.registry.update(sessionId, { status: "paused" });
   }
 
+  updateSessionMode(
+    sessionId: string,
+    interactive: boolean,
+    instancePolicy?: "spawn" | "singleton" | "pool",
+    instancePolicyPoolMax?: number,
+  ): void {
+    if (!this.registry.getConfig(sessionId)) {
+      logger.warn("session", `Cannot update mode for missing session ${sessionId}`);
+      return;
+    }
+
+    this.registry.updateConfig(sessionId, {
+      interactive,
+      instancePolicy,
+      instancePolicyPoolMax,
+    });
+    logger.info(
+      "session",
+      `Updated mode for ${sessionId} (interactive=${interactive}, instancePolicy=${instancePolicy ?? "default"}, poolMax=${instancePolicyPoolMax ?? 0})`,
+    );
+  }
+
   async answerQuestion(
     sessionId: string,
     questionId: string,

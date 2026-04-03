@@ -178,4 +178,27 @@ describe("Session recovery integration", () => {
       else process.env.CLAUDECODE = originalClaudeCode;
     }
   });
+
+  test("updateSessionMode changes next-turn runtime config without recreating the session", () => {
+    registry.create("mode-session", makeAgentConfig({
+      name: "ModeBot",
+      provider: "foundation",
+      interactive: true,
+      instancePolicy: "pool",
+      instancePolicyPoolMax: 2,
+    }));
+
+    const interactiveOptions = manager.buildQueryOptionsForTesting("mode-session");
+    expect(interactiveOptions.toolDefinitionCount).toBeGreaterThan(0);
+    expect(registry.getConfig("mode-session")?.interactive).toBe(true);
+    expect(registry.getConfig("mode-session")?.instancePolicy).toBe("pool");
+
+    manager.updateSessionMode("mode-session", false, "spawn");
+
+    const autonomousOptions = manager.buildQueryOptionsForTesting("mode-session");
+    expect(autonomousOptions.toolDefinitionCount).toBeLessThan(interactiveOptions.toolDefinitionCount);
+    expect(registry.getConfig("mode-session")?.interactive).toBe(false);
+    expect(registry.getConfig("mode-session")?.instancePolicy).toBe("spawn");
+    expect(registry.getConfig("mode-session")?.instancePolicyPoolMax).toBeUndefined();
+  });
 });
