@@ -345,10 +345,10 @@ final class AgentDefaultsTests: XCTestCase {
         XCTAssertNil(AppSettings.store.object(forKey: AppSettings.defaultMaxBudgetKey))
     }
 
-    func testAgentsModelsSettingsTabMetadataIsRegistered() {
-        XCTAssertTrue(SettingsSection.allCases.contains(.agentsModels))
-        XCTAssertEqual(SettingsSection.agentsModels.title, "Agents & Models")
-        XCTAssertEqual(SettingsSection.agentsModels.xrayId, "settings.tab.agentsModels")
+    func testModelsSettingsTabMetadataIsRegistered() {
+        XCTAssertTrue(SettingsSection.allCases.contains(.models))
+        XCTAssertEqual(SettingsSection.models.title, "Models")
+        XCTAssertEqual(SettingsSection.models.xrayId, "settings.tab.models")
     }
 
     func testProvisionerResolvesExpectedMCPSetsForBuiltInRoles() {

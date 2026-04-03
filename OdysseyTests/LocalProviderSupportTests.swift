@@ -103,7 +103,7 @@ final class LocalProviderSupportTests: XCTestCase {
         FileManager.default.createFile(atPath: hostPath.path, contents: Data("echo host".utf8))
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hostPath.path)
 
-        let runnerPath = tempDirectory.appendingPathComponent("llm-tool")
+        let runnerPath = hostDirectory.appendingPathComponent("llm-tool")
         FileManager.default.createFile(atPath: runnerPath.path, contents: Data("echo runner".utf8))
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: runnerPath.path)
 
@@ -112,7 +112,7 @@ final class LocalProviderSupportTests: XCTestCase {
             currentDirectoryPath: tempDirectory.path,
             projectRootOverride: nil,
             hostOverride: nil,
-            mlxRunnerOverride: runnerPath.path,
+            mlxRunnerOverride: nil,
             dataDirectoryPath: tempDirectory.path
         )
 
@@ -136,6 +136,7 @@ final class LocalProviderSupportTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: managedRunnerPath.path)
 
         let resolved = LocalProviderSupport.resolveMLXRunnerPath(
+            bundleResourcePath: nil,
             runnerOverride: nil,
             dataDirectoryPath: tempDirectory.path,
             pathEnvironment: ""
@@ -144,12 +145,41 @@ final class LocalProviderSupportTests: XCTestCase {
         XCTAssertEqual(resolved, managedRunnerPath.path)
     }
 
+    func testResolveMLXRunnerPathPrefersBundledExecutableOverManagedInstall() throws {
+        let resourceDirectory = tempDirectory.appendingPathComponent("Resources")
+        let bundledRunnerDirectory = resourceDirectory.appendingPathComponent("local-agent/bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: bundledRunnerDirectory, withIntermediateDirectories: true)
+        let bundledRunnerPath = bundledRunnerDirectory.appendingPathComponent("llm-tool")
+        FileManager.default.createFile(atPath: bundledRunnerPath.path, contents: Data("echo bundled".utf8))
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: bundledRunnerPath.path)
+
+        let managedRunnerPath = URL(fileURLWithPath: LocalProviderInstaller.managedMLXRunnerInstallPath(
+            dataDirectoryPath: tempDirectory.path
+        ))
+        try FileManager.default.createDirectory(
+            at: managedRunnerPath.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        FileManager.default.createFile(atPath: managedRunnerPath.path, contents: Data("echo managed".utf8))
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: managedRunnerPath.path)
+
+        let resolved = LocalProviderSupport.resolveMLXRunnerPath(
+            bundleResourcePath: resourceDirectory.path,
+            runnerOverride: nil,
+            dataDirectoryPath: tempDirectory.path,
+            pathEnvironment: ""
+        )
+
+        XCTAssertEqual(resolved, bundledRunnerPath.path)
+    }
+
     func testResolveMLXRunnerPathIgnoresDirectoryNamedLikeRunner() throws {
         let fakeToolsDirectory = tempDirectory.appendingPathComponent("fake-bin", isDirectory: true)
         let fakeRunnerDirectory = fakeToolsDirectory.appendingPathComponent("llm-tool", isDirectory: true)
         try FileManager.default.createDirectory(at: fakeRunnerDirectory, withIntermediateDirectories: true)
 
         let resolved = LocalProviderSupport.resolveMLXRunnerPath(
+            bundleResourcePath: nil,
             runnerOverride: fakeRunnerDirectory.path,
             dataDirectoryPath: tempDirectory.path,
             pathEnvironment: fakeToolsDirectory.path
@@ -170,6 +200,42 @@ final class LocalProviderSupportTests: XCTestCase {
         XCTAssertNil(LocalProviderInstaller.normalizedMLXModelIdentifier("https://example.com/not-hugging-face"))
     }
 
+    func testNormalizedMLXModelIdentifierRejectsArchiveURL() {
+        XCTAssertNil(
+            LocalProviderInstaller.normalizedMLXModelIdentifier(
+                "https://example.com/models/local-model.tar.gz"
+            )
+        )
+    }
+
+    func testInstallSourceAcceptsRepoIDsAndURLs() {
+        let archiveURL = tempDirectory.appendingPathComponent("qwen3-archive.tar.gz")
+
+        XCTAssertEqual(
+            LocalProviderInstaller.installSource(from: "mlx-community/Qwen3-4B-Instruct-2507-4bit")?.kind,
+            .modelIdentifier
+        )
+        XCTAssertEqual(
+            LocalProviderInstaller.installSource(
+                from: "https://huggingface.co/mlx-community/Qwen3-4B-Instruct-2507-4bit"
+            )?.kind,
+            .huggingFaceURL
+        )
+        XCTAssertEqual(
+            LocalProviderInstaller.installSource(from: archiveURL.absoluteString)?.kind,
+            .archiveURL
+        )
+    }
+
+    func testInstallSourceRejectsUnsupportedInputs() throws {
+        let localModelDirectory = tempDirectory.appendingPathComponent("local-model", isDirectory: true)
+        try FileManager.default.createDirectory(at: localModelDirectory, withIntermediateDirectories: true)
+
+        XCTAssertNil(LocalProviderInstaller.installSource(from: "https://example.com/model.bin"))
+        XCTAssertNil(LocalProviderInstaller.installSource(from: localModelDirectory.path))
+        XCTAssertNil(LocalProviderInstaller.installSource(from: "not a model"))
+    }
+
     func testRecommendedMLXPresetsExposeGuidanceFields() {
         let presets = LocalProviderInstaller.recommendedMLXPresets()
 
@@ -178,6 +244,112 @@ final class LocalProviderSupportTests: XCTestCase {
         XCTAssertTrue(presets.allSatisfy { !$0.downloadSize.isEmpty })
         XCTAssertTrue(presets.allSatisfy { !$0.bestFor.isEmpty })
         XCTAssertTrue(presets.allSatisfy { !$0.agentSuitability.isEmpty })
+    }
+
+    func testRecommendedMLXPresetsMatchCuratedList() {
+        XCTAssertEqual(
+            LocalProviderInstaller.recommendedMLXPresets().map(\.modelIdentifier),
+            [
+                "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+                "mlx-community/Qwen3-0.6B-4bit",
+                "mlx-community/Qwen2.5-7B-Instruct-4bit",
+                "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+                "mlx-community/Llama-3.2-3B-Instruct-4bit",
+                "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit",
+            ]
+        )
+    }
+
+    func testInstalledMLXModelsHealHuggingFaceManagedPathLayout() throws {
+        let downloadDirectory = LocalProviderInstaller.managedMLXDownloadDirectory(dataDirectoryPath: tempDirectory.path)
+        let actualManagedPath = URL(fileURLWithPath: downloadDirectory)
+            .appendingPathComponent("models/mlx-community/Qwen3-4B-Instruct-2507-4bit", isDirectory: true)
+        try FileManager.default.createDirectory(at: actualManagedPath, withIntermediateDirectories: true)
+
+        let manifest = ManagedInstalledMLXManifest(installed: [
+            ManagedInstalledMLXModel(
+                modelIdentifier: "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                downloadDirectory: downloadDirectory,
+                installedAt: Date(),
+                sourceURL: "https://huggingface.co/mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                managedPath: URL(fileURLWithPath: downloadDirectory)
+                    .appendingPathComponent("mlx-community/Qwen3-4B-Instruct-2507-4bit", isDirectory: true)
+                    .path
+            )
+        ])
+        let manifestURL = URL(fileURLWithPath: LocalProviderInstaller.managedMLXManifestPath(dataDirectoryPath: tempDirectory.path))
+        try FileManager.default.createDirectory(at: manifestURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try JSONEncoder().encode(manifest).write(to: manifestURL)
+
+        let installed = LocalProviderInstaller.installedMLXModels(dataDirectoryPath: tempDirectory.path)
+        XCTAssertEqual(installed.first?.managedPath, actualManagedPath.path)
+    }
+
+    func testSmokeTestMLXModelReturnsPreviewOnSuccess() async throws {
+        let runnerPath = tempDirectory.appendingPathComponent("llm-tool")
+        FileManager.default.createFile(atPath: runnerPath.path, contents: Data("echo runner".utf8))
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: runnerPath.path)
+
+        let fakeHostPath = tempDirectory.appendingPathComponent("fake-local-agent-host")
+        let fakeHostScript = """
+        #!/bin/sh
+        set -e
+
+        if [ "$1" = "run" ]; then
+          printf '%s\n' '{"backendSessionId":"smoke-session","resultText":"odyssey mlx smoke test ok","inputTokens":1,"outputTokens":1,"numTurns":1,"events":[]}'
+          exit 0
+        fi
+
+        echo "unexpected command: $1" >&2
+        exit 1
+        """
+        try fakeHostScript.write(to: fakeHostPath, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fakeHostPath.path)
+
+        let result = try await LocalProviderInstaller.smokeTestMLXModel(
+            modelReference: "archive/qwen3-demo",
+            dataDirectoryPath: tempDirectory.path,
+            bundleResourcePath: nil,
+            currentDirectoryPath: tempDirectory.path,
+            projectRootOverride: tempDirectory.path,
+            hostOverride: fakeHostPath.path,
+            runnerOverride: runnerPath.path
+        )
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.outputPreview, "odyssey mlx smoke test ok")
+        XCTAssertNil(result.errorMessage)
+        XCTAssertGreaterThanOrEqual(result.durationSeconds, 0)
+    }
+
+    func testSmokeTestMLXModelReturnsFailureDetails() async throws {
+        let runnerPath = tempDirectory.appendingPathComponent("llm-tool")
+        FileManager.default.createFile(atPath: runnerPath.path, contents: Data("echo runner".utf8))
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: runnerPath.path)
+
+        let fakeHostPath = tempDirectory.appendingPathComponent("fake-local-agent-host")
+        let fakeHostScript = """
+        #!/bin/sh
+        echo "simulated smoke test failure" >&2
+        exit 1
+        """
+        try fakeHostScript.write(to: fakeHostPath, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fakeHostPath.path)
+
+        let result = try await LocalProviderInstaller.smokeTestMLXModel(
+            modelReference: "archive/qwen3-demo",
+            dataDirectoryPath: tempDirectory.path,
+            bundleResourcePath: nil,
+            currentDirectoryPath: tempDirectory.path,
+            projectRootOverride: tempDirectory.path,
+            hostOverride: fakeHostPath.path,
+            runnerOverride: runnerPath.path
+        )
+
+        XCTAssertFalse(result.success)
+        XCTAssertNil(result.outputPreview)
+        XCTAssertTrue(result.errorMessage?.contains("simulated smoke test failure") == true)
     }
 
     func testStatusReportMarksCachedManagedModelAsReady() throws {
@@ -261,7 +433,13 @@ final class LocalProviderSupportTests: XCTestCase {
           esac
         done
 
-        MODEL_PATH="$DOWNLOAD_DIR/$(printf '%s' "$MODEL" | sed 's#/#/#g')"
+        case "$MODEL" in
+          https://huggingface.co/*)
+            MODEL="${MODEL#https://huggingface.co/}"
+            ;;
+        esac
+
+        MODEL_PATH="$DOWNLOAD_DIR/$MODEL"
         MANIFEST_PATH="$(dirname "$DOWNLOAD_DIR")/managed-models.json"
 
         rm -rf "$MODEL_PATH"

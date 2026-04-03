@@ -60,6 +60,21 @@ final class LocalAgentCoreTests: XCTestCase {
         XCTAssertTrue(presets.allSatisfy { !$0.agentSuitability.isEmpty })
     }
 
+    func testManagedMLXPresetsMatchCuratedList() {
+        XCTAssertEqual(
+            ManagedMLXModels.presets().map(\.modelIdentifier),
+            [
+                "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+                "mlx-community/Qwen3-0.6B-4bit",
+                "mlx-community/Qwen2.5-7B-Instruct-4bit",
+                "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+                "mlx-community/Llama-3.2-3B-Instruct-4bit",
+                "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit",
+            ]
+        )
+    }
+
     func testManualToolLoopExecutesRegisteredTool() async throws {
         setenv("ODYSSEY_MLX_RUNNER", "/bin/echo", 1)
         setenv("CLAUDESTUDIO_MLX_RUNNER", "/bin/echo", 1)
@@ -372,6 +387,58 @@ final class LocalAgentCoreTests: XCTestCase {
         XCTAssertEqual(result.modelIdentifier, "mlx-community/Qwen3-0.6B-4bit")
     }
 
+    func testManagedMLXInstallSupportsArchiveURL() throws {
+        let runnerPath = try makeStubRunner()
+        let downloadDirectory = tempDirectory.appendingPathComponent("huggingface").path
+        let archiveURL = try makeModelArchive(named: "Qwen3 Archive Demo")
+
+        let result = try ManagedMLXModels.installModel(
+            modelIdentifier: archiveURL.absoluteString,
+            downloadDirectory: downloadDirectory,
+            runnerPath: runnerPath
+        )
+
+        XCTAssertEqual(result.modelIdentifier, "archive/qwen3-archive-demo")
+        XCTAssertFalse(result.alreadyInstalled)
+
+        let listed = ManagedMLXModels.installedModels(downloadDirectory: downloadDirectory)
+        XCTAssertEqual(listed.map(\.modelIdentifier), ["archive/qwen3-archive-demo"])
+        XCTAssertEqual(listed.first?.sourceURL, archiveURL.absoluteString)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: listed.first?.managedPath ?? ""))
+    }
+
+    func testInstalledModelsHealHuggingFaceManagedPathLayout() throws {
+        let downloadDirectory = tempDirectory.appendingPathComponent("huggingface").path
+        let actualManagedPath = tempDirectory
+            .appendingPathComponent("huggingface/models/mlx-community/Qwen3-4B-Instruct-2507-4bit", isDirectory: true)
+        try FileManager.default.createDirectory(at: actualManagedPath, withIntermediateDirectories: true)
+
+        let manifestPath = ManagedMLXModels.manifestPath(for: downloadDirectory)
+        struct TestManifest: Encodable {
+            let installed: [ManagedMLXInstalledModel]
+        }
+
+        let manifest = TestManifest(installed: [
+            ManagedMLXInstalledModel(
+                modelIdentifier: "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                downloadDirectory: downloadDirectory,
+                installedAt: Date(),
+                sourceURL: "https://huggingface.co/mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                managedPath: tempDirectory.appendingPathComponent("huggingface/mlx-community/Qwen3-4B-Instruct-2507-4bit").path
+            )
+        ])
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try FileManager.default.createDirectory(
+            at: URL(fileURLWithPath: manifestPath).deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try encoder.encode(manifest).write(to: URL(fileURLWithPath: manifestPath), options: .atomic)
+
+        let listed = ManagedMLXModels.installedModels(downloadDirectory: downloadDirectory)
+        XCTAssertEqual(listed.first?.managedPath, actualManagedPath.path)
+    }
+
     func testManagedMLXRemoveModelDeletesManagedPathAndManifestEntry() throws {
         let runnerPath = try makeStubRunner()
         let downloadDirectory = tempDirectory.appendingPathComponent("huggingface").path
@@ -473,5 +540,27 @@ final class LocalAgentCoreTests: XCTestCase {
         """.write(to: scriptURL, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
         return scriptURL.path
+    }
+
+    private func makeModelArchive(named directoryName: String) throws -> URL {
+        let modelDirectory = tempDirectory.appendingPathComponent(directoryName, isDirectory: true)
+        try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
+        try "{}".write(to: modelDirectory.appendingPathComponent("config.json"), atomically: true, encoding: .utf8)
+        try "{}".write(to: modelDirectory.appendingPathComponent("tokenizer.json"), atomically: true, encoding: .utf8)
+        try "weights".write(to: modelDirectory.appendingPathComponent("weights.safetensors"), atomically: true, encoding: .utf8)
+
+        let archiveURL = tempDirectory.appendingPathComponent("mlx-model.tar.gz")
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        process.arguments = ["-czf", archiveURL.path, "-C", tempDirectory.path, directoryName]
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+        process.waitUntilExit()
+
+        let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        XCTAssertEqual(process.terminationStatus, 0, output)
+        return archiveURL
     }
 }

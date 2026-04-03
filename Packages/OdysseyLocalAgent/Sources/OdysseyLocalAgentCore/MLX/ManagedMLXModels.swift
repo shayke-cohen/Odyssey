@@ -170,7 +170,7 @@ public enum ManagedMLXModelsError: LocalizedError {
         case .missingRunner:
             return "MLX runner not found. Install llm-tool or set ODYSSEY_MLX_RUNNER."
         case .invalidModelIdentifier:
-            return "Enter a Hugging Face MLX model id or URL, not a local path."
+            return "Enter a Hugging Face repo id, a Hugging Face URL, or a direct archive URL ending in .zip, .tar, .tar.gz, or .tgz."
         case .installFailed(let output):
             return output.isEmpty ? "Failed to install the MLX model." : output
         case .removeFailed(let output):
@@ -183,6 +183,32 @@ private struct ManagedMLXManifest: Codable {
     var installed: [ManagedMLXInstalledModel] = []
 }
 
+private enum ManagedMLXInstallSource {
+    case modelIdentifier(String)
+    case huggingFaceURL(rawValue: String, normalizedIdentifier: String)
+    case archiveURL(URL)
+
+    var manifestIdentifier: String? {
+        switch self {
+        case .modelIdentifier(let value), .huggingFaceURL(_, let value):
+            return value
+        case .archiveURL:
+            return nil
+        }
+    }
+
+    var sourceURL: String? {
+        switch self {
+        case .modelIdentifier:
+            return nil
+        case .huggingFaceURL(let rawValue, _):
+            return rawValue
+        case .archiveURL(let url):
+            return url.absoluteString
+        }
+    }
+}
+
 public enum ManagedMLXModels {
     public static let downloadDirectoryEnvironmentKey = "ODYSSEY_MLX_DOWNLOAD_DIR"
     public static let legacyDownloadDirectoryEnvironmentKey = "CLAUDESTUDIO_MLX_DOWNLOAD_DIR"
@@ -191,11 +217,11 @@ public enum ManagedMLXModels {
         [
             ManagedMLXModelPreset(
                 modelIdentifier: "mlx-community/Qwen3-4B-Instruct-2507-4bit",
-                label: "Qwen3 4B Instruct",
-                summary: "Recommended for local agent work. Better reasoning and tool use than the tiny defaults.",
+                label: "Qwen3 4B Instruct 2507",
+                summary: "Recommended default for everyday local Odyssey work with stronger reasoning and tool use.",
                 parameterSize: "4B params",
                 downloadSize: "~2.6 GB",
-                bestFor: "Daily local agent work, repo navigation, and stronger tool use.",
+                bestFor: "Daily local agent work, repo navigation, coding help, and tool use.",
                 agentSuitability: "Strong for agents",
                 recommended: true
             ),
@@ -230,6 +256,16 @@ public enum ManagedMLXModels {
                 recommended: false
             ),
             ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+                label: "Qwen2.5 Coder 7B Instruct",
+                summary: "Code-focused local model for heavier repository work.",
+                parameterSize: "7B params",
+                downloadSize: "~4.5 GB",
+                bestFor: "Code edits, debugging, and coding-focused local sessions.",
+                agentSuitability: "Strong for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
                 modelIdentifier: "mlx-community/Llama-3.2-3B-Instruct-4bit",
                 label: "Llama 3.2 3B Instruct",
                 summary: "Alternative medium-size general model.",
@@ -237,6 +273,16 @@ public enum ManagedMLXModels {
                 downloadSize: "~2.0 GB",
                 bestFor: "General local assistant work and an alternative instruction tune.",
                 agentSuitability: "Good for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit",
+                label: "DeepSeek R1 Distill Qwen 7B",
+                summary: "Reasoning-oriented option when you want a more deliberate local model.",
+                parameterSize: "7B params",
+                downloadSize: "~4.5 GB",
+                bestFor: "Harder reasoning, step-by-step thinking, and deliberate problem solving.",
+                agentSuitability: "Strong for agents",
                 recommended: false
             ),
         ]
@@ -262,7 +308,7 @@ public enum ManagedMLXModels {
         runnerPath explicitRunnerPath: String? = nil
     ) throws -> InstallMLXModelResult {
         let trimmedModelIdentifier = modelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let normalizedModelIdentifier = normalizeModelIdentifier(trimmedModelIdentifier) else {
+        guard let installSource = parseInstallSource(trimmedModelIdentifier) else {
             throw ManagedMLXModelsError.invalidModelIdentifier
         }
 
@@ -278,67 +324,79 @@ public enum ManagedMLXModels {
             withIntermediateDirectories: true
         )
 
-        let manifest = loadManifest(at: manifestPath)
-        if let installed = manifest.installed.first(where: {
-            normalizeModelIdentifier($0.modelIdentifier) == normalizedModelIdentifier
-        }) {
+        switch installSource {
+        case .modelIdentifier(let normalizedModelIdentifier),
+             .huggingFaceURL(_, let normalizedModelIdentifier):
+            let manifest = loadManifest(at: manifestPath)
+            if let installed = manifest.installed.first(where: {
+                normalizeModelIdentifier($0.modelIdentifier) == normalizedModelIdentifier
+            }) {
+                return InstallMLXModelResult(
+                    modelIdentifier: normalizedModelIdentifier,
+                    downloadDirectory: downloadDirectory,
+                    manifestPath: manifestPath,
+                    runnerPath: runnerPath,
+                    alreadyInstalled: true,
+                    output: "Model already installed.",
+                    installedAt: installed.installedAt
+                )
+            }
+
+            let output = try runProcess(
+                executable: runnerPath,
+                arguments: [
+                    "eval",
+                    "--model", normalizedModelIdentifier,
+                    "--download", downloadDirectory,
+                    "--prompt", "Hello",
+                    "--max-tokens", "1",
+                    "--quiet",
+                ],
+                extraEnvironment: [downloadDirectoryEnvironmentKey: downloadDirectory]
+            )
+
+            let installedAt = Date()
+            let managedPath = firstExistingManagedPath(
+                for: normalizedModelIdentifier,
+                downloadDirectory: downloadDirectory
+            ) ?? preferredManagedPath(
+                for: normalizedModelIdentifier,
+                downloadDirectory: downloadDirectory
+            )
+            var updatedManifest = manifest
+            updatedManifest.installed.removeAll {
+                normalizeModelIdentifier($0.modelIdentifier) == normalizedModelIdentifier
+            }
+            updatedManifest.installed.append(
+                ManagedMLXInstalledModel(
+                    modelIdentifier: normalizedModelIdentifier,
+                    downloadDirectory: downloadDirectory,
+                    installedAt: installedAt,
+                    sourceURL: installSource.sourceURL,
+                    managedPath: managedPath
+                )
+            )
+            updatedManifest.installed.sort { $0.modelIdentifier.localizedCaseInsensitiveCompare($1.modelIdentifier) == .orderedAscending }
+            try saveManifest(updatedManifest, to: manifestPath)
+
             return InstallMLXModelResult(
                 modelIdentifier: normalizedModelIdentifier,
                 downloadDirectory: downloadDirectory,
                 manifestPath: manifestPath,
                 runnerPath: runnerPath,
-                alreadyInstalled: true,
-                output: "Model already installed.",
-                installedAt: installed.installedAt
+                alreadyInstalled: false,
+                output: output,
+                installedAt: installedAt
             )
-        }
 
-        let output = try runProcess(
-            executable: runnerPath,
-            arguments: [
-                "eval",
-                "--model", normalizedModelIdentifier,
-                "--download", downloadDirectory,
-                "--prompt", "Hello",
-                "--max-tokens", "1",
-                "--quiet",
-            ],
-            extraEnvironment: [downloadDirectoryEnvironmentKey: downloadDirectory]
-        )
-
-        let installedAt = Date()
-        let managedPath = firstExistingManagedPath(
-            for: normalizedModelIdentifier,
-            downloadDirectory: downloadDirectory
-        ) ?? preferredManagedPath(
-            for: normalizedModelIdentifier,
-            downloadDirectory: downloadDirectory
-        )
-        var updatedManifest = manifest
-        updatedManifest.installed.removeAll {
-            normalizeModelIdentifier($0.modelIdentifier) == normalizedModelIdentifier
-        }
-        updatedManifest.installed.append(
-            ManagedMLXInstalledModel(
-                modelIdentifier: normalizedModelIdentifier,
+        case .archiveURL(let archiveURL):
+            return try installArchiveModel(
+                archiveURL: archiveURL,
                 downloadDirectory: downloadDirectory,
-                installedAt: installedAt,
-                sourceURL: sourceURL(from: trimmedModelIdentifier),
-                managedPath: managedPath
+                manifestPath: manifestPath,
+                runnerPath: runnerPath
             )
-        )
-        updatedManifest.installed.sort { $0.modelIdentifier.localizedCaseInsensitiveCompare($1.modelIdentifier) == .orderedAscending }
-        try saveManifest(updatedManifest, to: manifestPath)
-
-        return InstallMLXModelResult(
-            modelIdentifier: normalizedModelIdentifier,
-            downloadDirectory: downloadDirectory,
-            manifestPath: manifestPath,
-            runnerPath: runnerPath,
-            alreadyInstalled: false,
-            output: output,
-            installedAt: installedAt
-        )
+        }
     }
 
     public static func removeModel(
@@ -346,26 +404,34 @@ public enum ManagedMLXModels {
         downloadDirectory explicitDownloadDirectory: String? = nil
     ) throws -> RemoveMLXModelResult {
         let trimmedModelIdentifier = modelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let normalizedModelIdentifier = normalizeModelIdentifier(trimmedModelIdentifier) else {
-            throw ManagedMLXModelsError.invalidModelIdentifier
-        }
+        let normalizedModelIdentifier = normalizeModelIdentifier(trimmedModelIdentifier)
 
         let downloadDirectory = resolveDownloadDirectory(explicitDownloadDirectory)
         let manifestPath = manifestPath(for: downloadDirectory)
         var manifest = loadManifest(at: manifestPath)
-        let existing = manifest.installed.first {
-            normalizeModelIdentifier($0.modelIdentifier) == normalizedModelIdentifier
+        let exactMatch = manifest.installed.first {
+            $0.modelIdentifier == trimmedModelIdentifier
+        }
+        let existing = exactMatch ?? manifest.installed.first {
+            guard let normalizedModelIdentifier else { return false }
+            return normalizeModelIdentifier($0.modelIdentifier) == normalizedModelIdentifier
+        }
+        let resolvedModelIdentifier = existing?.modelIdentifier ?? normalizedModelIdentifier
+        guard let resolvedModelIdentifier else {
+            throw ManagedMLXModelsError.invalidModelIdentifier
         }
         let alreadyRemoved = existing == nil
 
-        let candidatePaths = Array(
-            Set(
-                ([existing?.managedPath].compactMap { $0 } + managedPathCandidates(
-                    for: normalizedModelIdentifier,
-                    downloadDirectory: downloadDirectory
-                )).map(standardizedPath)
+        var candidatePathGroups: [[String]] = [
+            [existing?.managedPath].compactMap { $0 },
+            managedPathCandidates(for: resolvedModelIdentifier, downloadDirectory: downloadDirectory),
+        ]
+        if let normalizedModelIdentifier {
+            candidatePathGroups.append(
+                managedPathCandidates(for: normalizedModelIdentifier, downloadDirectory: downloadDirectory)
             )
-        )
+        }
+        let candidatePaths = Array(Set(candidatePathGroups.flatMap { $0 }.map(standardizedPath)))
 
         let allowedRoots = [
             standardizedPath(downloadDirectory),
@@ -389,12 +455,13 @@ public enum ManagedMLXModels {
         }
 
         manifest.installed.removeAll {
-            normalizeModelIdentifier($0.modelIdentifier) == normalizedModelIdentifier
+            $0.modelIdentifier == resolvedModelIdentifier
+                || (normalizedModelIdentifier != nil && normalizeModelIdentifier($0.modelIdentifier) == normalizedModelIdentifier)
         }
         try saveManifest(manifest, to: manifestPath)
 
         return RemoveMLXModelResult(
-            modelIdentifier: normalizedModelIdentifier,
+            modelIdentifier: resolvedModelIdentifier,
             downloadDirectory: downloadDirectory,
             manifestPath: manifestPath,
             deletedPaths: deletedPaths.sorted(),
@@ -404,7 +471,9 @@ public enum ManagedMLXModels {
 
     public static func installedModels(downloadDirectory explicitDownloadDirectory: String? = nil) -> [ManagedMLXInstalledModel] {
         let downloadDirectory = resolveDownloadDirectory(explicitDownloadDirectory)
-        return loadManifest(at: manifestPath(for: downloadDirectory)).installed
+        return loadManifest(at: manifestPath(for: downloadDirectory)).installed.map {
+            normalizedInstalledModel($0, downloadDirectory: downloadDirectory)
+        }
     }
 
     public static func resolveDownloadDirectory(_ explicitDownloadDirectory: String? = nil) -> String {
@@ -470,14 +539,48 @@ public enum ManagedMLXModels {
         if let url = URL(string: trimmed),
            let host = url.host?.lowercased(),
            ["huggingface.co", "www.huggingface.co", "hf.co"].contains(host) {
-            let components = url.pathComponents.filter { $0 != "/" && !$0.isEmpty }
-            guard components.count >= 2 else {
-                return nil
-            }
-            return "\(components[0])/\(components[1])"
+            return normalizeHuggingFaceURL(url)
         }
 
-        let slashComponents = trimmed.split(separator: "/").map(String.init)
+        return normalizePlainModelIdentifier(trimmed)
+    }
+
+    private static func parseInstallSource(_ value: String) -> ManagedMLXInstallSource? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !looksLikeLocalModelPath(trimmed) else {
+            return nil
+        }
+
+        if let url = URL(string: trimmed),
+           let scheme = url.scheme?.lowercased(),
+           ["http", "https", "file"].contains(scheme) {
+            let host = url.host?.lowercased()
+            if let host, ["huggingface.co", "www.huggingface.co", "hf.co"].contains(host),
+               let normalizedIdentifier = normalizeHuggingFaceURL(url) {
+                return .huggingFaceURL(rawValue: trimmed, normalizedIdentifier: normalizedIdentifier)
+            }
+            guard isSupportedArchiveURL(url) else {
+                return nil
+            }
+            return .archiveURL(url)
+        }
+
+        guard let normalizedIdentifier = normalizePlainModelIdentifier(trimmed) else {
+            return nil
+        }
+        return .modelIdentifier(normalizedIdentifier)
+    }
+
+    private static func normalizeHuggingFaceURL(_ url: URL) -> String? {
+        let components = url.pathComponents.filter { $0 != "/" && !$0.isEmpty }
+        guard components.count >= 2 else {
+            return nil
+        }
+        return "\(components[0])/\(components[1])"
+    }
+
+    private static func normalizePlainModelIdentifier(_ value: String) -> String? {
+        let slashComponents = value.split(separator: "/").map(String.init)
         guard slashComponents.count == 2,
               slashComponents.allSatisfy({ component in
                   !component.isEmpty &&
@@ -485,8 +588,15 @@ public enum ManagedMLXModels {
               }) else {
             return nil
         }
-
         return "\(slashComponents[0])/\(slashComponents[1])"
+    }
+
+    private static func isSupportedArchiveURL(_ url: URL) -> Bool {
+        let lowercasedPath = url.path.lowercased()
+        return lowercasedPath.hasSuffix(".zip")
+            || lowercasedPath.hasSuffix(".tar")
+            || lowercasedPath.hasSuffix(".tar.gz")
+            || lowercasedPath.hasSuffix(".tgz")
     }
 
     @discardableResult
@@ -550,6 +660,175 @@ public enum ManagedMLXModels {
         return output
     }
 
+    private static func installArchiveModel(
+        archiveURL: URL,
+        downloadDirectory: String,
+        manifestPath: String,
+        runnerPath: String
+    ) throws -> InstallMLXModelResult {
+        let manifest = loadManifest(at: manifestPath)
+        let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        let localArchivePath = try localArchivePath(for: archiveURL, tempRoot: tempRoot)
+        let extractionDirectory = tempRoot.appendingPathComponent("extracted", isDirectory: true)
+        try FileManager.default.createDirectory(at: extractionDirectory, withIntermediateDirectories: true)
+        try extractArchive(at: localArchivePath, to: extractionDirectory.path)
+
+        let extractedModelPath = try locateExtractedModelDirectory(in: extractionDirectory.path)
+        let archiveModelIdentifier = archiveIdentifier(from: archiveURL, extractedModelPath: extractedModelPath)
+
+        if let installed = manifest.installed.first(where: {
+            $0.modelIdentifier == archiveModelIdentifier || $0.sourceURL == archiveURL.absoluteString
+        }) {
+            return InstallMLXModelResult(
+                modelIdentifier: installed.modelIdentifier,
+                downloadDirectory: downloadDirectory,
+                manifestPath: manifestPath,
+                runnerPath: runnerPath,
+                alreadyInstalled: true,
+                output: "Model already installed.",
+                installedAt: installed.installedAt
+            )
+        }
+
+        let installedAt = Date()
+        let managedPath = preferredManagedPath(for: archiveModelIdentifier, downloadDirectory: downloadDirectory)
+        let managedURL = URL(fileURLWithPath: managedPath)
+        try FileManager.default.createDirectory(at: managedURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if FileManager.default.fileExists(atPath: managedPath) {
+            try FileManager.default.removeItem(atPath: managedPath)
+        }
+        try FileManager.default.moveItem(atPath: extractedModelPath, toPath: managedPath)
+
+        var updatedManifest = manifest
+        updatedManifest.installed.removeAll {
+            $0.modelIdentifier == archiveModelIdentifier || $0.sourceURL == archiveURL.absoluteString
+        }
+        updatedManifest.installed.append(
+            ManagedMLXInstalledModel(
+                modelIdentifier: archiveModelIdentifier,
+                downloadDirectory: downloadDirectory,
+                installedAt: installedAt,
+                sourceURL: archiveURL.absoluteString,
+                managedPath: managedPath
+            )
+        )
+        updatedManifest.installed.sort { $0.modelIdentifier.localizedCaseInsensitiveCompare($1.modelIdentifier) == .orderedAscending }
+        try saveManifest(updatedManifest, to: manifestPath)
+
+        return InstallMLXModelResult(
+            modelIdentifier: archiveModelIdentifier,
+            downloadDirectory: downloadDirectory,
+            manifestPath: manifestPath,
+            runnerPath: runnerPath,
+            alreadyInstalled: false,
+            output: "Imported archive into \(managedPath).",
+            installedAt: installedAt
+        )
+    }
+
+    private static func localArchivePath(for archiveURL: URL, tempRoot: URL) throws -> String {
+        if archiveURL.isFileURL {
+            return archiveURL.standardizedFileURL.path
+        }
+
+        let archiveFileName = archiveURL.lastPathComponent.isEmpty ? "imported-model.archive" : archiveURL.lastPathComponent
+        let destinationURL = tempRoot.appendingPathComponent(archiveFileName)
+        let data = try Data(contentsOf: archiveURL)
+        try data.write(to: destinationURL, options: .atomic)
+        return destinationURL.path
+    }
+
+    private static func extractArchive(at archivePath: String, to destinationDirectory: String) throws {
+        let lowercasedPath = archivePath.lowercased()
+        if lowercasedPath.hasSuffix(".zip") {
+            _ = try runProcess(
+                executable: "/usr/bin/unzip",
+                arguments: ["-qq", archivePath, "-d", destinationDirectory],
+                timeout: 300
+            )
+            return
+        }
+
+        let tarArguments: [String]
+        if lowercasedPath.hasSuffix(".tar.gz") || lowercasedPath.hasSuffix(".tgz") {
+            tarArguments = ["-xzf", archivePath, "-C", destinationDirectory]
+        } else {
+            tarArguments = ["-xf", archivePath, "-C", destinationDirectory]
+        }
+        _ = try runProcess(executable: "/usr/bin/tar", arguments: tarArguments, timeout: 300)
+    }
+
+    private static func locateExtractedModelDirectory(in rootDirectory: String) throws -> String {
+        if directoryLooksLikeMLXTextModel(at: rootDirectory) {
+            return rootDirectory
+        }
+
+        var candidates: [String] = []
+        let rootURL = URL(fileURLWithPath: rootDirectory)
+        let enumerator = FileManager.default.enumerator(
+            at: rootURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        while let next = enumerator?.nextObject() as? URL {
+            let resourceValues = try next.resourceValues(forKeys: [.isDirectoryKey])
+            guard resourceValues.isDirectory == true else {
+                continue
+            }
+            if directoryLooksLikeMLXTextModel(at: next.path) {
+                candidates.append(next.path)
+            }
+        }
+
+        guard let bestCandidate = candidates.sorted(by: { $0.count < $1.count }).first else {
+            throw ManagedMLXModelsError.installFailed("The archive did not contain a recognizable MLX text model.")
+        }
+        return bestCandidate
+    }
+
+    private static func directoryLooksLikeMLXTextModel(at path: String) -> Bool {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: URL(fileURLWithPath: path).appendingPathComponent("config.json").path) else {
+            return false
+        }
+
+        guard let enumerator = fileManager.enumerator(atPath: path) else {
+            return false
+        }
+
+        var hasWeights = false
+        var hasTokenizer = false
+        for case let entry as String in enumerator {
+            let lowercasedEntry = entry.lowercased()
+            if lowercasedEntry.hasSuffix(".safetensors") || lowercasedEntry.hasSuffix("/model.bin") {
+                hasWeights = true
+            }
+            if lowercasedEntry.hasSuffix("tokenizer.json")
+                || lowercasedEntry.hasSuffix("tokenizer.model")
+                || lowercasedEntry.hasSuffix("tokenizer_config.json") {
+                hasTokenizer = true
+            }
+        }
+        return hasWeights && hasTokenizer
+    }
+
+    private static func archiveIdentifier(from archiveURL: URL, extractedModelPath: String) -> String {
+        let extractedName = URL(fileURLWithPath: extractedModelPath).lastPathComponent
+        let candidate = extractedName.isEmpty ? archiveURL.deletingPathExtension().lastPathComponent : extractedName
+        return "archive/\(slugifiedIdentifierComponent(candidate))"
+    }
+
+    private static func slugifiedIdentifierComponent(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let replaced = trimmed.replacingOccurrences(of: #"[^a-z0-9]+"#, with: "-", options: .regularExpression)
+        let collapsed = replaced.replacingOccurrences(of: #"(^-+|-+$)"#, with: "", options: .regularExpression)
+        return collapsed.isEmpty ? "imported-model" : collapsed
+    }
+
     private static func loadManifest(at manifestPath: String) -> ManagedMLXManifest {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: manifestPath)),
               let manifest = try? JSONDecoder().decode(ManagedMLXManifest.self, from: data) else {
@@ -589,22 +868,57 @@ public enum ManagedMLXModels {
         }
     }
 
+    private static func huggingFaceManagedPath(for modelIdentifier: String, downloadDirectory: String) -> String {
+        let components = modelIdentifier.split(separator: "/").map(String.init)
+        return components.reduce(
+            URL(fileURLWithPath: standardizedPath(downloadDirectory)).appendingPathComponent("models").path
+        ) { partial, component in
+            URL(fileURLWithPath: partial).appendingPathComponent(component).path
+        }
+    }
+
     private static func managedPathCandidates(for modelIdentifier: String, downloadDirectory: String) -> [String] {
         let standardizedDownloadDirectory = standardizedPath(downloadDirectory)
         let rootDirectory = standardizedPath(
             URL(fileURLWithPath: standardizedDownloadDirectory).deletingLastPathComponent().path
         )
         let namespacedCacheDirectory = "models--" + modelIdentifier.replacingOccurrences(of: "/", with: "--")
-        return [
+        return Array(Set([
+            huggingFaceManagedPath(for: modelIdentifier, downloadDirectory: standardizedDownloadDirectory),
             preferredManagedPath(for: modelIdentifier, downloadDirectory: standardizedDownloadDirectory),
             URL(fileURLWithPath: standardizedDownloadDirectory).appendingPathComponent(namespacedCacheDirectory).path,
             URL(fileURLWithPath: rootDirectory).appendingPathComponent(namespacedCacheDirectory).path,
-        ]
+        ]))
     }
 
     private static func firstExistingManagedPath(for modelIdentifier: String, downloadDirectory: String) -> String? {
         managedPathCandidates(for: modelIdentifier, downloadDirectory: downloadDirectory)
             .first(where: { FileManager.default.fileExists(atPath: $0) })
+    }
+
+    private static func normalizedInstalledModel(
+        _ model: ManagedMLXInstalledModel,
+        downloadDirectory: String
+    ) -> ManagedMLXInstalledModel {
+        let recordedManagedPath = model.managedPath.map(standardizedPath)
+        if let recordedManagedPath, FileManager.default.fileExists(atPath: recordedManagedPath) {
+            return model
+        }
+
+        guard let resolvedManagedPath = firstExistingManagedPath(
+            for: model.modelIdentifier,
+            downloadDirectory: downloadDirectory
+        ) else {
+            return model
+        }
+
+        return ManagedMLXInstalledModel(
+            modelIdentifier: model.modelIdentifier,
+            downloadDirectory: model.downloadDirectory,
+            installedAt: model.installedAt,
+            sourceURL: model.sourceURL,
+            managedPath: resolvedManagedPath
+        )
     }
 
     private static func isDescendant(_ path: String, ofAny roots: [String]) -> Bool {

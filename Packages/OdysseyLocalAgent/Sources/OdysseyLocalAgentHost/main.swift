@@ -346,7 +346,9 @@ private func modelsCommand(arguments: [String]) async throws {
 
 private func installModelCommand(arguments: [String]) async throws {
     let service = HostService()
-    let modelIdentifier = argumentValue("--model", from: arguments, default: nil) ?? ""
+    let modelIdentifier = argumentValue("--model", from: arguments, default: nil)
+        ?? argumentValue("--source", from: arguments, default: nil)
+        ?? ""
     let result = try await service.handle(
         method: LocalAgentHostMethod.mlxModelInstall.rawValue,
         params: try jsonObject(from: InstallMLXModelParams(
@@ -382,7 +384,9 @@ private func installModelCommand(arguments: [String]) async throws {
 
 private func removeModelCommand(arguments: [String]) async throws {
     let service = HostService()
-    let modelIdentifier = argumentValue("--model", from: arguments, default: nil) ?? ""
+    let modelIdentifier = argumentValue("--model", from: arguments, default: nil)
+        ?? argumentValue("--source", from: arguments, default: nil)
+        ?? ""
     let result = try await service.handle(
         method: LocalAgentHostMethod.mlxModelDelete.rawValue,
         params: try jsonObject(from: RemoveMLXModelParams(
@@ -540,8 +544,8 @@ private func printHelp() {
         Extra flags:
           run  --prompt <text> [--json]
           models [--download-dir <path>] [--runner <path>] [--json]
-          install-model --model <hugging-face-id> [--download-dir <path>] [--runner <path>] [--json]
-          remove-model --model <hugging-face-id-or-url> [--download-dir <path>] [--json]
+          install-model --model <hugging-face-id|hugging-face-url|archive-url> [--download-dir <path>] [--runner <path>] [--json]
+          remove-model --model <installed-id-or-hugging-face-url> [--download-dir <path>] [--json]
           chat --session-id <id>
           serve --port <port>
         """

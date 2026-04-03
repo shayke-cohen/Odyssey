@@ -19,6 +19,7 @@ struct LocalProviderStatusReport: Equatable {
 
 enum LocalProviderSupport {
     static let bundledHostRelativePath = "local-agent/bin/OdysseyLocalAgentHost"
+    static let bundledMLXRunnerRelativePath = "local-agent/bin/llm-tool"
     static let packageRelativePath = "Packages/OdysseyLocalAgent"
     static let sidecarRelativePath = "sidecar/src/index.ts"
     static let sourceRootInfoKey = "ODYSSEY_SOURCE_ROOT"
@@ -101,6 +102,7 @@ enum LocalProviderSupport {
     }
 
     static func resolveMLXRunnerPath(
+        bundleResourcePath: String? = Bundle.main.resourcePath,
         runnerOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.mlxRunnerPathOverrideKey),
         dataDirectoryPath: String = InstanceConfig.userDefaults.string(forKey: AppSettings.dataDirectoryKey)
             ?? AppSettings.defaultDataDirectory,
@@ -108,6 +110,15 @@ enum LocalProviderSupport {
     ) -> String? {
         if let override = normalizedExecutablePath(runnerOverride) {
             return override
+        }
+
+        if let bundleResourcePath {
+            let bundled = URL(fileURLWithPath: bundleResourcePath)
+                .appendingPathComponent(bundledMLXRunnerRelativePath)
+                .path
+            if let resolved = normalizedExecutablePath(bundled) {
+                return resolved
+            }
         }
 
         if let managed = normalizedExecutablePath(
@@ -148,6 +159,7 @@ enum LocalProviderSupport {
         }
 
         if let mlxRunnerPath = resolveMLXRunnerPath(
+            bundleResourcePath: bundleResourcePath,
             runnerOverride: mlxRunnerOverride,
             dataDirectoryPath: dataDirectoryPath
         ) {
@@ -182,6 +194,7 @@ enum LocalProviderSupport {
             projectRootOverride: projectRootOverride
         )
         let mlxRunnerPath = resolveMLXRunnerPath(
+            bundleResourcePath: bundleResourcePath,
             runnerOverride: mlxRunnerOverride,
             dataDirectoryPath: dataDirectoryPath
         )

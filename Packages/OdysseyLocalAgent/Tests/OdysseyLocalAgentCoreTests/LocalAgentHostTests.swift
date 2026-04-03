@@ -77,6 +77,28 @@ final class LocalAgentHostTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: tempDirectory.appendingPathComponent("managed-models.json").path))
     }
 
+    func testCLIInstallModelSupportsArchiveURL() throws {
+        let runnerPath = try makeStubRunner()
+        let downloadDirectory = tempDirectory.appendingPathComponent("huggingface").path
+        let archiveURL = try makeModelArchive(named: "CLI Archive Demo")
+        let output = try runHost(
+            arguments: [
+                "install-model",
+                "--model", archiveURL.absoluteString,
+                "--download-dir", downloadDirectory,
+                "--runner", runnerPath,
+                "--json",
+            ],
+            environment: [
+                "ODYSSEY_MLX_RUNNER": runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": downloadDirectory,
+            ]
+        )
+
+        let payload = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any])
+        XCTAssertEqual(payload["modelIdentifier"] as? String, "archive/cli-archive-demo")
+    }
+
     func testCLIRemoveModelDeletesManagedCache() throws {
         let runnerPath = try makeStubRunner()
         let downloadDirectory = tempDirectory.appendingPathComponent("huggingface").path
@@ -183,6 +205,36 @@ final class LocalAgentHostTests: XCTestCase {
         )
 
         XCTAssertEqual(response["modelIdentifier"] as? String, "mlx-community/Qwen3-0.6B-4bit")
+    }
+
+    func testRESTServerSupportsManagedMLXArchiveInstallEndpoint() async throws {
+        let port = Int.random(in: 38001...43000)
+        let runnerPath = try makeStubRunner()
+        let archiveURL = try makeModelArchive(named: "REST Archive Demo")
+        let server = try startHostServer(
+            port: port,
+            environment: [
+                "ODYSSEY_MLX_RUNNER": runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": tempDirectory.appendingPathComponent("huggingface").path,
+            ]
+        )
+        defer {
+            server.process.terminate()
+        }
+
+        try await waitForHealth(port: port, server: server)
+
+        let response = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/mlx/models/install")!,
+            method: "POST",
+            body: [
+                "modelIdentifier": archiveURL.absoluteString,
+                "downloadDirectory": tempDirectory.appendingPathComponent("huggingface").path,
+                "runnerPath": runnerPath,
+            ]
+        )
+
+        XCTAssertEqual(response["modelIdentifier"] as? String, "archive/rest-archive-demo")
     }
 
     func testRESTServerSupportsManagedMLXDeleteEndpoint() async throws {
@@ -631,5 +683,27 @@ final class LocalAgentHostTests: XCTestCase {
         """.write(to: scriptURL, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
         return scriptURL.path
+    }
+
+    private func makeModelArchive(named directoryName: String) throws -> URL {
+        let modelDirectory = tempDirectory.appendingPathComponent(directoryName, isDirectory: true)
+        try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
+        try "{}".write(to: modelDirectory.appendingPathComponent("config.json"), atomically: true, encoding: .utf8)
+        try "{}".write(to: modelDirectory.appendingPathComponent("tokenizer.json"), atomically: true, encoding: .utf8)
+        try "weights".write(to: modelDirectory.appendingPathComponent("weights.safetensors"), atomically: true, encoding: .utf8)
+
+        let archiveURL = tempDirectory.appendingPathComponent("mlx-model.tar.gz")
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        process.arguments = ["-czf", archiveURL.path, "-C", tempDirectory.path, directoryName]
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+        process.waitUntilExit()
+
+        let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        XCTAssertEqual(process.terminationStatus, 0, output)
+        return archiveURL
     }
 }
