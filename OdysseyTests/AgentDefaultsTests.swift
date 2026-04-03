@@ -17,6 +17,8 @@ final class AgentDefaultsTests: XCTestCase {
         AppSettings.store.removeObject(forKey: AppSettings.defaultCodexModelKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultFoundationModelKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultMLXModelKey)
+        AppSettings.store.removeObject(forKey: AppSettings.defaultMaxTurnsKey)
+        AppSettings.store.removeObject(forKey: AppSettings.defaultMaxBudgetKey)
         originalDataDir = ProcessInfo.processInfo.environment["ODYSSEY_DATA_DIR"]
         originalLegacyDataDir = ProcessInfo.processInfo.environment["CLAUDESTUDIO_DATA_DIR"]
 
@@ -34,6 +36,8 @@ final class AgentDefaultsTests: XCTestCase {
         AppSettings.store.removeObject(forKey: AppSettings.defaultCodexModelKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultFoundationModelKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultMLXModelKey)
+        AppSettings.store.removeObject(forKey: AppSettings.defaultMaxTurnsKey)
+        AppSettings.store.removeObject(forKey: AppSettings.defaultMaxBudgetKey)
         if let originalDataDir {
             setenv("ODYSSEY_DATA_DIR", originalDataDir, 1)
         } else {
@@ -325,12 +329,26 @@ final class AgentDefaultsTests: XCTestCase {
         AppSettings.store.set(ProviderSelection.codex.rawValue, forKey: AppSettings.defaultProviderKey)
         AppSettings.store.set(ClaudeModel.haiku.rawValue, forKey: AppSettings.defaultClaudeModelKey)
         AppSettings.store.set(CodexModel.gpt5Codex.rawValue, forKey: AppSettings.defaultCodexModelKey)
+        AppSettings.store.set(FoundationModel.system.rawValue, forKey: AppSettings.defaultFoundationModelKey)
+        AppSettings.store.set("mlx-community/test-model", forKey: AppSettings.defaultMLXModelKey)
+        AppSettings.store.set(42, forKey: AppSettings.defaultMaxTurnsKey)
+        AppSettings.store.set(12.5, forKey: AppSettings.defaultMaxBudgetKey)
 
         AppSettings.resetAll()
 
         XCTAssertNil(AppSettings.store.string(forKey: AppSettings.defaultProviderKey))
         XCTAssertNil(AppSettings.store.string(forKey: AppSettings.defaultClaudeModelKey))
         XCTAssertNil(AppSettings.store.string(forKey: AppSettings.defaultCodexModelKey))
+        XCTAssertNil(AppSettings.store.string(forKey: AppSettings.defaultFoundationModelKey))
+        XCTAssertNil(AppSettings.store.string(forKey: AppSettings.defaultMLXModelKey))
+        XCTAssertNil(AppSettings.store.object(forKey: AppSettings.defaultMaxTurnsKey))
+        XCTAssertNil(AppSettings.store.object(forKey: AppSettings.defaultMaxBudgetKey))
+    }
+
+    func testAgentsModelsSettingsTabMetadataIsRegistered() {
+        XCTAssertTrue(SettingsSection.allCases.contains(.agentsModels))
+        XCTAssertEqual(SettingsSection.agentsModels.title, "Agents & Models")
+        XCTAssertEqual(SettingsSection.agentsModels.xrayId, "settings.tab.agentsModels")
     }
 
     func testProvisionerResolvesExpectedMCPSetsForBuiltInRoles() {

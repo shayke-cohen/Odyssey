@@ -43,7 +43,7 @@ final class LocalAgentHostTests: XCTestCase {
 
         let payload = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any])
         let presets = try XCTUnwrap(payload["presets"] as? [[String: Any]])
-        XCTAssertTrue(presets.contains(where: { $0["modelIdentifier"] as? String == "mlx-community/Qwen2.5-1.5B-Instruct-4bit" }))
+        XCTAssertTrue(presets.contains(where: { $0["modelIdentifier"] as? String == "mlx-community/Qwen3-4B-Instruct-2507-4bit" }))
     }
 
     func testCLIInstallModelUsesManagedCache() throws {
@@ -66,6 +66,47 @@ final class LocalAgentHostTests: XCTestCase {
         let payload = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any])
         XCTAssertEqual(payload["modelIdentifier"] as? String, "mlx-community/Qwen3-0.6B-4bit")
         XCTAssertTrue(FileManager.default.fileExists(atPath: tempDirectory.appendingPathComponent("managed-models.json").path))
+    }
+
+    func testCLIRemoveModelDeletesManagedCache() throws {
+        let runnerPath = try makeStubRunner()
+        let downloadDirectory = tempDirectory.appendingPathComponent("huggingface").path
+        _ = try runHost(
+            arguments: [
+                "install-model",
+                "--model", "mlx-community/Qwen3-0.6B-4bit",
+                "--download-dir", downloadDirectory,
+                "--runner", runnerPath,
+                "--json",
+            ],
+            environment: [
+                "ODYSSEY_MLX_RUNNER": runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": downloadDirectory,
+            ]
+        )
+
+        let managedPath = tempDirectory
+            .appendingPathComponent("huggingface")
+            .appendingPathComponent("mlx-community")
+            .appendingPathComponent("Qwen3-0.6B-4bit")
+        try FileManager.default.createDirectory(at: managedPath, withIntermediateDirectories: true)
+
+        let output = try runHost(
+            arguments: [
+                "remove-model",
+                "--model", "https://huggingface.co/mlx-community/Qwen3-0.6B-4bit",
+                "--download-dir", downloadDirectory,
+                "--json",
+            ],
+            environment: [
+                "ODYSSEY_MLX_RUNNER": runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": downloadDirectory,
+            ]
+        )
+
+        let payload = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any])
+        XCTAssertEqual(payload["modelIdentifier"] as? String, "mlx-community/Qwen3-0.6B-4bit")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: managedPath.path))
     }
 
     func testRESTServerSupportsMLXRunEndpoint() async throws {
@@ -126,6 +167,52 @@ final class LocalAgentHostTests: XCTestCase {
         )
 
         XCTAssertEqual(response["modelIdentifier"] as? String, "mlx-community/Qwen3-0.6B-4bit")
+    }
+
+    func testRESTServerSupportsManagedMLXDeleteEndpoint() async throws {
+        let port = Int.random(in: 43001...48000)
+        let runnerPath = try makeStubRunner()
+        let downloadDirectory = tempDirectory.appendingPathComponent("huggingface").path
+        let process = try startHostServer(
+            port: port,
+            environment: [
+                "ODYSSEY_MLX_RUNNER": runnerPath,
+                "ODYSSEY_MLX_DOWNLOAD_DIR": downloadDirectory,
+            ]
+        )
+        defer {
+            process.terminate()
+        }
+
+        try await waitForHealth(port: port)
+
+        _ = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/mlx/models/install")!,
+            method: "POST",
+            body: [
+                "modelIdentifier": "mlx-community/Qwen3-0.6B-4bit",
+                "downloadDirectory": downloadDirectory,
+                "runnerPath": runnerPath,
+            ]
+        )
+
+        let managedPath = tempDirectory
+            .appendingPathComponent("huggingface")
+            .appendingPathComponent("mlx-community")
+            .appendingPathComponent("Qwen3-0.6B-4bit")
+        try FileManager.default.createDirectory(at: managedPath, withIntermediateDirectories: true)
+
+        let response = try await request(
+            url: URL(string: "http://127.0.0.1:\(port)/v1/mlx/models/delete")!,
+            method: "POST",
+            body: [
+                "modelIdentifier": "https://huggingface.co/mlx-community/Qwen3-0.6B-4bit",
+                "downloadDirectory": downloadDirectory,
+            ]
+        )
+
+        XCTAssertEqual(response["modelIdentifier"] as? String, "mlx-community/Qwen3-0.6B-4bit")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: managedPath.path))
     }
 
     private var packageRoot: URL {

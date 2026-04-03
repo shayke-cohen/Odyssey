@@ -711,7 +711,10 @@ The unified sheet now covers the former group-thread entry as well. `NewGroupThr
 |---------|-----------|----------|
 | Tab view | `settings.tabView` | `@testId("settings.tabView")` |
 | General tab | `settings.tab.general` | `@testId("settings.tab.general")` |
+| Agents & Models tab | `settings.tab.agentsModels` | `@testId("settings.tab.agentsModels")` |
 | Connection tab | `settings.tab.connection` | `@testId("settings.tab.connection")` |
+| Connectors tab | `settings.tab.connectors` | `@testId("settings.tab.connectors")` |
+| Chat Display tab | `settings.tab.chatDisplay` | `@testId("settings.tab.chatDisplay")` |
 | Developer tab | `settings.tab.developer` | `@testId("settings.tab.developer")` |
 
 #### General Tab
@@ -719,9 +722,39 @@ The unified sheet now covers the former group-thread entry as well. `NewGroupThr
 | Control | Identifier | Selector |
 |---------|-----------|----------|
 | Appearance picker | `settings.general.appearancePicker` | `@testId("settings.general.appearancePicker")` |
-| Default model picker | `settings.general.defaultModelPicker` | `@testId("settings.general.defaultModelPicker")` |
-| Default max turns stepper | `settings.general.defaultMaxTurnsStepper` | `@testId("settings.general.defaultMaxTurnsStepper")` |
-| Default max budget field | `settings.general.defaultMaxBudgetField` | `@testId("settings.general.defaultMaxBudgetField")` |
+| Text size picker | `settings.general.textSizePicker` | `@testId("settings.general.textSizePicker")` |
+| Quick action ordering toggle | `settings.general.quickActionUsageOrderToggle` | `@testId("settings.general.quickActionUsageOrderToggle")` |
+
+#### Agents & Models Tab
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Default provider picker | `settings.agentsModels.defaultProviderPicker` | `@testId("settings.agentsModels.defaultProviderPicker")` |
+| Default Claude model picker | `settings.agentsModels.defaultClaudeModelPicker` | `@testId("settings.agentsModels.defaultClaudeModelPicker")` |
+| Default Codex model picker | `settings.agentsModels.defaultCodexModelPicker` | `@testId("settings.agentsModels.defaultCodexModelPicker")` |
+| Default Foundation model picker | `settings.agentsModels.defaultFoundationModelPicker` | `@testId("settings.agentsModels.defaultFoundationModelPicker")` |
+| Default MLX downloaded-model picker | `settings.agentsModels.defaultMLXModelPicker` | `@testId("settings.agentsModels.defaultMLXModelPicker")` |
+| Default MLX model field | `settings.agentsModels.defaultMLXModelField` | `@testId("settings.agentsModels.defaultMLXModelField")` |
+| Current MLX default summary | `settings.agentsModels.currentDefaultMLXModel` | `@testId("settings.agentsModels.currentDefaultMLXModel")` |
+| Default max turns stepper | `settings.agentsModels.defaultMaxTurnsStepper` | `@testId("settings.agentsModels.defaultMaxTurnsStepper")` |
+| Default max budget field | `settings.agentsModels.defaultMaxBudgetField` | `@testId("settings.agentsModels.defaultMaxBudgetField")` |
+| Local host status | `settings.agentsModels.localProviders.hostStatus` | `@testId("settings.agentsModels.localProviders.hostStatus")` |
+| Foundation status | `settings.agentsModels.localProviders.foundationStatus` | `@testId("settings.agentsModels.localProviders.foundationStatus")` |
+| MLX status | `settings.agentsModels.localProviders.mlxStatus` | `@testId("settings.agentsModels.localProviders.mlxStatus")` |
+| Managed MLX cache path | `settings.agentsModels.mlxDownloadDirectory` | `@testId("settings.agentsModels.mlxDownloadDirectory")` |
+| Install MLX runner | `settings.agentsModels.installMLXRunnerButton` | `@testId("settings.agentsModels.installMLXRunnerButton")` |
+| Open MLX cache | `settings.agentsModels.openMLXCacheButton` | `@testId("settings.agentsModels.openMLXCacheButton")` |
+| Preset card | `settings.agentsModels.presetCard.{modelId}` | `@testId("settings.agentsModels.presetCard.{modelId}")` |
+| Preset download button | `settings.agentsModels.downloadPreset.{modelId}` | `@testId("settings.agentsModels.downloadPreset.{modelId}")` |
+| Preset set default button | `settings.agentsModels.setDefaultPreset.{modelId}` | `@testId("settings.agentsModels.setDefaultPreset.{modelId}")` |
+| Custom MLX field | `settings.agentsModels.customMLXModelField` | `@testId("settings.agentsModels.customMLXModelField")` |
+| Custom MLX download button | `settings.agentsModels.installCustomMLXModelButton` | `@testId("settings.agentsModels.installCustomMLXModelButton")` |
+| Empty installed state | `settings.agentsModels.noInstalledModels` | `@testId("settings.agentsModels.noInstalledModels")` |
+| Installed model card | `settings.agentsModels.installedCard.{modelId}` | `@testId("settings.agentsModels.installedCard.{modelId}")` |
+| Installed set default button | `settings.agentsModels.setDefaultInstalled.{modelId}` | `@testId("settings.agentsModels.setDefaultInstalled.{modelId}")` |
+| Installed delete button | `settings.agentsModels.deleteInstalled.{modelId}` | `@testId("settings.agentsModels.deleteInstalled.{modelId}")` |
+| Catalog loading state | `settings.agentsModels.loadingCatalog` | `@testId("settings.agentsModels.loadingCatalog")` |
+| Catalog status message | `settings.agentsModels.catalogMessage` | `@testId("settings.agentsModels.catalogMessage")` |
 
 #### Connection Tab
 
@@ -744,9 +777,14 @@ The unified sheet now covers the former group-thread entry as well. `NewGroupThr
 | Bun path browse | `settings.developer.bunPathBrowseButton` | `@testId("settings.developer.bunPathBrowseButton")` |
 | Sidecar path field | `settings.developer.sidecarPathField` | `@testId("settings.developer.sidecarPathField")` |
 | Sidecar path browse | `settings.developer.sidecarPathBrowseButton` | `@testId("settings.developer.sidecarPathBrowseButton")` |
+| Local host field | `settings.developer.localAgentHostField` | `@testId("settings.developer.localAgentHostField")` |
+| Local host browse | `settings.developer.localAgentHostBrowseButton` | `@testId("settings.developer.localAgentHostBrowseButton")` |
+| MLX runner field | `settings.developer.mlxRunnerField` | `@testId("settings.developer.mlxRunnerField")` |
+| MLX runner browse | `settings.developer.mlxRunnerBrowseButton` | `@testId("settings.developer.mlxRunnerBrowseButton")` |
 | Data directory field | `settings.developer.dataDirectoryField` | `@testId("settings.developer.dataDirectoryField")` |
 | Data directory browse | `settings.developer.dataDirectoryBrowseButton` | `@testId("settings.developer.dataDirectoryBrowseButton")` |
 | Log level picker | `settings.developer.logLevelPicker` | `@testId("settings.developer.logLevelPicker")` |
+| Legacy chat chrome toggle | `settings.developer.useLegacyChatChromeToggle` | `@testId("settings.developer.useLegacyChatChromeToggle")` |
 | Open data directory | `settings.developer.openDataDirectoryButton` | `@testId("settings.developer.openDataDirectoryButton")` |
 | Reset settings | `settings.developer.resetSettingsButton` | `@testId("settings.developer.resetSettingsButton")` |
 

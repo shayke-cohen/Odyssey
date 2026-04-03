@@ -218,6 +218,25 @@ private func executePromptLoop(
         return AdapterTurnResult(resultText: resultText, events: events)
     }
 
+    if shouldPreferDirectChatResponse(
+        for: text,
+        availableTools: Set(config.toolDefinitions.map(\.name))
+    ) {
+        let prompt = buildDirectChatPrompt(config: config, transcript: loopTranscript)
+        let generated = try await generator.generate(prompt: prompt, config: config)
+        let finalAnswer: String
+        if isDegenerateAssistantResponse(generated, userText: text) {
+            let retryPrompt = buildDirectRetryPrompt(config: config, latestUserText: text)
+            let retried = try await generator.generate(prompt: retryPrompt, config: config)
+            finalAnswer = retried
+        } else {
+            finalAnswer = generated
+        }
+        let normalized = normalizeAssistantResponse(finalAnswer, modePrefix: modePrefix)
+        events.append(contentsOf: tokenEvents(for: normalized, sessionId: sessionId))
+        return AdapterTurnResult(resultText: normalized, events: events)
+    }
+
     for _ in 0..<maxSteps {
         let prompt = buildAgentLoopPrompt(config: config, transcript: loopTranscript)
         let generated = try await generator.generate(prompt: prompt, config: config)
@@ -318,6 +337,106 @@ private func buildAgentLoopPrompt(config: LocalAgentConfig, transcript: [Transcr
 
     Otherwise reply with the final answer only.
     """
+}
+
+func buildDirectChatPrompt(config: LocalAgentConfig, transcript: [TranscriptItem]) -> String {
+    let skills = config.skills
+        .map { "### \($0.name)\n\($0.content)" }
+        .joined(separator: "\n\n")
+
+    let history = transcript
+        .map { "\($0.role.rawValue.capitalized): \($0.text)" }
+        .joined(separator: "\n")
+
+    return """
+    \(config.systemPrompt)
+
+    \(skills.isEmpty ? "" : "Skills:\n\(skills)\n")
+
+    Conversation:
+    \(history)
+
+    Reply to the most recent user message naturally and concisely.
+    Do not output JSON unless the user explicitly asked for JSON.
+    """
+}
+
+func buildDirectRetryPrompt(config: LocalAgentConfig, latestUserText: String) -> String {
+    """
+    \(config.systemPrompt)
+
+    Answer this user request directly in one short sentence.
+    Do not output JSON.
+    Do not repeat the question.
+
+    User: \(latestUserText)
+    Assistant:
+    """
+}
+
+func shouldPreferDirectChatResponse(
+    for text: String,
+    availableTools: Set<String>
+) -> Bool {
+    guard !availableTools.isEmpty else { return true }
+
+    let lowercased = text.lowercased()
+    let toolSignals = [
+        "tool",
+        "file",
+        "files",
+        "directory",
+        "folder",
+        "read ",
+        "open ",
+        "show ",
+        "search ",
+        "grep",
+        "find ",
+        "bash",
+        "shell",
+        "command",
+        "run ",
+        "git ",
+        "workspace",
+        "blackboard",
+        "task",
+        "mcp",
+        "url",
+        "website",
+        "web ",
+        "http",
+        "fetch ",
+        "download ",
+        "write ",
+        "replace ",
+        "edit ",
+    ]
+
+    return !toolSignals.contains(where: { lowercased.contains($0) })
+}
+
+func normalizeAssistantResponse(_ generated: String, modePrefix: String) -> String {
+    let trimmed = generated.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.hasPrefix(modePrefix) ? trimmed : "\(modePrefix) \(trimmed)"
+}
+
+func isDegenerateAssistantResponse(_ response: String, userText: String) -> Bool {
+    let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return true }
+
+    let normalizedResponse = trimmed.lowercased()
+    let normalizedUserText = userText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+    if ["none", "null", "n/a", "\"none\"", "'none'"].contains(normalizedResponse) {
+        return true
+    }
+
+    if normalizedResponse == normalizedUserText || normalizedResponse == "\"\(normalizedUserText)\"" {
+        return true
+    }
+
+    return false
 }
 
 private struct ParsedToolCall {
@@ -650,13 +769,87 @@ private func runMLXCommand(command: String, model: String, prompt: String) throw
     if !ManagedMLXModels.looksLikeLocalModelPath(model) {
         arguments.append(contentsOf: ["--download", ManagedMLXModels.resolveDownloadDirectory()])
     }
-    return try ManagedMLXModels.runProcess(
+    let output = try ManagedMLXModels.runProcess(
         executable: command,
         arguments: arguments,
         extraEnvironment: [
             ManagedMLXModels.downloadDirectoryEnvironmentKey: ManagedMLXModels.resolveDownloadDirectory()
         ]
     )
+    return sanitizeMLXOutput(output)
+}
+
+func sanitizeMLXOutput(_ rawOutput: String) -> String {
+    let trimmed = rawOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return trimmed }
+
+    let filteredLines = trimmed
+        .components(separatedBy: .newlines)
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { line in
+            !line.isEmpty && !line.lowercased().hasPrefix("loading ")
+        }
+
+    let collapsed = collapseDuplicateAdjacentContent(
+        filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    )
+    guard !collapsed.isEmpty else { return trimmed }
+
+    if let extracted = extractStructuredAnswer(from: collapsed) {
+        return extracted
+    }
+
+    return collapsed
+}
+
+private func extractStructuredAnswer(from text: String) -> String? {
+    guard text.hasPrefix("{"), text.hasSuffix("}"), let data = text.data(using: .utf8) else {
+        return nil
+    }
+
+    guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        return nil
+    }
+
+    for key in ["result", "answer", "response", "output"] {
+        if let value = object[key] as? String {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+    }
+
+    return nil
+}
+
+private func collapseDuplicateAdjacentContent(_ text: String) -> String {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return trimmed }
+
+    for separator in ["\n", " "] {
+        var searchRange = trimmed.startIndex..<trimmed.endIndex
+        while let range = trimmed.range(of: separator, options: [], range: searchRange) {
+            let first = String(trimmed[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let second = String(trimmed[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !first.isEmpty, first == second {
+                return first
+            }
+            searchRange = range.upperBound..<trimmed.endIndex
+        }
+    }
+
+    let count = trimmed.count
+    if count.isMultiple(of: 2) {
+        let midpoint = trimmed.index(trimmed.startIndex, offsetBy: count / 2)
+        let first = String(trimmed[..<midpoint]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let second = String(trimmed[midpoint...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        if !first.isEmpty, first == second {
+            return first
+        }
+    }
+
+    return trimmed
 }
 
 private extension Dictionary where Key == String, Value == DynamicValue {

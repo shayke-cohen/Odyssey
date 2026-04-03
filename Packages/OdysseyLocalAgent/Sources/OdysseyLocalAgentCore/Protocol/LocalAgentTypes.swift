@@ -426,6 +426,7 @@ public enum LocalAgentHostMethod: String, Sendable {
     case providerProbe = "provider.probe"
     case mlxModelsList = "mlx.models.list"
     case mlxModelInstall = "mlx.models.install"
+    case mlxModelDelete = "mlx.models.delete"
     case sessionCreate = "session.create"
     case sessionMessage = "session.message"
     case sessionResume = "session.resume"

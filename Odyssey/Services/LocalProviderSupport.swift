@@ -106,11 +106,11 @@ enum LocalProviderSupport {
             ?? AppSettings.defaultDataDirectory,
         pathEnvironment: String = ProcessInfo.processInfo.environment["PATH"] ?? ""
     ) -> String? {
-        if let override = normalizedFilePath(runnerOverride) {
+        if let override = normalizedExecutablePath(runnerOverride) {
             return override
         }
 
-        if let managed = normalizedFilePath(
+        if let managed = normalizedExecutablePath(
             LocalProviderInstaller.managedMLXRunnerInstallPath(dataDirectoryPath: dataDirectoryPath)
         ) {
             return managed
@@ -290,6 +290,14 @@ enum LocalProviderSupport {
         return FileManager.default.fileExists(atPath: standardized) ? standardized : nil
     }
 
+    private static func normalizedExecutablePath(_ path: String?) -> String? {
+        guard let normalized = normalizedFilePath(path) else {
+            return nil
+        }
+
+        return isRunnableExecutable(atPath: normalized) ? normalized : nil
+    }
+
     private static func normalizedDirectoryPath(_ path: String?) -> String? {
         guard let trimmed = path?.trimmingCharacters(in: .whitespacesAndNewlines),
               !trimmed.isEmpty else {
@@ -337,11 +345,20 @@ enum LocalProviderSupport {
     private static func resolveExecutable(named executableName: String, pathEnvironment: String) -> String? {
         for entry in pathEnvironment.split(separator: ":") {
             let candidate = URL(fileURLWithPath: String(entry)).appendingPathComponent(executableName).path
-            if FileManager.default.isExecutableFile(atPath: candidate) {
+            if isRunnableExecutable(atPath: candidate) {
                 return candidate
             }
         }
         return nil
+    }
+
+    private static func isRunnableExecutable(atPath path: String) -> Bool {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+              !isDirectory.boolValue else {
+            return false
+        }
+        return FileManager.default.isExecutableFile(atPath: path)
     }
 
     #if canImport(FoundationModels)

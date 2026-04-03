@@ -132,9 +132,8 @@ enum BuiltInTools {
                 return ToolExecutionResult(success: false, output: "A search query is required")
             }
 
-            let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-            guard let url = URL(string: "https://api.duckduckgo.com/?q=\(encoded)&format=json&no_html=1&no_redirect=1") else {
-                return ToolExecutionResult(success: false, output: "Could not build DuckDuckGo search URL")
+            guard let url = searchEndpointURL(for: query) else {
+                return ToolExecutionResult(success: false, output: "Could not build the search URL")
             }
 
             let (data, response) = try await URLSession.shared.data(from: url)
@@ -256,4 +255,19 @@ private func formatSearchResponse(data: Data, query: String) throws -> String {
     }
 
     return lines.joined(separator: "\n")
+}
+
+private func searchEndpointURL(for query: String) -> URL? {
+    let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+    let environment = ProcessInfo.processInfo.environment
+    let template = environment["ODYSSEY_WEB_SEARCH_URL_TEMPLATE"]
+        ?? environment["CLAUDESTUDIO_WEB_SEARCH_URL_TEMPLATE"]
+
+    if let template,
+       !template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let resolved = template.replacingOccurrences(of: "%QUERY%", with: encoded)
+        return URL(string: resolved)
+    }
+
+    return URL(string: "https://api.duckduckgo.com/?q=\(encoded)&format=json&no_html=1&no_redirect=1")
 }

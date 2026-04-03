@@ -143,6 +143,8 @@ final class LocalAgentHTTPServer {
             return (200, try await call(method: LocalAgentHostMethod.mlxModelsList.rawValue, params: request.body))
         case ("POST", "/v1/mlx/models/install"):
             return (200, try await call(method: LocalAgentHostMethod.mlxModelInstall.rawValue, params: request.body))
+        case ("POST", "/v1/mlx/models/delete"):
+            return (200, try await call(method: LocalAgentHostMethod.mlxModelDelete.rawValue, params: request.body))
         case ("POST", "/v1/provider/probe"):
             return (200, try await call(method: LocalAgentHostMethod.providerProbe.rawValue, params: request.body))
         case ("POST", "/v1/sessions"):

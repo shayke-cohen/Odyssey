@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Odyssey Wireframe: Local Model Download and Delete</title>
+  <style>
+    :root {
+      --bg: #f4efe7;
+      --panel: #fffdf8;
+      --ink: #1f1a16;
+      --muted: #6f645a;
+      --line: #d7cbbe;
+      --accent: #065f46;
+      --accent-soft: #dbefe7;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #efe3d4, #eef4f6);
+      color: var(--ink);
+      font-family: "SF Mono", "Menlo", monospace;
+      padding: 28px;
+    }
+    a { color: inherit; text-decoration: none; }
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+    .nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.9);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255, 253, 248, 0.92);
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    h1, h2, h3, p { margin: 0; }
+    p { color: var(--muted); line-height: 1.5; }
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+    .step strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .num {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .callout {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: var(--accent-soft);
+      border: 1px solid #a7d7c7;
+    }
+    .danger {
+      background: var(--danger-soft);
+      border: 1px solid #f3a8a8;
+      color: #7f1d1d;
+    }
+    .field, .model-row {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+    }
+    .model-row {
+      display: grid;
+      gap: 8px;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--ink);
+      background: #fff;
+    }
+    .btn.primary {
+      background: var(--ink);
+      color: #fff;
+    }
+    .btn.danger {
+      background: transparent;
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    .muted { color: var(--muted); font-size: 13px; }
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="nav">
+      <a class="chip" href="agents-models-settings-hub.html">Agents &amp; Models Hub</a>
+      <a class="chip" href="local-model-download-delete-flow.html">Download/Delete Flow</a>
+      <a class="chip" href="local-provider-in-agent-and-session-flow.html">Agent/Session Flow</a>
+    </div>
+
+    <section class="panel">
+      <h1>Local MLX Model Lifecycle</h1>
+      <p>Wireframe for the model-library flow inside Settings. It shows the happy path for curated installs, the custom Hugging Face URL/ID entry, and the managed-delete confirmation. The UI stays explicit about what Odyssey owns and what it will never delete.</p>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Download Flow</h2>
+        <div class="timeline">
+          <div class="step">
+            <div class="num">1</div>
+            <div>
+              <strong>Choose a source</strong>
+              Pick a top MLX model card or paste a Hugging Face repo URL/ID.
+            </div>
+          </div>
+          <div class="step">
+            <div class="num">2</div>
+            <div>
+              <strong>Normalize before install</strong>
+              Show the canonical repo id Odyssey will use, such as <code>mlx-community/Qwen2.5-1.5B-Instruct-4bit</code>.
+            </div>
+          </div>
+          <div class="step">
+            <div class="num">3</div>
+            <div>
+              <strong>Install with ownership metadata</strong>
+              Save the repo id, source URL when present, and managed path so deletion is deterministic later.
+            </div>
+          </div>
+          <div class="step">
+            <div class="num">4</div>
+            <div>
+              <strong>Refresh the installed list</strong>
+              Offer a one-click “Set as Default” action once the download completes.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>In-UI Mock</h2>
+        <div class="field">
+          <strong>Download from Hugging Face URL or ID</strong>
+          <p class="muted">https://huggingface.co/mlx-community/Qwen2.5-1.5B-Instruct-4bit</p>
+          <div class="actions">
+            <span class="btn primary">Download</span>
+            <span class="btn">Normalize to repo id</span>
+          </div>
+        </div>
+        <div class="callout">
+          Odyssey will download and manage this model as <strong>mlx-community/Qwen2.5-1.5B-Instruct-4bit</strong>.
+        </div>
+        <div class="model-row">
+          <strong>Installed: mlx-community/Qwen2.5-1.5B-Instruct-4bit</strong>
+          <span class="muted">Managed path: ~/.odyssey/local-agent/models/huggingface/mlx-community/Qwen2.5-1.5B-Instruct-4bit</span>
+          <div class="actions">
+            <span class="btn">Set as Default</span>
+            <span class="btn danger">Delete</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Delete Flow</h2>
+        <div class="timeline">
+          <div class="step">
+            <div class="num">1</div>
+            <div>
+              <strong>Delete only managed installs</strong>
+              The delete button appears for managed MLX downloads only, never for user-supplied local paths.
+            </div>
+          </div>
+          <div class="step">
+            <div class="num">2</div>
+            <div>
+              <strong>Confirm what will be removed</strong>
+              Show the repo id and managed cache path that Odyssey recorded at install time.
+            </div>
+          </div>
+          <div class="step">
+            <div class="num">3</div>
+            <div>
+              <strong>Remove manifest entry and managed files</strong>
+              Delete the tracked model path, prune empty folders, and refresh readiness state in Settings.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Delete Confirmation Mock</h2>
+        <div class="callout danger">
+          <strong>Delete managed model?</strong>
+          <p>This removes Odyssey-managed files for <code>mlx-community/Qwen2.5-1.5B-Instruct-4bit</code> from the local MLX cache. Local path models outside the managed cache are not touched.</p>
+        </div>
+        <div class="actions">
+          <span class="btn">Cancel</span>
+          <span class="btn danger">Delete Model</span>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

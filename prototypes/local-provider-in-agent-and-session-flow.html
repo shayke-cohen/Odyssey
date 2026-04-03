@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Odyssey Wireframe: Local Providers in Agent and Session Flows</title>
+  <style>
+    :root {
+      --bg: #f3eee7;
+      --panel: #fffdf8;
+      --ink: #1f1a16;
+      --muted: #70655a;
+      --line: #d6cabc;
+      --accent: #155e75;
+      --accent-soft: #d9edf4;
+      --chip: #efe4d5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 28px;
+      font-family: "SF Mono", "Menlo", monospace;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 20% 0%, #eadbc8, transparent 28%),
+        linear-gradient(180deg, #f7f2ea, #edf3f6);
+    }
+    a { color: inherit; text-decoration: none; }
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+    .nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.9);
+    }
+    .hero, .panel {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255, 253, 248, 0.92);
+      padding: 20px;
+    }
+    .hero p, .muted {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+    .field, .flow-card {
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: #fff;
+    }
+    .field strong, .flow-card strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pill {
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--chip);
+    }
+    .pill.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .btn {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--ink);
+      background: #fff;
+    }
+    .btn.primary {
+      background: var(--ink);
+      color: #fff;
+    }
+    .connector {
+      display: grid;
+      gap: 10px;
+      position: relative;
+    }
+    .connector::before {
+      content: "";
+      position: absolute;
+      left: 14px;
+      top: 42px;
+      bottom: 18px;
+      width: 1px;
+      background: var(--line);
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .num {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="nav">
+      <a class="chip" href="agents-models-settings-hub.html">Agents &amp; Models Hub</a>
+      <a class="chip" href="local-model-download-delete-flow.html">Download/Delete Flow</a>
+      <a class="chip" href="local-provider-in-agent-and-session-flow.html">Agent/Session Flow</a>
+    </div>
+
+    <section class="hero">
+      <h1>Local Providers Stay First-Class in Existing Flows</h1>
+      <p>This wireframe keeps the current agent behavior intact. Agent Editor and New Session still expose provider and model choices where they do today, but Foundation and MLX are shown as equal options beside Claude and Codex, with clearer supporting copy and a direct path back to the new settings hub when a local runtime needs setup.</p>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Agent Editor</h2>
+        <div class="stack">
+          <div class="field">
+            <strong>Provider</strong>
+            <div class="pills">
+              <span class="pill">Claude</span>
+              <span class="pill">Codex</span>
+              <span class="pill active">Foundation</span>
+              <span class="pill">MLX</span>
+            </div>
+          </div>
+          <div class="field">
+            <strong>Model</strong>
+            <div class="muted">System</div>
+          </div>
+          <div class="field">
+            <strong>Local provider helper text</strong>
+            <div class="muted">Foundation and MLX use your Mac's local runtimes. Configure downloads and runtime defaults in Agents &amp; Models settings.</div>
+          </div>
+          <div>
+            <a class="btn" href="agents-models-settings-hub.html">Open Agents &amp; Models Settings</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>New Session Sheet</h2>
+        <div class="stack">
+          <div class="field">
+            <strong>Provider Override</strong>
+            <div class="pills">
+              <span class="pill">Claude</span>
+              <span class="pill">Codex</span>
+              <span class="pill">Foundation</span>
+              <span class="pill active">MLX</span>
+            </div>
+          </div>
+          <div class="field">
+            <strong>Model Override</strong>
+            <div class="muted">mlx-community/Qwen2.5-1.5B-Instruct-4bit</div>
+          </div>
+          <div class="field">
+            <strong>Readiness Hint</strong>
+            <div class="muted">No behavior change: the session still resolves provider/model the same way it did before. If MLX is selected and not ready, the helper links you to the settings hub.</div>
+          </div>
+          <div>
+            <a class="btn primary" href="agents-models-settings-hub.html">Go to Local Runtime Setup</a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>Conversation Between Flows</h2>
+      <div class="connector">
+        <div class="step">
+          <div class="num">1</div>
+          <div class="flow-card">
+            <strong>Author an agent or start a session</strong>
+            Provider choices include Claude, Codex, Foundation, and MLX with parity in the picker.
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <div class="flow-card">
+            <strong>If local runtime setup is missing</strong>
+            Show a lightweight note with a direct link to the settings hub instead of forcing the user to guess the correct model string or cache path.
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <div class="flow-card">
+            <strong>Use the new settings hub for setup</strong>
+            Download the runner, install a top MLX model, set a default, then return to the unchanged agent/session flow.
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

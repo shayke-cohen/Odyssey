@@ -259,13 +259,13 @@ enum FoundationModel: String, CaseIterable, Identifiable {
 }
 
 enum MLXModel: String, CaseIterable, Identifiable {
-    case defaultModel = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+    case defaultModel = "mlx-community/Qwen3-4B-Instruct-2507-4bit"
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .defaultModel: "Qwen2.5 1.5B Instruct"
+        case .defaultModel: "Qwen3 4B Instruct"
         }
     }
 }

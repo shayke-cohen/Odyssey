@@ -144,6 +144,42 @@ final class LocalProviderSupportTests: XCTestCase {
         XCTAssertEqual(resolved, managedRunnerPath.path)
     }
 
+    func testResolveMLXRunnerPathIgnoresDirectoryNamedLikeRunner() throws {
+        let fakeToolsDirectory = tempDirectory.appendingPathComponent("fake-bin", isDirectory: true)
+        let fakeRunnerDirectory = fakeToolsDirectory.appendingPathComponent("llm-tool", isDirectory: true)
+        try FileManager.default.createDirectory(at: fakeRunnerDirectory, withIntermediateDirectories: true)
+
+        let resolved = LocalProviderSupport.resolveMLXRunnerPath(
+            runnerOverride: fakeRunnerDirectory.path,
+            dataDirectoryPath: tempDirectory.path,
+            pathEnvironment: fakeToolsDirectory.path
+        )
+
+        XCTAssertNil(resolved)
+    }
+
+    func testNormalizedMLXModelIdentifierAcceptsHuggingFaceURL() {
+        let normalized = LocalProviderInstaller.normalizedMLXModelIdentifier(
+            "https://huggingface.co/mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+        )
+
+        XCTAssertEqual(normalized, "mlx-community/Qwen2.5-1.5B-Instruct-4bit")
+    }
+
+    func testNormalizedMLXModelIdentifierRejectsInvalidURL() {
+        XCTAssertNil(LocalProviderInstaller.normalizedMLXModelIdentifier("https://example.com/not-hugging-face"))
+    }
+
+    func testRecommendedMLXPresetsExposeGuidanceFields() {
+        let presets = LocalProviderInstaller.recommendedMLXPresets()
+
+        XCTAssertFalse(presets.isEmpty)
+        XCTAssertTrue(presets.allSatisfy { !$0.parameterSize.isEmpty })
+        XCTAssertTrue(presets.allSatisfy { !$0.downloadSize.isEmpty })
+        XCTAssertTrue(presets.allSatisfy { !$0.bestFor.isEmpty })
+        XCTAssertTrue(presets.allSatisfy { !$0.agentSuitability.isEmpty })
+    }
+
     func testStatusReportMarksCachedManagedModelAsReady() throws {
         let resourceDirectory = tempDirectory.appendingPathComponent("Resources")
         let hostDirectory = resourceDirectory.appendingPathComponent("local-agent/bin", isDirectory: true)
@@ -181,6 +217,120 @@ final class LocalProviderSupportTests: XCTestCase {
         XCTAssertTrue(report.mlxAvailable)
         XCTAssertTrue(report.mlxSummary.contains("cached model"))
         XCTAssertEqual(report.installedMLXModels.map(\.modelIdentifier), ["mlx-community/Qwen2.5-1.5B-Instruct-4bit"])
+    }
+
+    func testDeleteMLXModelUpdatesStatusReport() async throws {
+        let resourceDirectory = tempDirectory.appendingPathComponent("Resources")
+        let hostDirectory = resourceDirectory.appendingPathComponent("local-agent/bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: hostDirectory, withIntermediateDirectories: true)
+        let hostPath = hostDirectory.appendingPathComponent("OdysseyLocalAgentHost")
+        FileManager.default.createFile(atPath: hostPath.path, contents: Data("echo host".utf8))
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hostPath.path)
+
+        let runnerPath = tempDirectory.appendingPathComponent("llm-tool")
+        FileManager.default.createFile(atPath: runnerPath.path, contents: Data("echo runner".utf8))
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: runnerPath.path)
+
+        let fakeHostPath = tempDirectory.appendingPathComponent("fake-local-agent-host")
+        let fakeHostScript = """
+        #!/bin/sh
+        set -e
+
+        MODEL=""
+        DOWNLOAD_DIR=""
+
+        while [ "$#" -gt 0 ]; do
+          case "$1" in
+            remove-model)
+              shift
+              ;;
+            --model)
+              MODEL="$2"
+              shift 2
+              ;;
+            --download-dir)
+              DOWNLOAD_DIR="$2"
+              shift 2
+              ;;
+            --json)
+              shift
+              ;;
+            *)
+              shift
+              ;;
+          esac
+        done
+
+        MODEL_PATH="$DOWNLOAD_DIR/$(printf '%s' "$MODEL" | sed 's#/#/#g')"
+        MANIFEST_PATH="$(dirname "$DOWNLOAD_DIR")/managed-models.json"
+
+        rm -rf "$MODEL_PATH"
+        mkdir -p "$(dirname "$MANIFEST_PATH")"
+        printf '{"installed":[]}' > "$MANIFEST_PATH"
+        printf '{"modelIdentifier":"%s","downloadDirectory":"%s","manifestPath":"%s","deletedPaths":["%s"],"alreadyRemoved":false}\\n' "$MODEL" "$DOWNLOAD_DIR" "$MANIFEST_PATH" "$MODEL_PATH"
+        """
+        try fakeHostScript.write(to: fakeHostPath, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fakeHostPath.path)
+
+        let managedModelPath = tempDirectory
+            .appendingPathComponent("local-agent/models/huggingface/mlx-community/Qwen2.5-1.5B-Instruct-4bit", isDirectory: true)
+        try FileManager.default.createDirectory(at: managedModelPath, withIntermediateDirectories: true)
+        try "weights".write(
+            to: managedModelPath.appendingPathComponent("config.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let manifest = ManagedInstalledMLXManifest(installed: [
+            ManagedInstalledMLXModel(
+                modelIdentifier: "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+                downloadDirectory: LocalProviderInstaller.managedMLXDownloadDirectory(dataDirectoryPath: tempDirectory.path),
+                installedAt: Date(),
+                sourceURL: "https://huggingface.co/mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+                managedPath: managedModelPath.path
+            )
+        ])
+        let manifestData = try JSONEncoder().encode(manifest)
+        let manifestURL = URL(fileURLWithPath: LocalProviderInstaller.managedMLXManifestPath(dataDirectoryPath: tempDirectory.path))
+        try FileManager.default.createDirectory(at: manifestURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try manifestData.write(to: manifestURL)
+
+        let beforeDelete = LocalProviderSupport.statusReport(
+            bundleResourcePath: resourceDirectory.path,
+            currentDirectoryPath: tempDirectory.path,
+            projectRootOverride: tempDirectory.path,
+            hostOverride: nil,
+            mlxRunnerOverride: runnerPath.path,
+            dataDirectoryPath: tempDirectory.path,
+            defaultMLXModel: "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+        )
+        XCTAssertEqual(beforeDelete.installedMLXModels.count, 1)
+
+        let deleteResult = try await LocalProviderInstaller.deleteMLXModel(
+            modelIdentifier: "https://huggingface.co/mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+            dataDirectoryPath: tempDirectory.path,
+            bundleResourcePath: nil,
+            currentDirectoryPath: tempDirectory.path,
+            projectRootOverride: tempDirectory.path,
+            hostOverride: fakeHostPath.path
+        )
+
+        XCTAssertEqual(deleteResult.modelIdentifier, "mlx-community/Qwen2.5-1.5B-Instruct-4bit")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: managedModelPath.path))
+
+        let afterDelete = LocalProviderSupport.statusReport(
+            bundleResourcePath: resourceDirectory.path,
+            currentDirectoryPath: tempDirectory.path,
+            projectRootOverride: tempDirectory.path,
+            hostOverride: nil,
+            mlxRunnerOverride: runnerPath.path,
+            dataDirectoryPath: tempDirectory.path,
+            defaultMLXModel: "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+        )
+
+        XCTAssertTrue(afterDelete.installedMLXModels.isEmpty)
+        XCTAssertTrue(afterDelete.mlxAvailable)
+        XCTAssertTrue(afterDelete.mlxSummary.contains("will download into"))
     }
 
     func testInstallBuiltMLXRunnerProductsCreatesManagedWrapperAndRuntime() throws {

@@ -6,6 +6,7 @@ private enum HostCommand: String {
     case run
     case models
     case installModel = "install-model"
+    case removeModel = "remove-model"
     case serve
     case chat
     case help
@@ -41,6 +42,12 @@ actor HostService {
                 modelIdentifier: decoded.modelIdentifier,
                 downloadDirectory: decoded.downloadDirectory,
                 runnerPath: decoded.runnerPath
+            ))
+        case LocalAgentHostMethod.mlxModelDelete.rawValue:
+            let decoded = try decoder.decode(RemoveMLXModelParams.self, from: paramsData)
+            return try jsonObject(from: ManagedMLXModels.removeModel(
+                modelIdentifier: decoded.modelIdentifier,
+                downloadDirectory: decoded.downloadDirectory
             ))
         case LocalAgentHostMethod.sessionCreate.rawValue:
             let decoded = try decoder.decode(CreateSessionParams.self, from: paramsData)
@@ -247,7 +254,7 @@ private func buildConfig(from arguments: [String]) -> LocalAgentConfig {
     let model = argumentValue(
         "--model",
         from: arguments,
-        default: provider == .foundation ? "foundation.system" : "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+        default: provider == .foundation ? "foundation.system" : "mlx-community/Qwen3-4B-Instruct-2507-4bit"
     ) ?? "foundation.system"
     let cwd = argumentValue("--cwd", from: arguments, default: FileManager.default.currentDirectoryPath) ?? FileManager.default.currentDirectoryPath
     let prompt = argumentValue("--system-prompt", from: arguments, default: "You are a local coding agent.") ?? "You are a local coding agent."
@@ -364,6 +371,44 @@ private func installModelCommand(arguments: [String]) async throws {
     }
 }
 
+private func removeModelCommand(arguments: [String]) async throws {
+    let service = HostService()
+    let modelIdentifier = argumentValue("--model", from: arguments, default: nil) ?? ""
+    let result = try await service.handle(
+        method: LocalAgentHostMethod.mlxModelDelete.rawValue,
+        params: try jsonObject(from: RemoveMLXModelParams(
+            modelIdentifier: modelIdentifier,
+            downloadDirectory: argumentValue("--download-dir", from: arguments)
+        ))
+    )
+
+    guard let payload = result as? [String: Any],
+          let data = try? JSONSerialization.data(withJSONObject: payload) else {
+        print("Unable to decode delete result.")
+        return
+    }
+
+    if boolFlag("--json", from: arguments) {
+        let pretty = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
+        print(String(decoding: pretty, as: UTF8.self))
+        return
+    }
+
+    let decoded = try JSONDecoder().decode(RemoveMLXModelResult.self, from: data)
+    let verb = decoded.alreadyRemoved ? "Already removed" : "Removed"
+    print("\(verb) \(decoded.modelIdentifier)")
+    print("Download directory: \(decoded.downloadDirectory)")
+    print("Manifest: \(decoded.manifestPath)")
+    if decoded.deletedPaths.isEmpty {
+        print("Deleted paths: none")
+    } else {
+        print("Deleted paths:")
+        for path in decoded.deletedPaths {
+            print("- \(path)")
+        }
+    }
+}
+
 private func serveCommand(arguments: [String]) async throws {
     let port = Int(argumentValue("--port", from: arguments, default: "8787") ?? "8787") ?? 8787
     let server = try LocalAgentHTTPServer(port: port, service: HostService())
@@ -469,6 +514,7 @@ private func printHelp() {
           run                       Run one prompt and exit
           models                    Show managed MLX model presets and installed models
           install-model             Download and register an MLX model in the managed cache
+          remove-model              Delete a managed MLX model from the local cache
           chat                      Start an interactive local-agent chat
           serve                     Start the local REST server
 
@@ -486,6 +532,7 @@ private func printHelp() {
           run  --prompt <text> [--json]
           models [--download-dir <path>] [--runner <path>] [--json]
           install-model --model <hugging-face-id> [--download-dir <path>] [--runner <path>] [--json]
+          remove-model --model <hugging-face-id-or-url> [--download-dir <path>] [--json]
           chat --session-id <id>
           serve --port <port>
         """
@@ -510,6 +557,8 @@ Task {
             try await modelsCommand(arguments: CommandLine.arguments)
         case .installModel:
             try await installModelCommand(arguments: CommandLine.arguments)
+        case .removeModel:
+            try await removeModelCommand(arguments: CommandLine.arguments)
         case .serve:
             try await serveCommand(arguments: CommandLine.arguments)
         case .chat:

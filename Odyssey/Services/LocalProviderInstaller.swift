@@ -8,6 +8,7 @@ enum LocalProviderInstallerError: LocalizedError {
     case binaryNotFound(String)
     case invalidModelIdentifier
     case installFailed(String)
+    case removeFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -22,10 +23,44 @@ enum LocalProviderInstallerError: LocalizedError {
         case .binaryNotFound(let path):
             return "Built MLX runner was not found at \(path)."
         case .invalidModelIdentifier:
-            return "Enter a Hugging Face MLX model id to download, not a local path."
+            return "Enter a Hugging Face MLX model id or URL to download, not a local path."
         case .installFailed(let output):
             return output.isEmpty ? "Failed to install the MLX model." : output
+        case .removeFailed(let output):
+            return output.isEmpty ? "Failed to remove the MLX model." : output
         }
+    }
+}
+
+struct ManagedMLXModelPreset: Codable, Equatable, Identifiable {
+    var id: String { modelIdentifier }
+    let modelIdentifier: String
+    let label: String
+    let summary: String
+    let parameterSize: String
+    let downloadSize: String
+    let bestFor: String
+    let agentSuitability: String
+    let recommended: Bool
+
+    init(
+        modelIdentifier: String,
+        label: String,
+        summary: String,
+        parameterSize: String = "",
+        downloadSize: String = "",
+        bestFor: String = "",
+        agentSuitability: String = "",
+        recommended: Bool
+    ) {
+        self.modelIdentifier = modelIdentifier
+        self.label = label
+        self.summary = summary
+        self.parameterSize = parameterSize
+        self.downloadSize = downloadSize
+        self.bestFor = bestFor
+        self.agentSuitability = agentSuitability
+        self.recommended = recommended
     }
 }
 
@@ -34,10 +69,34 @@ struct ManagedInstalledMLXModel: Codable, Equatable, Identifiable {
     let modelIdentifier: String
     let downloadDirectory: String
     let installedAt: Date
+    let sourceURL: String?
+    let managedPath: String?
+
+    init(
+        modelIdentifier: String,
+        downloadDirectory: String,
+        installedAt: Date,
+        sourceURL: String? = nil,
+        managedPath: String? = nil
+    ) {
+        self.modelIdentifier = modelIdentifier
+        self.downloadDirectory = downloadDirectory
+        self.installedAt = installedAt
+        self.sourceURL = sourceURL
+        self.managedPath = managedPath
+    }
 }
 
 struct ManagedInstalledMLXManifest: Codable, Equatable {
     var installed: [ManagedInstalledMLXModel] = []
+}
+
+struct ManagedMLXModelsCatalog: Codable, Equatable {
+    let downloadDirectory: String
+    let manifestPath: String
+    let runnerPath: String?
+    let presets: [ManagedMLXModelPreset]
+    let installed: [ManagedInstalledMLXModel]
 }
 
 struct ManagedMLXInstallResult: Codable, Equatable {
@@ -50,6 +109,14 @@ struct ManagedMLXInstallResult: Codable, Equatable {
     let installedAt: Date
 }
 
+struct ManagedMLXDeleteResult: Codable, Equatable {
+    let modelIdentifier: String
+    let downloadDirectory: String
+    let manifestPath: String
+    let deletedPaths: [String]
+    let alreadyRemoved: Bool
+}
+
 enum LocalProviderInstaller {
     static let managedToolsRelativePath = "local-agent"
     static let managedMLXSourceRelativePath = "local-agent/mlx-swift-examples"
@@ -58,6 +125,61 @@ enum LocalProviderInstaller {
     static let managedMLXDownloadRelativePath = "local-agent/models/huggingface"
     static let managedMLXManifestRelativePath = "local-agent/models/managed-models.json"
     static let mlxSwiftExamplesURL = "https://github.com/ml-explore/mlx-swift-examples.git"
+
+    static func recommendedMLXPresets() -> [ManagedMLXModelPreset] {
+        [
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                label: "Qwen3 4B Instruct",
+                summary: "Recommended for local agent work. Better reasoning and tool use than the tiny defaults.",
+                parameterSize: "4B params",
+                downloadSize: "~2.6 GB",
+                bestFor: "Daily local agent work, repo navigation, and stronger tool use.",
+                agentSuitability: "Strong for agents",
+                recommended: true
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+                label: "Qwen2.5 1.5B Instruct",
+                summary: "Lightweight fallback for quick local chat when you want a smaller download.",
+                parameterSize: "1.5B params",
+                downloadSize: "~1.0 GB",
+                bestFor: "Quick chats, lightweight edits, and smaller laptops.",
+                agentSuitability: "Okay for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen3-0.6B-4bit",
+                label: "Qwen3 0.6B",
+                summary: "Smallest install for smoke tests and very constrained Macs.",
+                parameterSize: "0.6B params",
+                downloadSize: "~450 MB",
+                bestFor: "Smoke tests, setup validation, and very fast downloads.",
+                agentSuitability: "Limited for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Qwen2.5-7B-Instruct-4bit",
+                label: "Qwen2.5 7B Instruct",
+                summary: "Stronger local reasoning and tool use if you can afford a larger model.",
+                parameterSize: "7B params",
+                downloadSize: "~4.5 GB",
+                bestFor: "Longer reasoning, stronger coding help, and beefier Macs.",
+                agentSuitability: "Strong for agents",
+                recommended: false
+            ),
+            ManagedMLXModelPreset(
+                modelIdentifier: "mlx-community/Llama-3.2-3B-Instruct-4bit",
+                label: "Llama 3.2 3B Instruct",
+                summary: "Alternative medium-size general model.",
+                parameterSize: "3B params",
+                downloadSize: "~2.0 GB",
+                bestFor: "General local assistant work and an alternative instruction tune.",
+                agentSuitability: "Good for agents",
+                recommended: false
+            ),
+        ]
+    }
 
     static func managedToolsDirectory(
         dataDirectoryPath: String = InstanceConfig.userDefaults.string(forKey: AppSettings.dataDirectoryKey)
@@ -178,7 +300,7 @@ enum LocalProviderInstaller {
         pathEnvironment: String = ProcessInfo.processInfo.environment["PATH"] ?? ""
     ) async throws -> ManagedMLXInstallResult {
         let trimmedModelIdentifier = modelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedModelIdentifier.isEmpty, !looksLikeLocalModelPath(trimmedModelIdentifier) else {
+        guard let normalizedModelIdentifier = normalizedMLXModelIdentifier(trimmedModelIdentifier) else {
             throw LocalProviderInstallerError.invalidModelIdentifier
         }
 
@@ -199,7 +321,7 @@ enum LocalProviderInstaller {
                 executable: hostBinaryPath,
                 arguments: [
                     "install-model",
-                    "--model", trimmedModelIdentifier,
+                    "--model", normalizedModelIdentifier,
                     "--download-dir", downloadDirectory,
                     "--runner", runnerPath,
                     "--json",
@@ -231,7 +353,7 @@ enum LocalProviderInstaller {
             arguments: [
                 "swift", "run", "--package-path", packagePath, "OdysseyLocalAgentHost",
                 "install-model",
-                "--model", trimmedModelIdentifier,
+                "--model", normalizedModelIdentifier,
                 "--download-dir", downloadDirectory,
                 "--runner", runnerPath,
                 "--json",
@@ -247,6 +369,155 @@ enum LocalProviderInstaller {
             throw LocalProviderInstallerError.installFailed(output)
         }
         return try JSONDecoder().decode(ManagedMLXInstallResult.self, from: data)
+    }
+
+    static func listMLXModels(
+        dataDirectoryPath: String = InstanceConfig.userDefaults.string(forKey: AppSettings.dataDirectoryKey)
+            ?? AppSettings.defaultDataDirectory,
+        bundleResourcePath: String? = Bundle.main.resourcePath,
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath,
+        projectRootOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.sidecarPathKey),
+        hostOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.localAgentHostPathOverrideKey),
+        runnerOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.mlxRunnerPathOverrideKey),
+        pathEnvironment: String = ProcessInfo.processInfo.environment["PATH"] ?? ""
+    ) async throws -> ManagedMLXModelsCatalog {
+        let downloadDirectory = managedMLXDownloadDirectory(dataDirectoryPath: dataDirectoryPath)
+
+        if let hostBinaryPath = LocalProviderSupport.resolveHostBinaryPath(
+            bundleResourcePath: bundleResourcePath,
+            currentDirectoryPath: currentDirectoryPath,
+            projectRootOverride: projectRootOverride,
+            hostOverride: hostOverride
+        ) {
+            let output = try runCommand(
+                executable: hostBinaryPath,
+                arguments: [
+                    "models",
+                    "--download-dir", downloadDirectory,
+                    "--json",
+                ] + mlxRunnerArguments(
+                    runnerOverride: runnerOverride,
+                    dataDirectoryPath: dataDirectoryPath,
+                    pathEnvironment: pathEnvironment
+                ),
+                currentDirectory: currentDirectoryPath,
+                pathEnvironment: pathEnvironment,
+                extraEnvironment: [
+                    "ODYSSEY_MLX_DOWNLOAD_DIR": downloadDirectory,
+                    "CLAUDESTUDIO_MLX_DOWNLOAD_DIR": downloadDirectory,
+                ]
+            )
+            guard let data = output.data(using: .utf8) else {
+                throw LocalProviderInstallerError.installFailed(output)
+            }
+            return try JSONDecoder().decode(ManagedMLXModelsCatalog.self, from: data)
+        }
+
+        guard let packagePath = LocalProviderSupport.resolvePackagePath(
+            currentDirectoryPath: currentDirectoryPath,
+            projectRootOverride: projectRootOverride
+        ) else {
+            throw LocalProviderInstallerError.missingHost
+        }
+
+        let xcrun = try requiredExecutable(named: "xcrun", pathEnvironment: pathEnvironment)
+        let output = try runCommand(
+            executable: xcrun,
+            arguments: [
+                "swift", "run", "--package-path", packagePath, "OdysseyLocalAgentHost",
+                "models",
+                "--download-dir", downloadDirectory,
+                "--json",
+            ] + mlxRunnerArguments(
+                runnerOverride: runnerOverride,
+                dataDirectoryPath: dataDirectoryPath,
+                pathEnvironment: pathEnvironment
+            ),
+            currentDirectory: packagePath,
+            pathEnvironment: pathEnvironment,
+            extraEnvironment: [
+                "ODYSSEY_MLX_DOWNLOAD_DIR": downloadDirectory,
+                "CLAUDESTUDIO_MLX_DOWNLOAD_DIR": downloadDirectory,
+            ]
+        )
+        guard let data = output.data(using: .utf8) else {
+            throw LocalProviderInstallerError.installFailed(output)
+        }
+        return try JSONDecoder().decode(ManagedMLXModelsCatalog.self, from: data)
+    }
+
+    static func deleteMLXModel(
+        modelIdentifier: String,
+        dataDirectoryPath: String = InstanceConfig.userDefaults.string(forKey: AppSettings.dataDirectoryKey)
+            ?? AppSettings.defaultDataDirectory,
+        bundleResourcePath: String? = Bundle.main.resourcePath,
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath,
+        projectRootOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.sidecarPathKey),
+        hostOverride: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.localAgentHostPathOverrideKey),
+        pathEnvironment: String = ProcessInfo.processInfo.environment["PATH"] ?? ""
+    ) async throws -> ManagedMLXDeleteResult {
+        let trimmedModelIdentifier = modelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let normalizedModelIdentifier = normalizedMLXModelIdentifier(trimmedModelIdentifier) else {
+            throw LocalProviderInstallerError.invalidModelIdentifier
+        }
+
+        let downloadDirectory = managedMLXDownloadDirectory(dataDirectoryPath: dataDirectoryPath)
+
+        if let hostBinaryPath = LocalProviderSupport.resolveHostBinaryPath(
+            bundleResourcePath: bundleResourcePath,
+            currentDirectoryPath: currentDirectoryPath,
+            projectRootOverride: projectRootOverride,
+            hostOverride: hostOverride
+        ) {
+            let output = try runCommand(
+                executable: hostBinaryPath,
+                arguments: [
+                    "remove-model",
+                    "--model", normalizedModelIdentifier,
+                    "--download-dir", downloadDirectory,
+                    "--json",
+                ],
+                currentDirectory: currentDirectoryPath,
+                pathEnvironment: pathEnvironment,
+                extraEnvironment: [
+                    "ODYSSEY_MLX_DOWNLOAD_DIR": downloadDirectory,
+                    "CLAUDESTUDIO_MLX_DOWNLOAD_DIR": downloadDirectory,
+                ]
+            )
+            guard let data = output.data(using: .utf8) else {
+                throw LocalProviderInstallerError.removeFailed(output)
+            }
+            return try JSONDecoder().decode(ManagedMLXDeleteResult.self, from: data)
+        }
+
+        guard let packagePath = LocalProviderSupport.resolvePackagePath(
+            currentDirectoryPath: currentDirectoryPath,
+            projectRootOverride: projectRootOverride
+        ) else {
+            throw LocalProviderInstallerError.missingHost
+        }
+
+        let xcrun = try requiredExecutable(named: "xcrun", pathEnvironment: pathEnvironment)
+        let output = try runCommand(
+            executable: xcrun,
+            arguments: [
+                "swift", "run", "--package-path", packagePath, "OdysseyLocalAgentHost",
+                "remove-model",
+                "--model", normalizedModelIdentifier,
+                "--download-dir", downloadDirectory,
+                "--json",
+            ],
+            currentDirectory: packagePath,
+            pathEnvironment: pathEnvironment,
+            extraEnvironment: [
+                "ODYSSEY_MLX_DOWNLOAD_DIR": downloadDirectory,
+                "CLAUDESTUDIO_MLX_DOWNLOAD_DIR": downloadDirectory,
+            ]
+        )
+        guard let data = output.data(using: .utf8) else {
+            throw LocalProviderInstallerError.removeFailed(output)
+        }
+        return try JSONDecoder().decode(ManagedMLXDeleteResult.self, from: data)
     }
 
     static func installedMLXModels(
@@ -277,7 +548,7 @@ enum LocalProviderInstaller {
     private static func resolveExecutable(named executableName: String, pathEnvironment: String) -> String? {
         for entry in pathEnvironment.split(separator: ":") {
             let candidate = URL(fileURLWithPath: String(entry)).appendingPathComponent(executableName).path
-            if FileManager.default.isExecutableFile(atPath: candidate) {
+            if isRunnableExecutable(atPath: candidate) {
                 return candidate
             }
         }
@@ -348,6 +619,31 @@ enum LocalProviderInstaller {
             return true
         }
         return FileManager.default.fileExists(atPath: expandedDirectoryPath(value))
+    }
+
+    static func normalizedMLXModelIdentifier(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !looksLikeLocalModelPath(trimmed) else {
+            return nil
+        }
+
+        if let url = URL(string: trimmed),
+           let host = url.host?.lowercased(),
+           ["huggingface.co", "www.huggingface.co", "hf.co"].contains(host) {
+            let components = url.pathComponents.filter { $0 != "/" && !$0.isEmpty }
+            guard components.count >= 2 else {
+                return nil
+            }
+            return "\(components[0])/\(components[1])"
+        }
+
+        let components = trimmed.split(separator: "/").map(String.init)
+        guard components.count == 2,
+              components.allSatisfy({ !$0.isEmpty && $0.rangeOfCharacter(from: .whitespacesAndNewlines) == nil }) else {
+            return nil
+        }
+
+        return "\(components[0])/\(components[1])"
     }
 
     static func installBuiltMLXRunnerProducts(
@@ -430,5 +726,29 @@ enum LocalProviderInstaller {
             try fileManager.removeItem(atPath: destinationPath)
         }
         try fileManager.copyItem(atPath: sourcePath, toPath: destinationPath)
+    }
+
+    private static func isRunnableExecutable(atPath path: String) -> Bool {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+              !isDirectory.boolValue else {
+            return false
+        }
+        return FileManager.default.isExecutableFile(atPath: path)
+    }
+
+    private static func mlxRunnerArguments(
+        runnerOverride: String?,
+        dataDirectoryPath: String,
+        pathEnvironment: String
+    ) -> [String] {
+        guard let resolved = LocalProviderSupport.resolveMLXRunnerPath(
+            runnerOverride: runnerOverride,
+            dataDirectoryPath: dataDirectoryPath,
+            pathEnvironment: pathEnvironment
+        ) else {
+            return []
+        }
+        return ["--runner", resolved]
     }
 }

@@ -3,6 +3,7 @@ import SwiftData
 
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general
+    case agentsModels
     case connection
     case connectors
     case chatDisplay
@@ -13,6 +14,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: "General"
+        case .agentsModels: "Agents & Models"
         case .connection: "Connection"
         case .connectors: "Connectors"
         case .chatDisplay: "Chat Display"
@@ -22,17 +24,19 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
-        case .general: "Appearance, defaults, and quick actions"
+        case .general: "Appearance, reading comfort, and quick actions"
+        case .agentsModels: "Runtime defaults, local providers, and MLX downloads"
         case .connection: "Sidecar lifecycle and local ports"
         case .connectors: "OAuth setup, broker config, and tokens"
         case .chatDisplay: "Rendering and conversation chrome"
-        case .developer: "Paths, runtimes, and diagnostic controls"
+        case .developer: "Paths, diagnostics, and experimental controls"
         }
     }
 
     var systemImage: String {
         switch self {
         case .general: "gearshape"
+        case .agentsModels: "cpu"
         case .connection: "network"
         case .connectors: "link.badge.plus"
         case .chatDisplay: "bubble.left.and.text.bubble.right"
@@ -43,6 +47,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var xrayId: String {
         switch self {
         case .general: "settings.tab.general"
+        case .agentsModels: "settings.tab.agentsModels"
         case .connection: "settings.tab.connection"
         case .connectors: "settings.tab.connectors"
         case .chatDisplay: "settings.tab.chatDisplay"
@@ -160,6 +165,8 @@ struct SettingsView: View {
             switch selectedSection {
             case .general:
                 GeneralSettingsTab()
+            case .agentsModels:
+                AgentsModelsSettingsTab()
             case .connection:
                 ConnectionSettingsTab()
             case .connectors:
@@ -190,47 +197,12 @@ struct SettingsView: View {
 private struct GeneralSettingsTab: View {
     @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
     @AppStorage(AppSettings.textSizeKey, store: AppSettings.store) private var textSize = AppSettings.defaultTextSize
-    @AppStorage(AppSettings.defaultProviderKey, store: AppSettings.store) private var defaultProvider = AppSettings.defaultProvider
-    @AppStorage(AppSettings.defaultClaudeModelKey, store: AppSettings.store) private var defaultClaudeModel = AppSettings.defaultClaudeModel
-    @AppStorage(AppSettings.defaultCodexModelKey, store: AppSettings.store) private var defaultCodexModel = AppSettings.defaultCodexModel
-    @AppStorage(AppSettings.defaultFoundationModelKey, store: AppSettings.store) private var defaultFoundationModel = AppSettings.defaultFoundationModel
-    @AppStorage(AppSettings.defaultMLXModelKey, store: AppSettings.store) private var defaultMLXModel = AppSettings.defaultMLXModel
-    @AppStorage(AppSettings.defaultMaxTurnsKey, store: AppSettings.store) private var defaultMaxTurns = AppSettings.defaultMaxTurns
-    @AppStorage(AppSettings.defaultMaxBudgetKey, store: AppSettings.store) private var defaultMaxBudget = AppSettings.defaultMaxBudget
     @AppStorage(AppSettings.quickActionUsageOrderKey, store: AppSettings.store) private var quickActionUsageOrder = true
 
     private var selectedAppearance: Binding<AppAppearance> {
         Binding(
             get: { AppAppearance(rawValue: appearance) ?? .system },
             set: { appearance = $0.rawValue }
-        )
-    }
-
-    private var selectedProvider: Binding<ProviderSelection> {
-        Binding(
-            get: { ProviderSelection(rawValue: defaultProvider) ?? .claude },
-            set: { defaultProvider = $0.rawValue }
-        )
-    }
-
-    private var selectedClaudeModel: Binding<ClaudeModel> {
-        Binding(
-            get: { ClaudeModel(rawValue: AgentDefaults.normalizedModelSelection(defaultClaudeModel)) ?? .sonnet },
-            set: { defaultClaudeModel = $0.rawValue }
-        )
-    }
-
-    private var selectedCodexModel: Binding<CodexModel> {
-        Binding(
-            get: { CodexModel(rawValue: AgentDefaults.normalizedModelSelection(defaultCodexModel)) ?? .gpt5Codex },
-            set: { defaultCodexModel = $0.rawValue }
-        )
-    }
-
-    private var selectedFoundationModel: Binding<FoundationModel> {
-        Binding(
-            get: { FoundationModel(rawValue: AgentDefaults.normalizedModelSelection(defaultFoundationModel)) ?? .system },
-            set: { defaultFoundationModel = $0.rawValue }
         )
     }
 
@@ -264,62 +236,6 @@ private struct GeneralSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("Defaults") {
-                Picker("Default Provider", selection: selectedProvider) {
-                    ForEach([ProviderSelection.claude, ProviderSelection.codex, ProviderSelection.foundation, ProviderSelection.mlx]) { provider in
-                        Text(provider.label).tag(provider)
-                    }
-                }
-                .xrayId("settings.general.defaultProviderPicker")
-
-                Picker("Default Claude Model", selection: selectedClaudeModel) {
-                    ForEach(ClaudeModel.allCases) { model in
-                        Text(model.label).tag(model)
-                    }
-                }
-                .xrayId("settings.general.defaultClaudeModelPicker")
-
-                Picker("Default Codex Model", selection: selectedCodexModel) {
-                    ForEach(CodexModel.allCases) { model in
-                        Text(model.label).tag(model)
-                    }
-                }
-                .xrayId("settings.general.defaultCodexModelPicker")
-
-                Picker("Default Foundation Model", selection: selectedFoundationModel) {
-                    ForEach(FoundationModel.allCases) { model in
-                        Text(model.label).tag(model)
-                    }
-                }
-                .xrayId("settings.general.defaultFoundationModelPicker")
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Default MLX Model")
-                    TextField("Enter a model id or local path", text: $defaultMLXModel)
-                        .textFieldStyle(.roundedBorder)
-                        .xrayId("settings.general.defaultMLXModelField")
-                    Text("Example: `mlx-community/Qwen2.5-1.5B-Instruct-4bit` or a local MLX model directory.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Stepper("Default Max Turns: \(defaultMaxTurns)", value: $defaultMaxTurns, in: 1...200)
-                    .xrayId("settings.general.defaultMaxTurnsStepper")
-
-                HStack {
-                    Text("Default Max Budget")
-                    Spacer()
-                    TextField("$", value: $defaultMaxBudget, format: .number)
-                        .frame(width: 80)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.trailing)
-                        .xrayId("settings.general.defaultMaxBudgetField")
-                    Text(defaultMaxBudget == 0 ? "(unlimited)" : "")
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-            }
-
             Section("Quick Actions") {
                 Toggle("Order quick actions by usage", isOn: $quickActionUsageOrder)
                     .xrayId("settings.general.quickActionUsageOrderToggle")
@@ -328,6 +244,831 @@ private struct GeneralSettingsTab: View {
         }
         .formStyle(.grouped)
         .settingsDetailLayout()
+    }
+}
+
+// MARK: - Agents & Models
+
+private struct AgentsModelsSettingsTab: View {
+    private struct MLXModelDescriptor: Identifiable {
+        let id: String
+        let title: String
+        let modelIdentifier: String
+        let summary: String
+        let parameterSize: String
+        let downloadSize: String
+        let bestFor: String
+        let agentSuitability: String
+        let recommended: Bool
+        let isInstalled: Bool
+        let managedPath: String?
+        let sourceURL: String?
+    }
+
+    private let customMLXSelectionTag = "__custom__"
+
+    @AppStorage(AppSettings.defaultProviderKey, store: AppSettings.store) private var defaultProvider = AppSettings.defaultProvider
+    @AppStorage(AppSettings.defaultClaudeModelKey, store: AppSettings.store) private var defaultClaudeModel = AppSettings.defaultClaudeModel
+    @AppStorage(AppSettings.defaultCodexModelKey, store: AppSettings.store) private var defaultCodexModel = AppSettings.defaultCodexModel
+    @AppStorage(AppSettings.defaultFoundationModelKey, store: AppSettings.store) private var defaultFoundationModel = AppSettings.defaultFoundationModel
+    @AppStorage(AppSettings.defaultMLXModelKey, store: AppSettings.store) private var defaultMLXModel = AppSettings.defaultMLXModel
+    @AppStorage(AppSettings.defaultMaxTurnsKey, store: AppSettings.store) private var defaultMaxTurns = AppSettings.defaultMaxTurns
+    @AppStorage(AppSettings.defaultMaxBudgetKey, store: AppSettings.store) private var defaultMaxBudget = AppSettings.defaultMaxBudget
+    @AppStorage(AppSettings.sidecarPathKey, store: AppSettings.store) private var sidecarPath = ""
+    @AppStorage(AppSettings.localAgentHostPathOverrideKey, store: AppSettings.store) private var localAgentHostPathOverride = ""
+    @AppStorage(AppSettings.mlxRunnerPathOverrideKey, store: AppSettings.store) private var mlxRunnerPathOverride = ""
+    @AppStorage(AppSettings.dataDirectoryKey, store: AppSettings.store) private var dataDirectory = AppSettings.defaultDataDirectory
+
+    @State private var modelsCatalog: ManagedMLXModelsCatalog?
+    @State private var isLoadingCatalog = false
+    @State private var catalogMessage: String?
+    @State private var customModelInput = ""
+    @State private var showCustomDefaultMLXInput = false
+    @State private var isInstallingMLXRunner = false
+    @State private var installingModelId: String?
+    @State private var deletingModelId: String?
+
+    private var selectedProvider: Binding<ProviderSelection> {
+        Binding(
+            get: { ProviderSelection(rawValue: defaultProvider) ?? .claude },
+            set: { defaultProvider = $0.rawValue }
+        )
+    }
+
+    private var selectedClaudeModel: Binding<ClaudeModel> {
+        Binding(
+            get: { ClaudeModel(rawValue: AgentDefaults.normalizedModelSelection(defaultClaudeModel)) ?? .sonnet },
+            set: { defaultClaudeModel = $0.rawValue }
+        )
+    }
+
+    private var selectedCodexModel: Binding<CodexModel> {
+        Binding(
+            get: { CodexModel(rawValue: AgentDefaults.normalizedModelSelection(defaultCodexModel)) ?? .gpt5Codex },
+            set: { defaultCodexModel = $0.rawValue }
+        )
+    }
+
+    private var selectedFoundationModel: Binding<FoundationModel> {
+        Binding(
+            get: { FoundationModel(rawValue: AgentDefaults.normalizedModelSelection(defaultFoundationModel)) ?? .system },
+            set: { defaultFoundationModel = $0.rawValue }
+        )
+    }
+
+    private var localProviderReport: LocalProviderStatusReport {
+        LocalProviderSupport.statusReport(
+            projectRootOverride: sidecarPath.isEmpty ? nil : sidecarPath,
+            hostOverride: localAgentHostPathOverride.isEmpty ? nil : localAgentHostPathOverride,
+            mlxRunnerOverride: mlxRunnerPathOverride.isEmpty ? nil : mlxRunnerPathOverride,
+            dataDirectoryPath: dataDirectory,
+            defaultMLXModel: defaultMLXModel
+        )
+    }
+
+    private var catalogPresets: [ManagedMLXModelPreset] {
+        modelsCatalog?.presets ?? LocalProviderInstaller.recommendedMLXPresets()
+    }
+
+    private var installedModels: [ManagedInstalledMLXModel] {
+        modelsCatalog?.installed ?? localProviderReport.installedMLXModels
+    }
+
+    private var installedModelLookup: [String: ManagedInstalledMLXModel] {
+        Dictionary(uniqueKeysWithValues: installedModels.map { ($0.modelIdentifier, $0) })
+    }
+
+    private var presetLookup: [String: ManagedMLXModelPreset] {
+        Dictionary(uniqueKeysWithValues: catalogPresets.map { ($0.modelIdentifier, $0) })
+    }
+
+    private var installedModelDescriptors: [MLXModelDescriptor] {
+        installedModels
+            .compactMap { descriptor(for: $0.modelIdentifier, installedModel: $0) }
+            .sorted { lhs, rhs in
+                if lhs.modelIdentifier == defaultMLXModel { return true }
+                if rhs.modelIdentifier == defaultMLXModel { return false }
+                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+            }
+    }
+
+    private var selectedDefaultMLXDescriptor: MLXModelDescriptor? {
+        descriptor(for: defaultMLXModel)
+    }
+
+    private var isUsingDownloadedDefaultMLXModel: Bool {
+        installedModelLookup[defaultMLXModel] != nil
+    }
+
+    private var defaultMLXPickerSelection: Binding<String> {
+        Binding(
+            get: { isUsingDownloadedDefaultMLXModel ? defaultMLXModel : customMLXSelectionTag },
+            set: { newValue in
+                guard newValue != customMLXSelectionTag else { return }
+                defaultMLXModel = newValue
+            }
+        )
+    }
+
+    private var customDefaultDisclosure: Binding<Bool> {
+        Binding(
+            get: { showCustomDefaultMLXInput || !isUsingDownloadedDefaultMLXModel || installedModels.isEmpty },
+            set: { showCustomDefaultMLXInput = $0 }
+        )
+    }
+
+    private var recommendedModelDescriptors: [MLXModelDescriptor] {
+        catalogPresets.compactMap { descriptor(for: $0.modelIdentifier) }
+    }
+
+    private var reloadToken: String {
+        [sidecarPath, localAgentHostPathOverride, mlxRunnerPathOverride, dataDirectory, defaultMLXModel].joined(separator: "|")
+    }
+
+    var body: some View {
+        Form {
+            runtimeDefaultsSection
+            localProvidersSection
+            mlxModelLibrarySection
+        }
+        .formStyle(.grouped)
+        .settingsDetailLayout()
+        .task(id: reloadToken) {
+            await refreshCatalog()
+        }
+    }
+
+    private var runtimeDefaultsSection: some View {
+        Section("Runtime Defaults") {
+            modelSurface {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Choose the defaults Odyssey should reach for first.")
+                        .font(.headline)
+                    Text("Agent and session behavior stays the same. This page just makes the available model choices easier to understand, especially for local MLX setups.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Picker("Default Provider", selection: selectedProvider) {
+                ForEach([ProviderSelection.claude, ProviderSelection.codex, ProviderSelection.foundation, ProviderSelection.mlx]) { provider in
+                    Text(provider.label).tag(provider)
+                }
+            }
+            .xrayId("settings.agentsModels.defaultProviderPicker")
+
+            Picker("Default Claude Model", selection: selectedClaudeModel) {
+                ForEach(ClaudeModel.allCases) { model in
+                    Text(model.label).tag(model)
+                }
+            }
+            .xrayId("settings.agentsModels.defaultClaudeModelPicker")
+
+            Picker("Default Codex Model", selection: selectedCodexModel) {
+                ForEach(CodexModel.allCases) { model in
+                    Text(model.label).tag(model)
+                }
+            }
+            .xrayId("settings.agentsModels.defaultCodexModelPicker")
+
+            Picker("Default Foundation Model", selection: selectedFoundationModel) {
+                ForEach(FoundationModel.allCases) { model in
+                    Text(model.label).tag(model)
+                }
+            }
+            .xrayId("settings.agentsModels.defaultFoundationModelPicker")
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Default MLX Model")
+                        .font(.headline)
+                    Spacer()
+                    if !installedModels.isEmpty {
+                        Text("\(installedModels.count) downloaded")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if installedModels.isEmpty {
+                    modelSurface {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("No downloaded MLX models yet")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("Download one from the library below and it will appear here as a simple dropdown choice.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text("Step 1")
+                                    .font(.caption2.weight(.semibold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.accentColor.opacity(0.10), in: Capsule())
+                            }
+                            Text("You can still type a Hugging Face repo id or a local path for advanced setups.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } else {
+                    Picker("Downloaded MLX Models", selection: defaultMLXPickerSelection) {
+                        ForEach(installedModelDescriptors) { descriptor in
+                            Text(pickerLabel(for: descriptor)).tag(descriptor.modelIdentifier)
+                        }
+                        Text("Custom Hugging Face id or local path").tag(customMLXSelectionTag)
+                    }
+                    .xrayId("settings.agentsModels.defaultMLXModelPicker")
+
+                    Text("This dropdown only lists MLX models already downloaded on this Mac.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let descriptor = selectedDefaultMLXDescriptor {
+                    modelDetailCard(
+                        descriptor,
+                        badgeText: defaultMLXPickerSelection.wrappedValue == customMLXSelectionTag ? "Custom Default" : "Current Default",
+                        badgeColor: .accentColor,
+                        identifier: "settings.agentsModels.currentDefaultMLXModel"
+                    )
+                }
+
+                DisclosureGroup("Use a custom MLX model id or local path", isExpanded: customDefaultDisclosure) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("mlx-community/Qwen3-4B-Instruct-2507-4bit or /path/to/model", text: $defaultMLXModel)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("settings.agentsModels.defaultMLXModelField")
+
+                        Text("Downloaded models are easier to manage from Odyssey. Use a custom repo id or local path only when you need something outside the managed library.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 4)
+                }
+            }
+
+            Stepper("Default Max Turns: \(defaultMaxTurns)", value: $defaultMaxTurns, in: 1...200)
+                .xrayId("settings.agentsModels.defaultMaxTurnsStepper")
+
+            HStack {
+                Text("Default Max Budget")
+                Spacer()
+                TextField("$", value: $defaultMaxBudget, format: .number)
+                    .frame(width: 80)
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+                    .xrayId("settings.agentsModels.defaultMaxBudgetField")
+                Text(defaultMaxBudget == 0 ? "(unlimited)" : "")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+            }
+        }
+    }
+
+    private var localProvidersSection: some View {
+        Section("Local Providers") {
+            VStack(alignment: .leading, spacing: 12) {
+                modelSurface {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Local providers run fully on this Mac.")
+                            .font(.headline)
+                        Text("Foundation Models uses Apple’s on-device stack. MLX uses the managed runner plus the models you download in the library below.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                settingsStatusRow(
+                    title: "Local Host",
+                    summary: localProviderReport.hostSummary,
+                    available: localProviderReport.hostBinaryPath != nil || localProviderReport.packagePath != nil,
+                    identifier: "settings.agentsModels.localProviders.hostStatus"
+                )
+                settingsStatusRow(
+                    title: "Foundation Models",
+                    summary: localProviderReport.foundationSummary,
+                    available: localProviderReport.foundationAvailable,
+                    identifier: "settings.agentsModels.localProviders.foundationStatus"
+                )
+                settingsStatusRow(
+                    title: "MLX",
+                    summary: localProviderReport.mlxSummary,
+                    available: localProviderReport.mlxAvailable,
+                    identifier: "settings.agentsModels.localProviders.mlxStatus"
+                )
+
+                modelSurface {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Managed MLX Cache")
+                                .font(.headline)
+                            Spacer()
+                            Text("\(installedModels.count) downloaded")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Text(localProviderReport.mlxDownloadDirectory)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                            .xrayId("settings.agentsModels.mlxDownloadDirectory")
+
+                        HStack {
+                            Button(isInstallingMLXRunner ? "Installing MLX Runner…" : "Install MLX Runner") {
+                                installMLXRunner()
+                            }
+                            .disabled(isInstallingMLXRunner)
+                            .xrayId("settings.agentsModels.installMLXRunnerButton")
+
+                            Button("Open Cache in Finder") {
+                                openPathInFinder(localProviderReport.mlxDownloadDirectory)
+                            }
+                            .xrayId("settings.agentsModels.openMLXCacheButton")
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+
+    private var mlxModelLibrarySection: some View {
+        Section("MLX Model Library") {
+            VStack(alignment: .leading, spacing: 16) {
+                modelSurface {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Recommended Downloads")
+                                .font(.headline)
+                            Spacer()
+                            Text("Step 2")
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.accentColor.opacity(0.10), in: Capsule())
+                        }
+                        Text("Pick one model that matches how you want to work.")
+                            .font(.subheadline.weight(.medium))
+                        Text("Each card calls out size, download cost, best use, and whether it’s a good fit for autonomous agent work.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                modelSurface {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Downloaded on This Mac")
+                                .font(.headline)
+                            Spacer()
+                            if !installedModels.isEmpty {
+                                Text("\(installedModels.count) installed")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Text(installedModels.isEmpty
+                            ? "Downloaded models will show up here and in the default MLX dropdown above."
+                            : "Anything you download here becomes selectable as the default MLX model above.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                ForEach(recommendedModelDescriptors) { descriptor in
+                    recommendedModelCard(descriptor)
+                }
+
+                modelSurface {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Download from Hugging Face URL or ID")
+                            .font(.headline)
+                        HStack {
+                            TextField("https://huggingface.co/owner/model or owner/model", text: $customModelInput)
+                                .textFieldStyle(.roundedBorder)
+                                .xrayId("settings.agentsModels.customMLXModelField")
+                            Button(installingModelId == "__custom__" ? "Downloading…" : "Download") {
+                                installCustomModel()
+                            }
+                            .disabled(customModelInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || installingModelId != nil)
+                            .xrayId("settings.agentsModels.installCustomMLXModelButton")
+                        }
+                        Text("This accepts Hugging Face repo URLs and repo ids only.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    if installedModels.isEmpty {
+                        modelSurface {
+                            Text("No managed MLX models are installed yet.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .xrayId("settings.agentsModels.noInstalledModels")
+                        }
+                    } else {
+                        ForEach(installedModelDescriptors) { descriptor in
+                            installedModelCard(descriptor)
+                        }
+                    }
+                }
+            }
+
+            if isLoadingCatalog {
+                ProgressView("Refreshing MLX model library…")
+                    .xrayId("settings.agentsModels.loadingCatalog")
+            }
+
+            if let catalogMessage {
+                Text(catalogMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .xrayId("settings.agentsModels.catalogMessage")
+            }
+        }
+    }
+
+    private func descriptor(for modelIdentifier: String, installedModel: ManagedInstalledMLXModel? = nil) -> MLXModelDescriptor? {
+        let trimmedIdentifier = modelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedIdentifier.isEmpty else { return nil }
+
+        let resolvedInstalledModel = installedModel ?? installedModelLookup[trimmedIdentifier]
+        if let preset = presetLookup[trimmedIdentifier] {
+            return MLXModelDescriptor(
+                id: trimmedIdentifier,
+                title: preset.label,
+                modelIdentifier: trimmedIdentifier,
+                summary: preset.summary,
+                parameterSize: preset.parameterSize,
+                downloadSize: preset.downloadSize,
+                bestFor: preset.bestFor,
+                agentSuitability: preset.agentSuitability,
+                recommended: preset.recommended,
+                isInstalled: resolvedInstalledModel != nil,
+                managedPath: resolvedInstalledModel?.managedPath ?? resolvedInstalledModel?.downloadDirectory,
+                sourceURL: resolvedInstalledModel?.sourceURL
+            )
+        }
+
+        return MLXModelDescriptor(
+            id: trimmedIdentifier,
+            title: inferredMLXModelTitle(from: trimmedIdentifier),
+            modelIdentifier: trimmedIdentifier,
+            summary: resolvedInstalledModel?.sourceURL == nil
+                ? "Custom MLX model selection."
+                : "Downloaded from a custom Hugging Face repo.",
+            parameterSize: inferredParameterSize(from: trimmedIdentifier),
+            downloadSize: "Varies",
+            bestFor: "Use when you need a repo id or local path outside Odyssey’s curated list.",
+            agentSuitability: "Unknown agent fit",
+            recommended: false,
+            isInstalled: resolvedInstalledModel != nil,
+            managedPath: resolvedInstalledModel?.managedPath ?? resolvedInstalledModel?.downloadDirectory,
+            sourceURL: resolvedInstalledModel?.sourceURL
+        )
+    }
+
+    private func pickerLabel(for descriptor: MLXModelDescriptor) -> String {
+        if descriptor.parameterSize.isEmpty {
+            return descriptor.title
+        }
+        return "\(descriptor.title) • \(descriptor.parameterSize)"
+    }
+
+    private func inferredMLXModelTitle(from modelIdentifier: String) -> String {
+        let tail = modelIdentifier.split(separator: "/").last.map(String.init) ?? modelIdentifier
+        return tail
+            .replacingOccurrences(of: "-4bit", with: "")
+            .replacingOccurrences(of: "-", with: " ")
+    }
+
+    private func inferredParameterSize(from modelIdentifier: String) -> String {
+        let components = modelIdentifier.split(separator: "/").last.map(String.init) ?? modelIdentifier
+        guard let match = components.range(of: #"\d+(\.\d+)?B"#, options: .regularExpression) else {
+            return "Custom size"
+        }
+        return "\(components[match]) params"
+    }
+
+    @ViewBuilder
+    private func modelSurface<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(14)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func metadataPills(for descriptor: MLXModelDescriptor) -> some View {
+        HStack(spacing: 8) {
+            metadataPill(descriptor.parameterSize)
+            metadataPill(descriptor.downloadSize)
+            metadataPill(descriptor.agentSuitability)
+        }
+    }
+
+    @ViewBuilder
+    private func metadataPill(_ text: String) -> some View {
+        if !text.isEmpty {
+            Text(text)
+                .font(.caption2.weight(.semibold))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.accentColor.opacity(0.10), in: Capsule())
+        }
+    }
+
+    @ViewBuilder
+    private func modelDetailCard(
+        _ descriptor: MLXModelDescriptor,
+        badgeText: String,
+        badgeColor: Color,
+        identifier: String
+    ) -> some View {
+        modelSurface {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(descriptor.title)
+                        .font(.headline)
+                    Text(badgeText)
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(badgeColor.opacity(0.12), in: Capsule())
+                }
+                Text(descriptor.modelIdentifier)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                metadataPills(for: descriptor)
+                Text(descriptor.summary)
+                    .font(.subheadline)
+                Text("Best for: \(descriptor.bestFor)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .xrayId(identifier)
+    }
+
+    @ViewBuilder
+    private func recommendedModelCard(_ descriptor: MLXModelDescriptor) -> some View {
+        modelSurface {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(descriptor.title)
+                        .font(.headline)
+                    if descriptor.recommended {
+                        Text("Recommended")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                    }
+                    if descriptor.isInstalled {
+                        Text("Downloaded")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.green.opacity(0.12), in: Capsule())
+                    }
+                    if descriptor.modelIdentifier == defaultMLXModel {
+                        Text("Default")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.12), in: Capsule())
+                    }
+                }
+
+                Text(descriptor.modelIdentifier)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+
+                metadataPills(for: descriptor)
+
+                Text(descriptor.summary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text("Best for: \(descriptor.bestFor)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    Button(installingModelId == descriptor.modelIdentifier ? "Downloading…" : (descriptor.isInstalled ? "Downloaded" : "Download")) {
+                        installManagedModel(descriptor.modelIdentifier)
+                    }
+                    .disabled(installingModelId != nil || descriptor.isInstalled)
+                    .xrayId("settings.agentsModels.downloadPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+
+                    Button("Set as Default") {
+                        defaultMLXModel = descriptor.modelIdentifier
+                    }
+                    .xrayId("settings.agentsModels.setDefaultPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+                }
+            }
+        }
+        .xrayId("settings.agentsModels.presetCard.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+    }
+
+    @ViewBuilder
+    private func installedModelCard(_ descriptor: MLXModelDescriptor) -> some View {
+        modelSurface {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(descriptor.title)
+                        .font(.headline)
+                    if descriptor.modelIdentifier == defaultMLXModel {
+                        Text("Default")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.12), in: Capsule())
+                    }
+                }
+
+                Text(descriptor.modelIdentifier)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+
+                metadataPills(for: descriptor)
+
+                Text(descriptor.summary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text("Best for: \(descriptor.bestFor)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if let managedPath = descriptor.managedPath {
+                    Text(managedPath)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+
+                HStack {
+                    Button("Set as Default") {
+                        defaultMLXModel = descriptor.modelIdentifier
+                    }
+                    .xrayId("settings.agentsModels.setDefaultInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+
+                    Button(deletingModelId == descriptor.id ? "Deleting…" : "Delete") {
+                        if let installedModel = installedModelLookup[descriptor.modelIdentifier] {
+                            deleteManagedModel(installedModel)
+                        }
+                    }
+                    .disabled(deletingModelId != nil)
+                    .foregroundStyle(.red)
+                    .xrayId("settings.agentsModels.deleteInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+                }
+            }
+        }
+        .xrayId("settings.agentsModels.installedCard.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+    }
+
+    private func refreshCatalog() async {
+        isLoadingCatalog = true
+        defer { isLoadingCatalog = false }
+
+        do {
+            modelsCatalog = try await LocalProviderInstaller.listMLXModels(
+                dataDirectoryPath: dataDirectory,
+                bundleResourcePath: Bundle.main.resourcePath,
+                currentDirectoryPath: FileManager.default.currentDirectoryPath,
+                projectRootOverride: sidecarPath.isEmpty ? nil : sidecarPath,
+                hostOverride: localAgentHostPathOverride.isEmpty ? nil : localAgentHostPathOverride,
+                runnerOverride: mlxRunnerPathOverride.isEmpty ? nil : mlxRunnerPathOverride
+            )
+            catalogMessage = nil
+        } catch {
+            modelsCatalog = ManagedMLXModelsCatalog(
+                downloadDirectory: localProviderReport.mlxDownloadDirectory,
+                manifestPath: LocalProviderInstaller.managedMLXManifestPath(dataDirectoryPath: dataDirectory),
+                runnerPath: localProviderReport.mlxRunnerPath,
+                presets: LocalProviderInstaller.recommendedMLXPresets(),
+                installed: localProviderReport.installedMLXModels
+            )
+            catalogMessage = error.localizedDescription
+        }
+    }
+
+    private func installMLXRunner() {
+        isInstallingMLXRunner = true
+        catalogMessage = "Downloading and building the MLX runner…"
+
+        Task {
+            do {
+                let installedPath = try await LocalProviderInstaller.installMLXRunner(dataDirectoryPath: dataDirectory)
+                await MainActor.run {
+                    isInstallingMLXRunner = false
+                    catalogMessage = "Installed MLX runner at \(installedPath)."
+                    mlxRunnerPathOverride = ""
+                }
+                await refreshCatalog()
+            } catch {
+                await MainActor.run {
+                    isInstallingMLXRunner = false
+                    catalogMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func installCustomModel() {
+        installManagedModel(customModelInput, installToken: "__custom__")
+    }
+
+    private func installManagedModel(_ modelIdentifier: String, installToken: String? = nil) {
+        let trimmed = modelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        installingModelId = installToken ?? trimmed
+        catalogMessage = "Downloading \(trimmed)…"
+
+        Task {
+            do {
+                let result = try await LocalProviderInstaller.installMLXModel(
+                    modelIdentifier: trimmed,
+                    dataDirectoryPath: dataDirectory,
+                    bundleResourcePath: Bundle.main.resourcePath,
+                    currentDirectoryPath: FileManager.default.currentDirectoryPath,
+                    projectRootOverride: sidecarPath.isEmpty ? nil : sidecarPath,
+                    hostOverride: localAgentHostPathOverride.isEmpty ? nil : localAgentHostPathOverride,
+                    runnerOverride: mlxRunnerPathOverride.isEmpty ? nil : mlxRunnerPathOverride
+                )
+                await MainActor.run {
+                    installingModelId = nil
+                    customModelInput = ""
+                    let verb = result.alreadyInstalled ? "Already installed" : "Installed"
+                    catalogMessage = "\(verb) \(result.modelIdentifier) in \(result.downloadDirectory)."
+                }
+                await refreshCatalog()
+            } catch {
+                await MainActor.run {
+                    installingModelId = nil
+                    catalogMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func deleteManagedModel(_ model: ManagedInstalledMLXModel) {
+        deletingModelId = model.id
+        catalogMessage = "Deleting \(model.modelIdentifier)…"
+
+        Task {
+            do {
+                let result = try await LocalProviderInstaller.deleteMLXModel(
+                    modelIdentifier: model.modelIdentifier,
+                    dataDirectoryPath: dataDirectory,
+                    bundleResourcePath: Bundle.main.resourcePath,
+                    currentDirectoryPath: FileManager.default.currentDirectoryPath,
+                    projectRootOverride: sidecarPath.isEmpty ? nil : sidecarPath,
+                    hostOverride: localAgentHostPathOverride.isEmpty ? nil : localAgentHostPathOverride
+                )
+                await MainActor.run {
+                    deletingModelId = nil
+                    let verb = result.alreadyRemoved ? "Already removed" : "Removed"
+                    catalogMessage = "\(verb) \(result.modelIdentifier)."
+                }
+                await refreshCatalog()
+            } catch {
+                await MainActor.run {
+                    deletingModelId = nil
+                    catalogMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func openPathInFinder(_ path: String) {
+        let expandedPath = NSString(string: path).expandingTildeInPath
+        NSWorkspace.shared.open(URL(fileURLWithPath: expandedPath))
+    }
+
+    @ViewBuilder
+    private func settingsStatusRow(title: String, summary: String, available: Bool, identifier: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: available ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(available ? .green : .orange)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+            Spacer()
+        }
+        .xrayId(identifier)
     }
 }
 
@@ -949,30 +1690,15 @@ private struct DeveloperSettingsTab: View {
     @AppStorage(AppSettings.sidecarPathKey, store: AppSettings.store) private var sidecarPath = ""
     @AppStorage(AppSettings.localAgentHostPathOverrideKey, store: AppSettings.store) private var localAgentHostPathOverride = ""
     @AppStorage(AppSettings.mlxRunnerPathOverrideKey, store: AppSettings.store) private var mlxRunnerPathOverride = ""
-    @AppStorage(AppSettings.defaultMLXModelKey, store: AppSettings.store) private var defaultMLXModel = AppSettings.defaultMLXModel
     @AppStorage(AppSettings.dataDirectoryKey, store: AppSettings.store) private var dataDirectory = AppSettings.defaultDataDirectory
     @AppStorage(AppSettings.logLevelKey, store: AppSettings.store) private var logLevel = AppSettings.defaultLogLevel
     @AppStorage(AppSettings.useLegacyChatChromeKey, store: AppSettings.store) private var useLegacyChatChrome = false
     @State private var showResetConfirmation = false
-    @State private var isInstallingMLXRunner = false
-    @State private var isInstallingMLXModel = false
-    @State private var mlxInstallStatusMessage: String?
-    @State private var mlxModelInstallStatusMessage: String?
 
     private var selectedLogLevel: Binding<LogLevel> {
         Binding(
             get: { LogLevel(rawValue: logLevel) ?? .info },
             set: { logLevel = $0.rawValue }
-        )
-    }
-
-    private var localProviderReport: LocalProviderStatusReport {
-        LocalProviderSupport.statusReport(
-            projectRootOverride: sidecarPath.isEmpty ? nil : sidecarPath,
-            hostOverride: localAgentHostPathOverride.isEmpty ? nil : localAgentHostPathOverride,
-            mlxRunnerOverride: mlxRunnerPathOverride.isEmpty ? nil : mlxRunnerPathOverride,
-            dataDirectoryPath: dataDirectory,
-            defaultMLXModel: defaultMLXModel
         )
     }
 
@@ -1092,92 +1818,6 @@ private struct DeveloperSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("Local Providers") {
-                statusRow(
-                    title: "Host",
-                    summary: localProviderReport.hostSummary,
-                    available: localProviderReport.hostBinaryPath != nil || localProviderReport.packagePath != nil,
-                    identifier: "settings.developer.localProviders.hostStatus"
-                )
-                statusRow(
-                    title: "Foundation Models",
-                    summary: localProviderReport.foundationSummary,
-                    available: localProviderReport.foundationAvailable,
-                    identifier: "settings.developer.localProviders.foundationStatus"
-                )
-                statusRow(
-                    title: "MLX",
-                    summary: localProviderReport.mlxSummary,
-                    available: localProviderReport.mlxAvailable,
-                    identifier: "settings.developer.localProviders.mlxStatus"
-                )
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Managed MLX Cache")
-                        .font(.headline)
-                    Text(localProviderReport.mlxDownloadDirectory)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .xrayId("settings.developer.mlxDownloadDirectory")
-
-                    HStack {
-                        Button(isInstallingMLXRunner ? "Installing MLX Runner…" : "Install MLX Runner") {
-                            installMLXRunner()
-                        }
-                        .disabled(isInstallingMLXRunner)
-                        .xrayId("settings.developer.installMLXRunnerButton")
-
-                        Button(isInstallingMLXModel ? "Installing MLX Model…" : "Install Default MLX Model") {
-                            installDefaultMLXModel()
-                        }
-                        .disabled(isInstallingMLXModel || defaultMLXModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .xrayId("settings.developer.installDefaultMLXModelButton")
-
-                        Spacer()
-                    }
-
-                    Text("Odyssey can install `llm-tool` and pre-download the current default MLX model into its own managed cache.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    if let mlxInstallStatusMessage {
-                        Text(mlxInstallStatusMessage)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                            .xrayId("settings.developer.mlxInstallStatus")
-                    }
-
-                    if let mlxModelInstallStatusMessage {
-                        Text(mlxModelInstallStatusMessage)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                            .xrayId("settings.developer.mlxModelInstallStatus")
-                    }
-
-                    if localProviderReport.installedMLXModels.isEmpty {
-                        Text("No managed MLX models are installed yet.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Installed MLX Models")
-                                .font(.subheadline)
-                            ForEach(localProviderReport.installedMLXModels) { model in
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(model.modelIdentifier)
-                                    Text(model.downloadDirectory)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             Section {
                 HStack {
                     Button("Open Data Directory in Finder") {
@@ -1261,76 +1901,6 @@ private struct DeveloperSettingsTab: View {
     private func openDataDirectory() {
         let expandedPath = NSString(string: dataDirectory).expandingTildeInPath
         NSWorkspace.shared.open(URL(fileURLWithPath: expandedPath))
-    }
-
-    private func installMLXRunner() {
-        isInstallingMLXRunner = true
-        mlxInstallStatusMessage = "Downloading and building the MLX runner…"
-
-        Task {
-            do {
-                let installedPath = try await LocalProviderInstaller.installMLXRunner(dataDirectoryPath: dataDirectory)
-                await MainActor.run {
-                    isInstallingMLXRunner = false
-                    mlxInstallStatusMessage = "Installed MLX runner at \(installedPath)."
-                    mlxRunnerPathOverride = ""
-                }
-            } catch {
-                await MainActor.run {
-                    isInstallingMLXRunner = false
-                    mlxInstallStatusMessage = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    private func installDefaultMLXModel() {
-        isInstallingMLXModel = true
-        mlxModelInstallStatusMessage = "Downloading \(defaultMLXModel)…"
-
-        Task {
-            do {
-                let result = try await LocalProviderInstaller.installMLXModel(
-                    modelIdentifier: defaultMLXModel,
-                    dataDirectoryPath: dataDirectory,
-                    bundleResourcePath: Bundle.main.resourcePath,
-                    currentDirectoryPath: FileManager.default.currentDirectoryPath,
-                    projectRootOverride: sidecarPath.isEmpty ? nil : sidecarPath,
-                    hostOverride: localAgentHostPathOverride.isEmpty ? nil : localAgentHostPathOverride,
-                    runnerOverride: mlxRunnerPathOverride.isEmpty ? nil : mlxRunnerPathOverride
-                )
-                await MainActor.run {
-                    isInstallingMLXModel = false
-                    let verb = result.alreadyInstalled ? "Already installed" : "Installed"
-                    mlxModelInstallStatusMessage = "\(verb) \(result.modelIdentifier) in \(result.downloadDirectory)."
-                    mlxRunnerPathOverride = ""
-                }
-            } catch {
-                await MainActor.run {
-                    isInstallingMLXModel = false
-                    mlxModelInstallStatusMessage = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func statusRow(title: String, summary: String, available: Bool, identifier: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: available ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundStyle(available ? .green : .orange)
-                .padding(.top, 2)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.headline)
-                Text(summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-            }
-            Spacer()
-        }
-        .xrayId(identifier)
     }
 }
 
