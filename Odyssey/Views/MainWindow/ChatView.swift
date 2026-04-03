@@ -723,8 +723,12 @@ struct ChatView: View {
             for key in activeStreamingSessionKeys {
                 guard let start = processingStartTimes[key] else { continue }
                 let elapsed = Date().timeIntervalSince(start)
-                let hasStreamingText = !(appState.streamingText[key]?.isEmpty ?? true)
-                if elapsed > 120 && !hasStreamingText {
+                let activity = appState.sessionActivity[key] ?? .idle
+                if ChatSessionWatchdog.shouldTriggerNoResponseTimeout(
+                    elapsed: elapsed,
+                    hasVisibleOutput: hasVisibleOutput(for: key, since: start),
+                    activity: activity
+                ) {
                     Log.chat.warning("Timeout: no response after \(Int(elapsed))s for \(key, privacy: .public)")
                     appState.lastSessionEvent[key] = .error("No response received (timeout)")
                     processingStartTimes.removeValue(forKey: key)
@@ -3881,15 +3885,12 @@ struct ChatView: View {
             let sidecarKey = session.id.uuidString
             let hasStreamingText = !(appState.streamingText[sidecarKey]?.isEmpty ?? true)
             let hasThinkingText = !(appState.thinkingText[sidecarKey]?.isEmpty ?? true)
-            let hasPendingEvent = appState.lastSessionEvent[sidecarKey] != nil
 
-            let shouldTrack: Bool
-            switch appState.sessionActivity[sidecarKey] ?? .idle {
-            case .thinking, .streaming, .callingTool, .waitingForResult:
-                shouldTrack = true
-            case .idle, .done, .error, .askingUser:
-                shouldTrack = hasStreamingText || hasThinkingText || hasPendingEvent
-            }
+            let shouldTrack = ChatSessionWatchdog.shouldTrackSession(
+                activity: appState.sessionActivity[sidecarKey] ?? .idle,
+                hasStreamingText: hasStreamingText,
+                hasThinkingText: hasThinkingText
+            )
 
             guard shouldTrack else { continue }
 
@@ -3910,6 +3911,26 @@ struct ChatView: View {
         activeStreamingSessionKeys = restoredKeys
         activeStreamingDisplayNames = restoredDisplayNames
         isProcessing = !restoredKeys.isEmpty
+    }
+
+    private func hasVisibleOutput(for sidecarKey: String, since start: Date) -> Bool {
+        if !(appState.streamingText[sidecarKey]?.isEmpty ?? true) { return true }
+        if !(appState.thinkingText[sidecarKey]?.isEmpty ?? true) { return true }
+        if appState.progressTrackers[sidecarKey] != nil { return true }
+        if !(appState.pendingSuggestions[sidecarKey]?.isEmpty ?? true) { return true }
+        if appState.completedPlans[sidecarKey] != nil { return true }
+
+        guard let convo = conversation,
+              let session = convo.sessions.first(where: { $0.id.uuidString == sidecarKey }),
+              let participant = participantForSession(session, in: convo) else {
+            return false
+        }
+
+        return convo.messages.contains { message in
+            message.senderParticipantId == participant.id &&
+            message.type == .richContent &&
+            message.timestamp >= start
+        }
     }
 
     private func checkForCompletion(events: [String: AppState.SessionEventKind]? = nil) {
