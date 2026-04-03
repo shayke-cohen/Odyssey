@@ -61,7 +61,7 @@ final class LocalAgentHostTests: XCTestCase {
 
         let payload = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any])
         let presets = try XCTUnwrap(payload["presets"] as? [[String: Any]])
-        XCTAssertTrue(presets.contains(where: { $0["modelIdentifier"] as? String == "mlx-community/Qwen3-14B-4bit" }))
+        XCTAssertTrue(presets.contains(where: { $0["modelIdentifier"] as? String == "mlx-community/Qwen3-4B-Instruct-2507-4bit" }))
     }
 
     func testCLIInstallModelUsesManagedCache() throws {

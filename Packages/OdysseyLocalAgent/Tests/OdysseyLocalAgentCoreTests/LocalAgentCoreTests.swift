@@ -64,12 +64,16 @@ final class LocalAgentCoreTests: XCTestCase {
         XCTAssertEqual(
             ManagedMLXModels.presets().map(\.modelIdentifier),
             [
-                "mlx-community/Qwen3-14B-4bit",
+                "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                "mlx-community/Qwen3-0.6B-4bit",
+                "mlx-community/Qwen3-1.7B-4bit",
+                "mlx-community/Qwen3-8B-4bit",
+                "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+                "mlx-community/Qwen2.5-3B-Instruct-4bit",
                 "mlx-community/Qwen2.5-7B-Instruct-4bit",
-                "mlx-community/Qwen3-30B-A3B-4bit-DWQ-053125",
                 "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
-                "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit",
-                "mlx-community/Qwen3-Coder-Next-4bit",
+                "mlx-community/Llama-3.2-1B-Instruct-4bit",
+                "mlx-community/Llama-3.2-3B-Instruct-4bit",
             ]
         )
     }

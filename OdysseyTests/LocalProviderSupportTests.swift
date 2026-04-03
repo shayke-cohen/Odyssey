@@ -212,6 +212,23 @@ final class LocalProviderSupportTests: XCTestCase {
         )
     }
 
+    func testManagedMLXDownloadedBytesCountsHiddenCachePayloads() throws {
+        let modelPath = tempDirectory
+            .appendingPathComponent("local-agent/models/huggingface/models/mlx-community/Qwen3-8B-4bit/.cache/huggingface/download", isDirectory: true)
+        try FileManager.default.createDirectory(at: modelPath, withIntermediateDirectories: true)
+        let partialURL = modelPath.appendingPathComponent("model-partial.bin")
+        let payload = Data(repeating: 3, count: 8_192)
+        FileManager.default.createFile(atPath: partialURL.path, contents: payload)
+
+        XCTAssertEqual(
+            LocalProviderInstaller.managedMLXDownloadedBytes(
+                for: "mlx-community/Qwen3-8B-4bit",
+                dataDirectoryPath: tempDirectory.path
+            ),
+            Int64(payload.count)
+        )
+    }
+
     func testNormalizedMLXModelIdentifierAcceptsHuggingFaceURL() {
         let normalized = LocalProviderInstaller.normalizedMLXModelIdentifier(
             "https://huggingface.co/mlx-community/Qwen2.5-1.5B-Instruct-4bit"
@@ -275,10 +292,14 @@ final class LocalProviderSupportTests: XCTestCase {
             LocalProviderInstaller.recommendedMLXPresets().map(\.modelIdentifier),
             [
                 "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+                "mlx-community/Qwen3-0.6B-4bit",
+                "mlx-community/Qwen3-1.7B-4bit",
+                "mlx-community/Qwen3-8B-4bit",
                 "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+                "mlx-community/Qwen2.5-3B-Instruct-4bit",
                 "mlx-community/Qwen2.5-7B-Instruct-4bit",
                 "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
-                "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit",
+                "mlx-community/Llama-3.2-1B-Instruct-4bit",
                 "mlx-community/Llama-3.2-3B-Instruct-4bit",
             ]
         )

@@ -10,6 +10,7 @@ final class AgentDefaultsTests: XCTestCase {
     private var context: ModelContext!
     private var originalDataDir: String?
     private var originalLegacyDataDir: String?
+    private var originalStoredDataDir: String?
 
     override func setUp() async throws {
         AppSettings.store.removeObject(forKey: AppSettings.defaultProviderKey)
@@ -19,8 +20,10 @@ final class AgentDefaultsTests: XCTestCase {
         AppSettings.store.removeObject(forKey: AppSettings.defaultMLXModelKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultMaxTurnsKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultMaxBudgetKey)
+        AppSettings.store.removeObject(forKey: AppSettings.dataDirectoryKey)
         originalDataDir = ProcessInfo.processInfo.environment["ODYSSEY_DATA_DIR"]
         originalLegacyDataDir = ProcessInfo.processInfo.environment["CLAUDESTUDIO_DATA_DIR"]
+        originalStoredDataDir = AppSettings.store.string(forKey: AppSettings.dataDirectoryKey)
 
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         container = try ModelContainer(
@@ -38,6 +41,11 @@ final class AgentDefaultsTests: XCTestCase {
         AppSettings.store.removeObject(forKey: AppSettings.defaultMLXModelKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultMaxTurnsKey)
         AppSettings.store.removeObject(forKey: AppSettings.defaultMaxBudgetKey)
+        if let originalStoredDataDir {
+            AppSettings.store.set(originalStoredDataDir, forKey: AppSettings.dataDirectoryKey)
+        } else {
+            AppSettings.store.removeObject(forKey: AppSettings.dataDirectoryKey)
+        }
         if let originalDataDir {
             setenv("ODYSSEY_DATA_DIR", originalDataDir, 1)
         } else {
@@ -127,6 +135,65 @@ final class AgentDefaultsTests: XCTestCase {
         XCTAssertTrue(AgentDefaults.isModel("mlx-community/custom-model", compatibleWith: ProviderSelection.mlx.rawValue))
         XCTAssertEqual(AgentDefaults.normalizedModelSelection("   "), AgentDefaults.inheritMarker)
         XCTAssertTrue(AgentDefaults.isModel("   ", compatibleWith: ProviderSelection.mlx.rawValue))
+    }
+
+    func testAvailableThreadModelChoicesIncludeDownloadedMLXModels() throws {
+        let tempDataDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDataDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDataDirectory) }
+
+        AppSettings.store.set(tempDataDirectory.path, forKey: AppSettings.dataDirectoryKey)
+
+        let downloadDirectory = LocalProviderInstaller.managedMLXDownloadDirectory(dataDirectoryPath: tempDataDirectory.path)
+        let manifestURL = URL(fileURLWithPath: LocalProviderInstaller.managedMLXManifestPath(dataDirectoryPath: tempDataDirectory.path))
+        try FileManager.default.createDirectory(at: manifestURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let managedPath = URL(fileURLWithPath: downloadDirectory)
+            .appendingPathComponent("models/mlx-community/Qwen3-8B-4bit", isDirectory: true)
+        try FileManager.default.createDirectory(at: managedPath, withIntermediateDirectories: true)
+
+        let manifest = ManagedInstalledMLXManifest(installed: [
+            ManagedInstalledMLXModel(
+                modelIdentifier: "mlx-community/Qwen3-8B-4bit",
+                downloadDirectory: downloadDirectory,
+                installedAt: Date(),
+                sourceURL: "https://huggingface.co/mlx-community/Qwen3-8B-4bit",
+                managedPath: managedPath.path
+            )
+        ])
+        try JSONEncoder().encode(manifest).write(to: manifestURL)
+
+        let choices = AgentDefaults.availableThreadModelChoices(for: ProviderSelection.mlx.rawValue)
+
+        XCTAssertTrue(choices.contains(where: { $0.id == "mlx-community/Qwen3-8B-4bit" }))
+        XCTAssertTrue(choices.contains(where: { $0.label.contains("Qwen3 8B") }))
+    }
+
+    func testLabelUsesDownloadedManagedPathModelName() throws {
+        let tempDataDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDataDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDataDirectory) }
+
+        AppSettings.store.set(tempDataDirectory.path, forKey: AppSettings.dataDirectoryKey)
+
+        let downloadDirectory = LocalProviderInstaller.managedMLXDownloadDirectory(dataDirectoryPath: tempDataDirectory.path)
+        let manifestURL = URL(fileURLWithPath: LocalProviderInstaller.managedMLXManifestPath(dataDirectoryPath: tempDataDirectory.path))
+        try FileManager.default.createDirectory(at: manifestURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let managedPath = URL(fileURLWithPath: downloadDirectory)
+            .appendingPathComponent("archive/custom-qwen", isDirectory: true)
+        try FileManager.default.createDirectory(at: managedPath, withIntermediateDirectories: true)
+
+        let manifest = ManagedInstalledMLXManifest(installed: [
+            ManagedInstalledMLXModel(
+                modelIdentifier: "archive/custom-qwen",
+                downloadDirectory: downloadDirectory,
+                installedAt: Date(),
+                sourceURL: "https://example.com/custom-qwen.tar.gz",
+                managedPath: managedPath.path
+            )
+        ])
+        try JSONEncoder().encode(manifest).write(to: manifestURL)
+
+        XCTAssertEqual(AgentDefaults.label(for: managedPath.path), "custom qwen")
     }
 
     func testSessionOverrideTakesPrecedenceOverAgentAndSystemProviderDefaults() {

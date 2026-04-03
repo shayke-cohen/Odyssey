@@ -59,7 +59,7 @@ export class LocalAgentHostClient {
 
   async call(method: string, params?: any): Promise<any> {
     await this.start();
-    return this.sendRequest(method, params);
+    return this.sendRequestInternal(method, params);
   }
 
   registerHandler(method: string, handler: RequestHandler) {
@@ -122,7 +122,7 @@ export class LocalAgentHostClient {
       this.startPromise = null;
     });
 
-    await this.sendRequest("initialize", {
+    await this.sendRequestInternal("initialize", {
       clientInfo: {
         name: "odyssey-sidecar",
         version: "0.1.0",
@@ -152,6 +152,10 @@ export class LocalAgentHostClient {
   }
 
   private sendRequest(method: string, params?: any): Promise<any> {
+    return this.call(method, params);
+  }
+
+  private sendRequestInternal(method: string, params?: any): Promise<any> {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });

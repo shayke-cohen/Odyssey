@@ -230,7 +230,7 @@ struct NewSessionSheet: View {
         if ClaudeModel.allCases.contains(where: { $0.rawValue == normalizedModel }) {
             return ProviderSelection.claude.rawValue
         }
-        if MLXModel.allCases.contains(where: { $0.rawValue == normalizedModel }) {
+        if AgentDefaults.isLikelyMLXModelSelection(normalizedModel) {
             return ProviderSelection.mlx.rawValue
         }
 

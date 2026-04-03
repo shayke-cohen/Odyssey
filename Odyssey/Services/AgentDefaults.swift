@@ -218,8 +218,11 @@ enum AgentDefaults {
         if let match = FoundationModel.allCases.first(where: { $0.rawValue == normalized }) {
             return match.label
         }
-        if let match = MLXModel.allCases.first(where: { $0.rawValue == normalized }) {
+        if let match = mlxModelChoice(for: normalized) {
             return match.label
+        }
+        if let pathLabel = inferredMLXPathLabel(for: normalized) {
+            return pathLabel
         }
         return model ?? inheritMarker
     }
@@ -285,11 +288,115 @@ enum AgentDefaults {
         let configured = normalizedModelSelection(
             AppSettings.store.string(forKey: AppSettings.defaultMLXModelKey) ?? AppSettings.defaultMLXModel
         )
+        let installedChoices = installedMLXModelChoices()
 
         guard configured != inheritMarker else {
-            return [ModelChoice(id: MLXModel.defaultModel.rawValue, label: MLXModel.defaultModel.label)]
+            return installedChoices.isEmpty
+                ? [ModelChoice(id: MLXModel.defaultModel.rawValue, label: MLXModel.defaultModel.label)]
+                : installedChoices
         }
 
-        return [ModelChoice(id: configured, label: "Configured MLX Model (\(configured))")]
+        if let matchingInstalledChoice = installedChoices.first(where: { $0.id == configured }) {
+            return uniqueModelChoices(installedChoices, appending: matchingInstalledChoice)
+        }
+
+        let configuredChoice = ModelChoice(
+            id: configured,
+            label: "Configured MLX Model (\(label(forInstalledOrKnownMLXSelection: configured)))"
+        )
+        return uniqueModelChoices(installedChoices, appending: configuredChoice)
+    }
+
+    static func isLikelyMLXModelSelection(_ value: String?) -> Bool {
+        let normalized = normalizedModelSelection(value)
+        guard normalized != inheritMarker else { return false }
+        return mlxModelChoice(for: normalized) != nil || inferredMLXPathLabel(for: normalized) != nil
+    }
+
+    private static func installedMLXModelChoices() -> [ModelChoice] {
+        let dataDirectory = AppSettings.store.string(forKey: AppSettings.dataDirectoryKey) ?? AppSettings.defaultDataDirectory
+        let presetLookup = Dictionary(
+            uniqueKeysWithValues: LocalProviderInstaller.recommendedMLXPresets().map { ($0.modelIdentifier, $0) }
+        )
+
+        return LocalProviderInstaller.installedMLXModels(dataDirectoryPath: dataDirectory)
+            .map { installedModel in
+                let choiceId = mlxSelectionValue(for: installedModel)
+                let label = label(forInstalledModel: installedModel, presetLookup: presetLookup)
+                return ModelChoice(id: choiceId, label: label)
+            }
+            .sorted { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
+    }
+
+    private static func mlxModelChoice(for selection: String) -> ModelChoice? {
+        if let installedChoice = installedMLXModelChoices().first(where: { $0.id == selection }) {
+            return installedChoice
+        }
+
+        if let preset = LocalProviderInstaller.recommendedMLXPresets().first(where: { $0.modelIdentifier == selection }) {
+            return ModelChoice(id: selection, label: presetLabel(for: preset))
+        }
+
+        return nil
+    }
+
+    private static func mlxSelectionValue(for installedModel: ManagedInstalledMLXModel) -> String {
+        guard shouldUseManagedPathSelection(for: installedModel),
+              let managedPath = installedModel.managedPath else {
+            return installedModel.modelIdentifier
+        }
+        return managedPath
+    }
+
+    private static func shouldUseManagedPathSelection(for installedModel: ManagedInstalledMLXModel) -> Bool {
+        guard let sourceURL = installedModel.sourceURL,
+              let url = URL(string: sourceURL) else {
+            return false
+        }
+        let host = url.host?.lowercased()
+        return !["huggingface.co", "www.huggingface.co", "hf.co"].contains(host ?? "")
+    }
+
+    private static func label(forInstalledModel installedModel: ManagedInstalledMLXModel, presetLookup: [String: ManagedMLXModelPreset]) -> String {
+        if let preset = presetLookup[installedModel.modelIdentifier] {
+            return presetLabel(for: preset)
+        }
+        return label(forInstalledOrKnownMLXSelection: mlxSelectionValue(for: installedModel))
+    }
+
+    private static func label(forInstalledOrKnownMLXSelection selection: String) -> String {
+        if let inferredPathLabel = inferredMLXPathLabel(for: selection) {
+            return inferredPathLabel
+        }
+        return inferredMLXIdentifierLabel(for: selection)
+    }
+
+    private static func presetLabel(for preset: ManagedMLXModelPreset) -> String {
+        if preset.parameterSize.isEmpty {
+            return preset.label
+        }
+        return "\(preset.label) • \(preset.parameterSize)"
+    }
+
+    private static func inferredMLXPathLabel(for value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("/") || trimmed.hasPrefix("~/") else { return nil }
+        let name = URL(fileURLWithPath: NSString(string: trimmed).expandingTildeInPath).lastPathComponent
+        guard !name.isEmpty else { return nil }
+        return inferredMLXIdentifierLabel(for: name)
+    }
+
+    private static func inferredMLXIdentifierLabel(for value: String) -> String {
+        let tail = value.split(separator: "/").last.map(String.init) ?? value
+        return tail
+            .replacingOccurrences(of: "-4bit", with: "")
+            .replacingOccurrences(of: "-", with: " ")
+    }
+
+    private static func uniqueModelChoices(_ base: [ModelChoice], appending extra: ModelChoice) -> [ModelChoice] {
+        if base.contains(where: { $0.id == extra.id }) {
+            return base
+        }
+        return base + [extra]
     }
 }

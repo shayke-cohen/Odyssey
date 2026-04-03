@@ -74,7 +74,7 @@ struct SettingsView: View {
         GeometryReader { proxy in
             HStack(spacing: 0) {
                 sidebar
-                    .frame(width: min(max(proxy.size.width * 0.24, 250), 320))
+                    .frame(width: min(max(proxy.size.width * 0.19, 212), 268))
                 Divider()
                 detailPane
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -273,6 +273,7 @@ private struct GeneralSettingsTab: View {
 private struct ModelsInstallProgress: Equatable {
     let installToken: String
     let modelIdentifier: String
+    let sourceValue: String
     let title: String
     let startedAt: Date
     let expectedBytes: Int64?
@@ -293,63 +294,87 @@ private final class ModelsSettingsState: ObservableObject {
     @Published var customModelInput = ""
     @Published var showCustomDefaultMLXInput = false
     @Published var isInstallingMLXRunner = false
-    @Published var installingModelId: String?
     @Published var deletingModelId: String?
     @Published var deleteConfirmationModel: ManagedInstalledMLXModel?
     @Published var smokeTestingModelId: String?
     @Published var smokeTestResults: [String: ManagedMLXSmokeTestResult] = [:]
-    @Published var installProgress: ModelsInstallProgress?
+    @Published var installProgresses: [String: ModelsInstallProgress] = [:]
 
-    private var installProgressTask: Task<Void, Never>?
+    private var installProgressTasks: [String: Task<Void, Never>] = [:]
 
     deinit {
-        installProgressTask?.cancel()
+        installProgressTasks.values.forEach { $0.cancel() }
     }
 
     func beginInstallProgress(
         installToken: String,
         modelIdentifier: String,
+        sourceValue: String,
         title: String,
         expectedBytes: Int64?,
         dataDirectory: String
     ) {
-        installProgressTask?.cancel()
-        installProgress = ModelsInstallProgress(
+        installProgressTasks[installToken]?.cancel()
+        installProgresses[installToken] = ModelsInstallProgress(
             installToken: installToken,
             modelIdentifier: modelIdentifier,
+            sourceValue: sourceValue,
             title: title,
             startedAt: Date(),
             expectedBytes: expectedBytes,
             downloadedBytes: LocalProviderInstaller.managedMLXDownloadedBytes(
-                for: modelIdentifier,
+                for: sourceValue,
                 dataDirectoryPath: dataDirectory
             )
         )
 
-        installProgressTask = Task { [weak self] in
+        installProgressTasks[installToken] = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
                 guard let self else { return }
                 let bytes = LocalProviderInstaller.managedMLXDownloadedBytes(
-                    for: modelIdentifier,
+                    for: sourceValue,
                     dataDirectoryPath: dataDirectory
                 )
                 await MainActor.run {
-                    guard self.installProgress?.installToken == installToken else { return }
-                    self.installProgress?.downloadedBytes = max(self.installProgress?.downloadedBytes ?? 0, bytes)
+                    guard self.installProgresses[installToken] != nil else { return }
+                    self.installProgresses[installToken]?.downloadedBytes = max(
+                        self.installProgresses[installToken]?.downloadedBytes ?? 0,
+                        bytes
+                    )
                 }
             }
         }
     }
 
-    func endInstallProgress() {
-        installProgressTask?.cancel()
-        installProgressTask = nil
-        installProgress = nil
+    func endInstallProgress(installToken: String) {
+        installProgressTasks[installToken]?.cancel()
+        installProgressTasks[installToken] = nil
+        installProgresses.removeValue(forKey: installToken)
+    }
+
+    func isInstalling(modelIdentifier: String) -> Bool {
+        installProgresses.values.contains { $0.modelIdentifier == modelIdentifier }
+    }
+
+    func progress(for modelIdentifier: String) -> ModelsInstallProgress? {
+        installProgresses.values.first { $0.modelIdentifier == modelIdentifier }
     }
 }
 
 private struct ModelsSettingsTab: View {
+    private struct MLXLibraryColumnWidths {
+        let model: CGFloat
+        let size: CGFloat
+        let bestFor: CGFloat
+        let status: CGFloat
+        let actions: CGFloat
+
+        var totalWidth: CGFloat {
+            model + size + bestFor + status + actions + 64
+        }
+    }
+
     private struct MLXModelDescriptor: Identifiable {
         let id: String
         let title: String
@@ -478,6 +503,12 @@ private struct ModelsSettingsTab: View {
             uniqueKeysWithValues: recommendedModelDescriptors.map { ($0.modelIdentifier, $0) }
         )
 
+        for activeModelIdentifier in activeDownloadModelIdentifiers {
+            if let descriptor = descriptor(for: activeModelIdentifier) {
+                descriptorsByIdentifier[descriptor.modelIdentifier] = descriptor
+            }
+        }
+
         for installedModel in installedModels {
             guard let descriptor = descriptor(for: installedModel.modelIdentifier, installedModel: installedModel) else {
                 continue
@@ -492,8 +523,8 @@ private struct ModelsSettingsTab: View {
                 return lhsIsDefault
             }
 
-            let lhsIsDownloading = state.installingModelId == lhs.modelIdentifier
-            let rhsIsDownloading = state.installingModelId == rhs.modelIdentifier
+            let lhsIsDownloading = state.isInstalling(modelIdentifier: lhs.modelIdentifier)
+            let rhsIsDownloading = state.isInstalling(modelIdentifier: rhs.modelIdentifier)
             if lhsIsDownloading != rhsIsDownloading {
                 return lhsIsDownloading
             }
@@ -508,6 +539,10 @@ private struct ModelsSettingsTab: View {
 
             return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
         }
+    }
+
+    private var activeDownloadModelIdentifiers: [String] {
+        Array(Set(state.installProgresses.values.map(\.modelIdentifier))).sorted()
     }
 
     private var customModelSource: ManagedMLXInstallSource? {
@@ -534,18 +569,34 @@ private struct ModelsSettingsTab: View {
         }
     }
 
+    private var customModelInstallToken: String? {
+        installToken(for: state.customModelInput)
+    }
+
+    private var customModelInstallInProgress: Bool {
+        guard let customModelInstallToken else { return false }
+        return state.installProgresses[customModelInstallToken] != nil
+    }
+
+    private var customModelInstallButtonTitle: String {
+        customModelInstallInProgress ? "Adding…" : "Add"
+    }
+
     private var reloadToken: String {
         [sidecarPath, localAgentHostPathOverride, mlxRunnerPathOverride, dataDirectory, defaultMLXModel].joined(separator: "|")
     }
 
     var body: some View {
-        Form {
-            cloudAndDefaultModelsSection
-            localMLXSetupSection
-            mlxLibrarySection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                cloudAndDefaultModelsSection
+                localMLXSetupSection
+                mlxLibrarySection
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 28)
         }
-        .formStyle(.grouped)
-        .settingsDetailLayout()
+        .settingsDetailLayout(maxWidth: .infinity)
         .task(id: reloadToken) {
             await refreshCatalog()
         }
@@ -569,7 +620,7 @@ private struct ModelsSettingsTab: View {
     }
 
     private var cloudAndDefaultModelsSection: some View {
-        Section("Cloud & Default Models") {
+        settingsContentSection("Cloud & Default Models") {
             modelSurface {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Choose defaults and local-model fallbacks.")
@@ -580,33 +631,29 @@ private struct ModelsSettingsTab: View {
                 }
             }
 
-            Picker("Default Provider", selection: selectedProvider) {
+            settingsPickerRow("Default Provider", xrayId: "settings.models.defaultProviderPicker", selection: selectedProvider) {
                 ForEach([ProviderSelection.claude, ProviderSelection.codex, ProviderSelection.foundation, ProviderSelection.mlx]) { provider in
                     Text(provider.label).tag(provider)
                 }
             }
-            .xrayId("settings.models.defaultProviderPicker")
 
-            Picker("Default Claude Model", selection: selectedClaudeModel) {
+            settingsPickerRow("Default Claude Model", xrayId: "settings.models.defaultClaudeModelPicker", selection: selectedClaudeModel) {
                 ForEach(ClaudeModel.allCases) { model in
                     Text(model.label).tag(model)
                 }
             }
-            .xrayId("settings.models.defaultClaudeModelPicker")
 
-            Picker("Default Codex Model", selection: selectedCodexModel) {
+            settingsPickerRow("Default Codex Model", xrayId: "settings.models.defaultCodexModelPicker", selection: selectedCodexModel) {
                 ForEach(CodexModel.allCases) { model in
                     Text(model.label).tag(model)
                 }
             }
-            .xrayId("settings.models.defaultCodexModelPicker")
 
-            Picker("Default Foundation Model", selection: selectedFoundationModel) {
+            settingsPickerRow("Default Foundation Model", xrayId: "settings.models.defaultFoundationModelPicker", selection: selectedFoundationModel) {
                 ForEach(FoundationModel.allCases) { model in
                     Text(model.label).tag(model)
                 }
             }
-            .xrayId("settings.models.defaultFoundationModelPicker")
 
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
@@ -631,13 +678,12 @@ private struct ModelsSettingsTab: View {
                         }
                     }
                 } else {
-                    Picker("MLX Default", selection: defaultMLXPickerSelection) {
+                    settingsPickerRow("MLX Default", xrayId: "settings.models.defaultMLXModelPicker", selection: defaultMLXPickerSelection) {
                         ForEach(installedModelDescriptors) { descriptor in
                             Text(pickerLabel(for: descriptor)).tag(descriptor.defaultSelectionValue)
                         }
                         Text("Custom repo id or local path").tag(customMLXSelectionTag)
                     }
-                    .xrayId("settings.models.defaultMLXModelPicker")
 
                     Text("This dropdown only lists MLX models already downloaded on this Mac.")
                         .font(.caption)
@@ -670,7 +716,7 @@ private struct ModelsSettingsTab: View {
     }
 
     private var localMLXSetupSection: some View {
-        Section("Local MLX Setup") {
+        settingsContentSection("Local MLX Setup") {
             VStack(alignment: .leading, spacing: 12) {
                 modelSurface {
                     VStack(alignment: .leading, spacing: 6) {
@@ -742,7 +788,7 @@ private struct ModelsSettingsTab: View {
     }
 
     private var mlxLibrarySection: some View {
-        Section("MLX Model Library") {
+        settingsContentSection("MLX Model Library") {
             VStack(alignment: .leading, spacing: 16) {
                 modelSurface {
                     VStack(alignment: .leading, spacing: 8) {
@@ -750,14 +796,10 @@ private struct ModelsSettingsTab: View {
                             .font(.headline)
                         Text("Browse curated presets and your installed models in one place.")
                             .font(.subheadline.weight(.medium))
-                        Text("Each row shows the right actions for its current state, including download, set default, test, reveal, and delete.")
+                        Text("Compare models in a single repeater with stable columns for size, fit, status, and actions.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                }
-
-                if let installProgress = state.installProgress {
-                    downloadProgressCard(installProgress)
                 }
 
                 HStack {
@@ -780,9 +822,25 @@ private struct ModelsSettingsTab: View {
                     }
                     .xrayId("settings.models.noLibraryModels")
                 } else {
-                    ForEach(libraryModelDescriptors) { descriptor in
-                        mlxModelLibraryCard(descriptor)
+                    modelSurface {
+                        GeometryReader { geometry in
+                            let widths = libraryColumnWidths(for: geometry.size.width)
+                            ScrollView(.horizontal) {
+                                VStack(alignment: .leading, spacing: 0) {
+                                    mlxLibraryHeader(widths: widths)
+
+                                    ForEach(Array(libraryModelDescriptors.enumerated()), id: \.element.id) { index, descriptor in
+                                        Divider()
+                                            .padding(.vertical, 12)
+                                        mlxModelLibraryRow(descriptor, isFirstRow: index == 0, widths: widths)
+                                    }
+                                }
+                                .frame(width: widths.totalWidth, alignment: .leading)
+                            }
+                        }
+                        .frame(minHeight: CGFloat(libraryModelDescriptors.count) * 152 + 40)
                     }
+                    .xrayId("settings.models.libraryTable")
                 }
 
                 modelSurface {
@@ -793,10 +851,10 @@ private struct ModelsSettingsTab: View {
                             TextField("https://huggingface.co/owner/model or https://host/model.tar.gz or owner/model", text: $state.customModelInput)
                                 .textFieldStyle(.roundedBorder)
                                 .xrayId("settings.models.customMLXModelField")
-                            Button(state.installingModelId == "__custom__" ? "Adding…" : "Add") {
+                            Button(customModelInstallButtonTitle) {
                                 installCustomModel()
                             }
-                            .disabled(customModelSource == nil || state.installingModelId != nil)
+                            .disabled(customModelSource == nil || customModelInstallInProgress)
                             .xrayId("settings.models.installCustomMLXModelButton")
                         }
                         Text(customModelValidation.text)
@@ -817,6 +875,55 @@ private struct ModelsSettingsTab: View {
                         .textSelection(.enabled)
                         .xrayId("settings.models.catalogMessage")
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func settingsContentSection<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(.title3.weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func settingsPickerRow<SelectionValue: Hashable, Content: View>(
+        _ title: String,
+        xrayId: String,
+        selection: Binding<SelectionValue>,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 16) {
+                Text(title)
+                    .frame(width: 220, alignment: .leading)
+                Picker(title, selection: selection) {
+                    content()
+                }
+                .labelsHidden()
+                .frame(minWidth: 240, idealWidth: 360, maxWidth: 460, alignment: .leading)
+                .xrayId(xrayId)
+                .accessibilityLabel(title)
+                Spacer(minLength: 0)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                Picker(title, selection: selection) {
+                    content()
+                }
+                .labelsHidden()
+                .frame(maxWidth: 460, alignment: .leading)
+                .xrayId(xrayId)
+                .accessibilityLabel(title)
             }
         }
     }
@@ -867,6 +974,34 @@ private struct ModelsSettingsTab: View {
             return descriptor.title
         }
         return "\(descriptor.title) • \(descriptor.parameterSize)"
+    }
+
+    private func installToken(for value: String) -> String {
+        resolvedLibraryModelIdentifier(for: value)
+    }
+
+    private func resolvedLibraryModelIdentifier(for value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let normalized = LocalProviderInstaller.normalizedMLXModelIdentifier(trimmed) {
+            return normalized
+        }
+        if let archiveIdentifier = inferredArchiveModelIdentifier(from: trimmed) {
+            return archiveIdentifier
+        }
+        return trimmed
+    }
+
+    private func inferredArchiveModelIdentifier(from value: String) -> String? {
+        guard let url = URL(string: value) else { return nil }
+        let path = url.path.lowercased()
+        guard path.hasSuffix(".zip") || path.hasSuffix(".tar") || path.hasSuffix(".tar.gz") || path.hasSuffix(".tgz") else {
+            return nil
+        }
+        let lastComponent = url.deletingPathExtension().lastPathComponent
+            .replacingOccurrences(of: ".tar", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !lastComponent.isEmpty else { return nil }
+        return "archive/\(lastComponent)"
     }
 
     private func inferredMLXModelTitle(from modelIdentifier: String) -> String {
@@ -943,40 +1078,49 @@ private struct ModelsSettingsTab: View {
         .xrayId(identifier)
     }
 
+    private func mlxLibraryHeader(widths: MLXLibraryColumnWidths) -> some View {
+        HStack(alignment: .bottom, spacing: 16) {
+            Text("Model")
+                .frame(width: widths.model, alignment: .leading)
+                .lineLimit(1)
+            Text("Size")
+                .frame(width: widths.size, alignment: .leading)
+                .lineLimit(1)
+            Text("Best For")
+                .frame(width: widths.bestFor, alignment: .leading)
+                .lineLimit(1)
+            Text("Status")
+                .frame(width: widths.status, alignment: .leading)
+                .lineLimit(1)
+            Text("Actions")
+                .frame(width: widths.actions, alignment: .leading)
+                .lineLimit(1)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+    }
+
     @ViewBuilder
-    private func mlxModelLibraryCard(_ descriptor: MLXModelDescriptor) -> some View {
-        modelSurface {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(descriptor.title)
-                        .font(.headline)
+    private func mlxModelLibraryRow(
+        _ descriptor: MLXModelDescriptor,
+        isFirstRow: Bool,
+        widths: MLXLibraryColumnWidths
+    ) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(descriptor.title)
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
                     if descriptor.recommended {
-                        Text("Recommended")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                        libraryStatusBadge("Recommended", color: .accentColor)
                     }
                     if descriptor.isInstalled {
-                        Text("Downloaded")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.green.opacity(0.12), in: Capsule())
-                    }
-                    if state.installingModelId == descriptor.modelIdentifier {
-                        Text("Downloading")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                        libraryStatusBadge("Downloaded", color: .green)
                     }
                     if descriptor.defaultSelectionValue == defaultMLXModel {
-                        Text("Default")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.orange.opacity(0.12), in: Capsule())
+                        libraryStatusBadge("Default", color: .orange)
                     }
                 }
 
@@ -984,32 +1128,70 @@ private struct ModelsSettingsTab: View {
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
 
-                metadataPills(for: descriptor)
-
                 Text(descriptor.summary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-
-                Text("Best for: \(descriptor.bestFor)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if let managedPath = descriptor.managedPath {
                     Text(managedPath)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
-                }
-
-                if let sourceURL = descriptor.sourceURL {
+                        .lineLimit(2)
+                } else if let sourceURL = descriptor.sourceURL {
                     Text(sourceURL)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
+                        .lineLimit(2)
+                }
+            }
+            .frame(width: widths.model, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 8) {
+                modelMetric(label: "Params", value: descriptor.parameterSize)
+                modelMetric(label: "Download", value: descriptor.downloadSize)
+            }
+            .frame(width: widths.size, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(descriptor.agentSuitability)
+                    .font(.subheadline.weight(.semibold))
+                Text(descriptor.bestFor)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(width: widths.bestFor, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    if state.isInstalling(modelIdentifier: descriptor.modelIdentifier) {
+                        libraryStatusBadge("Downloading", color: .accentColor)
+                    } else if descriptor.isInstalled {
+                        libraryStatusBadge("Ready", color: .green)
+                    } else {
+                        libraryStatusBadge("Not Downloaded", color: .secondary)
+                    }
                 }
 
-                HStack {
-                    if descriptor.isInstalled {
+                if let installProgress = state.progress(for: descriptor.modelIdentifier) {
+                    downloadProgressSummary(installProgress)
+                } else if let smokeTestResult = state.smokeTestResults[descriptor.modelIdentifier] {
+                    smokeTestResultView(smokeTestResult)
+                } else {
+                    Text(descriptor.isInstalled ? "Available in the managed library." : "Available to download.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(width: widths.status, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 8) {
+                if descriptor.isInstalled {
+                    HStack(spacing: 8) {
                         Button("Set as Default") {
                             defaultMLXModel = descriptor.defaultSelectionValue
                         }
@@ -1022,7 +1204,9 @@ private struct ModelsSettingsTab: View {
                         }
                         .disabled(state.smokeTestingModelId != nil)
                         .xrayId("settings.models.smokeTestInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+                    }
 
+                    HStack(spacing: 8) {
                         if let revealPath = descriptor.managedPath {
                             Button("Reveal") {
                                 openPathInFinder(revealPath)
@@ -1038,11 +1222,13 @@ private struct ModelsSettingsTab: View {
                         .disabled(state.deletingModelId != nil)
                         .foregroundStyle(.red)
                         .xrayId("settings.models.deleteInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
-                    } else {
-                        Button(state.installingModelId == descriptor.modelIdentifier ? "Downloading…" : "Download") {
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        Button(state.isInstalling(modelIdentifier: descriptor.modelIdentifier) ? "Downloading…" : "Download") {
                             installManagedModel(descriptor.modelIdentifier)
                         }
-                        .disabled(state.installingModelId != nil)
+                        .disabled(state.isInstalling(modelIdentifier: descriptor.modelIdentifier))
                         .xrayId("settings.models.downloadPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
 
                         Button("Set as Default") {
@@ -1051,19 +1237,49 @@ private struct ModelsSettingsTab: View {
                         .xrayId("settings.models.setDefaultPreset.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
                     }
                 }
-
-                if let installProgress = state.installProgress, installProgress.installToken == descriptor.modelIdentifier {
-                    downloadProgressSummary(installProgress)
-                }
-
-                if let smokeTestResult = state.smokeTestResults[descriptor.modelIdentifier] {
-                    smokeTestResultView(smokeTestResult)
-                }
             }
+            .frame(width: widths.actions, alignment: .leading)
         }
+        .padding(.top, isFirstRow ? 12 : 0)
         .xrayId(
             "\(descriptor.isInstalled ? "settings.models.installedCard" : "settings.models.presetCard").\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))"
         )
+    }
+
+    private func libraryColumnWidths(for totalWidth: CGFloat) -> MLXLibraryColumnWidths {
+        let usableWidth = max(totalWidth - 8, 1_220)
+        let size: CGFloat = usableWidth < 1_320 ? 120 : 132
+        let bestFor = min(max(usableWidth * 0.22, 220), 300)
+        let status = min(max(usableWidth * 0.18, 190), 240)
+        let actions = min(max(usableWidth * 0.20, 250), 310)
+        let spacing: CGFloat = 64
+        let model = max(usableWidth - size - status - actions - bestFor - spacing, 360)
+
+        return MLXLibraryColumnWidths(
+            model: model,
+            size: size,
+            bestFor: bestFor,
+            status: status,
+            actions: actions
+        )
+    }
+
+    private func libraryStatusBadge(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.12), in: Capsule())
+    }
+
+    private func modelMetric(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+        }
     }
 
     private func refreshCatalog() async {
@@ -1115,20 +1331,22 @@ private struct ModelsSettingsTab: View {
     }
 
     private func installCustomModel() {
-        installManagedModel(state.customModelInput, installToken: "__custom__")
+        installManagedModel(state.customModelInput)
     }
 
-    private func installManagedModel(_ modelIdentifier: String, installToken: String? = nil) {
+    private func installManagedModel(_ modelIdentifier: String, installToken explicitInstallToken: String? = nil) {
         let trimmed = modelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        let resolvedToken = installToken ?? trimmed
-        state.installingModelId = resolvedToken
+        let resolvedModelIdentifier = resolvedLibraryModelIdentifier(for: trimmed)
+        let resolvedToken = explicitInstallToken ?? installToken(for: trimmed)
+        guard state.installProgresses[resolvedToken] == nil else { return }
         state.catalogMessage = "Adding \(trimmed)…"
         state.beginInstallProgress(
             installToken: resolvedToken,
-            modelIdentifier: trimmed,
-            title: descriptor(for: trimmed)?.title ?? inferredMLXModelTitle(from: trimmed),
-            expectedBytes: expectedDownloadBytes(for: descriptor(for: trimmed)?.downloadSize),
+            modelIdentifier: resolvedModelIdentifier,
+            sourceValue: trimmed,
+            title: descriptor(for: resolvedModelIdentifier)?.title ?? inferredMLXModelTitle(from: resolvedModelIdentifier),
+            expectedBytes: expectedDownloadBytes(for: descriptor(for: resolvedModelIdentifier)?.downloadSize),
             dataDirectory: dataDirectory
         )
 
@@ -1144,17 +1362,15 @@ private struct ModelsSettingsTab: View {
                     runnerOverride: mlxRunnerPathOverride.isEmpty ? nil : mlxRunnerPathOverride
                 )
                 await MainActor.run {
-                    state.installingModelId = nil
                     state.customModelInput = ""
-                    state.endInstallProgress()
+                    state.endInstallProgress(installToken: resolvedToken)
                     let verb = result.alreadyInstalled ? "Already installed" : "Installed"
                     state.catalogMessage = "\(verb) \(result.modelIdentifier) in \(result.downloadDirectory)."
                 }
                 await refreshCatalog()
             } catch {
                 await MainActor.run {
-                    state.installingModelId = nil
-                    state.endInstallProgress()
+                    state.endInstallProgress(installToken: resolvedToken)
                     state.catalogMessage = error.localizedDescription
                 }
             }
@@ -2240,10 +2456,10 @@ private struct DeveloperSettingsTab: View {
 }
 
 private extension View {
-    func settingsDetailLayout() -> some View {
+    func settingsDetailLayout(maxWidth: CGFloat = 1040) -> some View {
         self
             .scrollContentBackground(.hidden)
-            .frame(maxWidth: 1040, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: maxWidth, maxHeight: .infinity, alignment: .topLeading)
             .padding(.horizontal, 24)
             .padding(.bottom, 28)
     }
