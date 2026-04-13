@@ -21,6 +21,8 @@ export class SessionManager {
   private readonly autonomousResults = new Map<string, { resolve: (result: string) => void }>();
   private readonly pendingCreates = new Map<string, Promise<void>>();
   private readonly runtimes: Record<"claude" | "codex" | "foundation" | "mlx", ProviderRuntime>;
+  private static readonly OLLAMA_CLAUDE_TURN_TIMEOUT_MS = 360_000;
+  private static readonly OLLAMA_TURN_TIMEOUT_CODE = "OLLAMA_TURN_TIMEOUT";
 
   constructor(
     private readonly emit: EventEmitter,
@@ -119,15 +121,18 @@ export class SessionManager {
         "session",
         `[${sessionId}] Starting turn via ${config.provider ?? "claude"} (textLength=${text.length}, attachments=${attachments?.length ?? 0}, planMode=${planMode === true})`,
       );
-      const result = await runtime.sendMessage({
-        sessionId,
-        config,
-        backendSessionId: state.claudeSessionId,
-        text,
-        attachments,
-        planMode,
-        abortController,
-      });
+      const result = await this.sendWithProviderTimeout(
+        runtime,
+        {
+          sessionId,
+          config,
+          backendSessionId: state.claudeSessionId,
+          text,
+          attachments,
+          planMode,
+          abortController,
+        },
+      );
       logger.info(
         "session",
         `[${sessionId}] Runtime completed in ${Date.now() - turnStartedAt}ms (resultLength=${result.resultText.length}, inputTokens=${result.inputTokens}, outputTokens=${result.outputTokens})`,
@@ -166,10 +171,13 @@ export class SessionManager {
         this.autonomousResults.delete(sessionId);
       }
     } catch (err: any) {
-      if (abortController.signal.aborted) {
+      if (abortController.signal.aborted && !this.isOllamaTurnTimeout(abortController.signal.reason)) {
         this.registry.update(sessionId, { status: "paused" });
       } else {
-        const errorMessage = err?.message ?? String(err);
+        const timeoutReason = this.isOllamaTurnTimeout(abortController.signal.reason)
+          ? abortController.signal.reason
+          : undefined;
+        const errorMessage = timeoutReason?.message ?? err?.message ?? String(err);
         logger.error("session", `[${sessionId}] Error: ${errorMessage}`, {
           stack: err?.stack?.substring(0, 500),
         });
@@ -218,6 +226,57 @@ export class SessionManager {
       logger.error("session", `[${sessionId}] Autonomous send error: ${error}`);
     });
     return { sessionId };
+  }
+
+  private async sendWithProviderTimeout(
+    runtime: ProviderRuntime,
+    args: {
+      sessionId: string;
+      config: AgentConfig;
+      backendSessionId: string | undefined;
+      text: string;
+      attachments?: FileAttachment[];
+      planMode?: boolean;
+      abortController: AbortController;
+    },
+  ) {
+    if (!this.isOllamaClaudeConfig(args.config)) {
+      return runtime.sendMessage(args);
+    }
+
+    const timeoutMs = SessionManager.OLLAMA_CLAUDE_TURN_TIMEOUT_MS;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        runtime.sendMessage(args),
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            const timeoutError = Object.assign(new Error(
+              `Ollama-backed Claude model ${args.config.model} did not complete a Claude Code turn within ${timeoutMs}ms. This local model may not be compatible with the Claude Code tool loop on this machine.`,
+            ), { code: SessionManager.OLLAMA_TURN_TIMEOUT_CODE });
+            args.abortController.abort(timeoutError);
+            reject(timeoutError);
+          }, timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  private isOllamaClaudeConfig(config: AgentConfig): boolean {
+    return (config.provider ?? "claude") === "claude"
+      && typeof config.model === "string"
+      && config.model.startsWith("ollama:");
+  }
+
+  private isOllamaTurnTimeout(reason: unknown): reason is Error & { code: string } {
+    return typeof reason === "object"
+      && reason !== null
+      && "code" in reason
+      && (reason as { code?: unknown }).code === SessionManager.OLLAMA_TURN_TIMEOUT_CODE;
   }
 
   async resumeSession(sessionId: string, claudeSessionId: string): Promise<void> {

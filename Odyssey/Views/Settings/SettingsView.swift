@@ -405,6 +405,7 @@ private struct ModelsSettingsTab: View {
     @AppStorage(AppSettings.localAgentHostPathOverrideKey, store: AppSettings.store) private var localAgentHostPathOverride = ""
     @AppStorage(AppSettings.mlxRunnerPathOverrideKey, store: AppSettings.store) private var mlxRunnerPathOverride = ""
     @AppStorage(AppSettings.dataDirectoryKey, store: AppSettings.store) private var dataDirectory = AppSettings.defaultDataDirectory
+    @EnvironmentObject private var appState: AppState
     @ObservedObject var state: ModelsSettingsState
 
     private var selectedProvider: Binding<ProviderSelection> {
@@ -676,6 +677,9 @@ private struct ModelsSettingsTab: View {
                     Toggle("Enable Ollama-backed Claude models", isOn: $ollamaModelsEnabled)
                         .toggleStyle(.switch)
                         .xrayId("settings.models.ollamaEnabledToggle")
+                        .onChange(of: ollamaModelsEnabled) { _, _ in
+                            Task { await syncRunningSidecarOllamaConfig() }
+                        }
 
                     Text("When enabled, Odyssey adds downloaded Ollama models to Claude model pickers and routes those sessions through Claude Code using Ollama’s Anthropic-compatible API.")
                         .font(.caption)
@@ -685,6 +689,9 @@ private struct ModelsSettingsTab: View {
                         TextField("http://127.0.0.1:11434", text: $ollamaBaseURL)
                             .textFieldStyle(.roundedBorder)
                             .xrayId("settings.models.ollamaBaseURLField")
+                            .onSubmit {
+                                Task { await syncRunningSidecarOllamaConfig() }
+                            }
 
                         Button(state.isRefreshingOllama ? "Refreshing…" : "Refresh Ollama") {
                             Task { await refreshOllama() }
@@ -1382,6 +1389,13 @@ private struct ModelsSettingsTab: View {
         state.isRefreshingOllama = true
         defer { state.isRefreshingOllama = false }
         _ = await OllamaCatalogService.refresh(baseURL: ollamaBaseURL)
+        await syncRunningSidecarOllamaConfig()
+    }
+
+    @MainActor
+    private func syncRunningSidecarOllamaConfig() async {
+        guard appState.sidecarStatus == .connected else { return }
+        try? await appState.syncSidecarRuntimeConfig()
     }
 
     private func installMLXRunner() {

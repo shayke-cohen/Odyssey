@@ -21,6 +21,7 @@ import type {
 } from "./runtime.js";
 
 const FILE_PATH_REGEX = /(?:^|\s)(\/[\w.\-/]+\.(?:png|jpe?g|gif|webp|svg|ico|html?|pdf))(?:\s|$|[.,;)}\]])/gi;
+const OLLAMA_SDK_INACTIVITY_TIMEOUT_MS = 180_000;
 
 function extractFilePaths(text: string): { path: string; type: "image" | "html" | "pdf" }[] {
   const results: { path: string; type: "image" | "html" | "pdf" }[] = [];
@@ -132,6 +133,7 @@ export class ClaudeRuntime implements ProviderRuntime {
       args.planMode,
     );
     const initialBackendSessionId = options.sessionId ?? options.resume;
+    const useOllamaBackend = ClaudeRuntime.isOllamaBackedModel(args.config.model);
 
     if (options.cwd && !existsSync(options.cwd)) {
       logger.info("session", `Creating missing cwd: ${options.cwd}`);
@@ -151,12 +153,25 @@ export class ClaudeRuntime implements ProviderRuntime {
     );
 
     const stream = query({ prompt, options });
+    const iterator = stream[Symbol.asyncIterator]();
     let resultText = "";
     const usageAccum = { inputTokens: 0, outputTokens: 0, numTurns: 0 };
     let latestBackendSessionId = initialBackendSessionId;
     let costDelta = 0;
 
-    for await (const message of stream) {
+    while (true) {
+      const next = useOllamaBackend
+        ? await this.waitForOllamaMessage(
+          iterator.next(),
+          String(options.model),
+          args.abortController,
+          OLLAMA_SDK_INACTIVITY_TIMEOUT_MS,
+        )
+        : await iterator.next();
+      if (next.done) {
+        break;
+      }
+      const message = next.value;
       if (args.abortController.signal.aborted) {
         break;
       }
@@ -201,6 +216,15 @@ export class ClaudeRuntime implements ProviderRuntime {
       attachmentCount,
       planMode,
     );
+  }
+
+  async waitForOllamaMessageForTesting(
+    nextMessage: Promise<IteratorResult<any>>,
+    modelName: string,
+    abortController: AbortController,
+    timeoutMs = OLLAMA_SDK_INACTIVITY_TIMEOUT_MS,
+  ): Promise<IteratorResult<any>> {
+    return this.waitForOllamaMessage(nextMessage, modelName, abortController, timeoutMs);
   }
 
   private static readonly MODEL_ALIASES: Record<string, string> = {
@@ -269,7 +293,7 @@ export class ClaudeRuntime implements ProviderRuntime {
       env,
     };
 
-    const appendText = this.buildSystemPromptAppend(config, usePlanMode);
+    const appendText = this.buildSystemPromptAppend(config, usePlanMode, true);
     if (appendText) {
       options.systemPrompt = {
         type: "preset" as const,
@@ -319,6 +343,34 @@ export class ClaudeRuntime implements ProviderRuntime {
     }
 
     return options;
+  }
+
+  private async waitForOllamaMessage(
+    nextMessage: Promise<IteratorResult<any>>,
+    modelName: string,
+    abortController: AbortController,
+    timeoutMs: number,
+  ): Promise<IteratorResult<any>> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        nextMessage,
+        new Promise<IteratorResult<any>>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            abortController.abort();
+            reject(
+              new Error(
+                `Ollama model ${modelName} stopped responding through Claude Code for ${timeoutMs}ms. Try another local model such as gpt-oss:20b.`,
+              ),
+            );
+          }, timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
   }
 
   private buildPrompt(text: string, attachments?: FileAttachment[]): string {
@@ -390,10 +442,10 @@ export class ClaudeRuntime implements ProviderRuntime {
     }
   }
 
-  private buildSystemPromptAppend(config: AgentConfig, _planMode?: boolean): string {
+  private buildSystemPromptAppend(config: AgentConfig, _planMode?: boolean, includePeerBus = true): string {
     let append = config.systemPrompt || "";
 
-    if (config.interactive) {
+    if (config.interactive && includePeerBus) {
       append += `\n\n## Asking the User
 
 You have an \`ask_user\` MCP tool available. When you need to ask the user a question, get a decision, or need clarification, you MUST use the \`ask_user\` tool instead of writing the question as regular text. The tool blocks until the user responds and returns their answer directly to you.

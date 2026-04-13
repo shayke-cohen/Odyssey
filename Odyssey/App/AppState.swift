@@ -567,6 +567,7 @@ final class AppState: ObservableObject {
         Task {
             do {
                 try await manager.start()
+                try? await syncSidecarRuntimeConfig()
                 sidecarStatus = .connected
                 listenForEvents(from: manager)
                 registerAgentDefinitions()
@@ -607,6 +608,21 @@ final class AppState: ObservableObject {
             throw SidecarCommandError.unavailable
         }
         try await manager.send(command)
+    }
+
+    func syncSidecarRuntimeConfig() async throws {
+        guard sidecarManager != nil else {
+            throw SidecarCommandError.unavailable
+        }
+
+        let normalizedOllamaBaseURL = OllamaCatalogService.normalizedBaseURL(
+            InstanceConfig.userDefaults.string(forKey: AppSettings.ollamaBaseURLKey)
+        )
+        let ollamaEnabled = OllamaCatalogService.modelsEnabled(defaults: InstanceConfig.userDefaults)
+        try await sendToSidecarAwait(.configSetOllama(
+            enabled: ollamaEnabled,
+            baseURL: normalizedOllamaBaseURL
+        ))
     }
 
     func restoreSessionContextAwait(sessionId: String, claudeSessionId: String) async throws {

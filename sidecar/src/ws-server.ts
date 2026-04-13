@@ -220,6 +220,16 @@ export class WsServer {
         await this.handleConnectorTest(command.connectionId);
         break;
 
+      case "config.setOllama": {
+        const normalizedBaseURL = command.baseURL.trim().replace(/\/+$/, "") || "http://127.0.0.1:11434";
+        process.env.ODYSSEY_OLLAMA_MODELS_ENABLED = command.enabled ? "1" : "0";
+        process.env.CLAUDESTUDIO_OLLAMA_MODELS_ENABLED = command.enabled ? "1" : "0";
+        process.env.ODYSSEY_OLLAMA_BASE_URL = normalizedBaseURL;
+        process.env.CLAUDESTUDIO_OLLAMA_BASE_URL = normalizedBaseURL;
+        logger.info("ws", `config.setOllama: enabled=${command.enabled} baseURL=${normalizedBaseURL}`);
+        break;
+      }
+
       case "session.confirmationAnswer": {
         const { resolveConfirmation } = await import("./tools/rich-display-tools.js");
         const confirmed =

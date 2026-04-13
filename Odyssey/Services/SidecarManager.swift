@@ -1,4 +1,5 @@
 import Combine
+import Darwin
 import Foundation
 import OSLog
 
@@ -15,6 +16,13 @@ final class SidecarManager: ObservableObject, Sendable {
         var mlxRunnerPathOverride: String?
     }
 
+    struct Hooks: Sendable {
+        var connectWebSocket: (@MainActor @Sendable () async throws -> Void)?
+        var launchSidecar: (@MainActor @Sendable () throws -> Void)?
+        var terminateConflictingSidecars: (@MainActor @Sendable () async throws -> Void)?
+        var sleep: (@MainActor @Sendable (Duration) async -> Void)?
+    }
+
     private var process: Process?
     private var webSocketTask: URLSessionWebSocketTask?
     private var urlSession: URLSession?
@@ -23,6 +31,7 @@ final class SidecarManager: ObservableObject, Sendable {
     private var isReconnecting = false
     private var pingTask: Task<Void, Never>?
     private let config: Config
+    private let hooks: Hooks
 
     var events: AsyncStream<SidecarEvent> {
         AsyncStream { continuation in
@@ -30,38 +39,29 @@ final class SidecarManager: ObservableObject, Sendable {
         }
     }
 
-    nonisolated init(config: Config = Config()) {
+    nonisolated init(config: Config = Config(), hooks: Hooks = Hooks()) {
         self.config = config
+        self.hooks = hooks
     }
 
     func start() async throws {
         guard !isRunning else { return }
         isRunning = true
 
-        // Try connecting to an existing sidecar first
         do {
-            try await connectWebSocket()
+            try await terminateConflictingManagedSidecarsIfNeeded()
+            try launchSidecar()
+            try await connectWithRetry()
             return
         } catch {
-            // No existing sidecar, launch a new one
+            Log.sidecar.warning("Fresh sidecar launch failed, falling back to existing listener: \(error.localizedDescription, privacy: .public)")
         }
 
-        try launchSidecar()
-
-        // Retry connecting with backoff — sidecar may take a moment to bind the port
-        var connected = false
-        for attempt in 1...5 {
-            try await Task.sleep(for: .milliseconds(attempt == 1 ? 800 : 1500))
-            do {
-                try await connectWebSocket()
-                connected = true
-                break
-            } catch {
-                Log.sidecar.warning("Connect attempt \(attempt)/5 failed: \(error.localizedDescription)")
-            }
-        }
-        guard connected else {
-            throw SidecarError.notConnected
+        do {
+            try await connectWebSocket()
+        } catch {
+            isRunning = false
+            throw error
         }
     }
 
@@ -101,6 +101,11 @@ final class SidecarManager: ObservableObject, Sendable {
     }
 
     private func launchSidecar() throws {
+        if let override = hooks.launchSidecar {
+            try override()
+            return
+        }
+
         let bunPath = findBunPath()
         let sidecarPath = findSidecarPath()
         Log.sidecar.info("Bun: \(bunPath, privacy: .public)")
@@ -138,7 +143,7 @@ final class SidecarManager: ObservableObject, Sendable {
         process.terminationHandler = { [weak self] proc in
             Log.sidecar.warning("Process exited with code \(proc.terminationStatus)")
             Task { @MainActor in
-                self?.handleProcessTermination()
+                self?.handleProcessTermination(proc)
             }
         }
 
@@ -186,6 +191,12 @@ final class SidecarManager: ObservableObject, Sendable {
     }
 
     private func connectWebSocket() async throws {
+        if let override = hooks.connectWebSocket {
+            try await override()
+            eventContinuation?.yield(.connected)
+            return
+        }
+
         // Cancel any previous connection attempt
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         urlSession?.invalidateAndCancel()
@@ -256,8 +267,11 @@ final class SidecarManager: ObservableObject, Sendable {
         eventContinuation?.yield(event)
     }
 
-    private func handleProcessTermination() {
+    private func handleProcessTermination(_ terminatedProcess: Process? = nil) {
         guard isRunning else { return }
+        if let terminatedProcess, process === terminatedProcess {
+            process = nil
+        }
         eventContinuation?.yield(.disconnected)
         attemptReconnect()
     }
@@ -267,27 +281,158 @@ final class SidecarManager: ObservableObject, Sendable {
         isReconnecting = true
         Task {
             defer { Task { @MainActor in self.isReconnecting = false } }
-            try await Task.sleep(for: .seconds(2))
+            await sleep(for: .seconds(2))
             guard isRunning else { return }
 
-            // Try connecting to an existing sidecar first (e.g. one that survived a UI restart)
+            if let process, process.isRunning {
+                do {
+                    try await connectWebSocket()
+                    return
+                } catch {
+                    Log.sidecar.warning("Reconnect to managed sidecar failed: \(error.localizedDescription, privacy: .public)")
+                }
+            }
+
+            do {
+                try await terminateConflictingManagedSidecarsIfNeeded()
+                try launchSidecar()
+                try await connectWithRetry()
+            } catch {
+                Log.sidecar.error("Reconnect failed: \(error). Will retry in 5s.")
+                await sleep(for: .seconds(5))
+                Task { @MainActor in self.attemptReconnect() }
+            }
+        }
+    }
+
+    private func connectWithRetry() async throws {
+        var lastError: Error?
+        for attempt in 1...5 {
+            await sleep(for: .milliseconds(attempt == 1 ? 800 : 1500))
             do {
                 try await connectWebSocket()
                 return
             } catch {
-                // No existing sidecar, launch a new one
-            }
-
-            do {
-                try launchSidecar()
-                try await Task.sleep(for: .milliseconds(800))
-                try await connectWebSocket()
-            } catch {
-                Log.sidecar.error("Reconnect failed: \(error). Will retry in 5s.")
-                try? await Task.sleep(for: .seconds(5))
-                Task { @MainActor in self.attemptReconnect() }
+                lastError = error
+                Log.sidecar.warning("Connect attempt \(attempt)/5 failed: \(error.localizedDescription, privacy: .public)")
             }
         }
+        throw lastError ?? SidecarError.notConnected
+    }
+
+    private func sleep(for duration: Duration) async {
+        if let override = hooks.sleep {
+            await override(duration)
+            return
+        }
+        try? await Task.sleep(for: duration)
+    }
+
+    private func terminateConflictingManagedSidecarsIfNeeded() async throws {
+        if let override = hooks.terminateConflictingSidecars {
+            try await override()
+            return
+        }
+
+        let pids = try conflictingManagedSidecarPIDs()
+        guard !pids.isEmpty else { return }
+
+        Log.sidecar.warning("Stopping \(pids.count) conflicting sidecar listener(s) before launch")
+        for pid in pids {
+            _ = Darwin.kill(pid, SIGTERM)
+        }
+
+        if try await waitForManagedSidecarsToExit(timeout: .seconds(2)) {
+            return
+        }
+
+        let stubbornPIDs = try conflictingManagedSidecarPIDs()
+        for pid in stubbornPIDs {
+            _ = Darwin.kill(pid, SIGKILL)
+        }
+
+        guard try await waitForManagedSidecarsToExit(timeout: .seconds(1)) else {
+            throw SidecarError.notConnected
+        }
+    }
+
+    private func waitForManagedSidecarsToExit(timeout: Duration) async throws -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while clock.now < deadline {
+            if try conflictingManagedSidecarPIDs().isEmpty {
+                return true
+            }
+            await sleep(for: .milliseconds(150))
+        }
+        return try conflictingManagedSidecarPIDs().isEmpty
+    }
+
+    private func conflictingManagedSidecarPIDs() throws -> [pid_t] {
+        let ports = Set([config.wsPort, config.httpPort])
+        let pids = try ports.flatMap(listeningPIDs(on:))
+        let managed = try pids.filter { pid in
+            guard let command = try commandLine(for: pid) else {
+                return false
+            }
+            return Self.looksLikeManagedSidecar(command)
+        }
+        return Array(Set(managed)).sorted()
+    }
+
+    private func listeningPIDs(on port: Int) throws -> [pid_t] {
+        let output = try runCommand("/usr/sbin/lsof", arguments: [
+            "-n", "-P", "-t",
+            "-iTCP:\(port)",
+            "-sTCP:LISTEN",
+        ])
+
+        return output
+            .split(whereSeparator: \.isNewline)
+            .compactMap { pid_t($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
+
+    private func commandLine(for pid: pid_t) throws -> String? {
+        let output = try runCommand("/bin/ps", arguments: ["-p", "\(pid)", "-o", "command="])
+        let command = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return command.isEmpty ? nil : command
+    }
+
+    private func runCommand(_ launchPath: String, arguments: [String]) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: launchPath)
+        process.arguments = arguments
+
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+
+        if process.terminationStatus == 0 {
+            return output
+        }
+
+        if launchPath == "/usr/sbin/lsof", process.terminationStatus == 1 {
+            return ""
+        }
+
+        throw NSError(
+            domain: "SidecarManager",
+            code: Int(process.terminationStatus),
+            userInfo: [NSLocalizedDescriptionKey: errorOutput.isEmpty ? output : errorOutput]
+        )
+    }
+
+    private static func looksLikeManagedSidecar(_ command: String) -> Bool {
+        command.contains("sidecar/src/index.ts") && command.contains("bun")
     }
 
     private func findBunPath() -> String {

@@ -24,6 +24,7 @@ export type SidecarCommand =
   | { type: "connector.completeAuth"; connection: ConnectorConfig; credentials?: ConnectorCredentials }
   | { type: "connector.revoke"; connectionId: string }
   | { type: "connector.test"; connectionId: string }
+  | { type: "config.setOllama"; enabled: boolean; baseURL: string }
   | { type: "config.setLogLevel"; level: string };
 
 export interface PeerAgentWire {

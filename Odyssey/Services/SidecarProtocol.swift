@@ -25,6 +25,7 @@ enum SidecarCommand: Sendable {
     case connectorCompleteAuth(connection: ConnectorWire, credentials: ConnectorCredentialsWire?)
     case connectorRevoke(connectionId: String)
     case connectorTest(connectionId: String)
+    case configSetOllama(enabled: Bool, baseURL: String)
     case configSetLogLevel(level: String)
 
     func encodeToJSON() throws -> Data {
@@ -137,6 +138,10 @@ enum SidecarCommand: Sendable {
         case .connectorTest(let connectionId):
             return try encoder.encode(
                 ConnectorIdWire(type: "connector.test", connectionId: connectionId)
+            )
+        case .configSetOllama(let enabled, let baseURL):
+            return try encoder.encode(
+                ConfigSetOllamaWire(type: "config.setOllama", enabled: enabled, baseURL: baseURL)
             )
         case .configSetLogLevel(let level):
             return try encoder.encode(
@@ -365,6 +370,12 @@ private struct ConnectorIdWire: Encodable {
 private struct ConfigSetLogLevelWire: Encodable {
     let type: String
     let level: String
+}
+
+private struct ConfigSetOllamaWire: Encodable {
+    let type: String
+    let enabled: Bool
+    let baseURL: String
 }
 
 struct ConnectorWire: Codable, Sendable, Identifiable {

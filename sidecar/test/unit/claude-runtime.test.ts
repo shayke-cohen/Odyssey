@@ -13,7 +13,6 @@ import type { ToolContext } from "../../src/tools/tool-context.js";
 import { makeAgentConfig } from "../helpers.js";
 
 const originalEnv = { ...process.env };
-
 afterEach(() => {
   for (const key of ["ODYSSEY_OLLAMA_MODELS_ENABLED", "CLAUDESTUDIO_OLLAMA_MODELS_ENABLED", "ODYSSEY_OLLAMA_BASE_URL", "CLAUDESTUDIO_OLLAMA_BASE_URL"]) {
     if (originalEnv[key] == null) {
@@ -73,6 +72,7 @@ describe("ClaudeRuntime Ollama routing", () => {
     expect(options.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:22434");
     expect(options.env.ANTHROPIC_AUTH_TOKEN).toBe("ollama");
     expect(options.env.ANTHROPIC_API_KEY).toBe("");
+    expect(Object.keys(options.mcpServers ?? {})).toContain("peerbus");
   });
 
   test("plan mode keeps the selected ollama model instead of forcing opus", () => {
@@ -105,6 +105,19 @@ describe("ClaudeRuntime Ollama routing", () => {
     expect(options.maxTurns).toBe(30);
   });
 
+  test("native Claude sessions still attach peerbus", () => {
+    const runtime = makeRuntime();
+    const options = runtime.buildTurnOptionsForTesting(
+      "session-peerbus",
+      makeAgentConfig({ model: "claude-sonnet-4-6" }),
+      undefined,
+      0,
+      false,
+    );
+
+    expect(Object.keys(options.mcpServers ?? {})).toContain("peerbus");
+  });
+
   test("disabled ollama-backed models fail fast", () => {
     process.env.ODYSSEY_OLLAMA_MODELS_ENABLED = "0";
 
@@ -117,5 +130,35 @@ describe("ClaudeRuntime Ollama routing", () => {
       0,
       false,
     )).toThrow("Ollama-backed Claude models are disabled");
+  });
+
+  test("ollama inactivity guard aborts and fails fast with a clear timeout error", async () => {
+    const runtime = makeRuntime();
+    const abortController = new AbortController();
+
+    await expect(runtime.waitForOllamaMessageForTesting(
+      new Promise<IteratorResult<any>>(() => {}),
+      "qwen3-coder:30b",
+      abortController,
+      5,
+    ))
+      .rejects
+      .toThrow("stopped responding through Claude Code");
+
+    expect(abortController.signal.aborted).toBe(true);
+  });
+
+  test("ollama inactivity guard passes through the next SDK message", async () => {
+    const runtime = makeRuntime();
+    const abortController = new AbortController();
+    const next = await runtime.waitForOllamaMessageForTesting(
+      Promise.resolve({ done: false, value: { type: "system" } }),
+      "gpt-oss:20b",
+      abortController,
+      50,
+    );
+
+    expect(next).toEqual({ done: false, value: { type: "system" } });
+    expect(abortController.signal.aborted).toBe(false);
   });
 });

@@ -237,6 +237,54 @@ describe("WebSocket Command Dispatch", () => {
     }
   });
 
+  test("config.setOllama updates the running sidecar environment", async () => {
+    const ws = await wsConnect();
+    const original = {
+      enabled: process.env.ODYSSEY_OLLAMA_MODELS_ENABLED,
+      legacyEnabled: process.env.CLAUDESTUDIO_OLLAMA_MODELS_ENABLED,
+      baseURL: process.env.ODYSSEY_OLLAMA_BASE_URL,
+      legacyBaseURL: process.env.CLAUDESTUDIO_OLLAMA_BASE_URL,
+    };
+
+    try {
+      await ws.waitFor((m) => m.type === "sidecar.ready");
+
+      ws.send({
+        type: "config.setOllama",
+        enabled: true,
+        baseURL: "http://127.0.0.1:22434/",
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      expect(process.env.ODYSSEY_OLLAMA_MODELS_ENABLED).toBe("1");
+      expect(process.env.CLAUDESTUDIO_OLLAMA_MODELS_ENABLED).toBe("1");
+      expect(process.env.ODYSSEY_OLLAMA_BASE_URL).toBe("http://127.0.0.1:22434");
+      expect(process.env.CLAUDESTUDIO_OLLAMA_BASE_URL).toBe("http://127.0.0.1:22434");
+    } finally {
+      ws.close();
+      if (original.enabled == null) {
+        delete process.env.ODYSSEY_OLLAMA_MODELS_ENABLED;
+      } else {
+        process.env.ODYSSEY_OLLAMA_MODELS_ENABLED = original.enabled;
+      }
+      if (original.legacyEnabled == null) {
+        delete process.env.CLAUDESTUDIO_OLLAMA_MODELS_ENABLED;
+      } else {
+        process.env.CLAUDESTUDIO_OLLAMA_MODELS_ENABLED = original.legacyEnabled;
+      }
+      if (original.baseURL == null) {
+        delete process.env.ODYSSEY_OLLAMA_BASE_URL;
+      } else {
+        process.env.ODYSSEY_OLLAMA_BASE_URL = original.baseURL;
+      }
+      if (original.legacyBaseURL == null) {
+        delete process.env.CLAUDESTUDIO_OLLAMA_BASE_URL;
+      } else {
+        process.env.CLAUDESTUDIO_OLLAMA_BASE_URL = original.legacyBaseURL;
+      }
+    }
+  });
+
   test("agent.register populates agentDefinitions", async () => {
     const ws = await wsConnect();
     try {

@@ -617,6 +617,46 @@ final class AgentDefaultsTests: XCTestCase {
         XCTAssertEqual(config?.mcpServers.map(\.name), ["Blackboard"])
     }
 
+    func testProvisionerSkipsHeavyAmbientMCPsForOllamaBackedClaudeModels() {
+        let argus = MCPServer(name: "Argus", transport: .stdio(command: "node", args: ["argus.js"], env: [:]))
+        let appXray = MCPServer(name: "AppXray", transport: .stdio(command: "node", args: ["appxray.js"], env: [:]))
+        let octocode = MCPServer(name: "Octocode", transport: .stdio(command: "npx", args: ["-y", "octocode-mcp@latest"], env: [:]))
+        let blackboard = MCPServer(name: "Blackboard", transport: .stdio(command: "node", args: ["blackboard.js"], env: [:]))
+        [argus, appXray, octocode, blackboard].forEach(context.insert)
+
+        let agent = Agent(name: "Ollama Coder")
+        agent.extraMCPServerIds = [argus.id, appXray.id, octocode.id, blackboard.id]
+        context.insert(agent)
+
+        let session = Session(agent: agent, mission: nil, workingDirectory: "/tmp/work")
+        session.provider = ProviderSelection.claude.rawValue
+        session.model = "ollama:qwen3-coder:30b"
+
+        let config = AgentProvisioner(modelContext: context).config(for: session)
+
+        XCTAssertEqual(config?.mcpServers.map(\.name), ["Blackboard"])
+    }
+
+    func testProvisionerKeepsHeavyAmbientMCPsForNativeClaudeModels() {
+        let argus = MCPServer(name: "Argus", transport: .stdio(command: "node", args: ["argus.js"], env: [:]))
+        let appXray = MCPServer(name: "AppXray", transport: .stdio(command: "node", args: ["appxray.js"], env: [:]))
+        let octocode = MCPServer(name: "Octocode", transport: .stdio(command: "npx", args: ["-y", "octocode-mcp@latest"], env: [:]))
+        let blackboard = MCPServer(name: "Blackboard", transport: .stdio(command: "node", args: ["blackboard.js"], env: [:]))
+        [argus, appXray, octocode, blackboard].forEach(context.insert)
+
+        let agent = Agent(name: "Claude Coder")
+        agent.extraMCPServerIds = [argus.id, appXray.id, octocode.id, blackboard.id]
+        context.insert(agent)
+
+        let session = Session(agent: agent, mission: nil, workingDirectory: "/tmp/work")
+        session.provider = ProviderSelection.claude.rawValue
+        session.model = ClaudeModel.sonnet.rawValue
+
+        let config = AgentProvisioner(modelContext: context).config(for: session)
+
+        XCTAssertEqual(config?.mcpServers.map(\.name), ["Argus", "AppXray", "Octocode", "Blackboard"])
+    }
+
     func testProvisionerDoesNotInjectPeerBusToolNamesIntoAllowedTools() {
         let permissions = PermissionSet(name: "Locked", allowRules: ["Read", "Grep"], permissionMode: "acceptEdits")
         context.insert(permissions)

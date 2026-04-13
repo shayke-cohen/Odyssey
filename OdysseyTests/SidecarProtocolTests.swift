@@ -182,6 +182,19 @@ final class SidecarProtocolTests: XCTestCase {
         XCTAssertNil(json["instancePolicyPoolMax"])
     }
 
+    func testConfigSetOllamaEncoding() throws {
+        let command = SidecarCommand.configSetOllama(
+            enabled: true,
+            baseURL: "http://127.0.0.1:11434/"
+        )
+        let data = try command.encodeToJSON()
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["type"] as? String, "config.setOllama")
+        XCTAssertEqual(json["enabled"] as? Bool, true)
+        XCTAssertEqual(json["baseURL"] as? String, "http://127.0.0.1:11434/")
+    }
+
     func testConnectorCompleteAuthEncodingRedactsIntoStructuredFields() throws {
         let connection = ConnectorWire(
             id: "conn-1",

@@ -51,7 +51,8 @@ final class AgentProvisioner {
         let skills = resolveSkills(ids: agent.skillIds)
         let mcpServers = filteredMCPServers(
             resolveMCPServers(ids: resolveEffectiveMCPServerIDs(agent: agent, skills: skills)),
-            provider: session.provider
+            provider: session.provider,
+            model: session.model
         )
         let permissions = resolvePermissions(id: agent.permissionSetId)
 
@@ -174,13 +175,18 @@ final class AgentProvisioner {
         return ordered
     }
 
-    private func filteredMCPServers(_ servers: [MCPServer], provider: String) -> [MCPServer] {
-        guard provider == ProviderSelection.mlx.rawValue || provider == ProviderSelection.foundation.rawValue else {
+    private func filteredMCPServers(_ servers: [MCPServer], provider: String, model: String?) -> [MCPServer] {
+        let usesLocalClaudeLoop = provider == ProviderSelection.claude.rawValue
+            && AgentDefaults.isOllamaBackedClaudeModel(model)
+        guard provider == ProviderSelection.mlx.rawValue
+            || provider == ProviderSelection.foundation.rawValue
+            || usesLocalClaudeLoop else {
             return servers
         }
 
-        // Local providers keep built-in tools, but we skip the heavyweight ambient MCPs that can
-        // block local session startup while they bootstrap external runtimes.
+        // Local providers and Ollama-backed Claude sessions keep built-in tools, but we skip the
+        // heavyweight ambient MCPs that can block local session startup while they bootstrap
+        // external runtimes.
         let blockedNames = Set(["Argus", "AppXray", "Octocode"])
         return servers.filter { !blockedNames.contains($0.name) }
     }
