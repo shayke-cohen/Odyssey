@@ -4,9 +4,13 @@
 <dict>
     <key>CFBundleName</key><string>Odyssey</string>
     <key>CFBundleDisplayName</key><string>Odyssey</string>
-    <key>CFBundleIdentifier</key><string>com.odyssey.app.ios</string>
+    <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>CFBundleShortVersionString</key><string>1.0</string>
+    <key>LSRequiresIPhoneOS</key><true/>
     <key>NSBonjourServices</key>
     <array><string>_odyssey._tcp</string></array>
     <key>NSLocalNetworkUsageDescription</key>
