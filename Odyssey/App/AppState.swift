@@ -398,14 +398,13 @@ final class AppState: ObservableObject {
     /// Decodes and verifies the invite, then logs for debugging.
     /// TODO (Phase 2b follow-up): present pairing confirmation sheet.
     private func handleConnectInvite(encoded: String, windowState: WindowState) async {
+        let inviteLogger = Logger(subsystem: "com.odyssey.app", category: "LaunchIntent")
         do {
             let payload = try InviteCodeGenerator.decode(encoded)
             try InviteCodeGenerator.verify(payload)
-            let logger = Logger(subsystem: "com.odyssey.app", category: "LaunchIntent")
-            logger.info("Received valid connect invite from '\(payload.displayName, privacy: .public)'")
+            inviteLogger.info("Received valid connect invite from '\(payload.displayName, privacy: .public)'")
         } catch {
-            let logger = Logger(subsystem: "com.odyssey.app", category: "LaunchIntent")
-            logger.error("connectInvite handling failed: \(error.localizedDescription)")
+            inviteLogger.error("connectInvite handling failed: \(error.localizedDescription)")
             windowState.launchError = "Invite handling failed: \(error.localizedDescription)"
         }
     }
