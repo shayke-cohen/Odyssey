@@ -45,6 +45,9 @@ final class IdentityManagerTests: XCTestCase {
 
     func testIM3_agentBundleSignature() throws {
         let agentId = UUID()
+        // Note: agentBundle() generates a fresh ephemeral keypair for the agent.
+        // The agent private key is NOT stored in Keychain (only used to sign the bundle),
+        // so no tearDown cleanup is needed for this test.
         let bundle = try IdentityManager.shared.agentBundle(
             for: agentId,
             agentName: "TestAgent",
@@ -65,10 +68,7 @@ final class IdentityManagerTests: XCTestCase {
 
     func testIM4_wsTokenFormat() throws {
         let token = try IdentityManager.shared.wsToken(for: testInstance)
-        guard let decoded = Data(base64Encoded: token) else {
-            XCTFail("wsToken must be valid base64")
-            return
-        }
+        let decoded = try XCTUnwrap(Data(base64Encoded: token), "wsToken must be valid base64")
         XCTAssertEqual(decoded.count, 32, "WS token must decode to exactly 32 bytes")
 
         let second = try IdentityManager.shared.wsToken(for: testInstance)
@@ -83,11 +83,6 @@ final class IdentityManagerTests: XCTestCase {
         let rotated = try IdentityManager.shared.rotateWSToken(for: testInstance)
         XCTAssertNotEqual(original, rotated,
             "rotateWSToken must produce a different token than the previous one")
-
-        // Clean up rotated token too
-        try? IdentityManager.shared.deleteKeychainItem(
-            forKey: "odyssey.wstoken.\(testInstance)"
-        )
     }
 
     // MARK: - IM6: Distinct instances have different keys
@@ -111,6 +106,11 @@ final class IdentityManagerTests: XCTestCase {
     func testIM7_tlsBundleGeneration() throws {
         let bundle = try IdentityManager.shared.tlsCertificate(for: testInstance)
 
+        defer {
+            try? FileManager.default.removeItem(atPath: bundle.certPEMPath)
+            try? FileManager.default.removeItem(atPath: bundle.keyPEMPath)
+        }
+
         XCTAssertTrue(FileManager.default.fileExists(atPath: bundle.certPEMPath),
             "TLS cert PEM file must exist at the returned path")
         XCTAssertTrue(FileManager.default.fileExists(atPath: bundle.keyPEMPath),
@@ -118,13 +118,8 @@ final class IdentityManagerTests: XCTestCase {
         XCTAssertFalse(bundle.certDERData.isEmpty,
             "certDERData must be non-empty")
 
-        // Calling again must return the same cert (idempotent)
         let bundle2 = try IdentityManager.shared.tlsCertificate(for: testInstance)
         XCTAssertEqual(bundle.certDERData, bundle2.certDERData,
             "Repeated calls must return the cached cert, not regenerate it")
-
-        // Cleanup
-        try? FileManager.default.removeItem(atPath: bundle.certPEMPath)
-        try? FileManager.default.removeItem(atPath: bundle.keyPEMPath)
     }
 }
