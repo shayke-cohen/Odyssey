@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Network
 import SwiftData
@@ -22,6 +23,8 @@ final class P2PNetworkManager: ObservableObject {
     weak var sidecarManager: SidecarManager?
     weak var sharedRoomService: SharedRoomService?
     private var previousPeerNames: Set<String> = []
+    private let natManager = NATTraversalManager()
+    private var natCancellable: AnyCancellable?
 
     init() {
         let empty = try! JSONEncoder().encode(WireAgentExportList(agents: []))
@@ -31,7 +34,15 @@ final class P2PNetworkManager: ObservableObject {
                 await self?.handleRoomSyncHint(hint)
             }
         }
+        natCancellable = natManager.$publicEndpoint
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] endpoint in
+                self?.server.publicWANEndpoint = endpoint
+            }
     }
+
+    /// Exposes the underlying NAT traversal manager for inspection or hole-punching.
+    var natTraversalManager: NATTraversalManager { natManager }
 
     func attach(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -54,6 +65,10 @@ final class P2PNetworkManager: ObservableObject {
         startBrowser()
         isRunning = true
         refreshExportCache()
+        let localPort = server.sidecarWsPort ?? 9849
+        Task {
+            await natManager.discoverPublicEndpoint(localPort: localPort)
+        }
     }
 
     func stop() {

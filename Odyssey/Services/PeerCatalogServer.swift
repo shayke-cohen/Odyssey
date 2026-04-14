@@ -17,6 +17,11 @@ final class PeerCatalogServer: @unchecked Sendable {
     var sidecarWsPort: Int?
     var onRoomSyncHint: (@Sendable (RoomSyncHint) -> Void)?
 
+    /// When set, the Bonjour TXT record will include `wan=<ip>:<port>`.
+    var publicWANEndpoint: String? = nil {
+        didSet { rebuildTXTRecord() }
+    }
+
     init(initialJSON: Data) {
         self.cachedBody = initialJSON
     }
@@ -70,6 +75,28 @@ final class PeerCatalogServer: @unchecked Sendable {
     func stop() {
         listener?.cancel()
         listener = nil
+    }
+
+    /// Rebuilds and pushes a fresh TXT record to the live NWListener service.
+    private func rebuildTXTRecord() {
+        guard let l = listener else { return }
+        var txtEntries: [String: String] = [
+            "ver": "1",
+            "instance": InstanceConfig.name,
+        ]
+        if let wsPort = sidecarWsPort {
+            txtEntries["ws"] = "\(wsPort)"
+        }
+        if let wan = publicWANEndpoint {
+            txtEntries["wan"] = wan
+        }
+        let txt = NWTXTRecord(txtEntries)
+        l.service = NWListener.Service(
+            name: PeerCatalogServer.bonjourName(),
+            type: PeerCatalogServer.serviceType,
+            domain: nil,
+            txtRecord: txt
+        )
     }
 
     private static let serviceType = "_odyssey._tcp"
