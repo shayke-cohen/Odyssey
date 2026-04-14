@@ -734,8 +734,17 @@ final class AppState: ObservableObject {
         ctx.insert(msg)
         try? ctx.save()
 
+        let convId = convo.id
+        Task { await sidecarManager?.pushMessageAppend(conversationId: convId, message: msg) }
+
         streamingText.removeValue(forKey: sessionId)
         thinkingText.removeValue(forKey: sessionId)
+    }
+
+    /// Notify the sidecar that a user message has been persisted.
+    /// Called from ChatView after inserting the user's ConversationMessage.
+    func notifyUserMessageAppended(conversationId: UUID, message: ConversationMessage) {
+        Task { await sidecarManager?.pushMessageAppend(conversationId: conversationId, message: message) }
     }
 
     func answerConfirmation(sessionId: String, confirmationId: String, approved: Bool, modifiedAction: String? = nil) {
@@ -1136,6 +1145,9 @@ final class AppState: ObservableObject {
             disconnectTimer = nil
             Task { await recoverSessions() }
             sendToSidecar(.taskList(filter: nil))
+            if let ctx = modelContext {
+                Task { await sidecarManager?.pushConversationSync(modelContext: ctx) }
+            }
 
         case .disconnected:
             sidecarStatus = .disconnected

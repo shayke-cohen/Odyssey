@@ -1,4 +1,5 @@
 import Foundation
+import OdysseyCore
 
 enum SidecarCommand: Sendable {
     case sessionCreate(conversationId: String, agentConfig: AgentConfig)
@@ -27,6 +28,9 @@ enum SidecarCommand: Sendable {
     case connectorTest(connectionId: String)
     case configSetOllama(enabled: Bool, baseURL: String)
     case configSetLogLevel(level: String)
+    case conversationSync(conversations: [ConversationSummaryWire])
+    case conversationMessageAppend(conversationId: String, message: MessageWire)
+    case projectSync(projects: [ProjectSummaryWire])
 
     func encodeToJSON() throws -> Data {
         let encoder = JSONEncoder()
@@ -147,8 +151,36 @@ enum SidecarCommand: Sendable {
             return try encoder.encode(
                 ConfigSetLogLevelWire(type: "config.setLogLevel", level: level)
             )
+        case .conversationSync(let conversations):
+            return try encoder.encode(
+                ConversationSyncWire(type: "conversation.sync", conversations: conversations)
+            )
+        case .conversationMessageAppend(let conversationId, let message):
+            return try encoder.encode(
+                ConversationMessageAppendWire(type: "conversation.messageAppend", conversationId: conversationId, message: message)
+            )
+        case .projectSync(let projects):
+            return try encoder.encode(
+                ProjectSyncWire(type: "project.sync", projects: projects)
+            )
         }
     }
+}
+
+private struct ConversationSyncWire: Encodable {
+    let type: String
+    let conversations: [ConversationSummaryWire]
+}
+
+private struct ConversationMessageAppendWire: Encodable {
+    let type: String
+    let conversationId: String
+    let message: MessageWire
+}
+
+private struct ProjectSyncWire: Encodable {
+    let type: String
+    let projects: [ProjectSummaryWire]
 }
 
 struct AgentDefinitionWire: Codable, Sendable {

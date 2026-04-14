@@ -3437,6 +3437,7 @@ struct ChatView: View {
         }
 
         try? modelContext.save()
+        appState.notifyUserMessageAppended(conversationId: convo.id, message: message)
 
         if convo.isSharedRoom {
             Task {

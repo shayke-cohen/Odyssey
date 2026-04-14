@@ -3,6 +3,8 @@ import Darwin
 import Foundation
 import OSLog
 import Security
+import SwiftData
+import OdysseyCore
 
 @MainActor
 final class SidecarManager: NSObject, ObservableObject, Sendable {
@@ -511,6 +513,109 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
             currentDirectoryPath: FileManager.default.currentDirectoryPath,
             projectRootOverride: config.sidecarPathOverride
         ) ?? "\(NSHomeDirectory())/Odyssey/sidecar/src/index.ts"
+    }
+}
+
+// MARK: - iOS Data Bridge
+
+extension SidecarManager {
+    private static let iso8601Formatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static func isoString(from date: Date) -> String {
+        iso8601Formatter.string(from: date)
+    }
+
+    /// Push a snapshot of all conversations and projects from SwiftData to the sidecar.
+    /// Called after the sidecar becomes connected so the iOS client can read them via REST.
+    func pushConversationSync(modelContext: ModelContext) async {
+        do {
+            // Fetch all non-archived conversations (most-recent 100 to avoid huge payloads)
+            var convDescriptor = FetchDescriptor<Conversation>(
+                sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
+            )
+            convDescriptor.fetchLimit = 100
+            let conversations = (try? modelContext.fetch(convDescriptor)) ?? []
+
+            // Fetch all projects
+            let projectDescriptor = FetchDescriptor<Project>(
+                sortBy: [SortDescriptor(\.name)]
+            )
+            let projects = (try? modelContext.fetch(projectDescriptor)) ?? []
+
+            // Map conversations to wire type
+            let convWires: [ConversationSummaryWire] = conversations.compactMap { conv in
+                let lastMsg = conv.messages
+                    .filter { !$0.isStreaming }
+                    .max(by: { $0.timestamp < $1.timestamp })
+                let participantWires: [ParticipantWire] = conv.participants.map { p in
+                    let isAgent: Bool
+                    switch p.type {
+                    case .agentSession: isAgent = true
+                    default: isAgent = false
+                    }
+                    return ParticipantWire(
+                        id: p.id.uuidString,
+                        displayName: p.displayName,
+                        isAgent: isAgent,
+                        isLocal: p.isLocalParticipant
+                    )
+                }
+                return ConversationSummaryWire(
+                    id: conv.id.uuidString,
+                    topic: conv.topic ?? "Conversation",
+                    lastMessageAt: Self.isoString(from: lastMsg?.timestamp ?? conv.startedAt),
+                    lastMessagePreview: String((lastMsg?.text ?? "").prefix(100)),
+                    unread: conv.isUnread,
+                    participants: participantWires,
+                    projectId: conv.projectId?.uuidString,
+                    projectName: nil,
+                    workingDirectory: conv.primarySession?.workingDirectory
+                )
+            }
+
+            // Map projects to wire type
+            let projectWires: [ProjectSummaryWire] = projects.map { project in
+                ProjectSummaryWire(
+                    id: project.id.uuidString,
+                    name: project.name,
+                    rootPath: project.rootPath,
+                    icon: project.icon,
+                    color: project.color,
+                    isPinned: project.isPinned,
+                    pinnedAgentIds: project.pinnedAgentIds.map { $0.uuidString }
+                )
+            }
+
+            try await send(.conversationSync(conversations: convWires))
+            try await send(.projectSync(projects: projectWires))
+            Log.sidecar.info("pushConversationSync: pushed \(convWires.count) conversations, \(projectWires.count) projects")
+        } catch {
+            Log.sidecar.warning("pushConversationSync failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Push a single message append to the sidecar so it can be served to iOS via REST.
+    func pushMessageAppend(conversationId: UUID, message: ConversationMessage) async {
+        let wire = MessageWire(
+            id: message.id.uuidString,
+            text: message.text,
+            type: message.type.rawValue,
+            senderParticipantId: message.senderParticipantId?.uuidString,
+            timestamp: Self.isoString(from: message.timestamp),
+            isStreaming: message.isStreaming,
+            toolName: message.toolName,
+            toolOutput: message.toolOutput,
+            thinkingText: message.thinkingText
+        )
+        do {
+            try await send(.conversationMessageAppend(conversationId: conversationId.uuidString, message: wire))
+        } catch {
+            Log.sidecar.warning("pushMessageAppend failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }
 
