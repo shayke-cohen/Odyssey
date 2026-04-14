@@ -60,6 +60,11 @@ final class SharedRoomInvite {
     var expiresAt: Date
     var singleUse: Bool
     var isRevoked: Bool
+    /// Base64url-encoded `InvitePayload` JSON for device/user pairing invites.
+    /// Nil for legacy room invites.
+    var signedPayloadJSON: String? = nil
+    /// Discriminates between invite kinds: "room" (default), "device", or "user".
+    var pairingType: String = "room"
     var acceptedAt: Date?
     var createdAt: Date
     var updatedAt: Date
