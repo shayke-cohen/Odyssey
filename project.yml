@@ -77,6 +77,21 @@ targets:
         com.apple.developer.ubiquity-container-identifiers:
           - iCloud.com.odyssey.app
         com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)com.odyssey.app"
+  OdysseyiOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.odyssey.app.ios
+        INFOPLIST_FILE: OdysseyiOS/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: OdysseyiOS/Resources/OdysseyiOS.entitlements
+        SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: false
+    sources:
+      - OdysseyiOS
+    dependencies:
+      - package: OdysseyCore
   OdysseyTests:
     type: bundle.unit-test
     platform: macOS

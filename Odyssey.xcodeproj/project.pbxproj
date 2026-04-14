@@ -45,6 +45,7 @@
 		25C7F6DDC4CE9B649379F262 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 957017106E8E7620AE12E63E /* AppState.swift */; };
 		28129B21AE9DF65A2F6D68A3 /* AgentQuestionBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A31730BE399E3FCD082DB76 /* AgentQuestionBubble.swift */; };
 		294088DE2B9C61E50EEF297D /* ChatTranscriptExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C0A9DC8953F9D383C308B0 /* ChatTranscriptExport.swift */; };
+		294BC34BDE64BFFCABE9F4AB /* OdysseyiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5B327AACD1B672E198EA9CC /* OdysseyiOSApp.swift */; };
 		2A43F6C6D519EE4046F8D48C /* MessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = C098B6CED63A531521590DFB /* MessageBubble.swift */; };
 		2A9DDDE1996FE17E27E9360E /* GroupPromptBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E1EC3CD0886247494C4B74 /* GroupPromptBuilderTests.swift */; };
 		2B0E80A425A52589957FC728 /* FileContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122B3655F0302ACD752D5C72 /* FileContentView.swift */; };
@@ -85,6 +86,7 @@
 		5F46EB78FFF081437DE618C8 /* DefaultPermissionPresets.json in Resources */ = {isa = PBXBuildFile; fileRef = 7B22A5D272BEE59AA3D3C5D8 /* DefaultPermissionPresets.json */; };
 		5F8662A6260DEBB1CE795148 /* WorkflowStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB62C74A43DCE83306BBC94 /* WorkflowStep.swift */; };
 		5FD01F053C0953E2D5D16037 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 795EF2C6E716A348A0270D65 /* StatusBadge.swift */; };
+		611FF1DC9720480DD394009D /* OdysseyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 71C4795AA6D3021C09D3E9B8 /* OdysseyCore */; };
 		618C6BB69769BEE8D46340F4 /* GroupRoutingPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B514C051E09F9DB44B346FC /* GroupRoutingPlanner.swift */; };
 		61AA8D4CB7CB4FEC986544C7 /* ScheduleRunCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA749B0226815BDB29452D7 /* ScheduleRunCoordinator.swift */; };
 		62C3C1A65B88F0974FD97BEC /* LocalFileReferenceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B05B1BA91E58FAB813F115C0 /* LocalFileReferenceSupport.swift */; };
@@ -233,6 +235,7 @@
 /* Begin PBXFileReference section */
 		0241E93E60A7151197834BB4 /* ChatComposerAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatComposerAvailabilityTests.swift; sourceTree = "<group>"; };
 		025A005B776366EC801B1187 /* CodeBlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeBlockView.swift; sourceTree = "<group>"; };
+		02A666C61EA09C0973658B67 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		04D37285EBA16059653F9996 /* ScheduleLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleLibraryView.swift; sourceTree = "<group>"; };
 		088C72857AA4400D375FE883 /* RichChatComponentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichChatComponentTests.swift; sourceTree = "<group>"; };
 		08EDBC63A4F6D20039685D1F /* UserIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserIdentity.swift; sourceTree = "<group>"; };
@@ -256,6 +259,7 @@
 		205EC472186F69C7D555BAF0 /* LegacyInstanceMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyInstanceMigrationTests.swift; sourceTree = "<group>"; };
 		2182693FA416534F9E4EDFC2 /* RecentDirectories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentDirectories.swift; sourceTree = "<group>"; };
 		226B39199F165D6EB3A78B0A /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		22938BDBDBDAEB685A0E99BD /* OdysseyiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OdysseyiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		26A7E87F81289AFA2925E531 /* PeerWireModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerWireModels.swift; sourceTree = "<group>"; };
 		26CF7029F510BF9FFC9598C3 /* FileSystemServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemServiceTests.swift; sourceTree = "<group>"; };
 		27202D7BC01AF900E69E64D2 /* OdysseyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OdysseyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -308,6 +312,7 @@
 		6A6A58F5009F43029D2A1318 /* OdysseyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OdysseyApp.swift; sourceTree = "<group>"; };
 		6C288F9BEDF59A8B12457C2C /* ChatExportPresenters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatExportPresenters.swift; sourceTree = "<group>"; };
 		6CBE6D508B750D68D5F8FF29 /* SharedRoomLocalBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedRoomLocalBackendTests.swift; sourceTree = "<group>"; };
+		725E90B449DC3E4C8B034DB3 /* OdysseyiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OdysseyiOS.entitlements; sourceTree = "<group>"; };
 		72F25E50586F2AB1558EC46B /* TerminalOutputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalOutputView.swift; sourceTree = "<group>"; };
 		736B9634BE86AA5C59D7F3F3 /* StableXrayModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableXrayModifier.swift; sourceTree = "<group>"; };
 		75B6D25343D34D77AC95F302 /* InlineDiffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineDiffView.swift; sourceTree = "<group>"; };
@@ -389,6 +394,7 @@
 		D2F7D42C94A92A46E86CFD71 /* AttachmentThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentThumbnail.swift; sourceTree = "<group>"; };
 		D316A7444D5C7AF4A4C23D84 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		D3E1EC3CD0886247494C4B74 /* GroupPromptBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPromptBuilderTests.swift; sourceTree = "<group>"; };
+		D5B327AACD1B672E198EA9CC /* OdysseyiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OdysseyiOSApp.swift; sourceTree = "<group>"; };
 		D64BB4F93A4CFD95DDD3A4F5 /* FileNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNode.swift; sourceTree = "<group>"; };
 		D666CF47FEE49605F45E2E30 /* LocalProviderSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalProviderSupportTests.swift; sourceTree = "<group>"; };
 		D864805667E9804D05661A3D /* SessionSummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSummaryCard.swift; sourceTree = "<group>"; };
@@ -459,6 +465,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		35FFE6FAF61037AF88C6CA4D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				611FF1DC9720480DD394009D /* OdysseyCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -502,6 +516,7 @@
 			isa = PBXGroup;
 			children = (
 				F8575CAE7FCD08CDE2BA7635 /* Odyssey.app */,
+				22938BDBDBDAEB685A0E99BD /* OdysseyiOS.app */,
 				27202D7BC01AF900E69E64D2 /* OdysseyTests.xctest */,
 			);
 			name = Products;
@@ -533,6 +548,15 @@
 				A5BFC1BFD2CA900728867704 /* Workshop */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		55D81DB33DE33CEC25715721 /* OdysseyiOS */ = {
+			isa = PBXGroup;
+			children = (
+				8CC3187A9D76284F4FD3CDA2 /* App */,
+				ACDAEBC80EE20542EA5EC053 /* Resources */,
+			);
+			path = OdysseyiOS;
 			sourceTree = "<group>";
 		};
 		63DBF8459C038CDF546E1CD7 /* Debug */ = {
@@ -625,6 +649,14 @@
 			path = Components;
 			sourceTree = "<group>";
 		};
+		8CC3187A9D76284F4FD3CDA2 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				D5B327AACD1B672E198EA9CC /* OdysseyiOSApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
 		9BED83A9893BBA49AF8B93E5 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -666,10 +698,20 @@
 				F25E68993F1578F447F078C1 /* DefaultSkills */,
 				E04AC27818C2793F47C0E84C /* SystemPromptTemplates */,
 				FC69024214CDB33ED868D4F6 /* Odyssey */,
+				55D81DB33DE33CEC25715721 /* OdysseyiOS */,
 				C6DC7EC0B7603FCA7B1B0AEA /* OdysseyTests */,
 				9D93EF7CB6C8A9BB019F6D0C /* Packages */,
 				32355096EA6D9877FF016108 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		ACDAEBC80EE20542EA5EC053 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				02A666C61EA09C0973658B67 /* Info.plist */,
+				725E90B449DC3E4C8B034DB3 /* OdysseyiOS.entitlements */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		B40D55946B5950B108D849F6 /* Models */ = {
@@ -853,6 +895,25 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A4632D10A8A7F52AB86D5A1C /* OdysseyiOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2B678FBE2D2D0F0A49880536 /* Build configuration list for PBXNativeTarget "OdysseyiOS" */;
+			buildPhases = (
+				FAC865D0278627CAB0F386B8 /* Sources */,
+				35FFE6FAF61037AF88C6CA4D /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OdysseyiOS;
+			packageProductDependencies = (
+				71C4795AA6D3021C09D3E9B8 /* OdysseyCore */,
+			);
+			productName = OdysseyiOS;
+			productReference = 22938BDBDBDAEB685A0E99BD /* OdysseyiOS.app */;
+			productType = "com.apple.product-type.application";
+		};
 		B1E664E5689947FB624DCB21 /* OdysseyTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9A24894826C80F7D88A81BC1 /* Build configuration list for PBXNativeTarget "OdysseyTests" */;
@@ -931,6 +992,7 @@
 			targets = (
 				FF88E42E86B37D102EB4907D /* Odyssey */,
 				B1E664E5689947FB624DCB21 /* OdysseyTests */,
+				A4632D10A8A7F52AB86D5A1C /* OdysseyiOS */,
 			);
 		};
 /* End PBXProject section */
@@ -1188,6 +1250,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FAC865D0278627CAB0F386B8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				294BC34BDE64BFFCABE9F4AB /* OdysseyiOSApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -1199,6 +1269,46 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		1F866B3FFD13E5667331B1F7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = OdysseyiOS/Resources/OdysseyiOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = OdysseyiOS/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.odyssey.app.ios;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		2673FE29E55C14C4D1356176 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = OdysseyiOS/Resources/OdysseyiOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = OdysseyiOS/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.odyssey.app.ios;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		35ABFAEB0ADE90827CCE5244 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1265,7 +1375,6 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -1329,7 +1438,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -1409,6 +1517,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		2B678FBE2D2D0F0A49880536 /* Build configuration list for PBXNativeTarget "OdysseyiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1F866B3FFD13E5667331B1F7 /* Debug */,
+				2673FE29E55C14C4D1356176 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		7176C1D7F59FE21D7477DA26 /* Build configuration list for PBXNativeTarget "Odyssey" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1470,6 +1587,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		00DF31B8DD35DAB899D426E8 /* OdysseyCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OdysseyCore;
+		};
+		71C4795AA6D3021C09D3E9B8 /* OdysseyCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OdysseyCore;
 		};
