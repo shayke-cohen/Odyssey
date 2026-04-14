@@ -147,13 +147,16 @@ struct iOSPairingSettingsView: View {
 
     private func startRefreshCycle() {
         Task { await generateNewInvite() }
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 270, repeats: true) { _ in
+        let timer = Timer(timeInterval: 270, repeats: true) { _ in
             Task { @MainActor in
                 await generateNewInvite()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        refreshTimer = timer
     }
 
+    @MainActor
     private func generateNewInvite() async {
         isGenerating = true
         generateError = nil
