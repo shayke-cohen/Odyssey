@@ -1,15 +1,38 @@
 // OdysseyiOS/App/OdysseyiOSApp.swift
 import SwiftUI
+import UIKit
 import OdysseyCore
+
+// MARK: - App delegate (forces full-screen on iOS 26 windowed mode via size restrictions)
+
+private final class OdysseyAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UIWindow.appearance().backgroundColor = .systemBackground
+        // iOS 26 introduced iPhone windowing; pin the scene to the screen size so the app
+        // fills the display instead of floating in a smaller window.
+        NotificationCenter.default.addObserver(
+            forName: UIScene.didActivateNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let scene = notification.object as? UIWindowScene else { return }
+            scene.windows.forEach { $0.backgroundColor = .systemBackground }
+            if let restrictions = scene.sizeRestrictions {
+                let screenSize = scene.screen.bounds.size
+                restrictions.minimumSize = screenSize
+                restrictions.maximumSize = screenSize
+            }
+        }
+        return true
+    }
+}
 
 @main
 struct OdysseyiOSApp: App {
+    @UIApplicationDelegateAdaptor(OdysseyAppDelegate.self) private var appDelegate
     @State private var appState = iOSAppState()
     @Environment(\.scenePhase) private var scenePhase
-
-    init() {
-        UIWindow.appearance().backgroundColor = .systemBackground
-    }
 
     var body: some Scene {
         WindowGroup {

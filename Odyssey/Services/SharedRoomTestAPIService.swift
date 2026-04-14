@@ -151,7 +151,12 @@ final class SharedRoomTestAPIService: ObservableObject {
             case ("POST", "/api/shared-room/create"):
                 let body = try request.jsonBody()
                 let topic = body["topic"] as? String ?? "Shared Room"
-                let conversation = try await sharedRoomService.createLocalTestRoom(topic: topic)
+                // Attach to the first available project so the conversation surfaces in the sidebar.
+                let projectId: UUID? = {
+                    guard let ctx = modelContext else { return nil }
+                    return (try? ctx.fetch(FetchDescriptor<Project>()))?.first?.id
+                }()
+                let conversation = try await sharedRoomService.createLocalTestRoom(topic: topic, projectId: projectId)
                 return (200, [
                     "conversationId": conversation.id.uuidString,
                     "roomId": conversation.roomId ?? ""
