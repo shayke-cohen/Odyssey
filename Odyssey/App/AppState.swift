@@ -55,6 +55,10 @@ final class AppState: ObservableObject {
     var createdSessions: Set<String> = []
     var generateAgentRequestId: String?
 
+    /// Session IDs for shared-room sessions created via the test API (no ChatView to persist responses).
+    /// AppState auto-persists agent messages for sessions in this set on `sessionResult`.
+    var sharedRoomAutoFinalizeSessionIds: Set<String> = []
+
     struct AgentQuestion: Identifiable {
         let id: String  // questionId
         let sessionId: String
@@ -1004,6 +1008,10 @@ final class AppState: ObservableObject {
             updatePersistedSessionStatus(sessionId: sessionId, status: .completed)
             persistSessionUsage(sessionId: sessionId, tokenCount: tokenCount, cost: cost, toolCallCount: toolCallCount)
             cleanupWorktreeIfNeeded(sessionId: sessionId)
+            if sharedRoomAutoFinalizeSessionIds.contains(sessionId) {
+                sharedRoomAutoFinalizeSessionIds.remove(sessionId)
+                finalizeSharedRoomAgentMessage(sessionId: sessionId)
+            }
 
         case .sessionError(let sessionId, let error):
             workerStandbySessions.remove(sessionId)
@@ -1656,6 +1664,44 @@ final class AppState: ObservableObject {
             session.id == id
         })
         return try? ctx.fetch(descriptor).first
+    }
+
+    // MARK: - Shared room auto-finalize (test API path, no ChatView)
+
+    /// Persists the agent's streamed response as a ConversationMessage and publishes
+    /// it to the shared room store. Called when a session in `sharedRoomAutoFinalizeSessionIds`
+    /// completes — i.e., when the test API dispatched the session and there is no ChatView
+    /// available to handle the result.
+    private func finalizeSharedRoomAgentMessage(sessionId: String) {
+        guard let ctx = modelContext,
+              let convo = conversationForSession(sessionId: sessionId),
+              convo.isSharedRoom
+        else { return }
+
+        let responseText = streamingText[sessionId] ?? ""
+        streamingText.removeValue(forKey: sessionId)
+        thinkingText.removeValue(forKey: sessionId)
+        lastSessionEvent.removeValue(forKey: sessionId)
+        guard !responseText.isEmpty else { return }
+
+        let sessionUUID = UUID(uuidString: sessionId)
+        let agentParticipant = convo.participants.first {
+            guard case .agentSession(let sid) = $0.type, let suid = sessionUUID else { return false }
+            return sid == suid
+        }
+        let response = ConversationMessage(
+            senderParticipantId: agentParticipant?.id,
+            text: responseText,
+            type: .chat,
+            conversation: convo
+        )
+        convo.messages.append(response)
+        ctx.insert(response)
+        try? ctx.save()
+
+        if let srs = sharedRoomService {
+            Task { await srs.publishLocalMessage(response, in: convo) }
+        }
     }
 
     // MARK: - Persistence helpers for inter-agent events

@@ -854,6 +854,17 @@ final class ConfigSyncService {
 
     // MARK: - File Watcher
 
+    /// Returns a non-isolated DispatchWorkItem suitable for use as a DispatchSource
+    /// event handler.  Declared `nonisolated` so the captured closure is NOT
+    /// `@MainActor`-isolated — the actual work hops back to `@MainActor` via Task.
+    nonisolated private func makeFileWatchEventHandler() -> DispatchWorkItem {
+        DispatchWorkItem { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.scheduleSync()
+            }
+        }
+    }
+
     private func startFileWatcher() {
         guard !isWatching else { return }
 
@@ -873,11 +884,10 @@ final class ConfigSyncService {
                 eventMask: [.write, .rename, .delete],
                 queue: debounceQueue
             )
-            source.setEventHandler { [weak self] in
-                guard let self else { return }
-                // Hop to @MainActor before touching actor-isolated state.
-                Task { @MainActor [self] in self.scheduleSync() }
-            }
+            // Use a nonisolated handler factory so the DispatchSource fires a
+            // non-@MainActor closure on debounceQueue without triggering the
+            // Swift 6 actor isolation assertion (_dispatch_assert_queue_fail).
+            source.setEventHandler(handler: makeFileWatchEventHandler())
             source.setCancelHandler {
                 close(fd)
             }
@@ -898,17 +908,21 @@ final class ConfigSyncService {
         isWatching = false
     }
 
-    private func scheduleSync() {
-        debounceWorkItem?.cancel()
-        // DispatchWorkItem runs on debounceQueue (non-actor), so jump back to
-        // @MainActor for isWritingBack check and performFullSync() call.
-        let item = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            Task { @MainActor [self] in
-                guard !self.isWritingBack else { return }
+    /// Non-isolated factory for the debounce work item.  Must be `nonisolated`
+    /// so the DispatchWorkItem closure is NOT `@MainActor`-isolated — calling it
+    /// on `debounceQueue` would otherwise trigger `_dispatch_assert_queue_fail`.
+    nonisolated private func makeScheduleSyncWorkItem() -> DispatchWorkItem {
+        DispatchWorkItem { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, !self.isWritingBack else { return }
                 self.performFullSync()
             }
         }
+    }
+
+    private func scheduleSync() {
+        debounceWorkItem?.cancel()
+        let item = makeScheduleSyncWorkItem()
         debounceWorkItem = item
         debounceQueue.asyncAfter(deadline: .now() + 0.5, execute: item)
     }

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Network
 import SwiftData
@@ -38,15 +39,17 @@ final class SharedRoomTestAPIService: ObservableObject {
     private let port: NWEndpoint.Port
     private var listener: NWListener?
     private weak var sharedRoomService: SharedRoomService?
+    private weak var appState: AppState?
     private var modelContext: ModelContext?
 
     init() {
         self.port = Self.resolvePort()
     }
 
-    func configure(sharedRoomService: SharedRoomService, modelContext: ModelContext) {
+    func configure(sharedRoomService: SharedRoomService, modelContext: ModelContext, appState: AppState? = nil) {
         self.sharedRoomService = sharedRoomService
         self.modelContext = modelContext
+        self.appState = appState
     }
 
     func startIfEnabled() {
@@ -121,6 +124,30 @@ final class SharedRoomTestAPIService: ObservableObject {
                     "port": port.rawValue
                 ])
 
+            case ("POST", "/api/activate"):
+                NSApp.activate(ignoringOtherApps: true)
+                if NSApp.windows.isEmpty, let delegate = NSApp.delegate {
+                    // Trigger SwiftUI's internal reopen handler so the parameterized
+                    // WindowGroup opens its default window (shows project picker).
+                    _ = delegate.applicationShouldHandleReopen?(NSApp, hasVisibleWindows: false)
+                }
+                NSApp.windows.forEach { $0.makeKeyAndOrderFront(nil) }
+                // Also start the sidecar if not already running.
+                appState?.connectSidecar()
+                return (200, ["ok": true, "windows": NSApp.windows.count])
+
+            case ("POST", "/api/connect-sidecar"):
+                appState?.connectSidecar()
+                let statusStr: String
+                switch appState?.sidecarStatus {
+                case .connected: statusStr = "connected"
+                case .connecting: statusStr = "connecting"
+                case .disconnected: statusStr = "disconnected"
+                case .error(let msg): statusStr = "error: \(msg)"
+                case nil: statusStr = "unknown"
+                }
+                return (200, ["ok": true, "sidecarStatus": statusStr])
+
             case ("POST", "/api/shared-room/create"):
                 let body = try request.jsonBody()
                 let topic = body["topic"] as? String ?? "Shared Room"
@@ -180,6 +207,78 @@ final class SharedRoomTestAPIService: ObservableObject {
                     "messageId": message.id.uuidString,
                     "roomMessageId": message.roomMessageId ?? "",
                     "hostSequence": message.roomHostSequence
+                ])
+
+            case ("POST", "/api/shared-room/send-with-agent"):
+                // Persists user message to the room AND dispatches to sidecar via session.create + session.message.
+                let body = try request.jsonBody()
+                guard let roomId = body["roomId"] as? String,
+                      let text = body["text"] as? String
+                else {
+                    return (400, ["error": "roomId and text are required"])
+                }
+                let message = try await sharedRoomService.sendLocalUserMessage(text: text, roomId: roomId)
+
+                guard let conversation = sharedRoomService.roomConversation(roomId: roomId),
+                      let ctx = modelContext,
+                      let appState
+                else {
+                    return (503, ["error": "Room or services not available"])
+                }
+
+                guard let manager = appState.sidecarManager else {
+                    return (503, ["error": "Sidecar not connected"])
+                }
+
+                // Get or create a freeform Session for this conversation so the sidecar
+                // can dispatch to an agent. The sidecar requires session.create + session.message;
+                // conversation.messageAppend only stores the message without triggering a response.
+                let session: Session
+                if let existing = conversation.sessions.first {
+                    session = existing
+                } else {
+                    let newSession = Session(
+                        agent: nil,
+                        mode: .interactive,
+                        workingDirectory: NSHomeDirectory()
+                    )
+                    newSession.conversations = [conversation]
+                    conversation.sessions.append(newSession)
+                    let agentParticipant = Participant(
+                        type: .agentSession(sessionId: newSession.id),
+                        displayName: AgentDefaults.displayName(forProvider: newSession.provider)
+                    )
+                    agentParticipant.conversation = conversation
+                    conversation.participants.append(agentParticipant)
+                    ctx.insert(newSession)
+                    ctx.insert(agentParticipant)
+                    try? ctx.save()
+                    session = newSession
+                }
+
+                let sidecarKey = session.id.uuidString
+                let isNewSession = !appState.createdSessions.contains(sidecarKey)
+                if isNewSession {
+                    let config = AgentDefaults.makeFreeformAgentConfig(
+                        provider: session.provider,
+                        model: session.model,
+                        workingDirectory: session.workingDirectory.isEmpty ? NSHomeDirectory() : session.workingDirectory,
+                        maxTurns: 5
+                    )
+                    try await manager.send(.sessionCreate(conversationId: sidecarKey, agentConfig: config))
+                    appState.createdSessions.insert(sidecarKey)
+                }
+                // Register for auto-finalize: AppState will persist the agent response
+                // when sessionResult fires (ChatView is not active in headless test runs).
+                appState.sharedRoomAutoFinalizeSessionIds.insert(sidecarKey)
+                try await manager.send(.sessionMessage(sessionId: sidecarKey, text: text))
+
+                return (200, [
+                    "messageId": message.id.uuidString,
+                    "roomMessageId": message.roomMessageId ?? "",
+                    "hostSequence": message.roomHostSequence,
+                    "sessionId": sidecarKey,
+                    "agentDispatched": true
                 ])
 
             case ("POST", "/api/shared-room/refresh"):

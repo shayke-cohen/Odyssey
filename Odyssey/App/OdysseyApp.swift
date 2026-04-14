@@ -7,7 +7,7 @@ import AppXray
 
 @main
 struct OdysseyApp: App {
-    @StateObject private var appState = AppState()
+    @StateObject private var appState: AppState
     @StateObject private var p2pNetworkManager = P2PNetworkManager()
     @StateObject private var sharedRoomService: SharedRoomService
     @StateObject private var sharedRoomTestAPIService: SharedRoomTestAPIService
@@ -23,8 +23,10 @@ struct OdysseyApp: App {
     private let launchIntent: LaunchIntent?
 
     init() {
+        let appState = AppState()
         let sharedRoomService = SharedRoomService()
         let sharedRoomTestAPIService = SharedRoomTestAPIService()
+        _appState = StateObject(wrappedValue: appState)
         _sharedRoomService = StateObject(wrappedValue: sharedRoomService)
         _sharedRoomTestAPIService = StateObject(wrappedValue: sharedRoomTestAPIService)
 
@@ -79,9 +81,15 @@ struct OdysseyApp: App {
         sharedRoomService.configure(modelContext: modelContainer.mainContext)
         sharedRoomTestAPIService.configure(
             sharedRoomService: sharedRoomService,
-            modelContext: modelContainer.mainContext
+            modelContext: modelContainer.mainContext,
+            appState: appState  // local var, same instance SwiftUI will use
         )
         sharedRoomTestAPIService.startIfEnabled()
+
+        // Set modelContext and sharedRoomService on AppState early so that headless paths
+        // (test API, no visible window) can persist agent messages without waiting for onAppear.
+        appState.modelContext = modelContainer.mainContext
+        appState.sharedRoomService = sharedRoomService
     }
 
     private var resolvedColorScheme: ColorScheme? {

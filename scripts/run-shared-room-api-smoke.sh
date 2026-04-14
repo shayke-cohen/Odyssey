@@ -207,7 +207,11 @@ fi
 
 defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.sharedRoom.userId" "host-user"
 defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.sharedRoom.displayName" "Host User"
-defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.autoConnectSidecar" -bool NO
+if [[ "${ODYSSEY_WITH_AGENTS:-0}" == "1" ]]; then
+  defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.autoConnectSidecar" -bool YES
+else
+  defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.autoConnectSidecar" -bool NO
+fi
 defaults write "com.odyssey.app.${HOST_INSTANCE}" "odyssey.instanceWorkingDirectory" "$REPO_ROOT"
 defaults write "com.odyssey.app.${GUEST_INSTANCE}" "odyssey.sharedRoom.userId" "guest-user"
 defaults write "com.odyssey.app.${GUEST_INSTANCE}" "odyssey.sharedRoom.displayName" "Guest User"
@@ -281,3 +285,16 @@ echo "Verifying single-use invite rejection"
 api_post_expect_failure "$GUEST_API_PORT" "/api/shared-room/join" "{\"roomId\":\"${ROOM_ID}\",\"inviteId\":\"${INVITE_ID}\",\"inviteToken\":\"${INVITE_TOKEN}\"}" >/dev/null
 
 echo "Shared-room API smoke test passed."
+
+if [[ "${ODYSSEY_KEEP_ALIVE:-0}" == "1" ]]; then
+  echo ""
+  echo "=== KEEP_ALIVE mode — both instances still running ==="
+  echo "HOST_APPXRAY_PORT=${HOST_APPXRAY_PORT}"
+  echo "GUEST_APPXRAY_PORT=${GUEST_APPXRAY_PORT}"
+  echo "HOST_API_PORT=${HOST_API_PORT}"
+  echo "GUEST_API_PORT=${GUEST_API_PORT}"
+  echo "ROOM_ID=${ROOM_ID}"
+  echo "Press Ctrl-C to stop both instances."
+  trap - EXIT   # remove cleanup trap so processes survive
+  wait "$HOST_PID" "$GUEST_PID"
+fi
