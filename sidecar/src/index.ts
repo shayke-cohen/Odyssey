@@ -9,6 +9,8 @@ import { WorkspaceStore } from "./stores/workspace-store.js";
 import { PeerRegistry } from "./stores/peer-registry.js";
 import { ConnectorStore } from "./stores/connector-store.js";
 import { RelayClient } from "./relay-client.js";
+import { ConversationStore } from "./stores/conversation-store.js";
+import { ProjectStore } from "./stores/project-store.js";
 import { SessionManager } from "./session-manager.js";
 import { SseManager } from "./sse-manager.js";
 import { WebhookManager } from "./webhook-manager.js";
@@ -33,6 +35,8 @@ const workspaces = new WorkspaceStore();
 const peerRegistry = new PeerRegistry();
 const connectors = new ConnectorStore();
 const relayClient = new RelayClient((event) => broadcastFn(event));
+const conversationStore = new ConversationStore();
+const projectStore = new ProjectStore();
 const agentDefinitions = new Map<string, AgentConfig>();
 const sseManager = new SseManager();
 const webhookManager = new WebhookManager();
@@ -49,6 +53,8 @@ const toolContext: ToolContext = {
   peerRegistry,
   connectors,
   relayClient,
+  conversationStore,
+  projectStore,
   broadcast: (event) => broadcastFn(event),
   agentDefinitions,
   spawnSession: async (sessionId, config, initialPrompt, waitForResult) => {

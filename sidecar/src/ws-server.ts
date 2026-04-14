@@ -284,6 +284,25 @@ export class WsServer {
         logger.info("ws", `config.setLogLevel: level set to ${command.level}`);
         break;
       }
+
+      case "conversation.sync":
+        this.ctx.conversationStore.sync(command.conversations);
+        logger.info("ws", `conversation.sync: synced ${command.conversations.length} conversations`);
+        break;
+
+      case "conversation.messageAppend":
+        this.ctx.conversationStore.appendMessage(command.conversationId, command.message);
+        break;
+
+      case "project.sync":
+        this.ctx.projectStore.sync(command.projects);
+        logger.info("ws", `project.sync: synced ${command.projects.length} projects`);
+        break;
+
+      case "ios.registerPush":
+        this.broadcast({ type: "ios.pushRegistered", apnsToken: command.apnsToken });
+        logger.info("ws", `ios.registerPush: registered token for app ${command.appId}`);
+        break;
     }
   }
 

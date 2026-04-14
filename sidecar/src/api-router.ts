@@ -222,6 +222,23 @@ export async function handleApiRequest(
       return await handleCreateWorkspace(req, ctx);
     }
 
+    // ─── Conversations (iOS data bridge) ───
+
+    if (matchRoute("/api/v1/conversations", "GET", req.method, path)) {
+      return handleListConversations(ctx);
+    }
+
+    params = matchRoute("/api/v1/conversations/:id/messages", "GET", req.method, path);
+    if (params) {
+      return handleGetConversationMessages(params.id, url, ctx);
+    }
+
+    // ─── Projects (iOS data bridge) ───
+
+    if (matchRoute("/api/v1/projects", "GET", req.method, path)) {
+      return handleListProjects(ctx);
+    }
+
     // ─── Task Board ───
 
     if (matchRoute("/api/v1/tasks", "GET", req.method, path)) {
@@ -738,4 +755,29 @@ async function handleClaimTask(taskId: string, req: Request, ctx: ApiContext): P
 
   ctx.toolCtx.broadcast({ type: "task.updated", task });
   return apiJson(task);
+}
+
+// ─── Conversations (iOS data bridge) ───
+
+function handleListConversations(ctx: ApiContext): Response {
+  const conversations = ctx.toolCtx.conversationStore.listConversations();
+  return apiJson({ conversations });
+}
+
+function handleGetConversationMessages(conversationId: string, url: URL, ctx: ApiContext): Response {
+  if (!ctx.toolCtx.conversationStore.hasConversation(conversationId)) {
+    return apiError("not_found", `No conversation with ID ${conversationId}`, 404);
+  }
+  const limitParam = url.searchParams.get("limit");
+  const before = url.searchParams.get("before") ?? undefined;
+  const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+  const messages = ctx.toolCtx.conversationStore.getMessages(conversationId, limit, before);
+  return apiJson({ messages });
+}
+
+// ─── Projects (iOS data bridge) ───
+
+function handleListProjects(ctx: ApiContext): Response {
+  const projects = ctx.toolCtx.projectStore.list();
+  return apiJson({ projects });
 }

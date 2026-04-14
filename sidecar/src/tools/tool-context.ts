@@ -7,6 +7,8 @@ import type { WorkspaceStore } from "../stores/workspace-store.js";
 import type { PeerRegistry } from "../stores/peer-registry.js";
 import type { ConnectorStore } from "../stores/connector-store.js";
 import type { RelayClient } from "../relay-client.js";
+import type { ConversationStore } from "../stores/conversation-store.js";
+import type { ProjectStore } from "../stores/project-store.js";
 import type { SidecarEvent, AgentConfig } from "../types.js";
 
 export interface ToolContext {
@@ -19,6 +21,8 @@ export interface ToolContext {
   peerRegistry: PeerRegistry;
   connectors: ConnectorStore;
   relayClient: RelayClient;
+  conversationStore: ConversationStore;
+  projectStore: ProjectStore;
   broadcast: (event: SidecarEvent) => void;
 
   /**

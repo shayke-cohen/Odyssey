@@ -1,3 +1,9 @@
+import type { ConversationSummaryWire, MessageWire } from "./stores/conversation-store.js";
+import type { ProjectSummaryWire } from "./stores/project-store.js";
+
+export type { ConversationSummaryWire, MessageWire, ParticipantWire } from "./stores/conversation-store.js";
+export type { ProjectSummaryWire } from "./stores/project-store.js";
+
 // Commands from Swift -> Sidecar
 export type SidecarCommand =
   | { type: "session.create"; conversationId: string; agentConfig: AgentConfig }
@@ -25,7 +31,11 @@ export type SidecarCommand =
   | { type: "connector.revoke"; connectionId: string }
   | { type: "connector.test"; connectionId: string }
   | { type: "config.setOllama"; enabled: boolean; baseURL: string }
-  | { type: "config.setLogLevel"; level: string };
+  | { type: "config.setLogLevel"; level: string }
+  | { type: "conversation.sync"; conversations: ConversationSummaryWire[] }
+  | { type: "conversation.messageAppend"; conversationId: string; message: MessageWire }
+  | { type: "project.sync"; projects: ProjectSummaryWire[] }
+  | { type: "ios.registerPush"; apnsToken: string; appId: string };
 
 export interface PeerAgentWire {
   name: string;
@@ -215,7 +225,8 @@ export type SidecarEvent =
   | { type: "task.list.result"; tasks: TaskWire[] }
   | { type: "connector.list.result"; connections: ConnectorConfig[] }
   | { type: "connector.statusChanged"; connection: ConnectorConfig }
-  | { type: "connector.audit"; sessionId?: string; connectionId: string; provider: ConnectorProvider; action: string; outcome: string; summary: string };
+  | { type: "connector.audit"; sessionId?: string; connectionId: string; provider: ConnectorProvider; action: string; outcome: string; summary: string }
+  | { type: "ios.pushRegistered"; apnsToken: string };
 
 export interface QuestionOption {
   label: string;
