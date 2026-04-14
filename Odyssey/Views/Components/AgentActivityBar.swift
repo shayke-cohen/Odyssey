@@ -1,9 +1,11 @@
 import SwiftUI
+import OdysseyCore
 
 struct AgentActivityBar: View {
     let sessions: [Session]
     let sessionActivity: [String: AppState.SessionActivityState]
     var participants: [Participant] = []
+    var presenceStore: [String: PresenceStatus] = [:]
 
     var body: some View {
         let items = sessions.map { session -> AgentActivityItem in
@@ -19,7 +21,8 @@ struct AgentActivityBar: View {
                 state: state,
                 isSilentObserver: participant?.role == .silentObserver,
                 isVerified: participant?.isVerified ?? false,
-                ownerDisplayName: participant?.ownerDisplayName
+                ownerDisplayName: participant?.ownerDisplayName,
+                matrixId: participant?.matrixId
             )
         }
 
@@ -73,6 +76,12 @@ struct AgentActivityBar: View {
         .padding(.vertical, 4)
         .background(item.isSilentObserver ? Color.secondary.opacity(0.08) : item.state.displayColor.opacity(0.1))
         .clipShape(Capsule())
+        .overlay(alignment: .bottomTrailing) {
+            if let matrixId = item.matrixId {
+                PresenceDot(status: presenceStore[matrixId] ?? .offline)
+                    .offset(x: 2, y: 2)
+            }
+        }
         .xrayId("chat.agentPill.\(item.id.uuidString)")
         .accessibilityLabel(item.isSilentObserver
             ? "\(item.name): silent observer"
@@ -92,6 +101,30 @@ private struct AgentActivityItem: Identifiable {
     var isSilentObserver: Bool = false
     var isVerified: Bool = false
     var ownerDisplayName: String? = nil
+    var matrixId: String? = nil
+}
+
+// MARK: - PresenceDot
+
+struct PresenceDot: View {
+    let status: PresenceStatus
+
+    var color: Color {
+        switch status {
+        case .online:      return .green
+        case .unavailable: return .yellow
+        case .offline:     return .gray
+        }
+    }
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 8, height: 8)
+            .overlay(Circle().stroke(Color(NSColor.windowBackgroundColor), lineWidth: 1.5))
+            .accessibilityIdentifier("agentActivityBar.presenceDot")
+            .accessibilityLabel("Presence: \(status.rawValue)")
+    }
 }
 
 struct ActivityDot: View {

@@ -9,6 +9,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case chatDisplay
     case developer
     case iosPairing
+    case federation
 
     var id: String { rawValue }
 
@@ -21,6 +22,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .chatDisplay: "Chat Display"
         case .developer: "Developer"
         case .iosPairing: "iOS Pairing"
+        case .federation: "Federation"
         }
     }
 
@@ -33,6 +35,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .chatDisplay: "Rendering and conversation chrome"
         case .developer: "Paths, diagnostics, and experimental controls"
         case .iosPairing: "QR code and device pairing for iOS access"
+        case .federation: "Matrix account and cross-user sharing"
         }
     }
 
@@ -45,6 +48,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .chatDisplay: "bubble.left.and.text.bubble.right"
         case .developer: "wrench.and.screwdriver"
         case .iosPairing: "iphone.and.arrow.forward"
+        case .federation: "person.2.wave.2"
         }
     }
 
@@ -57,6 +61,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .chatDisplay: "settings.tab.chatDisplay"
         case .developer: "settings.tab.developer"
         case .iosPairing: "settings.tab.iosPairing"
+        case .federation: "settings.tab.federation"
         }
     }
 }
@@ -183,6 +188,8 @@ struct SettingsView: View {
                 DeveloperSettingsTab()
             case .iosPairing:
                 iOSPairingSettingsView()
+            case .federation:
+                MatrixAccountView()
             }
         }
     }
