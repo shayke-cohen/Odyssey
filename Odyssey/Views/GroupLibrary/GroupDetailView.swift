@@ -167,7 +167,6 @@ struct GroupDetailView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.regular)
                     .xrayId("groupDetail.scheduleButton")
-                    .accessibilityIdentifier("groupDetail.scheduleButton")
                     .accessibilityLabel("Schedule")
 
                     Menu {

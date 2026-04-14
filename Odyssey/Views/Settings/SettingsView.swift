@@ -106,7 +106,6 @@ struct SettingsView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 22)
                 .xrayId("settings.backButton")
-                .accessibilityIdentifier("settings.backButton")
                 .accessibilityLabel("Back to app")
             }
 
@@ -135,7 +134,7 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                     .xrayId(section.xrayId)
-                    .accessibilityIdentifier("settings.section.\(section.rawValue)")
+                    .stableXrayId("settings.section.\(section.rawValue)")
                     .accessibilityLabel(section.title)
                 }
             }
@@ -153,11 +152,11 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(selectedSection.title)
                     .font(.system(size: 34, weight: .bold))
-                    .accessibilityIdentifier("settings.headerTitle")
+                    .stableXrayId("settings.headerTitle")
                 Text(selectedSection.subtitle)
                     .font(.body)
                     .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("settings.headerSubtitle")
+                    .stableXrayId("settings.headerSubtitle")
             }
             .padding(.horizontal, 32)
             .padding(.top, 30)

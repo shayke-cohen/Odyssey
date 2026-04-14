@@ -41,7 +41,7 @@ struct AgentSidebarRowView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar.agentRow.\(agent.id.uuidString).chatRow.\(conv.id.uuidString)")
+                .stableXrayId("sidebar.agentRow.\(agent.id.uuidString).chatRow.\(conv.id.uuidString)")
                 .accessibilityLabel("Open chat \(conv.topic ?? "Untitled")")
             }
 
@@ -58,14 +58,14 @@ struct AgentSidebarRowView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar.agentRow.\(agent.id.uuidString).selectButton")
+                .stableXrayId("sidebar.agentRow.\(agent.id.uuidString).selectButton")
                 .accessibilityLabel("Open agent \(agent.name)")
                 Spacer()
                 if hasActiveSession {
                     Circle()
                         .fill(Color.blue)
                         .frame(width: 6, height: 6)
-                        .accessibilityIdentifier("sidebar.agentRow.\(agent.id.uuidString).activityDot")
+                        .stableXrayId("sidebar.agentRow.\(agent.id.uuidString).activityDot")
                 }
                 if !conversations.isEmpty {
                     Text("\(conversations.count)")
@@ -84,10 +84,10 @@ struct AgentSidebarRowView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar.agentRow.\(agent.id.uuidString).newChatButton")
+                .stableXrayId("sidebar.agentRow.\(agent.id.uuidString).newChatButton")
                 .accessibilityLabel("New chat for \(agent.name)")
             }
-            .accessibilityIdentifier("sidebar.agentRow.\(agent.id.uuidString)")
+            .stableXrayId("sidebar.agentRow.\(agent.id.uuidString)")
             .padding(.vertical, 2)
             .padding(.horizontal, 4)
             .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)

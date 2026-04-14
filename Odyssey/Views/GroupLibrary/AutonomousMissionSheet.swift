@@ -51,7 +51,7 @@ struct AutonomousMissionSheet: View {
                     TextEditor(text: $mission)
                         .font(.body)
                         .frame(minHeight: 120)
-                        .accessibilityIdentifier("autonomousMission.missionField")
+                        .stableXrayId("autonomousMission.missionField")
                     Text("Describe what the team should accomplish. The coordinator will break it down and delegate tasks.")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
@@ -62,7 +62,7 @@ struct AutonomousMissionSheet: View {
             HStack {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.escape)
-                    .accessibilityIdentifier("autonomousMission.cancelButton")
+                    .stableXrayId("autonomousMission.cancelButton")
                 Spacer()
                 Button {
                     let trimmedMission = mission.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -84,7 +84,7 @@ struct AutonomousMissionSheet: View {
                 .tint(.orange)
                 .disabled(mission.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .keyboardShortcut(.return)
-                .accessibilityIdentifier("autonomousMission.launchButton")
+                .stableXrayId("autonomousMission.launchButton")
             }
             .padding()
         }

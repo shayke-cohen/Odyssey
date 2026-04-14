@@ -20,11 +20,11 @@ struct GroupCardView: View {
                     Text(group.name)
                         .font(.headline)
                         .lineLimit(1)
-                        .accessibilityIdentifier("groupCard.name")
+                        .stableXrayId("groupCard.name")
                     Text(originLabel)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("groupCard.originLabel")
+                        .stableXrayId("groupCard.originLabel")
                 }
                 Spacer()
             }
@@ -34,7 +34,7 @@ struct GroupCardView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                    .accessibilityIdentifier("groupCard.description")
+                    .stableXrayId("groupCard.description")
             }
 
             Divider()
@@ -43,17 +43,17 @@ struct GroupCardView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
-                .accessibilityIdentifier("groupCard.agentNames")
+                .stableXrayId("groupCard.agentNames")
 
             HStack {
                 Button("Start Chat", action: onStart)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                    .accessibilityIdentifier("groupCard.startButton")
+                    .stableXrayId("groupCard.startButton")
 
                 Button("Edit", action: onEdit)
                     .controlSize(.small)
-                    .accessibilityIdentifier("groupCard.editButton")
+                    .stableXrayId("groupCard.editButton")
             }
         }
         .padding(12)

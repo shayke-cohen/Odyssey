@@ -79,7 +79,6 @@ struct MainWindowView: View {
                     }
                     .help("Settings")
                     .xrayId("mainWindow.settingsButton")
-                    .accessibilityIdentifier("mainWindow.settingsButton")
                     .accessibilityLabel("Settings")
                 }
             }
@@ -95,7 +94,6 @@ struct MainWindowView: View {
                     .keyboardShortcut("n", modifiers: .command)
                     .help("New thread (⌘N)")
                     .xrayId("mainWindow.newSessionButton")
-                    .accessibilityIdentifier("mainWindow.newSessionButton")
                     .accessibilityLabel("New Session")
 
                     Button {
@@ -107,7 +105,6 @@ struct MainWindowView: View {
                     .keyboardShortcut("n", modifiers: [.command, .option])
                     .help("New group thread (⌘⌥N)")
                     .xrayId("mainWindow.newGroupThreadButton")
-                    .accessibilityIdentifier("mainWindow.newGroupThreadButton")
                     .accessibilityLabel("New Group Thread")
 
                     Button {
@@ -119,7 +116,6 @@ struct MainWindowView: View {
                     .keyboardShortcut("n", modifiers: [.command, .shift])
                     .help("Quick chat (⌘⇧N)")
                     .xrayId("mainWindow.quickChatButton")
-                    .accessibilityIdentifier("mainWindow.quickChatButton")
                     .accessibilityLabel("Quick Chat")
                 }
             }
@@ -140,7 +136,6 @@ struct MainWindowView: View {
                     .keyboardShortcut("s", modifiers: [.command, .shift])
                     .help("Schedules (⌘⇧S)")
                     .xrayId("mainWindow.schedulesButton")
-                    .accessibilityIdentifier("mainWindow.schedulesButton")
                     .accessibilityLabel("Schedules")
                 }
 
@@ -153,7 +148,6 @@ struct MainWindowView: View {
                     .keyboardShortcut("i", modifiers: [.command, .shift])
                     .help("Shared room invites (⌘⇧I)")
                     .xrayId("mainWindow.sharedRoomInboxButton")
-                    .accessibilityIdentifier("mainWindow.sharedRoomInboxButton")
                     .accessibilityLabel("Shared Room Invites")
                     .badge(sharedRoomService.unreadInviteCount)
                 }
@@ -167,7 +161,6 @@ struct MainWindowView: View {
                     .keyboardShortcut("a", modifiers: [.command, .shift])
                     .help("Agent comms (⌘⇧A)")
                     .xrayId("mainWindow.agentCommsButton")
-                    .accessibilityIdentifier("mainWindow.agentCommsButton")
                     .accessibilityLabel("Agent Comms")
                     .badge(appState.commsEvents.count)
                 }
@@ -181,7 +174,6 @@ struct MainWindowView: View {
                     .keyboardShortcut("p", modifiers: [.command, .shift])
                     .help("Peer network (⌘⇧P)")
                     .xrayId("mainWindow.peerNetworkButton")
-                    .accessibilityIdentifier("mainWindow.peerNetworkButton")
                     .accessibilityLabel("Peer Network")
                 }
 
@@ -194,7 +186,6 @@ struct MainWindowView: View {
                     .keyboardShortcut("d", modifiers: [.command, .shift])
                     .help("Debug log (⌘⇧D)")
                     .xrayId("mainWindow.debugLogButton")
-                    .accessibilityIdentifier("mainWindow.debugLogButton")
                     .accessibilityLabel("Debug Log")
                 }
             } else if ws.activeRoute != .settings {
@@ -241,7 +232,6 @@ struct MainWindowView: View {
                     .fixedSize()
                     .help("Open schedules, invites, agent comms, peer network, or debug tools")
                     .xrayId("mainWindow.workspaceMenu")
-                    .accessibilityIdentifier("mainWindow.workspaceMenu")
                     .accessibilityLabel("Workspace")
                 }
             }
@@ -259,7 +249,6 @@ struct MainWindowView: View {
                     .keyboardShortcut("0", modifiers: [.command, .option])
                     .help(ws.inspectorVisible ? "Hide inspector (⌘⌥0)" : "Show inspector (⌘⌥0)")
                     .xrayId("mainWindow.inspectorToggle")
-                    .accessibilityIdentifier("mainWindow.inspectorToggle")
                     .accessibilityLabel(ws.inspectorVisible ? "Hide Inspector" : "Show Inspector")
                 }
             }

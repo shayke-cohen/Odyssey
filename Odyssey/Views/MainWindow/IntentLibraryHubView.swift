@@ -156,7 +156,7 @@ struct IntentLibraryHubView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 760, minHeight: 620)
-        .accessibilityIdentifier("libraryHub.sheet")
+        .stableXrayId("libraryHub.sheet")
         .sheet(item: $editingAgent) { agent in
             AgentEditorView(agent: agent) { _ in
                 editingAgent = nil
@@ -256,7 +256,7 @@ struct IntentLibraryHubView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
             .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-            .accessibilityIdentifier("libraryHub.summaryCard")
+            .stableXrayId("libraryHub.summaryCard")
 
             Spacer()
         }
@@ -269,14 +269,14 @@ struct IntentLibraryHubView: View {
         HStack(spacing: 12) {
             Text("Library / \(selectedSection.title)")
                 .font(.title2.weight(.semibold))
-                .accessibilityIdentifier("libraryHub.title")
+                .stableXrayId("libraryHub.title")
 
             Spacer()
 
             TextField(searchPlaceholder, text: $searchText)
                 .textFieldStyle(.roundedBorder)
                 .frame(minWidth: 220, idealWidth: 260, maxWidth: 320)
-                .accessibilityIdentifier("libraryHub.searchField")
+                .stableXrayId("libraryHub.searchField")
 
             if selectedSection == .build {
                 buildHeaderActions
@@ -292,7 +292,7 @@ struct IntentLibraryHubView: View {
             HStack(alignment: .top, spacing: 12) {
                 Text("Library / \(selectedSection.title)")
                     .font(.title2.weight(.semibold))
-                    .accessibilityIdentifier("libraryHub.title")
+                    .stableXrayId("libraryHub.title")
 
                 Spacer(minLength: 0)
 
@@ -301,7 +301,7 @@ struct IntentLibraryHubView: View {
 
             TextField(searchPlaceholder, text: $searchText)
                 .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("libraryHub.searchField")
+                .stableXrayId("libraryHub.searchField")
 
             HStack(spacing: 8) {
                 railButton(for: .run, icon: "play.circle", compact: true)
@@ -418,7 +418,7 @@ struct IntentLibraryHubView: View {
             }
             .padding(20)
         }
-        .accessibilityIdentifier("libraryHub.runScrollView")
+        .stableXrayId("libraryHub.runScrollView")
     }
 
     private var buildContent: some View {
@@ -434,7 +434,7 @@ struct IntentLibraryHubView: View {
                     }
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 260)
-                    .accessibilityIdentifier("libraryHub.build.sectionPicker")
+                    .stableXrayId("libraryHub.build.sectionPicker")
 
                     if selectedBuildSection == .agents {
                         if filteredBuildAgents.isEmpty {
@@ -468,7 +468,7 @@ struct IntentLibraryHubView: View {
                 }
                 .padding(20)
             }
-            .accessibilityIdentifier("libraryHub.buildScrollView")
+            .stableXrayId("libraryHub.buildScrollView")
         }
     }
 
@@ -494,7 +494,7 @@ struct IntentLibraryHubView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("libraryHub.build.filter.\(filter.rawValue)")
+                .stableXrayId("libraryHub.build.filter.\(filter.rawValue)")
             }
             Spacer()
         }
@@ -513,7 +513,7 @@ struct IntentLibraryHubView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 420)
-                .accessibilityIdentifier("libraryHub.discover.sectionPicker")
+                .stableXrayId("libraryHub.discover.sectionPicker")
 
                 HStack(spacing: 12) {
                     discoverSummaryChip(title: "Agents", value: "\(enabledAgents.count)")
@@ -548,7 +548,7 @@ struct IntentLibraryHubView: View {
             }
             .padding(20)
         }
-        .accessibilityIdentifier("libraryHub.discoverScrollView")
+        .stableXrayId("libraryHub.discoverScrollView")
     }
 
     private var buildHeaderActions: some View {
@@ -612,7 +612,7 @@ struct IntentLibraryHubView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("libraryHub.section.\(section.rawValue)")
+        .stableXrayId("libraryHub.section.\(section.rawValue)")
         .accessibilityLabel(section.title)
     }
 

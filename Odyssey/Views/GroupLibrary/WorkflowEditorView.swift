@@ -25,7 +25,7 @@ struct WorkflowEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.blue)
-            .accessibilityIdentifier("workflowEditor.addStepButton")
+            .stableXrayId("workflowEditor.addStepButton")
         }
     }
 
@@ -66,7 +66,7 @@ struct WorkflowEditorView: View {
                     }
                 }
                 .frame(maxWidth: 160)
-                .accessibilityIdentifier("workflowEditor.step.\(index).agentPicker")
+                .stableXrayId("workflowEditor.step.\(index).agentPicker")
 
                 TextField("Label", text: Binding(
                     get: { step.stepLabel ?? "" },
@@ -78,7 +78,7 @@ struct WorkflowEditorView: View {
                 ))
                 .frame(maxWidth: 120)
                 .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("workflowEditor.step.\(index).labelField")
+                .stableXrayId("workflowEditor.step.\(index).labelField")
             }
 
             TextField("Instruction for this step", text: Binding(
@@ -90,7 +90,7 @@ struct WorkflowEditorView: View {
                 }
             ))
             .textFieldStyle(.roundedBorder)
-            .accessibilityIdentifier("workflowEditor.step.\(index).instructionField")
+            .stableXrayId("workflowEditor.step.\(index).instructionField")
 
             HStack(spacing: 12) {
                 Toggle("Auto-advance", isOn: Binding(
@@ -113,7 +113,7 @@ struct WorkflowEditorView: View {
                 ))
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: 200)
-                .accessibilityIdentifier("workflowEditor.step.\(index).conditionField")
+                .stableXrayId("workflowEditor.step.\(index).conditionField")
             }
 
             Divider()

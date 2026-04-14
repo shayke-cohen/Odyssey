@@ -10,7 +10,7 @@ struct iOSSettingsView: View {
     private let store = PeerCredentialStore()
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // Connection section
                 Section("Connection") {

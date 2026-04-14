@@ -1032,7 +1032,6 @@ struct ChatView: View {
                 .buttonStyle(.plain)
                 .help("Open blackboard")
                 .xrayId("chat.openBlackboardButton")
-                .accessibilityIdentifier("chat.openBlackboardButton")
                 .accessibilityLabel("Open blackboard")
 
                 if let model = currentModel {
@@ -1229,7 +1228,6 @@ struct ChatView: View {
                     Label("Schedule This Mission", systemImage: "clock.badge")
                 }
                 .xrayId("chat.moreOptions.scheduleMission")
-                .accessibilityIdentifier("chat.moreOptions.scheduleMission")
                 .accessibilityLabel("Schedule This Mission")
                 Button { duplicateConversation(convo) } label: {
                     Label("Duplicate", systemImage: "doc.on.doc")
@@ -1446,20 +1444,17 @@ struct ChatView: View {
                         .lineLimit(2...5)
                         .onSubmit { commitMissionEdit() }
                         .xrayId("chat.missionEditor")
-                        .accessibilityIdentifier("chat.missionEditor")
 
                     HStack(spacing: 8) {
                         Button("Save") { commitMissionEdit() }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
                             .xrayId("chat.missionSaveButton")
-                            .accessibilityIdentifier("chat.missionSaveButton")
 
                         Button("Cancel") { cancelMissionEdit() }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
                             .xrayId("chat.missionCancelButton")
-                            .accessibilityIdentifier("chat.missionCancelButton")
                     }
                 }
                 .padding(12)
@@ -1469,7 +1464,6 @@ struct ChatView: View {
                         .stroke(.quaternary, lineWidth: 1)
                 )
                 .xrayId("chat.missionCard")
-                .accessibilityIdentifier("chat.missionCard")
             } else if let mission = currentMissionText {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .top, spacing: 8) {
@@ -1488,13 +1482,11 @@ struct ChatView: View {
                         .buttonStyle(.borderless)
                         .font(caption2Font)
                         .xrayId("chat.missionToggleButton")
-                        .accessibilityIdentifier("chat.missionToggleButton")
 
                         Button("Edit") { beginMissionEdit() }
                             .buttonStyle(.borderless)
                             .font(caption2Font)
                             .xrayId("chat.missionEditButton")
-                            .accessibilityIdentifier("chat.missionEditButton")
 
                         Button("Schedule") {
                             scheduleDraft = makeScheduleDraft(from: latestUserChatMessage)
@@ -1503,7 +1495,6 @@ struct ChatView: View {
                         .buttonStyle(.borderless)
                         .font(caption2Font)
                         .xrayId("chat.missionScheduleButton")
-                        .accessibilityIdentifier("chat.missionScheduleButton")
                     }
 
                     Text(mission)
@@ -1520,7 +1511,6 @@ struct ChatView: View {
                         .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
                 )
                 .xrayId("chat.missionCard")
-                .accessibilityIdentifier("chat.missionCard")
             } else {
                 HStack(spacing: 10) {
                     Label("No mission yet", systemImage: "scope")
@@ -1533,7 +1523,6 @@ struct ChatView: View {
                         .buttonStyle(.borderless)
                         .font(caption2Font)
                         .xrayId("chat.missionAddButton")
-                        .accessibilityIdentifier("chat.missionAddButton")
 
                     Button("Schedule") {
                         scheduleDraft = makeScheduleDraft(from: latestUserChatMessage)
@@ -1542,12 +1531,10 @@ struct ChatView: View {
                     .buttonStyle(.borderless)
                     .font(caption2Font)
                     .xrayId("chat.missionScheduleButton")
-                    .accessibilityIdentifier("chat.missionScheduleButton")
                 }
                 .padding(12)
                 .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
                 .xrayId("chat.missionCard")
-                .accessibilityIdentifier("chat.missionCard")
             }
         }
     }
@@ -1624,7 +1611,6 @@ struct ChatView: View {
                 Label("Schedule This Mission", systemImage: "clock.badge")
             }
             .xrayId("chat.moreOptions.scheduleMission")
-            .accessibilityIdentifier("chat.moreOptions.scheduleMission")
             .accessibilityLabel("Schedule This Mission")
 
             Button { duplicateConversation(convo) } label: {
@@ -1727,7 +1713,6 @@ struct ChatView: View {
         .menuStyle(.borderlessButton)
         .fixedSize()
         .xrayId("chat.sessionMenu")
-        .accessibilityIdentifier("chat.sessionMenu")
         .accessibilityLabel("Session menu")
     }
 
@@ -1760,7 +1745,6 @@ struct ChatView: View {
             .buttonStyle(.plain)
             .help(isAutonomousModeEnabled ? "Switch this thread back to interactive mode" : "Switch this thread to autonomous mode")
             .xrayId("chat.executionModeToggle")
-            .accessibilityIdentifier("chat.executionModeToggle")
             .accessibilityLabel(isAutonomousModeEnabled ? "Switch thread to interactive mode" : "Switch thread to autonomous mode")
         }
     }
@@ -1804,7 +1788,6 @@ struct ChatView: View {
         }
         .fixedSize()
         .xrayId("chat.groupSettingsMenu")
-        .accessibilityIdentifier("chat.groupSettingsMenu")
         .accessibilityLabel("Group settings")
     }
 
@@ -1988,7 +1971,6 @@ struct ChatView: View {
                     .padding(.bottom, 16)
                     .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
                     .xrayId("chat.jumpToLatestButton")
-                    .accessibilityIdentifier("chat.jumpToLatestButton")
                     .accessibilityLabel("Jump to latest message")
                     .help("Jump to latest message")
                 }
@@ -2319,7 +2301,6 @@ struct ChatView: View {
                 .fixedSize()
                 .disabled(isProcessing)
                 .xrayId("chat.toolsMenu")
-                .accessibilityIdentifier("chat.toolsMenu")
                 .accessibilityLabel("Tools")
 
                 Button {

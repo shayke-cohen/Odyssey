@@ -123,7 +123,7 @@ struct PresenceDot: View {
             .fill(color)
             .frame(width: 8, height: 8)
             .overlay(Circle().stroke(Color(NSColor.windowBackgroundColor), lineWidth: 1.5))
-            .accessibilityIdentifier("agentActivityBar.presenceDot.\(id)")
+            .stableXrayId("agentActivityBar.presenceDot.\(id)")
             .accessibilityLabel("Presence: \(status.rawValue)")
     }
 }

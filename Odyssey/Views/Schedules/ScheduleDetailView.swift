@@ -42,10 +42,10 @@ struct ScheduleDetailView: View {
                 .padding(24)
             }
             .background(Color(nsColor: .controlBackgroundColor))
-            .accessibilityIdentifier("scheduleDetail.scrollView")
+            .stableXrayId("scheduleDetail.scrollView")
         } else {
             ContentUnavailableView("Select a schedule", systemImage: "clock.badge")
-                .accessibilityIdentifier("scheduleDetail.emptyState")
+                .stableXrayId("scheduleDetail.emptyState")
         }
     }
 
@@ -70,27 +70,27 @@ struct ScheduleDetailView: View {
                     appState.runScheduledMissionNow(schedule.id, windowState: windowState)
                 }
                 .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("scheduleDetail.runNowButton")
+                .stableXrayId("scheduleDetail.runNowButton")
 
                 Button(schedule.isEnabled ? "Pause" : "Enable") {
                     schedule.isEnabled.toggle()
                     appState.syncScheduledMission(schedule)
                 }
                 .buttonStyle(.bordered)
-                .accessibilityIdentifier("scheduleDetail.enableToggleButton")
+                .stableXrayId("scheduleDetail.enableToggleButton")
 
                 Button("Edit") {
                     onEdit(schedule)
                 }
                 .buttonStyle(.bordered)
-                .accessibilityIdentifier("scheduleDetail.editButton")
+                .stableXrayId("scheduleDetail.editButton")
 
                 if let lastConversation {
                     Button("Open Last Conversation") {
                         windowState.selectedConversationId = lastConversation.id
                     }
                     .buttonStyle(.bordered)
-                    .accessibilityIdentifier("scheduleDetail.openConversationButton")
+                    .stableXrayId("scheduleDetail.openConversationButton")
                 }
 
                 Menu {
@@ -99,7 +99,7 @@ struct ScheduleDetailView: View {
                 } label: {
                     Label("More", systemImage: "ellipsis")
                 }
-                .accessibilityIdentifier("scheduleDetail.moreMenu")
+                .stableXrayId("scheduleDetail.moreMenu")
             }
 
             HStack(spacing: 20) {
@@ -110,7 +110,7 @@ struct ScheduleDetailView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .accessibilityIdentifier("scheduleDetail.header")
+        .stableXrayId("scheduleDetail.header")
     }
 
     @ViewBuilder
@@ -120,7 +120,7 @@ struct ScheduleDetailView: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .accessibilityIdentifier("scheduleDetail.missionCard")
+        .stableXrayId("scheduleDetail.missionCard")
     }
 
     @ViewBuilder
@@ -138,12 +138,12 @@ struct ScheduleDetailView: View {
                         windowState.selectedConversationId = lastConversation.id
                     }
                     .buttonStyle(.link)
-                    .accessibilityIdentifier("scheduleDetail.linkedConversationButton")
+                    .stableXrayId("scheduleDetail.linkedConversationButton")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .accessibilityIdentifier("scheduleDetail.settingsCard")
+        .stableXrayId("scheduleDetail.settingsCard")
     }
 
     @ViewBuilder
@@ -181,7 +181,7 @@ struct ScheduleDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .accessibilityIdentifier("scheduleDetail.historyCard")
+        .stableXrayId("scheduleDetail.historyCard")
     }
 
     private func targetName(for schedule: ScheduledMission) -> String {

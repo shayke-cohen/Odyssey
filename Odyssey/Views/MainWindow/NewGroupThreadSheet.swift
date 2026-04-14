@@ -221,7 +221,6 @@ struct NewGroupThreadSheet: View {
         }
         .buttonStyle(.plain)
         .xrayId("newGroupThread.groupCard.\(group.id.uuidString)")
-        .accessibilityIdentifier("newGroupThread.groupCard.\(group.id.uuidString)")
         .accessibilityLabel(group.name)
     }
 
@@ -382,7 +381,6 @@ struct NewGroupThreadSheet: View {
         }
         .buttonStyle(.plain)
         .xrayId("newGroupThread.modeCard.\(mode.rawValue)")
-        .accessibilityIdentifier("newGroupThread.modeCard.\(mode.rawValue)")
         .accessibilityLabel(title)
     }
 

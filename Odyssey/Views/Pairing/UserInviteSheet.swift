@@ -20,7 +20,7 @@ struct UserInviteSheet: View {
                 Text(matrixUserId)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                    .accessibilityIdentifier("userInvite.matrixIdLabel")
+                    .stableXrayId("userInvite.matrixIdLabel")
 
                 if let qr = qrImage {
                     qr
@@ -28,7 +28,7 @@ struct UserInviteSheet: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 200, height: 200)
-                        .accessibilityIdentifier("userInvite.qrCode")
+                        .stableXrayId("userInvite.qrCode")
                         .accessibilityLabel("QR code for your Matrix profile invite")
                 } else if let error = errorMessage {
                     Text(error).foregroundColor(.red)
@@ -44,7 +44,7 @@ struct UserInviteSheet: View {
                             forType: .string
                         )
                     }
-                    .accessibilityIdentifier("userInvite.copyButton")
+                    .stableXrayId("userInvite.copyButton")
                     .accessibilityLabel("Copy invite link to clipboard")
                 }
             }
@@ -52,7 +52,7 @@ struct UserInviteSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
-                        .accessibilityIdentifier("userInvite.doneButton")
+                        .stableXrayId("userInvite.doneButton")
                 }
             }
         }

@@ -238,7 +238,7 @@ struct WelcomeView: View {
         }
         .buttonStyle(.plain)
         .appXrayTapProxy(id: identifier, action: action)
-        .accessibilityIdentifier(identifier)
+        .stableXrayId(identifier)
         .accessibilityLabel(title)
     }
 
@@ -440,7 +440,6 @@ struct ChangeProjectSheet: View {
                                 }
                                 .buttonStyle(.plain)
                                 .xrayId("changeProject.cancelCloneButton")
-                                .accessibilityIdentifier("changeProject.cancelCloneButton")
                                 .accessibilityLabel("Cancel clone")
                             }
                             .padding(10)

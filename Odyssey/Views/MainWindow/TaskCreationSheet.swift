@@ -22,7 +22,7 @@ struct TaskCreationSheet: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                    .accessibilityIdentifier("taskCreation.cancelButton")
+                    .stableXrayId("taskCreation.cancelButton")
             }
             .padding()
 
@@ -32,13 +32,13 @@ struct TaskCreationSheet: View {
             Form {
                 TextField("Title", text: $title)
                     .multilineTextAlignment(.leading)
-                    .accessibilityIdentifier("taskCreation.titleField")
+                    .stableXrayId("taskCreation.titleField")
 
                 Section("Description") {
                     TextEditor(text: $taskDescription)
                         .frame(minHeight: 80)
                         .font(.body)
-                        .accessibilityIdentifier("taskCreation.descriptionEditor")
+                        .stableXrayId("taskCreation.descriptionEditor")
                 }
 
                 Picker("Priority", selection: $priority) {
@@ -47,16 +47,16 @@ struct TaskCreationSheet: View {
                     Text("High").tag(TaskPriority.high)
                     Text("Critical").tag(TaskPriority.critical)
                 }
-                .accessibilityIdentifier("taskCreation.priorityPicker")
+                .stableXrayId("taskCreation.priorityPicker")
 
                 Section("Labels") {
                     TextField("e.g. ui, backend, auth", text: $labelsText)
                         .multilineTextAlignment(.leading)
-                        .accessibilityIdentifier("taskCreation.labelsField")
+                        .stableXrayId("taskCreation.labelsField")
                 }
 
                 Toggle("Start immediately with Orchestrator", isOn: $startImmediately)
-                    .accessibilityIdentifier("taskCreation.startToggle")
+                    .stableXrayId("taskCreation.startToggle")
             }
             .formStyle(.grouped)
             .padding(.horizontal)
@@ -96,7 +96,7 @@ struct TaskCreationSheet: View {
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-                .accessibilityIdentifier("taskCreation.createButton")
+                .stableXrayId("taskCreation.createButton")
             }
             .padding()
         }

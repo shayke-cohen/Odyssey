@@ -46,7 +46,7 @@ struct GroupSidebarRowView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar.groupRow.\(group.id.uuidString).chatRow.\(conv.id.uuidString)")
+                .stableXrayId("sidebar.groupRow.\(group.id.uuidString).chatRow.\(conv.id.uuidString)")
             }
         } label: {
             HStack(spacing: 8) {
@@ -70,7 +70,7 @@ struct GroupSidebarRowView: View {
                     Circle()
                         .fill(Color.blue)
                         .frame(width: 6, height: 6)
-                        .accessibilityIdentifier("sidebar.groupRow.\(group.id.uuidString).activityDot")
+                        .stableXrayId("sidebar.groupRow.\(group.id.uuidString).activityDot")
                 }
 
                 if !conversations.isEmpty {
@@ -91,7 +91,7 @@ struct GroupSidebarRowView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Start autonomous mission")
-                    .accessibilityIdentifier("sidebar.groupRow.\(group.id.uuidString).autonomousButton")
+                    .stableXrayId("sidebar.groupRow.\(group.id.uuidString).autonomousButton")
                 }
 
                 Button {
@@ -102,9 +102,9 @@ struct GroupSidebarRowView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar.groupRow.\(group.id.uuidString).newChatButton")
+                .stableXrayId("sidebar.groupRow.\(group.id.uuidString).newChatButton")
             }
-            .accessibilityIdentifier("sidebar.groupRow.\(group.id.uuidString)")
+            .stableXrayId("sidebar.groupRow.\(group.id.uuidString)")
             .padding(.vertical, 2)
             .padding(.horizontal, 4)
             .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)

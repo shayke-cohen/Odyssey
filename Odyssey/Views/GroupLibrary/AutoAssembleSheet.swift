@@ -33,7 +33,7 @@ struct AutoAssembleSheet: View {
                         TextEditor(text: $taskDescription)
                             .font(.body)
                             .frame(minHeight: 100)
-                            .accessibilityIdentifier("autoAssemble.taskField")
+                            .stableXrayId("autoAssemble.taskField")
                         Text("Describe the task and the system will recommend the best team.")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
@@ -54,7 +54,7 @@ struct AutoAssembleSheet: View {
                     .buttonStyle(.borderedProminent)
                     .tint(.purple)
                     .disabled(taskDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .accessibilityIdentifier("autoAssemble.assembleButton")
+                    .stableXrayId("autoAssemble.assembleButton")
                 }
                 .padding()
             } else if let rec = recommendation {
@@ -63,7 +63,7 @@ struct AutoAssembleSheet: View {
                     Section("Recommended Team") {
                         TextField("Group Name", text: $groupName)
                             .font(.headline)
-                            .accessibilityIdentifier("autoAssemble.nameField")
+                            .stableXrayId("autoAssemble.nameField")
                     }
 
                     Section("Agents") {
@@ -114,7 +114,7 @@ struct AutoAssembleSheet: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(selectedAgentIds.isEmpty)
-                    .accessibilityIdentifier("autoAssemble.createButton")
+                    .stableXrayId("autoAssemble.createButton")
                 }
                 .padding()
             }

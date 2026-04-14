@@ -1142,7 +1142,6 @@ private struct BlackboardInspectorPanel: View {
                     .padding(.vertical, 4)
                 }
                 .xrayId("inspector.blackboard.entryList")
-                .accessibilityIdentifier("inspector.blackboard.entryList")
             }
         }
         .padding()
@@ -1163,7 +1162,6 @@ private struct BlackboardInspectorPanel: View {
                 TextField("Search keys or values", text: $searchText)
                     .textFieldStyle(.roundedBorder)
                     .xrayId("inspector.blackboard.searchField")
-                    .accessibilityIdentifier("inspector.blackboard.searchField")
 
                 Button {
                     Task { await loadEntries() }
@@ -1173,7 +1171,6 @@ private struct BlackboardInspectorPanel: View {
                 .buttonStyle(.borderless)
                 .help("Refresh blackboard")
                 .xrayId("inspector.blackboard.refreshButton")
-                .accessibilityIdentifier("inspector.blackboard.refreshButton")
                 .accessibilityLabel("Refresh blackboard")
                 .disabled(isLoading)
             }
@@ -1186,7 +1183,6 @@ private struct BlackboardInspectorPanel: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .xrayId("inspector.blackboard.filterPicker")
-            .accessibilityIdentifier("inspector.blackboard.filterPicker")
         }
     }
 
@@ -1349,7 +1345,6 @@ private struct BlackboardEntryCard: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .xrayId("inspector.blackboard.copyKey.\(accessibilitySlug)")
-                        .accessibilityIdentifier("inspector.blackboard.copyKey.\(accessibilitySlug)")
 
                         Button("Copy Value") {
                             copy(entry.value)
@@ -1357,7 +1352,6 @@ private struct BlackboardEntryCard: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .xrayId("inspector.blackboard.copyValue.\(accessibilitySlug)")
-                        .accessibilityIdentifier("inspector.blackboard.copyValue.\(accessibilitySlug)")
 
                         Spacer()
                     }
@@ -1371,7 +1365,6 @@ private struct BlackboardEntryCard: View {
                 .stroke(.quaternary, lineWidth: 0.8)
         )
         .xrayId("inspector.blackboard.entryRow.\(accessibilitySlug)")
-        .accessibilityIdentifier("inspector.blackboard.entryRow.\(accessibilitySlug)")
     }
 
     private func copy(_ string: String) {
@@ -1444,7 +1437,7 @@ private struct InspectorTabBar: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("inspector.tab.\(tab.id.lowercased())")
+                    .stableXrayId("inspector.tab.\(tab.id.lowercased())")
                 }
             }
             .padding(4)

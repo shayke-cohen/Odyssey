@@ -214,6 +214,26 @@ See `TESTING.md` for the complete testing guide, including:
 - Argus macOS E2E examples and YAML regression test format
 - Dynamic identifier patterns and known gaps
 
+### Testing Tool Selection
+
+**Use AppXray for the macOS app.** AppXray connects directly to the running Odyssey process via its built-in WebSocket SDK (port 19480), queries the live accessibility tree, and interacts via `@testId` selectors matching `.accessibilityIdentifier()` annotations. It is the correct tool for testing the macOS SwiftUI app.
+
+**Use Argus for iOS and web.** Argus allocates simulators/devices, drives them externally, and is designed for mobile and browser testing. It is NOT preferred for the Odyssey macOS app.
+
+**Summary:**
+| Platform | Tool |
+|---|---|
+| macOS app (Odyssey) | **AppXray** |
+| iOS app (OdysseyiOS) | Argus (`device({ action: "allocate", platform: "ios" })`) |
+| Web / browser | Argus |
+
+**AppXray workflow for the macOS app:**
+1. `mcp__appxray__session` with `action: "discover"` — finds the running Odyssey process on port 19480
+2. `mcp__appxray__session` with `action: "connect"` — connects to the session
+3. `mcp__appxray__inspect` — gets screenshot + accessibility tree
+4. `mcp__appxray__act` — clicks, types, navigates using `@testId("...")` selectors
+5. `mcp__appxray__assert` — verifies element state
+
 ## Common Tasks
 
 ### Adding a new SwiftData model

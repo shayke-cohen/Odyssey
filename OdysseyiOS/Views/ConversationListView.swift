@@ -17,7 +17,7 @@ struct ConversationListView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if appState.conversations.isEmpty {
                     ContentUnavailableView(

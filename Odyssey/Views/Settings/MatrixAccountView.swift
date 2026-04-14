@@ -28,7 +28,7 @@ struct MatrixAccountView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Matrix Account")
-        .accessibilityIdentifier("settings.federation.matrixAccount")
+        .stableXrayId("settings.federation.matrixAccount")
         .onAppear { loadCurrentCredentials() }
         .sheet(isPresented: $showShareProfile) {
             if let creds = credentials {
@@ -42,11 +42,11 @@ struct MatrixAccountView: View {
     private var signInSection: some View {
         Section("Matrix Account") {
             TextField("Homeserver URL", text: $homeserverText)
-                .accessibilityIdentifier("settings.federation.homeserverField")
+                .stableXrayId("settings.federation.homeserverField")
             TextField("Username", text: $username)
-                .accessibilityIdentifier("settings.federation.usernameField")
+                .stableXrayId("settings.federation.usernameField")
             SecureField("Password", text: $password)
-                .accessibilityIdentifier("settings.federation.passwordField")
+                .stableXrayId("settings.federation.passwordField")
 
             if let error = errorMessage {
                 Text(error).foregroundColor(.red)
@@ -58,12 +58,12 @@ struct MatrixAccountView: View {
             HStack {
                 Button("Sign In") { Task { await signIn() } }
                     .disabled(isSigningIn || username.isEmpty || password.isEmpty)
-                    .accessibilityIdentifier("settings.federation.signInButton")
+                    .stableXrayId("settings.federation.signInButton")
                     .accessibilityLabel("Sign in to Matrix")
 
                 Button("Create Account") { Task { await register() } }
                     .disabled(isRegistering || username.isEmpty || password.isEmpty)
-                    .accessibilityIdentifier("settings.federation.createAccountButton")
+                    .stableXrayId("settings.federation.createAccountButton")
                     .accessibilityLabel("Create Matrix account")
             }
             .buttonStyle(.borderedProminent)
@@ -76,32 +76,32 @@ struct MatrixAccountView: View {
     private func connectedSection(_ creds: MatrixCredentials) -> some View {
         Section("Identity") {
             LabeledContent("Matrix ID", value: creds.userId)
-                .accessibilityIdentifier("settings.federation.matrixIdLabel")
+                .stableXrayId("settings.federation.matrixIdLabel")
             LabeledContent("Device ID", value: creds.deviceId)
-                .accessibilityIdentifier("settings.federation.deviceIdLabel")
+                .stableXrayId("settings.federation.deviceIdLabel")
             LabeledContent("Homeserver", value: creds.homeserver.host ?? creds.homeserver.absoluteString)
-                .accessibilityIdentifier("settings.federation.homeserverLabel")
+                .stableXrayId("settings.federation.homeserverLabel")
         }
 
         Section("Sync") {
             LabeledContent("Status", value: syncStatus)
-                .accessibilityIdentifier("settings.federation.syncStatusLabel")
+                .stableXrayId("settings.federation.syncStatusLabel")
             if let date = lastSyncDate {
                 LabeledContent("Last Sync", value: date.formatted(.relative(presentation: .named)))
-                    .accessibilityIdentifier("settings.federation.lastSyncLabel")
+                    .stableXrayId("settings.federation.lastSyncLabel")
             }
             Button("Reset Sync Token") { resetSync() }
-                .accessibilityIdentifier("settings.federation.resetSyncButton")
+                .stableXrayId("settings.federation.resetSyncButton")
                 .accessibilityLabel("Reset Matrix sync token")
         }
 
         Section {
             Button("Share Profile") { showShareProfile = true }
-                .accessibilityIdentifier("settings.federation.shareProfileButton")
+                .stableXrayId("settings.federation.shareProfileButton")
                 .accessibilityLabel("Share your Matrix profile as QR code")
 
             Button("Sign Out", role: .destructive) { signOut() }
-                .accessibilityIdentifier("settings.federation.signOutButton")
+                .stableXrayId("settings.federation.signOutButton")
                 .accessibilityLabel("Sign out of Matrix")
         }
     }

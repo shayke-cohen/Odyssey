@@ -391,7 +391,6 @@ struct SidebarView: View {
                 .menuIndicator(.hidden)
                 .help("Create a new thread, group thread, or quick chat")
                 .xrayId("sidebar.utility.newMenu")
-                .accessibilityIdentifier("sidebar.utility.newMenu")
                 .accessibilityLabel("New")
             }
 
@@ -1194,7 +1193,7 @@ struct SidebarView: View {
                     }
                 }
             }
-            .accessibilityIdentifier("sidebar.tasksSection")
+            .stableXrayId("sidebar.tasksSection")
         }
     }
 
@@ -1241,7 +1240,7 @@ struct SidebarView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.primary.opacity(0.05), lineWidth: 1)
         )
-        .accessibilityIdentifier("sidebar.taskRow.\(task.id.uuidString)")
+        .stableXrayId("sidebar.taskRow.\(task.id.uuidString)")
         .contextMenu { taskContextMenu(for: task) }
     }
 
@@ -1446,12 +1445,11 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.plain)
                 .xrayId("sidebar.groupsAddButton")
-                .accessibilityIdentifier("sidebar.groupsAddButton")
                 .accessibilityLabel("Add group")
                 .contentShape(Rectangle())
             }
         }
-        .accessibilityIdentifier("sidebar.groupsSection")
+        .stableXrayId("sidebar.groupsSection")
     }
 
     // MARK: - Agents Section
@@ -1503,7 +1501,7 @@ struct SidebarView: View {
                 Circle()
                     .fill(Color.blue)
                     .frame(width: 8, height: 8)
-                    .accessibilityIdentifier("sidebar.unreadBadge.\(convo.id.uuidString)")
+                    .stableXrayId("sidebar.unreadBadge.\(convo.id.uuidString)")
             }
             sidebarSymbolBadge(
                 symbol: conversationIconDescriptor(convo).symbol,

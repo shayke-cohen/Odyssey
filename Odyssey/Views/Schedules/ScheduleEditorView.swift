@@ -82,7 +82,7 @@ struct ScheduleEditorView: View {
                 ) {
                     TextField("Hourly bug triage", text: $draft.name)
                         .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("scheduleEditor.nameField")
+                        .stableXrayId("scheduleEditor.nameField")
                         .help("A short, descriptive title for this recurring mission.")
                 }
 
@@ -94,13 +94,13 @@ struct ScheduleEditorView: View {
                         HStack(spacing: 10) {
                             TextField("/Users/you/project", text: $draft.projectDirectory)
                                 .textFieldStyle(.roundedBorder)
-                                .accessibilityIdentifier("scheduleEditor.projectDirectoryField")
+                                .stableXrayId("scheduleEditor.projectDirectoryField")
                                 .help("This path is used as the working directory and is also available in the prompt as {{projectDirectory}}.")
 
                             Button("Browse…") {
                                 browseProjectDirectory()
                             }
-                            .accessibilityIdentifier("scheduleEditor.projectDirectoryBrowseButton")
+                            .stableXrayId("scheduleEditor.projectDirectoryBrowseButton")
                             .help("Pick a folder from Finder.")
                         }
 
@@ -108,13 +108,13 @@ struct ScheduleEditorView: View {
                             Label("Choose the repository or workspace folder this mission should use.", systemImage: "folder.badge.questionmark")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .accessibilityIdentifier("scheduleEditor.projectDirectoryHint")
+                                .stableXrayId("scheduleEditor.projectDirectoryHint")
                         } else {
                             Label(abbreviatedPath(draft.projectDirectory), systemImage: "folder")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
-                                .accessibilityIdentifier("scheduleEditor.projectDirectorySummary")
+                                .stableXrayId("scheduleEditor.projectDirectorySummary")
                         }
                     }
                 }
@@ -139,7 +139,7 @@ struct ScheduleEditorView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .accessibilityIdentifier("scheduleEditor.targetKindPicker")
+                    .stableXrayId("scheduleEditor.targetKindPicker")
                     .help("Agent starts a single agent, Group runs a team, and Conversation sends into an existing thread.")
                 }
 
@@ -155,7 +155,7 @@ struct ScheduleEditorView: View {
                                 Text(agent.name).tag(UUID?.some(agent.id))
                             }
                         }
-                        .accessibilityIdentifier("scheduleEditor.agentPicker")
+                        .stableXrayId("scheduleEditor.agentPicker")
                         .help("Pick the agent that should handle this mission.")
                     }
 
@@ -171,14 +171,14 @@ struct ScheduleEditorView: View {
                                     Text(group.name).tag(UUID?.some(group.id))
                                 }
                             }
-                            .accessibilityIdentifier("scheduleEditor.groupPicker")
+                            .stableXrayId("scheduleEditor.groupPicker")
                             .help("Pick the group that should run this scheduled mission.")
 
                             if let groupId = draft.targetGroupId,
                                let group = groups.first(where: { $0.id == groupId }),
                                group.autonomousCapable {
                                 Toggle("Use autonomous mode", isOn: $draft.usesAutonomousMode)
-                                    .accessibilityIdentifier("scheduleEditor.autonomousToggle")
+                                    .stableXrayId("scheduleEditor.autonomousToggle")
                                     .help("When enabled, the group can coordinate autonomously instead of staying in a standard group chat flow.")
 
                                 Text("Autonomous mode lets this group self-coordinate if the selected group supports it.")
@@ -220,7 +220,7 @@ struct ScheduleEditorView: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
                         )
-                        .accessibilityIdentifier("scheduleEditor.promptField")
+                        .stableXrayId("scheduleEditor.promptField")
                         .help("Write the recurring mission prompt. You can include template variables listed below.")
                 }
 
@@ -239,7 +239,7 @@ struct ScheduleEditorView: View {
                         ScheduleEditorTokenCard(token: "{{runCount}}", detail: "How many times this schedule has run")
                         ScheduleEditorTokenCard(token: "{{projectDirectory}}", detail: "The selected working folder path")
                     }
-                    .accessibilityIdentifier("scheduleEditor.promptTokens")
+                    .stableXrayId("scheduleEditor.promptTokens")
                 }
             }
         }
@@ -263,7 +263,7 @@ struct ScheduleEditorView: View {
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
-                        .accessibilityIdentifier("scheduleEditor.runModePicker")
+                        .stableXrayId("scheduleEditor.runModePicker")
                         .help("Fresh conversation creates a new thread each run. Reuse conversation appends to an existing thread.")
 
                         Text(runModeHelpText)
@@ -306,7 +306,7 @@ struct ScheduleEditorView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .accessibilityIdentifier("scheduleEditor.cadenceKindPicker")
+                .stableXrayId("scheduleEditor.cadenceKindPicker")
                 .help("Choose whether the schedule repeats every few hours or at a specific time of day.")
 
                 Text(cadenceHelpText)
@@ -336,7 +336,7 @@ struct ScheduleEditorView: View {
                 Text(draft.intervalHours == 1 ? "Every hour" : "Every \(draft.intervalHours) hours")
                     .font(.body.weight(.medium))
             }
-            .accessibilityIdentifier("scheduleEditor.intervalStepper")
+            .stableXrayId("scheduleEditor.intervalStepper")
             .help("Controls how many hours pass between runs.")
         }
     }
@@ -348,10 +348,10 @@ struct ScheduleEditorView: View {
         ) {
             HStack(alignment: .top, spacing: 14) {
                 Stepper("Hour: \(draft.localHour)", value: $draft.localHour, in: 0...23)
-                    .accessibilityIdentifier("scheduleEditor.hourStepper")
+                    .stableXrayId("scheduleEditor.hourStepper")
                     .help("The local hour for the scheduled run.")
                 Stepper("Minute: \(draft.localMinute)", value: $draft.localMinute, in: 0...59)
-                    .accessibilityIdentifier("scheduleEditor.minuteStepper")
+                    .stableXrayId("scheduleEditor.minuteStepper")
                     .help("The local minute for the scheduled run.")
             }
         }
@@ -383,7 +383,7 @@ struct ScheduleEditorView: View {
         }
         .buttonStyle(.borderedProminent)
         .tint(isSelected ? .accentColor : Color.secondary.opacity(0.25))
-        .accessibilityIdentifier("scheduleEditor.day.\(day.rawValue)")
+        .stableXrayId("scheduleEditor.day.\(day.rawValue)")
         .help("Toggle \(day.displayName).")
     }
 
@@ -400,7 +400,7 @@ struct ScheduleEditorView: View {
                     Toggle("Enabled", isOn: $draft.isEnabled)
                         .labelsHidden()
                         .toggleStyle(.switch)
-                        .accessibilityIdentifier("scheduleEditor.enabledToggle")
+                        .stableXrayId("scheduleEditor.enabledToggle")
                         .help("When disabled, the schedule stays saved but will not execute.")
                 }
 
@@ -412,7 +412,7 @@ struct ScheduleEditorView: View {
                         Toggle("Run while app is closed", isOn: $draft.runWhenAppClosed)
                             .labelsHidden()
                             .toggleStyle(.switch)
-                            .accessibilityIdentifier("scheduleEditor.runWhenClosedToggle")
+                            .stableXrayId("scheduleEditor.runWhenClosedToggle")
                             .help("Lets Odyssey install a local LaunchAgent so this schedule can wake the app when needed.")
 
                         Text("This only works on the current Mac and still uses the target agent or group’s existing permissions.")
@@ -431,7 +431,7 @@ struct ScheduleEditorView: View {
                     .font(.caption)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("scheduleEditor.validationError")
+                    .stableXrayId("scheduleEditor.validationError")
             } else {
                 Text("Schedules save immediately. Enabled schedules become eligible to run using the cadence and reliability settings above.")
                     .font(.caption)
@@ -442,7 +442,7 @@ struct ScheduleEditorView: View {
             HStack {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.escape)
-                    .accessibilityIdentifier("scheduleEditor.cancelButton")
+                    .stableXrayId("scheduleEditor.cancelButton")
 
                 Spacer()
 
@@ -452,7 +452,7 @@ struct ScheduleEditorView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(draft.validationError != nil)
                 .keyboardShortcut(.return)
-                .accessibilityIdentifier("scheduleEditor.saveButton")
+                .stableXrayId("scheduleEditor.saveButton")
                 .help("Save this schedule and apply the updated configuration.")
             }
         }
@@ -480,14 +480,14 @@ struct ScheduleEditorView: View {
                             .tag(UUID?.some(conversation.id))
                     }
                 }
-                .accessibilityIdentifier("scheduleEditor.conversationPicker")
+                .stableXrayId("scheduleEditor.conversationPicker")
                 .help("Pick the conversation that should receive scheduled follow-up messages.")
 
                 if draft.targetConversationId == nil {
                     Text("Choose an existing thread to preserve context between scheduled runs.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("scheduleEditor.conversationHint")
+                        .stableXrayId("scheduleEditor.conversationHint")
                 }
             }
         }

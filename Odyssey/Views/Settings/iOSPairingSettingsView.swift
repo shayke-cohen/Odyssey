@@ -38,7 +38,7 @@ struct iOSPairingSettingsView: View {
         }
         .onAppear { startRefreshCycle() }
         .onDisappear { refreshTimer?.invalidate() }
-        .accessibilityIdentifier("settings.iosPairing.root")
+        .stableXrayId("settings.iosPairing.root")
     }
 
     // MARK: - Allow Toggle
@@ -51,12 +51,12 @@ struct iOSPairingSettingsView: View {
                 .onChange(of: allowIOSConnections) { _, newValue in
                     handleAllowToggle(newValue)
                 }
-                .accessibilityIdentifier("settings.iosPairing.allowToggle")
+                .stableXrayId("settings.iosPairing.allowToggle")
             if allowIOSConnections {
                 Text("The sidecar will accept connections from 0.0.0.0 (all interfaces). Ensure your macOS firewall permits incoming TCP connections on port 9849.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("settings.iosPairing.firewallNote")
+                    .stableXrayId("settings.iosPairing.firewallNote")
             }
         }
     }
@@ -74,18 +74,18 @@ struct iOSPairingSettingsView: View {
             if isGenerating {
                 ProgressView()
                     .frame(width: 300, height: 300)
-                    .accessibilityIdentifier("settings.iosPairing.qrLoadingIndicator")
+                    .stableXrayId("settings.iosPairing.qrLoadingIndicator")
             } else if let cgImage = qrImage {
                 Image(decorative: cgImage, scale: 1.0)
                     .resizable()
                     .interpolation(.none)
                     .frame(width: 300, height: 300)
-                    .accessibilityIdentifier("settings.iosPairing.qrCodeImage")
+                    .stableXrayId("settings.iosPairing.qrCodeImage")
                     .accessibilityLabel("Pairing QR Code")
             } else if let err = generateError {
                 Text("Failed to generate invite: \(err)")
                     .foregroundStyle(.red)
-                    .accessibilityIdentifier("settings.iosPairing.qrError")
+                    .stableXrayId("settings.iosPairing.qrError")
             }
 
             HStack(spacing: 12) {
@@ -93,7 +93,7 @@ struct iOSPairingSettingsView: View {
                     Task { await generateNewInvite() }
                 }
                 .buttonStyle(.bordered)
-                .accessibilityIdentifier("settings.iosPairing.refreshQRButton")
+                .stableXrayId("settings.iosPairing.refreshQRButton")
                 .accessibilityLabel("Refresh QR Code")
 
                 Button(copyConfirmation ? "Copied!" : "Copy Invite Link") {
@@ -101,7 +101,7 @@ struct iOSPairingSettingsView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(currentPayload == nil)
-                .accessibilityIdentifier("settings.iosPairing.copyLinkButton")
+                .stableXrayId("settings.iosPairing.copyLinkButton")
             }
         }
     }
@@ -115,7 +115,7 @@ struct iOSPairingSettingsView: View {
             if deviceInvites.isEmpty {
                 Text("No paired devices yet.")
                     .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("settings.iosPairing.emptyDeviceList")
+                    .stableXrayId("settings.iosPairing.emptyDeviceList")
             } else {
                 ForEach(deviceInvites) { invite in
                     HStack {
@@ -132,11 +132,11 @@ struct iOSPairingSettingsView: View {
                         }
                         .buttonStyle(.borderless)
                         .foregroundStyle(.red)
-                        .accessibilityIdentifier("settings.iosPairing.revokeButton.\(invite.id.uuidString)")
+                        .stableXrayId("settings.iosPairing.revokeButton.\(invite.id.uuidString)")
                         .accessibilityLabel("Revoke pairing for \(invite.recipientLabel ?? "device")")
                     }
                     .padding(.vertical, 4)
-                    .accessibilityIdentifier("settings.iosPairing.deviceRow.\(invite.id.uuidString)")
+                    .stableXrayId("settings.iosPairing.deviceRow.\(invite.id.uuidString)")
                     Divider()
                 }
             }

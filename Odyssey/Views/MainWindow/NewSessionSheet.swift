@@ -542,7 +542,6 @@ struct NewSessionSheet: View {
                 }
                 .buttonStyle(.plain)
                 .xrayId("newSession.startKind.\(kind.rawValue)")
-                .accessibilityIdentifier("newSession.startKind.\(kind.rawValue)")
                 .accessibilityLabel(kind.title)
             }
         }
@@ -927,7 +926,6 @@ struct NewSessionSheet: View {
         }
         .animation(.easeInOut(duration: 0.18), value: showInlineOverrides)
         .xrayId("newSession.agentRow.\(agent.id.uuidString)")
-        .accessibilityIdentifier("newSession.agentRow.\(agent.id.uuidString)")
         .accessibilityLabel(agent.name)
     }
 
@@ -985,7 +983,6 @@ struct NewSessionSheet: View {
         }
         .animation(.easeInOut(duration: 0.18), value: showInlineOverrides)
         .xrayId("newSession.agentCard.\(agent.id.uuidString)")
-        .accessibilityIdentifier("newSession.agentCard.\(agent.id.uuidString)")
         .accessibilityLabel(agent.name)
     }
 
@@ -1044,7 +1041,6 @@ struct NewSessionSheet: View {
             }
         }
         .xrayId("newSession.groupRow.\(group.id.uuidString)")
-        .accessibilityIdentifier("newSession.groupRow.\(group.id.uuidString)")
         .accessibilityLabel(group.name)
     }
 
@@ -1098,7 +1094,6 @@ struct NewSessionSheet: View {
         }
         .buttonStyle(.plain)
         .xrayId("newSession.groupCard.\(group.id.uuidString)")
-        .accessibilityIdentifier("newSession.groupCard.\(group.id.uuidString)")
         .accessibilityLabel(group.name)
     }
 
@@ -1142,7 +1137,6 @@ struct NewSessionSheet: View {
         .background(Color.fromAgentColor(group.color).opacity(compact ? 0.08 : 0.06))
         .clipShape(RoundedRectangle(cornerRadius: compact ? 10 : 12))
         .xrayId("newSession.groupMembers.\(group.id.uuidString)")
-        .accessibilityIdentifier("newSession.groupMembers.\(group.id.uuidString)")
     }
 
     @ViewBuilder
@@ -1183,7 +1177,6 @@ struct NewSessionSheet: View {
             }
         }
         .xrayId("newSession.groupMember.\(group.id.uuidString).\(agent.id.uuidString)")
-        .accessibilityIdentifier("newSession.groupMember.\(group.id.uuidString).\(agent.id.uuidString)")
     }
 
     @ViewBuilder
@@ -1208,7 +1201,6 @@ struct NewSessionSheet: View {
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .xrayId("newSession.groupMember.\(group.id.uuidString).\(agent.id.uuidString)")
-        .accessibilityIdentifier("newSession.groupMember.\(group.id.uuidString).\(agent.id.uuidString)")
     }
 
     @ViewBuilder
@@ -1427,7 +1419,6 @@ struct NewSessionSheet: View {
         }
         .buttonStyle(.plain)
         .xrayId("newSession.modeCard.\(mode.rawValue)")
-        .accessibilityIdentifier("newSession.modeCard.\(mode.rawValue)")
         .accessibilityLabel(title)
     }
 

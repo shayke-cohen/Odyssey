@@ -60,7 +60,7 @@ struct GroupSummaryCard: View {
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(.quaternary))
-        .accessibilityIdentifier("groupSummaryCard")
+        .stableXrayId("groupSummaryCard")
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {

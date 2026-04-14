@@ -28,3 +28,7 @@ Dependencies/
 .claudestudio/
 
 .derived-run-appstart/
+
+# AppXray / Argus test artifacts
+tests/screenshots/
+tests/videos/

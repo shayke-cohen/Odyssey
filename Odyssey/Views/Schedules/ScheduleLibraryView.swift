@@ -38,7 +38,7 @@ struct ScheduleLibraryView: View {
                 if filteredSchedules.isEmpty {
                     ContentUnavailableView("No schedules for this project", systemImage: "clock.badge")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .accessibilityIdentifier("scheduleLibrary.emptyState")
+                        .stableXrayId("scheduleLibrary.emptyState")
                 } else {
                     List(filteredSchedules, selection: $selectedScheduleId) { schedule in
                         row(for: schedule)
@@ -64,7 +64,7 @@ struct ScheduleLibraryView: View {
                             }
                     }
                     .listStyle(.sidebar)
-                    .accessibilityIdentifier("scheduleLibrary.list")
+                    .stableXrayId("scheduleLibrary.list")
                     .onAppear {
                         if selectedScheduleId == nil {
                             selectedScheduleId = filteredSchedules.first?.id
@@ -116,17 +116,17 @@ struct ScheduleLibraryView: View {
                     Label("New Schedule", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("scheduleLibrary.newButton")
+                .stableXrayId("scheduleLibrary.newButton")
 
                 Button("Done") { dismiss() }
                     .keyboardShortcut(.escape)
-                    .accessibilityIdentifier("scheduleLibrary.doneButton")
+                    .stableXrayId("scheduleLibrary.doneButton")
             }
 
             HStack {
                 TextField("Search schedules...", text: $searchText)
                     .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("scheduleLibrary.searchField")
+                    .stableXrayId("scheduleLibrary.searchField")
 
                 Picker("Filter", selection: $filterEnabledOnly) {
                     Text("All").tag(false)
@@ -134,7 +134,7 @@ struct ScheduleLibraryView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 180)
-                .accessibilityIdentifier("scheduleLibrary.filterPicker")
+                .stableXrayId("scheduleLibrary.filterPicker")
             }
         }
         .padding()
@@ -161,7 +161,7 @@ struct ScheduleLibraryView: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 4)
-        .accessibilityIdentifier("scheduleLibrary.row.\(schedule.id.uuidString)")
+        .stableXrayId("scheduleLibrary.row.\(schedule.id.uuidString)")
     }
 
     private func openEditor(for schedule: ScheduledMission) {

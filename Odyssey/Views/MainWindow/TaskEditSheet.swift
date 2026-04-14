@@ -47,7 +47,7 @@ struct TaskEditSheet: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                    .accessibilityIdentifier("taskEdit.cancelButton")
+                    .stableXrayId("taskEdit.cancelButton")
             }
             .padding()
 
@@ -70,14 +70,14 @@ struct TaskEditSheet: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.blue)
-                            .accessibilityIdentifier("taskEdit.markReadyButton")
+                            .stableXrayId("taskEdit.markReadyButton")
 
                         case .ready:
                             Button("Move to Backlog") {
                                 status = .backlog
                             }
                             .buttonStyle(.bordered)
-                            .accessibilityIdentifier("taskEdit.moveBacklogButton")
+                            .stableXrayId("taskEdit.moveBacklogButton")
 
                         case .inProgress:
                             EmptyView()
@@ -105,7 +105,7 @@ struct TaskEditSheet: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.purple)
-                        .accessibilityIdentifier("taskEdit.runOrchestratorButton")
+                        .stableXrayId("taskEdit.runOrchestratorButton")
                     }
 
                     if let startedAt = task.startedAt {
@@ -133,18 +133,18 @@ struct TaskEditSheet: View {
                         }
                     }
                 }
-                .accessibilityIdentifier("taskEdit.statusSection")
+                .stableXrayId("taskEdit.statusSection")
 
                 // Editable fields — only for backlog/ready tasks
                 if isEditable {
                     TextField("Title", text: $title)
-                        .accessibilityIdentifier("taskEdit.titleField")
+                        .stableXrayId("taskEdit.titleField")
 
                     Section("Description") {
                         TextEditor(text: $taskDescription)
                             .frame(minHeight: 80)
                             .font(.body)
-                            .accessibilityIdentifier("taskEdit.descriptionEditor")
+                            .stableXrayId("taskEdit.descriptionEditor")
                     }
 
                     Picker("Priority", selection: $priority) {
@@ -153,10 +153,10 @@ struct TaskEditSheet: View {
                         Text("High").tag(TaskPriority.high)
                         Text("Critical").tag(TaskPriority.critical)
                     }
-                    .accessibilityIdentifier("taskEdit.priorityPicker")
+                    .stableXrayId("taskEdit.priorityPicker")
 
                     TextField("Labels (comma-separated)", text: $labelsText)
-                        .accessibilityIdentifier("taskEdit.labelsField")
+                        .stableXrayId("taskEdit.labelsField")
                 } else {
                     // Read-only display for non-editable tasks
                     Section("Details") {
@@ -208,14 +208,14 @@ struct TaskEditSheet: View {
                     }
                     .keyboardShortcut(.defaultAction)
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .accessibilityIdentifier("taskEdit.saveButton")
+                    .stableXrayId("taskEdit.saveButton")
                 } else if status != task.status {
                     Button("Save") {
                         appState.updateTaskStatus(task, status: status)
                         dismiss()
                     }
                     .keyboardShortcut(.defaultAction)
-                    .accessibilityIdentifier("taskEdit.saveButton")
+                    .stableXrayId("taskEdit.saveButton")
                 } else {
                     Button("Close") { dismiss() }
                         .keyboardShortcut(.defaultAction)

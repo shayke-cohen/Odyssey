@@ -29,9 +29,9 @@ struct OdysseyApp: App {
         _sharedRoomTestAPIService = StateObject(wrappedValue: sharedRoomTestAPIService)
 
         #if DEBUG
-        // Avoid the AppXray relay's default port (19400), which can collide with
-        // direct-connect tooling when the SDK app also binds there in server mode.
-        AppXray.shared.start(config: AppXrayConfig(appName: "Odyssey", port: 19480))
+        // Auto mode: SDK tries relay-client first, falls back to server on port 19480.
+        // Port 19480 is in the discovery probe range (19400-19499) so both paths work.
+        AppXray.shared.start(config: AppXrayConfig(appName: "Odyssey", port: 19480, mode: .auto))
         #endif
 
         AppTextSizeShortcutMonitor.shared.start()

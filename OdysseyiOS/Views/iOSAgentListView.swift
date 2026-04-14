@@ -166,7 +166,7 @@ struct iOSAgentListView: View {
     @State private var isLoadingAgents = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if isLoadingAgents {
                     ProgressView("Loading agents…")

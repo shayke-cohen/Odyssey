@@ -54,13 +54,13 @@ struct GroupEditorView: View {
                     HStack {
                         TextField("Icon", text: $icon)
                             .frame(width: 50)
-                            .accessibilityIdentifier("groupEditor.iconField")
+                            .stableXrayId("groupEditor.iconField")
                         TextField("Group Name", text: $name)
-                            .accessibilityIdentifier("groupEditor.nameField")
+                            .stableXrayId("groupEditor.nameField")
                     }
 
                     TextField("Description", text: $groupDescription)
-                        .accessibilityIdentifier("groupEditor.descriptionField")
+                        .stableXrayId("groupEditor.descriptionField")
 
                     HStack(spacing: 6) {
                         Text("Color")
@@ -74,7 +74,7 @@ struct GroupEditorView: View {
                                         .stroke(Color.primary, lineWidth: color == colorName ? 2 : 0)
                                 )
                                 .onTapGesture { color = colorName }
-                                .accessibilityIdentifier("groupEditor.color.\(colorName)")
+                                .stableXrayId("groupEditor.color.\(colorName)")
                         }
                     }
                 }
@@ -84,7 +84,7 @@ struct GroupEditorView: View {
                     TextEditor(text: $groupInstruction)
                         .font(.body)
                         .frame(minHeight: 80)
-                        .accessibilityIdentifier("groupEditor.instructionField")
+                        .stableXrayId("groupEditor.instructionField")
                     Text("Injected as context at the start of each conversation.")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
@@ -93,15 +93,15 @@ struct GroupEditorView: View {
                 // Default Mission
                 Section("Default Mission") {
                     TextField("Pre-filled mission (optional)", text: $defaultMission)
-                        .accessibilityIdentifier("groupEditor.defaultMissionField")
+                        .stableXrayId("groupEditor.defaultMissionField")
                 }
 
                 // Behavior
                 Section("Behavior") {
                     Toggle("Auto-Reply (agents react to each other)", isOn: $autoReplyEnabled)
-                        .accessibilityIdentifier("groupEditor.autoReplyToggle")
+                        .stableXrayId("groupEditor.autoReplyToggle")
                     Toggle("Autonomous Capable", isOn: $autonomousCapable)
-                        .accessibilityIdentifier("groupEditor.autonomousToggle")
+                        .stableXrayId("groupEditor.autonomousToggle")
 
                     if autonomousCapable && !selectedAgents.isEmpty {
                         Picker("Coordinator", selection: $coordinatorAgentId) {
@@ -115,14 +115,14 @@ struct GroupEditorView: View {
                                 .tag(UUID?.some(agent.id))
                             }
                         }
-                        .accessibilityIdentifier("groupEditor.coordinatorPicker")
+                        .stableXrayId("groupEditor.coordinatorPicker")
                     }
                 }
 
                 // Workflow
                 Section("Workflow") {
                     Toggle("Enable Workflow (step-by-step pipeline)", isOn: $hasWorkflow)
-                        .accessibilityIdentifier("groupEditor.workflowToggle")
+                        .stableXrayId("groupEditor.workflowToggle")
 
                     if hasWorkflow {
                         WorkflowEditorView(
@@ -175,13 +175,13 @@ struct GroupEditorView: View {
                                     }
                                     .pickerStyle(.segmented)
                                     .controlSize(.small)
-                                    .accessibilityIdentifier("groupEditor.rolePicker.\(agent.id.uuidString)")
+                                    .stableXrayId("groupEditor.rolePicker.\(agent.id.uuidString)")
                                 }
                                 .padding(.top, 4)
                             }
                         }
                     }
-                    .accessibilityIdentifier("groupEditor.agentPicker")
+                    .stableXrayId("groupEditor.agentPicker")
                 }
 
                 // Past Chats
@@ -206,13 +206,13 @@ struct GroupEditorView: View {
             HStack {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.escape)
-                    .accessibilityIdentifier("groupEditor.cancelButton")
+                    .stableXrayId("groupEditor.cancelButton")
                 Spacer()
                 Button(isEditing ? "Save" : "Create") { save() }
                     .buttonStyle(.borderedProminent)
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedAgentIds.isEmpty)
                     .keyboardShortcut(.return)
-                    .accessibilityIdentifier("groupEditor.saveButton")
+                    .stableXrayId("groupEditor.saveButton")
             }
             .padding()
         }
