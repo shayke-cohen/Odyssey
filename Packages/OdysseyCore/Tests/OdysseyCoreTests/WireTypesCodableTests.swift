@@ -147,4 +147,28 @@ final class WireTypesCodableTests: XCTestCase {
         let decoded = try JSONDecoder().decode(UserIdentity.self, from: data)
         XCTAssertEqual(decoded, original)
     }
+
+    func testAgentIdentityBundleCodableRoundTrip() throws {
+        let original = AgentIdentityBundle(
+            agentName: "CodeReviewer",
+            publicKeyBase64url: "XYZ987base64url",
+            createdAt: "2026-04-13T09:00:00Z"
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AgentIdentityBundle.self, from: data)
+        XCTAssertEqual(decoded.agentName, original.agentName)
+        XCTAssertEqual(decoded.publicKeyBase64url, original.publicKeyBase64url)
+        XCTAssertEqual(decoded.createdAt, original.createdAt)
+    }
+
+    func testTLSBundleCodableRoundTrip() throws {
+        let original = TLSBundle(
+            certDERBase64: "MIICpDCCAYwCCQD...",
+            expiresAt: "2027-04-13T00:00:00Z"
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(TLSBundle.self, from: data)
+        XCTAssertEqual(decoded.certDERBase64, original.certDERBase64)
+        XCTAssertEqual(decoded.expiresAt, original.expiresAt)
+    }
 }
