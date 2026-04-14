@@ -2,9 +2,10 @@ import Combine
 import Darwin
 import Foundation
 import OSLog
+import Security
 
 @MainActor
-final class SidecarManager: ObservableObject, Sendable {
+final class SidecarManager: NSObject, ObservableObject, Sendable {
     struct Config: Sendable {
         var wsPort: Int = 9849
         var httpPort: Int = 9850
@@ -14,6 +15,9 @@ final class SidecarManager: ObservableObject, Sendable {
         var sidecarPathOverride: String?
         var localAgentHostPathOverride: String?
         var mlxRunnerPathOverride: String?
+        /// The instance name used for Keychain key namespacing and TLS cert paths.
+        /// Defaults to "default" to match the existing log directory convention.
+        var instanceName: String = "default"
     }
 
     struct Hooks: Sendable {
@@ -32,6 +36,10 @@ final class SidecarManager: ObservableObject, Sendable {
     private var pingTask: Task<Void, Never>?
     private let config: Config
     private let hooks: Hooks
+    /// DER bytes of the self-signed TLS cert generated for this instance.
+    /// Written in `launchSidecar()` (always before the first connection attempt).
+    /// Read in the `URLSessionDelegate` cert-pinning callback. Ordering is safe.
+    nonisolated(unsafe) private var pinnedCertDERData: Data?
 
     var events: AsyncStream<SidecarEvent> {
         AsyncStream { continuation in
@@ -42,6 +50,7 @@ final class SidecarManager: ObservableObject, Sendable {
     nonisolated init(config: Config = Config(), hooks: Hooks = Hooks()) {
         self.config = config
         self.hooks = hooks
+        super.init()
     }
 
     func start() async throws {
@@ -75,6 +84,15 @@ final class SidecarManager: ObservableObject, Sendable {
         process = nil
         eventContinuation?.yield(.disconnected)
         eventContinuation?.finish()
+    }
+
+    /// Stop the current sidecar, then restart it.
+    /// Useful for refreshing TLS certificates or rotating WS tokens at runtime.
+    func restart() async {
+        stop()
+        // Brief pause to let the port be released
+        try? await Task.sleep(for: .milliseconds(300))
+        try? await start()
     }
 
     enum SidecarError: Error, LocalizedError {
@@ -131,6 +149,21 @@ final class SidecarManager: ObservableObject, Sendable {
         let logLevel = InstanceConfig.userDefaults.string(forKey: AppSettings.logLevelKey) ?? AppSettings.defaultLogLevel
         process.environment?["ODYSSEY_LOG_LEVEL"] = logLevel
         process.environment?["CLAUDESTUDIO_LOG_LEVEL"] = logLevel
+
+        // Inject WS bearer token
+        if let token = try? IdentityManager.shared.wsToken(for: config.instanceName) {
+            process.environment?["ODYSSEY_WS_TOKEN"] = token
+            process.environment?["CLAUDESTUDIO_WS_TOKEN"] = token
+        }
+
+        // Inject TLS cert + key paths and cache the DER bytes for cert pinning
+        if let tlsBundle = try? IdentityManager.shared.tlsCertificate(for: config.instanceName) {
+            process.environment?["ODYSSEY_TLS_CERT"] = tlsBundle.certPEMPath
+            process.environment?["ODYSSEY_TLS_KEY"] = tlsBundle.keyPEMPath
+            process.environment?["CLAUDESTUDIO_TLS_CERT"] = tlsBundle.certPEMPath
+            process.environment?["CLAUDESTUDIO_TLS_KEY"] = tlsBundle.keyPEMPath
+            self.pinnedCertDERData = tlsBundle.certDERData
+        }
 
         let logDir = config.logDirectory ?? "\(NSHomeDirectory())/.odyssey/instances/default/logs"
         try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
@@ -201,12 +234,22 @@ final class SidecarManager: ObservableObject, Sendable {
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         urlSession?.invalidateAndCancel()
 
-        let url = URL(string: "ws://localhost:\(config.wsPort)")!
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 5
-        let session = URLSession(configuration: config)
+        let scheme = (pinnedCertDERData != nil) ? "wss" : "ws"
+        let url = URL(string: "\(scheme)://localhost:\(config.wsPort)")!
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5
+
+        // Add bearer token if available
+        if let token = try? IdentityManager.shared.wsToken(for: config.instanceName) {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let sessionConfig = URLSessionConfiguration.default
+        sessionConfig.timeoutIntervalForRequest = 5
+        // Use self as delegate so we can pin the self-signed cert
+        let session = URLSession(configuration: sessionConfig, delegate: self, delegateQueue: nil)
         self.urlSession = session
-        let task = session.webSocketTask(with: url)
+        let task = session.webSocketTask(with: request)
         self.webSocketTask = task
         task.resume()
 
@@ -457,5 +500,45 @@ final class SidecarManager: ObservableObject, Sendable {
             currentDirectoryPath: FileManager.default.currentDirectoryPath,
             projectRootOverride: config.sidecarPathOverride
         ) ?? "\(NSHomeDirectory())/Odyssey/sidecar/src/index.ts"
+    }
+}
+
+// MARK: - URLSessionDelegate (cert pinning for self-signed TLS)
+
+extension SidecarManager: URLSessionDelegate {
+    nonisolated func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+
+        // If no pinned cert is loaded, fall back to default TLS validation
+        guard let pinnedData = pinnedCertDERData else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+
+        // Compare the server's leaf cert DER bytes against our pinned bytes
+        var leafCert: SecCertificate?
+        if #available(macOS 12.0, *) {
+            leafCert = (SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate])?.first
+        } else {
+            leafCert = SecTrustGetCertificateAtIndex(serverTrust, 0)
+        }
+        if let leaf = leafCert {
+            let leafData = SecCertificateCopyData(leaf) as Data
+            if leafData == pinnedData {
+                completionHandler(.useCredential, URLCredential(trust: serverTrust))
+                return
+            }
+        }
+
+        Log.sidecar.warning("TLS cert pinning failed — cert mismatch")
+        completionHandler(.cancelAuthenticationChallenge, nil)
     }
 }
