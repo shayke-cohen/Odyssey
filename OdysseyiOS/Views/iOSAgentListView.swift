@@ -6,12 +6,21 @@ import OdysseyCore
 
 /// Thin agent summary fetched from GET /api/v1/agents.
 struct AgentSummaryWire: Codable, Identifiable {
-    let id: String
     let name: String
-    let description: String
-    let icon: String
-    let color: String
     let model: String
+    let provider: String?
+    let skillCount: Int?
+    let mcpServerCount: Int?
+
+    var id: String { name }
+    var icon: String { "🤖" }
+    var color: String { "0064D2" }
+    var description: String { "\(provider ?? "claude") · \(model)" }
+}
+
+/// Wrapper for GET /api/v1/agents response.
+private struct AgentsResponse: Decodable {
+    let agents: [AgentSummaryWire]
 }
 
 // MARK: - Helper types
@@ -111,6 +120,7 @@ struct NewConversationSheet: View {
             try await appState.startOrResumeSession(
                 conversationId: conversationId,
                 agentId: agent.id,
+                model: agent.model,
                 workingDirectory: nil
             )
             if !initialMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -219,11 +229,11 @@ struct iOSAgentListView: View {
             ?? peer.wanHint?.components(separatedBy: ":").first
             ?? "localhost"
         let httpPort = peer.wsPort + 1
-        guard let url = URL(string: "https://\(host):\(httpPort)/api/v1/agents") else { return }
+        guard let url = URL(string: "http://\(host):\(httpPort)/api/v1/agents") else { return }
         isLoadingAgents = true
         defer { isLoadingAgents = false }
         guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
-        agents = (try? JSONDecoder().decode([AgentSummaryWire].self, from: data)) ?? []
+        agents = (try? JSONDecoder().decode(AgentsResponse.self, from: data))?.agents ?? []
     }
 }
 

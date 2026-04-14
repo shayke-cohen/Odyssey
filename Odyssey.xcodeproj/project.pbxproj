@@ -108,6 +108,7 @@
 		68E20687A730F3351CDA526E /* AutonomousGroupEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8B7E6259BD1595509588D1F /* AutonomousGroupEngine.swift */; };
 		6938E028035691A681103B2E /* AppStateRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F5CC463F6A47A29CA12710 /* AppStateRecoveryTests.swift */; };
 		6A8F47451C7DA5C2F92CB277 /* InviteCodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6C986F01712A05AD584FAC /* InviteCodeTests.swift */; };
+		6CF8A07827A1F86545111504 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 48879CAFF9615BCCAC4A12CD /* Assets.xcassets */; };
 		6CFDD37F950D9F75C965C6C8 /* GroupSidebarRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56704571A2D4008A173340A /* GroupSidebarRowView.swift */; };
 		6E987A7DEEC881062B8172A4 /* BlackboardSnapshotClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC8979D181AC6DCC086E79F1 /* BlackboardSnapshotClientTests.swift */; };
 		7583DDBD3EFA996E28F2C81A /* LogAggregator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E048E67B172A802E9D19FF /* LogAggregator.swift */; };
@@ -328,6 +329,7 @@
 		469C8EB1BC85EAD15272406A /* FileTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
 		4789B02F55F195683C8041B0 /* MermaidDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidDiagramView.swift; sourceTree = "<group>"; };
 		47F0356CCB7C03690085BBE3 /* LaunchIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchIntent.swift; sourceTree = "<group>"; };
+		48879CAFF9615BCCAC4A12CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4A31730BE399E3FCD082DB76 /* AgentQuestionBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentQuestionBubble.swift; sourceTree = "<group>"; };
 		4B19E5A92A4FEDB14B1B6872 /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
 		4C40CFEF2765642CEA44E445 /* CatalogDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogDetailView.swift; sourceTree = "<group>"; };
@@ -809,6 +811,7 @@
 		ACDAEBC80EE20542EA5EC053 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				48879CAFF9615BCCAC4A12CD /* Assets.xcassets */,
 				02A666C61EA09C0973658B67 /* Info.plist */,
 				725E90B449DC3E4C8B034DB3 /* OdysseyiOS.entitlements */,
 			);
@@ -1027,6 +1030,7 @@
 			buildConfigurationList = 2B678FBE2D2D0F0A49880536 /* Build configuration list for PBXNativeTarget "OdysseyiOS" */;
 			buildPhases = (
 				FAC865D0278627CAB0F386B8 /* Sources */,
+				17329E7AEBC5C3B659C9B0AE /* Resources */,
 				35FFE6FAF61037AF88C6CA4D /* Frameworks */,
 			);
 			buildRules = (
@@ -1146,6 +1150,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		17329E7AEBC5C3B659C9B0AE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6CF8A07827A1F86545111504 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E5FA8D2EBBC1FD61D1E52C0B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;

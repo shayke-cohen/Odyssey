@@ -7,6 +7,10 @@ struct OdysseyiOSApp: App {
     @State private var appState = iOSAppState()
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        UIWindow.appearance().backgroundColor = .systemBackground
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentRootView()
@@ -31,16 +35,20 @@ struct ContentRootView: View {
     @State private var hasPairedMac: Bool = PeerCredentialStore().hasPairedMacs
 
     var body: some View {
-        if hasPairedMac {
-            MainTabView()
-                .task {
-                    await appState.connectToFirstPairedMac()
+        Group {
+            if hasPairedMac {
+                MainTabView()
+                    .task {
+                        await appState.connectToFirstPairedMac()
+                    }
+            } else {
+                iOSPairingView {
+                    hasPairedMac = true
                 }
-        } else {
-            iOSPairingView {
-                hasPairedMac = true
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground).ignoresSafeArea())
     }
 }
 

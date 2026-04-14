@@ -48,6 +48,8 @@ final class RemoteSidecarManager: ObservableObject {
     // MARK: - Public API
 
     func connect(using credentials: PeerCredentials) async {
+        // Prevent concurrent connection attempts from racing and cancelling each other.
+        guard case .disconnected = status else { return }
         status = .connecting
         connectedPeer = credentials
 

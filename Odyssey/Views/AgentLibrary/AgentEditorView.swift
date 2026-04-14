@@ -23,6 +23,7 @@ struct AgentEditorView: View {
     @State private var instancePolicy: AgentInstancePolicy
     @State private var instancePolicyPoolMax: String
     @State private var workingDirectory: String
+    @State private var isAutoHomePath: Bool
     @State private var selectedSkillIds: Set<UUID>
     @State private var selectedMCPIds: Set<UUID>
     @State private var selectedPermissionId: UUID?
@@ -50,7 +51,9 @@ struct AgentEditorView: View {
         _maxBudget = State(initialValue: agent?.maxBudget.map { String(format: "%.2f", $0) } ?? "")
         _instancePolicy = State(initialValue: agent?.instancePolicy ?? .agentDefault)
         _instancePolicyPoolMax = State(initialValue: agent?.instancePolicyPoolMax.map(String.init) ?? "")
-        _workingDirectory = State(initialValue: agent?.defaultWorkingDirectory ?? "")
+        let isNew = agent == nil
+        _workingDirectory = State(initialValue: agent?.defaultWorkingDirectory ?? (isNew ? Agent.defaultHomePath(for: "") : ""))
+        _isAutoHomePath = State(initialValue: isNew)
         _selectedSkillIds = State(initialValue: Set(agent?.skillIds ?? []))
         _selectedMCPIds = State(initialValue: Set(agent?.extraMCPServerIds ?? []))
         _selectedPermissionId = State(initialValue: agent?.permissionSetId)
@@ -82,6 +85,12 @@ struct AgentEditorView: View {
         }
         .onChange(of: provider) { _, newValue in
             model = AgentDefaults.preferredModelSelection(model, providerSelection: newValue)
+        }
+        .onChange(of: name) { _, newName in
+            // For new agents, keep the home path in sync with the name until the user edits it manually
+            if isAutoHomePath {
+                workingDirectory = Agent.defaultHomePath(for: newName)
+            }
         }
         .task {
             guard !didRefreshOllama else { return }
@@ -202,8 +211,21 @@ struct AgentEditorView: View {
 
 
             Section("Workspace") {
-                TextField("Working Directory", text: $workingDirectory)
+                TextField("Home Folder", text: $workingDirectory)
                     .xrayId("agentEditor.workingDirectoryField")
+                    .onChange(of: workingDirectory) { _, newPath in
+                        // Stop auto-updating only if the path no longer matches the generated default,
+                        // which means the user manually edited it (not a programmatic update from name).
+                        if newPath != Agent.defaultHomePath(for: name) {
+                            isAutoHomePath = false
+                        }
+                    }
+                if !workingDirectory.isEmpty {
+                    Text("MEMORY.md will be created here on first chat")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .xrayId("agentEditor.homeFolderHint")
+                }
             }
         }
         .formStyle(.grouped)
@@ -585,7 +607,13 @@ struct AgentEditorView: View {
         target.extraMCPServerIds = Array(selectedMCPIds)
         target.permissionSetId = selectedPermissionId
         target.systemPrompt = systemPrompt
-        target.defaultWorkingDirectory = workingDirectory.isEmpty ? nil : workingDirectory
+        // For new agents: preserve auto-generated path if user left field unchanged.
+        // For existing agents: allow clearing the field to remove the home folder.
+        if agent == nil {
+            target.defaultWorkingDirectory = workingDirectory.isEmpty ? target.defaultWorkingDirectory : workingDirectory
+        } else {
+            target.defaultWorkingDirectory = workingDirectory.isEmpty ? nil : workingDirectory
+        }
         target.updatedAt = Date()
 
 

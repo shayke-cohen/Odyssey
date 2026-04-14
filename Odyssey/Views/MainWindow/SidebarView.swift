@@ -172,18 +172,43 @@ struct SidebarView: View {
     @State private var hoveredProjectId: UUID?
     @State private var hoveredConversationId: UUID?
     @State private var expandedProjectIds: Set<UUID> = []
+    @State private var expandedResidentIds: Set<UUID> = []
+    @State private var isResidentActiveExpanded = true
+    @State private var isResidentHistoryExpanded = false
+    @AppStorage("sidebar.residentsExpanded") private var isResidentsSectionExpanded: Bool = true
+    @AppStorage("sidebar.projectsExpanded") private var isProjectsSectionExpanded: Bool = true
+    @State private var showAddResidentSheet = false
 
     var body: some View {
         @Bindable var ws = windowState
         List {
             utilitySection
 
+            Section {
+                if isResidentsSectionExpanded {
+                    ForEach(residentAgents) { agent in
+                        residentRows(agent)
+                    }
+                    if residentAgents.isEmpty {
+                        Text("No residents yet — tap + to add")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 10)
+                    }
+                }
+            } header: {
+                residentAgentsHeader
+            }
+            .stableXrayId("sidebar.residentAgentsSection")
+
             if sortedProjects.isEmpty {
                 emptyState
             } else {
                 Section {
-                    ForEach(sortedProjects) { project in
-                        projectRows(project)
+                    if isProjectsSectionExpanded {
+                        ForEach(sortedProjects) { project in
+                            projectRows(project)
+                        }
                     }
                 } header: {
                     projectsHeader
@@ -232,6 +257,9 @@ struct SidebarView: View {
         .sheet(isPresented: $showTaskCreation) {
             TaskCreationSheet()
                 .environmentObject(appState)
+        }
+        .sheet(isPresented: $showAddResidentSheet) {
+            addResidentSheet
         }
         .sheet(item: $editingTask) { task in
             TaskEditSheet(task: task)
@@ -328,6 +356,16 @@ struct SidebarView: View {
         }
     }
 
+    private var residentAgents: [Agent] {
+        agents.filter { $0.isEnabled && $0.isResident }
+            .sorted { $0.name < $1.name }
+    }
+
+    private var nonResidentAgents: [Agent] {
+        agents.filter { $0.isEnabled && !$0.isResident }
+            .sorted { $0.name < $1.name }
+    }
+
     // MARK: - Global Utilities
 
     private var utilitySection: some View {
@@ -418,8 +456,20 @@ struct SidebarView: View {
 
     private var projectsHeader: some View {
         HStack {
-            Text("Projects")
-                .font(.headline.weight(.semibold))
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isProjectsSectionExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: isProjectsSectionExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text("Projects")
+                        .font(.headline.weight(.semibold))
+                }
+            }
+            .buttonStyle(.plain)
             Spacer()
             Button {
                 addProjectFolder()
@@ -432,6 +482,250 @@ struct SidebarView: View {
             .xrayId("sidebar.projectsHeader.addProject")
             .accessibilityLabel("Add project folder")
         }
+    }
+
+    // MARK: - Resident Agents
+
+    private var residentAgentsHeader: some View {
+        HStack {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isResidentsSectionExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: isResidentsSectionExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text("Residents")
+                        .font(.headline.weight(.semibold))
+                }
+            }
+            .buttonStyle(.plain)
+            .xrayId("sidebar.residentAgents.header")
+            Spacer()
+            Button {
+                showAddResidentSheet = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.plain)
+            .help("Add agent to Residents")
+            .xrayId("sidebar.residentAgents.addButton")
+            .accessibilityLabel("Add agent to Residents")
+        }
+    }
+
+    private var addResidentSheet: some View {
+        NavigationStack {
+            List(nonResidentAgents) { agent in
+                Button {
+                    agent.isResident = true
+                    if let homeDir = agent.defaultWorkingDirectory {
+                        let expanded = (homeDir as NSString).expandingTildeInPath
+                        ResidentAgentSupport.seedMemoryFileIfNeeded(in: expanded, agentName: agent.name)
+                    }
+                    try? modelContext.save()
+                } label: {
+                    HStack(spacing: 10) {
+                        let tint = Color.fromAgentColor(agent.color)
+                        sidebarSymbolBadge(symbol: agent.icon, tint: tint, size: 28, cornerRadius: 9)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(agent.name).font(.body)
+                            if let dir = agent.defaultWorkingDirectory {
+                                Text(dir).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                        Image(systemName: "plus.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .navigationTitle("Add to Residents")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { showAddResidentSheet = false }
+                }
+            }
+            .overlay {
+                if nonResidentAgents.isEmpty {
+                    ContentUnavailableView(
+                        "All agents are Residents",
+                        systemImage: "person.crop.circle.badge.checkmark"
+                    )
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func residentRows(_ agent: Agent) -> some View {
+        residentAgentHeaderRow(agent)
+        if expandedResidentIds.contains(agent.id) {
+            residentChatRows(agent)
+        }
+    }
+
+    private func residentAgentHeaderRow(_ agent: Agent) -> some View {
+        let isExpanded = expandedResidentIds.contains(agent.id)
+        let hasActive = agentHasActiveSession(agent)
+        let hasPastChats = !conversationsForAgent(agent).isEmpty
+        let tint = Color.fromAgentColor(agent.color)
+
+        return HStack(spacing: 8) {
+            sidebarSymbolBadge(symbol: agent.icon, tint: tint, size: 32, cornerRadius: 11)
+            Text(agent.name)
+                .font(.headline.weight(.medium))
+                .lineLimit(1)
+                .layoutPriority(1)
+            Spacer(minLength: 8)
+            Circle()
+                .fill(hasActive ? Color.green : (hasPastChats ? Color.secondary.opacity(0.5) : Color.secondary.opacity(0.2)))
+                .frame(width: 7, height: 7)
+            Button {
+                startResidentSession(with: agent)
+            } label: {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 22, height: 22)
+            }
+            .modifier(SidebarChromeButtonModifier(tint: tint))
+            .buttonStyle(.plain)
+            .help("New chat with \(agent.name)")
+            .xrayId("sidebar.residentAgent.newChat.\(agent.id.uuidString)")
+            .accessibilityLabel("New chat with \(agent.name)")
+            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .frame(width: 12)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if expandedResidentIds.contains(agent.id) {
+                expandedResidentIds.remove(agent.id)
+            } else {
+                expandedResidentIds.insert(agent.id)
+            }
+        }
+        .padding(.vertical, 9)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+        .contextMenu {
+            Button("New Chat") { startResidentSession(with: agent) }
+            Divider()
+            Button("Edit Agent") { windowState.openLibrary(.build, buildSection: .agents) }
+            Divider()
+            Button("Remove from Residents", role: .destructive) {
+                agent.isResident = false
+                try? modelContext.save()
+            }
+        }
+        .xrayId("sidebar.residentAgentRow.\(agent.id.uuidString)")
+    }
+
+    @ViewBuilder
+    private func residentChatRows(_ agent: Agent) -> some View {
+        let allConvos = conversationsForAgent(agent)
+            .filter { !$0.isArchived }
+            .sorted { $0.startedAt > $1.startedAt }
+        let activeConvos = filteredConversations(Array(allConvos.prefix(5)))
+        let historyConvos = filteredConversations(Array(allConvos.dropFirst(5)))
+
+        if allConvos.isEmpty {
+            residentIndentedRow {
+                Text("No chats yet")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        } else {
+            residentChatBucket(
+                title: "Active (\(activeConvos.count))",
+                symbol: "bolt.fill",
+                isExpanded: Binding(
+                    get: { isResidentActiveExpanded || !searchText.isEmpty },
+                    set: { isResidentActiveExpanded = $0 }
+                ),
+                conversations: activeConvos
+            )
+            if !historyConvos.isEmpty {
+                residentChatBucket(
+                    title: "History (\(historyConvos.count))",
+                    symbol: "clock.arrow.circlepath",
+                    isExpanded: Binding(
+                        get: { isResidentHistoryExpanded || !searchText.isEmpty },
+                        set: { isResidentHistoryExpanded = $0 }
+                    ),
+                    conversations: historyConvos
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func residentChatBucket(
+        title: String,
+        symbol: String,
+        isExpanded: Binding<Bool>,
+        conversations: [Conversation]
+    ) -> some View {
+        if !conversations.isEmpty {
+            let expanded = isExpanded.wrappedValue || !searchText.isEmpty
+            residentIndentedRow {
+                Button {
+                    if searchText.isEmpty { isExpanded.wrappedValue.toggle() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Label(title, systemImage: symbol)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            if expanded {
+                ForEach(conversations) { convo in
+                    residentIndentedRow {
+                        conversationRow(convo)
+                            .tag(convo.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture { selectConversation(convo) }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) { promptDelete(convo) } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                                Button { archiveConversation(convo) } label: {
+                                    Label("Archive", systemImage: "archivebox")
+                                }
+                                .tint(.indigo)
+                            }
+                    }
+                    .xrayId("sidebar.residentChatRow.\(convo.id.uuidString)")
+                }
+            }
+        }
+    }
+
+    private func residentIndentedRow<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .padding(.leading, 18)
+            .padding(.trailing, 4)
+            .padding(.bottom, 2)
     }
 
     // MARK: - Bottom Bar
@@ -1982,6 +2276,40 @@ struct SidebarView: View {
         modelContext.insert(conversation)
         try? modelContext.save()
         windowState.selectedConversationId = conversation.id
+    }
+
+    private func startResidentSession(with agent: Agent) {
+        guard let homeDir = agent.defaultWorkingDirectory, !homeDir.isEmpty else {
+            startSession(with: agent)
+            return
+        }
+        let expandedPath = (homeDir as NSString).expandingTildeInPath
+        let session = Session(agent: agent, mode: .interactive)
+        session.workingDirectory = expandedPath
+        let conversation = Conversation(
+            topic: agent.name,
+            sessions: [session],
+            projectId: nil,
+            threadKind: .direct
+        )
+        let userParticipant = Participant(type: .user, displayName: "You")
+        let agentParticipant = Participant(
+            type: .agentSession(sessionId: session.id),
+            displayName: agent.name
+        )
+        userParticipant.conversation = conversation
+        agentParticipant.conversation = conversation
+        conversation.participants = [userParticipant, agentParticipant]
+        session.conversations = [conversation]
+
+        modelContext.insert(session)
+        modelContext.insert(conversation)
+        try? modelContext.save()
+
+        expandedResidentIds.insert(agent.id)
+        windowState.selectedConversationId = conversation.id
+
+        ResidentAgentSupport.seedMemoryFileIfNeeded(in: expandedPath, agentName: agent.name)
     }
 
     private func createQuickChat(in project: Project) {

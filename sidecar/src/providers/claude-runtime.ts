@@ -135,10 +135,12 @@ export class ClaudeRuntime implements ProviderRuntime {
     const initialBackendSessionId = options.sessionId ?? options.resume;
     const useOllamaBackend = ClaudeRuntime.isOllamaBackedModel(args.config.model);
 
-    if (options.cwd && !existsSync(options.cwd)) {
-      logger.info("session", `Creating missing cwd: ${options.cwd}`);
-      mkdirSync(options.cwd, { recursive: true });
+    const resolvedCwd = options.cwd?.replace(/^~(?=\/|$)/, homedir());
+    if (resolvedCwd && !existsSync(resolvedCwd)) {
+      logger.info("session", `Creating missing cwd: ${resolvedCwd}`);
+      mkdirSync(resolvedCwd, { recursive: true });
     }
+    if (resolvedCwd) options.cwd = resolvedCwd;
 
     let prompt = this.buildPrompt(args.text, args.attachments);
     if (args.planMode === true) {

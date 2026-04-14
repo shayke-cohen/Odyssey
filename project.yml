@@ -88,6 +88,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: OdysseyiOS/Resources/OdysseyiOS.entitlements
         SWIFT_VERSION: "5.9"
         GENERATE_INFOPLIST_FILE: false
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     sources:
       - OdysseyiOS
     dependencies:

@@ -14,7 +14,7 @@ struct iOSPairingView: View {
     let onPaired: () -> Void
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 24) {
                 Image(systemName: "personalhotspot.circle")
                     .font(.system(size: 72))

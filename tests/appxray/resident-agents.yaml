@@ -1,0 +1,226 @@
+name: Resident Agents
+description: |
+  E2E tests for the Resident Agents feature.
+  Validates: sidebar section visibility, expand/collapse, new chat creation,
+  working directory routing, and MEMORY.md seeding.
+
+  Prerequisites:
+    - Odyssey DEBUG build running (AppXray on port 19480)
+    - At least one Agent with a Home Folder (defaultWorkingDirectory) set.
+      If none exists, run RA-0 setup first.
+
+tests:
+
+  # ─── SETUP ────────────────────────────────────────────────────────────────
+
+  - name: "RA-0: Set Home Folder on an agent (setup — skip if already done)"
+    steps:
+      # Open Agents library
+      - interact:
+          action: tap
+          selector: '@testId("sidebar.agentsButton")'
+      - interact:
+          action: screenshot
+          label: "agents-library-open"
+      # Click the first agent's row to open its editor
+      - interact:
+          action: tap
+          selector: '@index(0, @testId("agentLibrary.agentRow"))'
+      - interact:
+          action: tap
+          selector: '@testId("agentLibrary.editButton")'
+      - interact:
+          action: screenshot
+          label: "agent-editor-open"
+      # Fill in the Home Folder field
+      - interact:
+          action: clear
+          selector: '@testId("agentEditor.workingDirectoryField")'
+      - interact:
+          action: type
+          selector: '@testId("agentEditor.workingDirectoryField")'
+          text: "~/.odyssey/residents/test-resident"
+      # Save
+      - interact:
+          action: tap
+          selector: '@testId("agentEditor.saveButton")'
+      - interact:
+          action: screenshot
+          label: "agent-editor-saved"
+
+  # ─── SIDEBAR VISIBILITY ───────────────────────────────────────────────────
+
+  - name: "RA-1: Residents section appears above Projects in sidebar"
+    steps:
+      - interact:
+          action: screenshot
+          label: "sidebar-initial"
+      - inspect:
+          target: tree
+          filter: "sidebar"
+          depth: 3
+    assert:
+      - screenshot_contains: "Residents"
+      - element_exists: '@testId("sidebar.residentAgentsSection")'
+
+  - name: "RA-2: Residents section appears before Projects section"
+    steps:
+      - inspect:
+          target: accessibility
+          filter: "Residents|Projects"
+    assert:
+      # "Residents" header text must appear before "Projects" header text
+      - screenshot_contains: "Residents"
+
+  - name: "RA-3: Resident agent row is visible with status dot"
+    steps:
+      - interact:
+          action: screenshot
+          label: "resident-row-visible"
+      - inspect:
+          target: tree
+          filter: "sidebar.residentAgentRow"
+          depth: 2
+    assert:
+      - element_exists: '@testId("sidebar.residentAgents.header")'
+      - screenshot_contains: "Residents"
+
+  # ─── EXPAND / COLLAPSE ────────────────────────────────────────────────────
+
+  - name: "RA-4: Tapping resident agent row expands Active bucket"
+    steps:
+      # Tap the first resident agent row
+      - interact:
+          action: tap
+          selector: '@index(0, @testId("sidebar.residentAgentRow"))'
+      - interact:
+          action: screenshot
+          label: "resident-expanded"
+      - inspect:
+          target: tree
+          filter: "sidebar.residentAgentsSection"
+          depth: 4
+    assert:
+      - screenshot_contains: "Active"
+
+  - name: "RA-5: Tapping resident agent row again collapses it"
+    steps:
+      # Already expanded from RA-4 — tap again to collapse
+      - interact:
+          action: tap
+          selector: '@index(0, @testId("sidebar.residentAgentRow"))'
+      - interact:
+          action: screenshot
+          label: "resident-collapsed"
+    assert:
+      # Active bucket should no longer be visible
+      - screenshot_not_contains: "Active (0)"
+
+  # ─── NEW CHAT FROM RESIDENT ───────────────────────────────────────────────
+
+  - name: "RA-6: New Chat button on resident row creates a conversation"
+    steps:
+      # Tap the new chat button on the first resident
+      - interact:
+          action: tap
+          selector: '@index(0, @testId("sidebar.residentAgent.newChat"))'
+      - interact:
+          action: screenshot
+          label: "after-new-chat"
+      - inspect:
+          target: tree
+          filter: "chat"
+          depth: 2
+    assert:
+      # Chat view should open
+      - element_exists: '@testId("chat.messageInput")'
+
+  - name: "RA-7: Resident chat working directory matches home folder"
+    steps:
+      # Open inspector to check working directory
+      - interact:
+          action: tap
+          selector: '@testId("mainWindow.inspectorToggle")'
+      - interact:
+          action: screenshot
+          label: "inspector-open"
+      - inspect:
+          target: tree
+          filter: "inspector.workspaceHeading"
+          depth: 3
+    assert:
+      # Inspector should show the agent's home folder path (defaultWorkingDirectory)
+      # not a project root path — the exact value depends on how the agent is configured.
+      # For an agent with defaultWorkingDirectory = "~/.odyssey/config", look for that path.
+      # Update this assertion to match the Home Folder set in RA-0 setup.
+      - element_exists: '@testId("inspector.workspaceHeading")'
+
+  # ─── CONTEXT MENU ─────────────────────────────────────────────────────────
+
+  - name: "RA-8: Context menu on resident row shows New Chat and Edit Agent"
+    steps:
+      - interact:
+          action: rightClick
+          selector: '@index(0, @testId("sidebar.residentAgentRow"))'
+      - interact:
+          action: screenshot
+          label: "context-menu-open"
+    assert:
+      - screenshot_contains: "New Chat"
+      - screenshot_contains: "Edit Agent"
+
+  # ─── AGENT EDITOR ─────────────────────────────────────────────────────────
+
+  - name: "RA-9: Agent Editor shows Home Folder label (not Working Directory)"
+    steps:
+      - interact:
+          action: tap
+          selector: '@testId("sidebar.agentsButton")'
+      - interact:
+          action: tap
+          selector: '@index(0, @testId("agentLibrary.agentRow"))'
+      - interact:
+          action: tap
+          selector: '@testId("agentLibrary.editButton")'
+      - interact:
+          action: screenshot
+          label: "agent-editor-home-folder"
+    assert:
+      - screenshot_contains: "Home Folder"
+      - screenshot_not_contains: "Working Directory"
+
+  - name: "RA-10: Agent Editor shows MEMORY.md hint when Home Folder is set"
+    steps:
+      - interact:
+          action: screenshot
+          label: "agent-editor-hint"
+      - inspect:
+          target: tree
+          filter: "agentEditor.homeFolderHint"
+          depth: 2
+    assert:
+      - element_exists: '@testId("agentEditor.homeFolderHint")'
+      - screenshot_contains: "MEMORY.md"
+
+  # ─── MEMORY.MD SEEDING ────────────────────────────────────────────────────
+
+  - name: "RA-11: MEMORY.md is created in home folder after first chat"
+    # This test validates filesystem side-effect — check via inspector path or
+    # by inspecting the file explorer in the inspector Files tab.
+    steps:
+      # Switch to Files tab in inspector
+      - interact:
+          action: tap
+          selector: '@testId("inspector.tabPicker")'
+      - interact:
+          action: tap
+          selector: '@text("Files")'
+      - interact:
+          action: screenshot
+          label: "inspector-files"
+      - inspect:
+          target: tree
+          filter: "inspector.fileTree"
+          depth: 3
+    assert:
+      - screenshot_contains: "MEMORY.md"

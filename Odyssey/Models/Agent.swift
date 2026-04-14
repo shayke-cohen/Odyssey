@@ -51,6 +51,7 @@ final class Agent {
     var originRemoteId: UUID?
 
     var defaultWorkingDirectory: String?
+    var isResident: Bool = false
     var isShared: Bool
     var isEnabled: Bool = true
     var configSlug: String?
@@ -60,6 +61,15 @@ final class Agent {
 
     @Relationship(deleteRule: .cascade, inverse: \Session.agent)
     var sessions: [Session] = []
+
+    static func defaultHomePath(for name: String) -> String {
+        let slug = name
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .filter { $0.isLetter || $0.isNumber || $0 == "-" }
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return "~/.odyssey/residents/\(slug.isEmpty ? "agent" : slug)"
+    }
 
     @Transient
     var origin: AgentOrigin {
@@ -140,6 +150,8 @@ final class Agent {
         self.originKind = "local"
         self.originPeerName = nil
         self.originRemoteId = nil
+        self.defaultWorkingDirectory = Agent.defaultHomePath(for: name)
+        self.isResident = false
         self.isShared = false
         self.isEnabled = true
         self.configSlug = nil

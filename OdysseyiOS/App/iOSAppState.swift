@@ -25,7 +25,8 @@ final class iOSAppState {
 
     /// Connect to the first paired Mac and load initial data.
     func connectToFirstPairedMac() async {
-        guard let creds = (try? credentialStore.load())?.first else { return }
+        // Use most-recently paired credential so stale creds from previous test sessions don't take priority.
+        guard let creds = (try? credentialStore.load())?.sorted(by: { $0.pairedAt > $1.pairedAt }).first else { return }
         await sidecarManager.connect(using: creds)
         connectionStatus = sidecarManager.status
         guard case .connected = sidecarManager.status else { return }
@@ -65,10 +66,11 @@ final class iOSAppState {
     func startOrResumeSession(
         conversationId: String,
         agentId: String,
+        model: String = "claude-sonnet-4-6",
         workingDirectory: String?
     ) async throws {
         let peer = sidecarManager.connectedPeer
-        let workDir = workingDirectory ?? peer.flatMap { $0.lanHint }.map { _ in "~" } ?? "~"
+        let workDir = workingDirectory ?? "~"
 
         // Check if we have a stored claudeSessionId for this conversation
         if let creds = try? credentialStore.load(),
@@ -88,7 +90,7 @@ final class iOSAppState {
                 allowedTools: [],
                 mcpServers: [],
                 provider: "claude",
-                model: "claude-opus-4-5",
+                model: model,
                 maxTurns: nil,
                 maxBudget: nil,
                 maxThinkingTokens: nil,
@@ -157,8 +159,8 @@ final class iOSAppState {
         } else {
             host = "localhost"
         }
-        // HTTP API port is WS port + 1
+        // HTTP API port is WS port + 1; sidecar serves plain HTTP (not HTTPS)
         let httpPort = peer.wsPort + 1
-        return "https://\(host):\(httpPort)"
+        return "http://\(host):\(httpPort)"
     }
 }
