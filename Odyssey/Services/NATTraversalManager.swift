@@ -69,7 +69,7 @@ final class NATTraversalManager: ObservableObject {
         let params = NWParameters.udp
         params.requiredLocalEndpoint = NWEndpoint.hostPort(
             host: NWEndpoint.Host("0.0.0.0"),
-            port: NWEndpoint.Port(rawValue: UInt16(localPort)) ?? 0
+            port: NWEndpoint.Port(rawValue: UInt16(clamping: max(0, localPort))) ?? .any
         )
         let conn = NWConnection(
             host: NWEndpoint.Host(host),
@@ -294,7 +294,7 @@ private final class STUNState: @unchecked Sendable {
     }
 }
 
-private final class STUNFetch: Sendable {
+private final class STUNFetch: @unchecked Sendable {
     private let conn: NWConnection
     private let state: STUNState
     private let queue = DispatchQueue(label: "com.odyssey.p2p.stun")
@@ -303,7 +303,7 @@ private final class STUNFetch: Sendable {
         let params = NWParameters.udp
         params.requiredLocalEndpoint = NWEndpoint.hostPort(
             host: NWEndpoint.Host("0.0.0.0"),
-            port: NWEndpoint.Port(rawValue: UInt16(localPort)) ?? 0
+            port: NWEndpoint.Port(rawValue: UInt16(clamping: max(0, localPort))) ?? .any
         )
         self.conn = NWConnection(
             host: NWEndpoint.Host(NATTraversalManager.stunHost),
@@ -337,7 +337,8 @@ private final class STUNFetch: Sendable {
                 break
             }
         }
-        q.asyncAfter(deadline: .now() + 5) {
+        q.asyncAfter(deadline: .now() + 5) { [fetch = self] in
+            _ = fetch
             s.complete(with: .failure(STUNError.timeout), conn: c)
         }
     }
