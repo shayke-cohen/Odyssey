@@ -874,7 +874,9 @@ final class ConfigSyncService {
                 queue: debounceQueue
             )
             source.setEventHandler { [weak self] in
-                self?.scheduleSync()
+                guard let self else { return }
+                // Hop to @MainActor before touching actor-isolated state.
+                Task { @MainActor [self] in self.scheduleSync() }
             }
             source.setCancelHandler {
                 close(fd)
@@ -898,9 +900,12 @@ final class ConfigSyncService {
 
     private func scheduleSync() {
         debounceWorkItem?.cancel()
+        // DispatchWorkItem runs on debounceQueue (non-actor), so jump back to
+        // @MainActor for isWritingBack check and performFullSync() call.
         let item = DispatchWorkItem { [weak self] in
-            guard let self, !self.isWritingBack else { return }
-            DispatchQueue.main.async {
+            guard let self else { return }
+            Task { @MainActor [self] in
+                guard !self.isWritingBack else { return }
                 self.performFullSync()
             }
         }

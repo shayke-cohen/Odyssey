@@ -1,6 +1,7 @@
 // OdysseyTests/TransportManagerTests.swift
 import XCTest
 import SwiftData
+import OdysseyCore
 @testable import Odyssey
 
 @MainActor

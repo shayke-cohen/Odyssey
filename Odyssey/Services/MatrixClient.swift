@@ -299,6 +299,7 @@ final class MatrixClient: @unchecked Sendable {
     private func execute(request: URLRequest) async throws -> [String: Any] {
         let (data, response) = try await session.data(for: request)
         try checkHTTPStatus(response, data: data)
+        guard !data.isEmpty else { return [:] }
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw MatrixError.decodingFailed("top-level object expected")
         }

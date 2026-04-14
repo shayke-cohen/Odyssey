@@ -24,10 +24,22 @@ export class WsServer {
     this.ctx = ctx;
     this.options = options;
 
-    const tlsConfig =
-      options.tlsCert && options.tlsKey
-        ? { cert: Bun.file(options.tlsCert), key: Bun.file(options.tlsKey) }
-        : undefined;
+    // Load TLS config; fall back to plain WS if the cert/key can't be parsed
+    // (macOS Security.framework can produce explicit-params EC certs that Bun/BoringSSL rejects)
+    let tlsConfig: { cert: ReturnType<typeof Bun.file>; key: ReturnType<typeof Bun.file> } | undefined;
+    if (options.tlsCert && options.tlsKey) {
+      try {
+        const testServer = Bun.serve({
+          port: 0,
+          tls: { cert: Bun.file(options.tlsCert), key: Bun.file(options.tlsKey) },
+          fetch() { return new Response("probe"); },
+        });
+        testServer.stop();
+        tlsConfig = { cert: Bun.file(options.tlsCert), key: Bun.file(options.tlsKey) };
+      } catch (err) {
+        logger.warn("ws", `TLS cert/key failed to load (${err}); falling back to plain ws://`);
+      }
+    }
 
     this.server = Bun.serve({
       port,

@@ -5,7 +5,7 @@ import XCTest
 // MARK: - URLProtocol stub
 
 final class MatrixStubProtocol: URLProtocol {
-    static var handlers: [(check: (URLRequest) -> Bool, response: (URLRequest) -> (Data, Int))] = []
+    nonisolated(unsafe) static var handlers: [(check: (URLRequest) -> Bool, response: (URLRequest) -> (Data, Int))] = []
 
     static func register(when check: @escaping (URLRequest) -> Bool,
                          respond: @escaping (URLRequest) -> (Data, Int)) {
@@ -17,8 +17,23 @@ final class MatrixStubProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        let handler = Self.handlers.first { $0.check(request) }
-        let (data, statusCode) = handler?.response(request) ?? (Data(), 404)
+        // URLSession moves httpBody into httpBodyStream before giving the request to URLProtocol.
+        // Re-materialise it so handlers can read httpBody normally.
+        var req = request
+        if req.httpBody == nil, let stream = req.httpBodyStream {
+            stream.open()
+            var bodyData = Data()
+            let buf = UnsafeMutablePointer<UInt8>.allocate(capacity: 4096)
+            while stream.hasBytesAvailable {
+                let n = stream.read(buf, maxLength: 4096)
+                if n > 0 { bodyData.append(buf, count: n) }
+            }
+            buf.deallocate()
+            stream.close()
+            req.httpBody = bodyData
+        }
+        let handler = Self.handlers.first { $0.check(req) }
+        let (data, statusCode) = handler?.response(req) ?? (Data(), 404)
         let response = HTTPURLResponse(
             url: request.url!,
             statusCode: statusCode,

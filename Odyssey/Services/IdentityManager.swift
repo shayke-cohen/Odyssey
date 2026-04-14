@@ -206,11 +206,12 @@ final class IdentityManager {
         // Create the directory
         try fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
 
-        // Generate the certificate with openssl
+        // Generate the certificate with openssl.
+        // Use RSA-2048 — macOS LibreSSL generates EC certs with explicit curve
+        // parameters that Bun/BoringSSL rejects (DECODE_ERROR). RSA has no such issue.
         try runOpenSSL(args: [
             "req", "-x509", "-nodes", "-days", "3650",
-            "-newkey", "ec",
-            "-pkeyopt", "ec_paramgen_curve:P-256",
+            "-newkey", "rsa:2048",
             "-keyout", keyPath,
             "-out", certPath,
             "-subj", "/CN=odyssey-sidecar",
