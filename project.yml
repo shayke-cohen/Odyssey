@@ -92,6 +92,20 @@ targets:
       - OdysseyiOS
     dependencies:
       - package: OdysseyCore
+  OdysseyiOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
+        PRODUCT_BUNDLE_IDENTIFIER: com.odyssey.ios.tests
+        GENERATE_INFOPLIST_FILE: true
+    sources:
+      - OdysseyiOSTests
+    dependencies:
+      - target: OdysseyiOS
+      - package: OdysseyCore
   OdysseyTests:
     type: bundle.unit-test
     platform: macOS
