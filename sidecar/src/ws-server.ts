@@ -299,10 +299,13 @@ export class WsServer {
         logger.info("ws", `project.sync: synced ${command.projects.length} projects`);
         break;
 
-      case "ios.registerPush":
-        this.broadcast({ type: "ios.pushRegistered", apnsToken: command.apnsToken });
-        logger.info("ws", `ios.registerPush: registered token for app ${command.appId}`);
+      case "ios.registerPush": {
+        const pushCmd = command as { type: "ios.registerPush"; apnsToken: string; appId: string };
+        logger.info({ category: "matrix", apnsToken: pushCmd.apnsToken.substring(0, 8) + "…", appId: pushCmd.appId }, "ios.registerPush received");
+        // TODO: Phase 6 — call MatrixClient.registerPusher() on Mac side via AppState
+        this.broadcast({ type: "ios.pushRegistered", apnsToken: pushCmd.apnsToken, success: true });
         break;
+      }
     }
   }
 

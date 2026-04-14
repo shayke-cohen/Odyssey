@@ -31,6 +31,7 @@ enum SidecarCommand: Sendable {
     case conversationSync(conversations: [ConversationSummaryWire])
     case conversationMessageAppend(conversationId: String, message: MessageWire)
     case projectSync(projects: [ProjectSummaryWire])
+    case iosRegisterPush(apnsToken: String, appId: String)
 
     func encodeToJSON() throws -> Data {
         let encoder = JSONEncoder()
@@ -163,8 +164,18 @@ enum SidecarCommand: Sendable {
             return try encoder.encode(
                 ProjectSyncWire(type: "project.sync", projects: projects)
             )
+        case .iosRegisterPush(let apnsToken, let appId):
+            return try encoder.encode(
+                IosRegisterPushWire(type: "ios.registerPush", apnsToken: apnsToken, appId: appId)
+            )
         }
     }
+}
+
+private struct IosRegisterPushWire: Encodable {
+    let type: String
+    let apnsToken: String
+    let appId: String
 }
 
 private struct ConversationSyncWire: Encodable {
@@ -499,6 +510,7 @@ enum SidecarEvent: Sendable {
     case workspaceCreated(sessionId: String, workspaceName: String, agentName: String)
     case workspaceJoined(sessionId: String, workspaceName: String, agentName: String)
     case agentInvited(sessionId: String, invitedAgent: String, invitedBy: String)
+    case iosPushRegistered(apnsToken: String, success: Bool, error: String?)
     case connected
     case disconnected
 }
@@ -613,6 +625,8 @@ struct IncomingWireMessage: Codable, Sendable {
     let workspaceId: String?
     let invitedAgent: String?
     let invitedBy: String?
+    let apnsToken: String?
+    let success: Bool?
 
     enum CodingKeys: String, CodingKey {
         case type, sessionId, text, tool, input, output, result, cost
@@ -630,6 +644,7 @@ struct IncomingWireMessage: Codable, Sendable {
         case connection, connections, connectionId, provider, outcome, summary
         case agentName, workspaceName, workspaceId
         case invitedAgent, invitedBy
+        case apnsToken, success
     }
 
     func toEvent() -> SidecarEvent? {
@@ -734,6 +749,10 @@ struct IncomingWireMessage: Codable, Sendable {
         case "agent.invited":
             guard let sid = sessionId, let invited = invitedAgent, let by = invitedBy else { return nil }
             return .agentInvited(sessionId: sid, invitedAgent: invited, invitedBy: by)
+        case "ios.pushRegistered":
+            let token = apnsToken ?? ""
+            let successVal = success ?? false
+            return .iosPushRegistered(apnsToken: token, success: successVal, error: error)
         default:
             return nil
         }

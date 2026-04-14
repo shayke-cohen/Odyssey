@@ -226,7 +226,7 @@ export type SidecarEvent =
   | { type: "connector.list.result"; connections: ConnectorConfig[] }
   | { type: "connector.statusChanged"; connection: ConnectorConfig }
   | { type: "connector.audit"; sessionId?: string; connectionId: string; provider: ConnectorProvider; action: string; outcome: string; summary: string }
-  | { type: "ios.pushRegistered"; apnsToken: string };
+  | { type: "ios.pushRegistered"; apnsToken: string; success: boolean; error?: string };
 
 export interface QuestionOption {
   label: string;

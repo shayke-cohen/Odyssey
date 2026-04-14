@@ -2,6 +2,9 @@ import SwiftUI
 import SwiftData
 import Combine
 import OSLog
+import OdysseyCore
+
+private let logger = Logger(subsystem: "com.odyssey.app", category: "AppState")
 
 @MainActor
 final class AppState: ObservableObject {
@@ -42,6 +45,7 @@ final class AppState: ObservableObject {
     @Published var pendingSuggestions: [String: [SuggestionItem]] = [:]
     @Published var completedPlans: [String: CompletedPlan] = [:]
     @Published private(set) var workerStandbySessions: Set<String> = []
+    @Published var presenceStore: [String: PresenceStatus] = [:]
     // launchError and autoSendText moved to WindowState (per-window)
 
     /// File-based config sync service (set by OdysseyApp on appear)
@@ -188,6 +192,13 @@ final class AppState: ObservableObject {
     private(set) var sidecarManager: SidecarManager?
     private var eventTask: Task<Void, Never>?
     var modelContext: ModelContext?
+    private(set) lazy var transportManager: TransportManager = {
+        let tm = TransportManager(instanceName: InstanceConfig.name)
+        tm.onPresenceChanged = { [weak self] userId, status in
+            self?.presenceStore[userId] = status
+        }
+        return tm
+    }()
     private(set) var scheduleEngine: ScheduleEngine?
     private(set) var scheduleRunCoordinator: ScheduleRunCoordinator?
     #if DEBUG
@@ -1139,6 +1150,13 @@ final class AppState: ObservableObject {
         case .agentInvited(let sessionId, let invitedAgent, let invitedBy):
             persistAgentInvite(sessionId: sessionId, invitedAgent: invitedAgent, invitedBy: invitedBy)
 
+        case .iosPushRegistered(let apnsToken, let success, let error):
+            if success {
+                logger.info("AppState: iOS push registered for token \(apnsToken.prefix(8))…")
+            } else {
+                logger.warning("AppState: iOS push registration failed: \(error ?? "unknown")")
+            }
+
         case .connected:
             sidecarStatus = .connected
             disconnectTimer?.invalidate()
@@ -1147,6 +1165,12 @@ final class AppState: ObservableObject {
             sendToSidecar(.taskList(filter: nil))
             if let ctx = modelContext {
                 Task { await sidecarManager?.pushConversationSync(modelContext: ctx) }
+            }
+            Task {
+                await transportManager.start()
+                transportManager.onInboundMessage = { [weak self] msg in
+                    await self?.handleInboundTransportMessage(msg)
+                }
             }
 
         case .disconnected:
@@ -1730,5 +1754,21 @@ final class AppState: ObservableObject {
         )
         ctx.insert(msg)
         try? ctx.save()
+    }
+
+    // MARK: - Transport inbound
+
+    @MainActor
+    private func handleInboundTransportMessage(_ msg: InboundTransportMessage) async {
+        guard let context = modelContext else { return }
+        let descriptor = FetchDescriptor<Conversation>()
+        let conversations = (try? context.fetch(descriptor)) ?? []
+        guard let conversation = conversations.first(where: {
+            $0.roomOriginMatrixId == msg.roomId
+        }) else {
+            logger.warning("AppState: no conversation found for Matrix room \(msg.roomId)")
+            return
+        }
+        await sharedRoomService?.applyRemoteTransportMessage(msg, to: conversation, context: context)
     }
 }
