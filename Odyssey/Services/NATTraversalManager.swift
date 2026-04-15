@@ -51,6 +51,14 @@ final class NATTraversalManager: ObservableObject {
         }
     }
 
+    /// Directly set the public endpoint (e.g. when UPnP provides a confirmed mapping).
+    /// Overrides the STUN-discovered value and marks status as success.
+    func setPublicEndpoint(_ endpoint: String) {
+        publicEndpoint = endpoint
+        stunStatus = .success
+        logger.info("NATTraversal: public endpoint set directly to \(endpoint)")
+    }
+
     // MARK: - Hole-Punch
 
     /// Attempts UDP hole-punch to the peer's public endpoint by sending

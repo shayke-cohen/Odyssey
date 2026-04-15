@@ -15,6 +15,7 @@ final class P2PNetworkManager: ObservableObject {
     @Published private(set) var peers: [DiscoveredLanPeer] = []
     @Published private(set) var isRunning = false
     @Published var lastError: String?
+    @Published private(set) var wanMappingStatus: UPnPPortMapper.MappingStatus = .idle
 
     private var browser: NWBrowser?
     private let server: PeerCatalogServer
@@ -26,6 +27,8 @@ final class P2PNetworkManager: ObservableObject {
     private let natManager = NATTraversalManager()
     private var natCancellable: AnyCancellable?
     private var stunDiscoveryTask: Task<Void, Never>? = nil
+    private let upnpMapper = UPnPPortMapper()
+    private var upnpTask: Task<Void, Never>? = nil
 
     init() {
         let empty = try! JSONEncoder().encode(WireAgentExportList(agents: []))
@@ -72,16 +75,44 @@ final class P2PNetworkManager: ObservableObject {
         stunDiscoveryTask = Task {
             await natManager.discoverPublicEndpoint(localPort: localPort)
         }
+        upnpTask = Task { [weak self] in
+            guard let self else { return }
+            let result = await self.upnpMapper.mapPort(localPort)
+            // Task inherits @MainActor isolation from start(), so assignments are safe.
+            self.wanMappingStatus = result
+            if case .mapped(let ip, let port) = result {
+                // UPnP confirmed a mapping — use this endpoint instead of the
+                // STUN-discovered one because it guarantees the mapping exists.
+                self.natManager.setPublicEndpoint("\(ip):\(port)")
+            }
+        }
     }
 
     func stop() {
         stunDiscoveryTask?.cancel()
         stunDiscoveryTask = nil
+        upnpTask?.cancel()
+        upnpTask = nil
         browser?.cancel()
         browser = nil
         server.stop()
         peers = []
         isRunning = false
+        wanMappingStatus = .idle
+        // Fire-and-forget removal so we don't block the main actor during teardown
+        let mapper = upnpMapper
+        Task.detached {
+            await mapper.removeMapping()
+        }
+    }
+
+    /// Re-attempt UPnP/NAT-PMP port mapping. Call this after a network change.
+    func refreshWANMapping() async {
+        await upnpMapper.renewMapping()
+        wanMappingStatus = await upnpMapper.status
+        if case .mapped(let ip, let port) = wanMappingStatus {
+            natManager.setPublicEndpoint("\(ip):\(port)")
+        }
     }
 
     func refreshExportCache() {

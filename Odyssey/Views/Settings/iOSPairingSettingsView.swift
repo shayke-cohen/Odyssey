@@ -30,6 +30,8 @@ struct iOSPairingSettingsView: View {
             VStack(alignment: .leading, spacing: 24) {
                 allowToggleSection
                 Divider()
+                wanAccessSection
+                Divider()
                 qrSection
                 Divider()
                 pairedDevicesSection
@@ -57,6 +59,36 @@ struct iOSPairingSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .stableXrayId("settings.iosPairing.firewallNote")
+            }
+        }
+    }
+
+    // MARK: - Internet Access Section
+
+    @ViewBuilder
+    private var wanAccessSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Internet Access")
+                .font(.headline)
+            switch p2pNetworkManager.wanMappingStatus {
+            case .mapped(let ip, let port):
+                Label("Internet reachable at \(ip):\(port)", systemImage: "globe")
+                    .foregroundStyle(.green)
+                    .accessibilityIdentifier("settings.ios.wanStatus")
+            case .discovering:
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Checking router for automatic port mapping…")
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityIdentifier("settings.ios.wanStatus")
+            case .failed:
+                Label("Manual port forwarding required for internet access", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settings.ios.wanStatus")
+            case .idle:
+                EmptyView()
             }
         }
     }
