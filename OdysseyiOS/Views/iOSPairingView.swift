@@ -2,14 +2,14 @@
 import SwiftUI
 import OdysseyCore
 
-/// Shown when no Mac is paired yet. Accepts a base64url invite code, decodes and verifies it,
-/// then stores the resulting PeerCredentials in the Keychain.
+/// Shown when no Mac is paired yet. Accepts a base64url invite code — either by scanning
+/// the QR code shown in Odyssey → Settings → Devices on the Mac, or by pasting it manually.
 struct iOSPairingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var inviteCode = ""
     @State private var isPairing = false
     @State private var errorMessage: String?
-    @State private var pairedSuccessfully = false
+    @State private var showScanner = false
 
     let onPaired: () -> Void
 
@@ -24,12 +24,34 @@ struct iOSPairingView: View {
                 VStack(spacing: 8) {
                     Text("Pair with your Mac")
                         .font(.title2.bold())
-                    Text("On your Mac, open Odyssey → Settings → Devices and tap **Generate Invite**. Paste the code below.")
+                    Text("On your Mac, open Odyssey → Settings → Devices. Scan the QR code or paste the invite code below.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
+
+                // QR scan button
+                Button {
+                    showScanner = true
+                } label: {
+                    Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.horizontal)
+                .accessibilityIdentifier("pairing.scanQRButton")
+
+                HStack {
+                    Rectangle().frame(height: 1).foregroundStyle(.tertiary)
+                    Text("or enter code manually")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize()
+                    Rectangle().frame(height: 1).foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Invite Code")
@@ -66,7 +88,7 @@ struct iOSPairingView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .controlSize(.large)
                 .padding(.horizontal)
                 .disabled(inviteCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isPairing)
@@ -81,6 +103,11 @@ struct iOSPairingView: View {
                         .accessibilityIdentifier("pairing.cancelButton")
                 }
             }
+            .sheet(isPresented: $showScanner) {
+                QRScannerSheet { scannedValue in
+                    handleScanned(scannedValue)
+                }
+            }
             .onOpenURL { url in
                 guard url.scheme == "odyssey",
                       let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
@@ -90,6 +117,18 @@ struct iOSPairingView: View {
                 Task { await pair() }
             }
         }
+    }
+
+    private func handleScanned(_ value: String) {
+        // Accept either a raw invite code or the full odyssey://connect?invite=<code> deep link
+        if let components = URLComponents(string: value),
+           components.scheme == "odyssey",
+           let invite = components.queryItems?.first(where: { $0.name == "invite" })?.value {
+            inviteCode = invite
+        } else {
+            inviteCode = value
+        }
+        Task { await pair() }
     }
 
     // MARK: - Pairing logic
