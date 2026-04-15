@@ -21,6 +21,7 @@ final class iOSAppState {
     private let credentialStore = PeerCredentialStore()
     private var eventTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
+    private var reconnectTask: Task<Void, Never>?
 
     // MARK: - Lifecycle
 
@@ -146,7 +147,23 @@ final class iOSAppState {
     func handleEvent(_ event: SidecarEvent) {
         switch event {
         case .connected:
-            // Determine method from current peer
+            reconnectTask?.cancel()
+            reconnectTask = nil
+            // Restart poll task (was cancelled on disconnect or first connect before startEventLoop)
+            if pollTask == nil || pollTask?.isCancelled == true {
+                pollTask = Task { [weak self] in
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .seconds(30))
+                        guard let self, !Task.isCancelled else { break }
+                        await self.loadConversations()
+                        await self.loadProjects()
+                    }
+                }
+            }
+            Task { [weak self] in
+                await self?.loadConversations()
+                await self?.loadProjects()
+            }
             if let peer = sidecarManager.connectedPeer {
                 let method: RemoteSidecarManager.ConnectionMethod = peer.lanHint != nil ? .lan : .wanDirect
                 connectionStatus = .connected(method: method.rawValue)
@@ -157,6 +174,14 @@ final class iOSAppState {
             connectionStatus = .disconnected
             pollTask?.cancel()
             pollTask = nil
+            reconnectTask?.cancel()
+            reconnectTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(5))
+                    guard let self, !Task.isCancelled else { break }
+                    await self.sidecarManager.reconnectIfNeeded()
+                }
+            }
         case .streamToken(let sessionId, let token):
             streamingBuffers[sessionId, default: ""] += token
         case .sessionResult(let sessionId, _, _, _, _):
