@@ -2,6 +2,15 @@ import CryptoKit
 import Foundation
 import OSLog
 import Security
+import P256K
+
+// MARK: - Hex helpers
+
+private extension Data {
+    var hexString: String {
+        map { String(format: "%02x", $0) }.joined()
+    }
+}
 
 // MARK: - IdentityManager
 
@@ -175,6 +184,33 @@ final class IdentityManager {
         tokenCache[instanceName] = tokenString
         Log.sidecar.info("IdentityManager: generated WS token for '\(instanceName, privacy: .public)'")
         return tokenString
+    }
+
+    // MARK: - Nostr Keypair (secp256k1)
+
+    /// Returns the secp256k1 keypair for Nostr relay, generating and storing it in Keychain on first call.
+    /// The key is stored under `"odyssey.nostr.<instanceName>"`.
+    /// - Returns: `privkeyHex` is the 32-byte raw private key as hex; `pubkeyHex` is the 32-byte x-only public key as hex (BIP-340 / Nostr convention).
+    func nostrKeypair(for instanceName: String) throws -> (privkeyHex: String, pubkeyHex: String) {
+        let keychainKey = "odyssey.nostr.\(instanceName)"
+        // Try to load existing 32-byte raw private key
+        if let rawBytes = try? loadKeychainData(forKey: keychainKey), rawBytes.count == 32 {
+            let privkey = try P256K.Signing.PrivateKey(dataRepresentation: rawBytes)
+            let pubkeyHex = Data(privkey.publicKey.xonly.bytes).hexString
+            return (rawBytes.hexString, pubkeyHex)
+        }
+        // Generate new keypair
+        let privkey = try P256K.Signing.PrivateKey()
+        let rawBytes = privkey.dataRepresentation
+        try saveKeychainData(rawBytes, forKey: keychainKey)
+        let pubkeyHex = Data(privkey.publicKey.xonly.bytes).hexString
+        Log.sidecar.info("IdentityManager: generated Nostr secp256k1 keypair for '\(instanceName, privacy: .public)'")
+        return (rawBytes.hexString, pubkeyHex)
+    }
+
+    /// Deletes the stored Nostr keypair (e.g. on identity reset).
+    func deleteNostrKeypair(for instanceName: String) {
+        deleteKeychainItem(forKey: "odyssey.nostr.\(instanceName)")
     }
 
     // MARK: - TLS Certificate

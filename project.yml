@@ -16,6 +16,9 @@ packages:
     from: "2.2.1"
   OdysseyCore:
     path: Packages/OdysseyCore
+  secp256k1:
+    url: https://github.com/GigaBitcoin/secp256k1.swift
+    from: "0.15.0"
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -46,6 +49,8 @@ targets:
       - package: MarkdownUI
       - package: Highlightr
       - package: OdysseyCore
+      - package: secp256k1
+        product: P256K
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.odyssey.app
