@@ -195,6 +195,9 @@ final class ConfigSyncService {
         syncAgents(context: context, templates: templates)
         syncGroups(context: context)
 
+        // Repair: ensure every resident agent has a home folder
+        repairResidentHomeFolders(context: context)
+
         do {
             try context.save()
             Log.configSync.info("Full sync complete")
@@ -419,6 +422,22 @@ final class ConfigSyncService {
 
         for entity in existing where entity.configSlug != nil && !seenSlugs.contains(entity.configSlug!) {
             entity.isEnabled = false
+        }
+    }
+
+    /// Ensures every resident agent has a defaultWorkingDirectory.
+    /// Agents added to Residents before the home-folder feature shipped may have a nil path.
+    private func repairResidentHomeFolders(context: ModelContext) {
+        let residents = (try? context.fetch(
+            FetchDescriptor<Agent>(predicate: #Predicate { $0.isResident == true })
+        )) ?? []
+        var repaired = 0
+        for agent in residents where agent.defaultWorkingDirectory == nil || agent.defaultWorkingDirectory!.isEmpty {
+            agent.defaultWorkingDirectory = Agent.defaultHomePath(for: agent.name)
+            repaired += 1
+        }
+        if repaired > 0 {
+            Log.configSync.info("Repaired home folder for \(repaired) resident agent(s)")
         }
     }
 
