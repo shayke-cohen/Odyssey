@@ -9,6 +9,7 @@ import { WorkspaceStore } from "./stores/workspace-store.js";
 import { PeerRegistry } from "./stores/peer-registry.js";
 import { ConnectorStore } from "./stores/connector-store.js";
 import { RelayClient } from "./relay-client.js";
+import { NostrTransport } from "./relay/nostr-transport.js";
 import { ConversationStore } from "./stores/conversation-store.js";
 import { ProjectStore } from "./stores/project-store.js";
 import { SessionManager } from "./session-manager.js";
@@ -35,6 +36,13 @@ const workspaces = new WorkspaceStore();
 const peerRegistry = new PeerRegistry();
 const connectors = new ConnectorStore();
 const relayClient = new RelayClient((event) => broadcastFn(event));
+const NOSTR_PRIVKEY_HEX = process.env.ODYSSEY_NOSTR_PRIVKEY_HEX ?? ''
+const NOSTR_PUBKEY_HEX = process.env.ODYSSEY_NOSTR_PUBKEY_HEX ?? ''
+const NOSTR_RELAYS = (process.env.ODYSSEY_NOSTR_RELAYS ?? '').split(',').filter(Boolean)
+const nostrTransport = new NostrTransport((event) => broadcastFn(event))
+if (NOSTR_PRIVKEY_HEX && NOSTR_PUBKEY_HEX) {
+  nostrTransport.setIdentity(NOSTR_PRIVKEY_HEX, NOSTR_PUBKEY_HEX, NOSTR_RELAYS)
+}
 const conversationStore = new ConversationStore();
 const projectStore = new ProjectStore();
 const agentDefinitions = new Map<string, AgentConfig>();
@@ -53,6 +61,7 @@ const toolContext: ToolContext = {
   peerRegistry,
   connectors,
   relayClient,
+  nostrTransport,
   conversationStore,
   projectStore,
   broadcast: (event) => broadcastFn(event),

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import type { ToolContext } from "./tool-context.js";
 import { createTextResult, defineSharedTool } from "./shared-tool.js";
+import type { OdysseyP2PEnvelope } from '../types.js';
 
 export function createMessagingTools(ctx: ToolContext, callingSessionId: string) {
   return [
@@ -174,6 +175,20 @@ export function createMessagingTools(ctx: ToolContext, callingSessionId: string)
                 ...createTextResult({ error: "remote_relay_failed", peer: remotePeer.peer.name, message: err.message }, false),
               };
             }
+          }
+          // Nostr fallback: if not a LAN peer but is a Nostr peer, route via Nostr
+          const peerName = args.to_agent.includes('@') ? args.to_agent.split('@')[1] : null
+          if (peerName && ctx.nostrTransport.hasPeer(peerName)) {
+            const envelope: OdysseyP2PEnvelope = {
+              id: crypto.randomUUID(),
+              type: 'peer.task.delegate',
+              from: { peer: process.env.ODYSSEY_INSTANCE ?? 'local' },
+              to: { peer: peerName, agent: args.to_agent.split('@')[0] },
+              payload: { task: args.task, agentName: args.to_agent.split('@')[0] },
+              timestamp: new Date().toISOString(),
+            }
+            await ctx.nostrTransport.sendMessage(peerName, envelope)
+            return createTextResult({ delegated: true, method: "nostr", peer: peerName })
           }
           return createTextResult({ error: "agent_not_found", agent: args.to_agent, hint: "Use peer_list_agents to see available agents" }, false);
         }
