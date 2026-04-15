@@ -617,7 +617,7 @@ final class AppState: ObservableObject {
                 registerConnections()
                 // Push conversation/project snapshot so iOS can read them immediately
                 if let ctx = modelContext {
-                    await manager.pushConversationSync(modelContext: ctx)
+                    await manager.pushConversationSync(modelContext: ctx, pushMessages: true)
                 }
                 // Start periodic sync timer for the initial connection
                 conversationSyncTimer?.cancel()
@@ -626,7 +626,7 @@ final class AppState: ObservableObject {
                         try? await Task.sleep(for: .seconds(30))
                         guard let self, !Task.isCancelled else { break }
                         if let ctx = self.modelContext {
-                            await self.sidecarManager?.pushConversationSync(modelContext: ctx)
+                            await self.sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: true)
                         }
                     }
                 }
@@ -1198,7 +1198,7 @@ final class AppState: ObservableObject {
             registerAgentDefinitions()
             registerConnections()
             if let ctx = modelContext {
-                Task { await sidecarManager?.pushConversationSync(modelContext: ctx) }
+                Task { await sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: true) }
             }
             Task {
                 transportManager.onInboundMessage = { [weak self] msg in
@@ -1212,7 +1212,7 @@ final class AppState: ObservableObject {
                     try? await Task.sleep(for: .seconds(30))
                     guard let self, !Task.isCancelled else { break }
                     if let ctx = self.modelContext {
-                        await self.sidecarManager?.pushConversationSync(modelContext: ctx)
+                        await self.sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: true)
                     }
                 }
             }

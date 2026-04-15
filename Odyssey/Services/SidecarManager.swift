@@ -531,7 +531,10 @@ extension SidecarManager {
 
     /// Push a snapshot of all conversations and projects from SwiftData to the sidecar.
     /// Called after the sidecar becomes connected so the iOS client can read them via REST.
-    func pushConversationSync(modelContext: ModelContext) async {
+    /// Sync conversation metadata (and optionally recent message history) to the sidecar.
+    /// - Parameter pushMessages: If true, also backfill the last 30 chat messages per
+    ///   conversation. Pass true on initial connect; false for periodic metadata-only refreshes.
+    func pushConversationSync(modelContext: ModelContext, pushMessages: Bool = false) async {
         do {
             // Fetch all non-archived conversations (most-recent 100 to avoid huge payloads)
             var convDescriptor = FetchDescriptor<Conversation>(
@@ -590,9 +593,55 @@ extension SidecarManager {
                 )
             }
 
+            // Collect message wires via a direct fetch — using the relationship (conv.messages)
+            // can return empty after SwiftData faults; a separate fetch is more reliable.
+            var messageWiresByConv: [(convId: String, wires: [MessageWire])] = []
+            if pushMessages {
+                // Fetch all messages with no predicate, then filter in Swift to avoid
+                // potential SwiftData predicate compilation issues.
+                let msgDescriptor = FetchDescriptor<ConversationMessage>(
+                    sortBy: [SortDescriptor(\.timestamp)]
+                )
+                let allMessages = (try? modelContext.fetch(msgDescriptor)) ?? []
+                var byConv: [String: [ConversationMessage]] = [:]
+                for msg in allMessages {
+                    guard !msg.isStreaming, !msg.text.isEmpty,
+                          let convId = msg.conversation?.id.uuidString else { continue }
+                    byConv[convId, default: []].append(msg)
+                }
+                for (convId, msgs) in byConv {
+                    let wires = msgs.suffix(30).map { msg in
+                        MessageWire(
+                            id: msg.id.uuidString,
+                            text: msg.text,
+                            type: msg.type.rawValue,
+                            senderParticipantId: msg.senderParticipantId?.uuidString,
+                            timestamp: Self.isoString(from: msg.timestamp),
+                            isStreaming: false,
+                            toolName: msg.toolName,
+                            toolOutput: msg.toolOutput,
+                            thinkingText: msg.thinkingText
+                        )
+                    }
+                    messageWiresByConv.append((convId: convId, wires: wires))
+                }
+            }
+
+            // Now do all the async sends
             try await send(.conversationSync(conversations: convWires))
             try await send(.projectSync(projects: projectWires))
             Log.sidecar.info("pushConversationSync: pushed \(convWires.count) conversations, \(projectWires.count) projects")
+
+            if pushMessages {
+                var totalMsgs = 0
+                for (convId, wires) in messageWiresByConv {
+                    for wire in wires {
+                        try await send(.conversationMessageAppend(conversationId: convId, message: wire))
+                        totalMsgs += 1
+                    }
+                }
+                Log.sidecar.info("pushConversationSync: backfilled \(totalMsgs) messages across \(messageWiresByConv.count) conversations")
+            }
         } catch {
             Log.sidecar.warning("pushConversationSync failed: \(error.localizedDescription, privacy: .public)")
         }

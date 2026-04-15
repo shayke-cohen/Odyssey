@@ -319,6 +319,7 @@ export class WsServer {
 
       case "conversation.messageAppend":
         this.ctx.conversationStore.appendMessage(command.conversationId, command.message);
+        logger.info("ws", `conversation.messageAppend: conv=${command.conversationId.slice(0, 8)} msg=${command.message.id.slice(0, 8)} type=${command.message.type}`);
         break;
 
       case "project.sync":
