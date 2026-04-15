@@ -11,6 +11,7 @@
     <key>CFBundleVersion</key><string>1</string>
     <key>CFBundleShortVersionString</key><string>1.0</string>
     <key>LSRequiresIPhoneOS</key><true/>
+    <key>UILaunchScreen</key><dict/>
     <key>NSBonjourServices</key>
     <array><string>_odyssey._tcp</string></array>
     <key>NSLocalNetworkUsageDescription</key>
