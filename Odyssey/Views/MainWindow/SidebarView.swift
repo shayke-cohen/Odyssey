@@ -2233,10 +2233,12 @@ struct SidebarView: View {
     }
 
     private func startResidentSession(with agent: Agent) {
-        guard let homeDir = agent.defaultWorkingDirectory, !homeDir.isEmpty else {
-            startSession(with: agent)
-            return
+        // Always ensure a home folder is set — never fall back to the project directory
+        if agent.defaultWorkingDirectory == nil || agent.defaultWorkingDirectory!.isEmpty {
+            agent.defaultWorkingDirectory = Agent.defaultHomePath(for: agent.name)
+            try? modelContext.save()
         }
+        let homeDir = agent.defaultWorkingDirectory!
         let expandedPath = (homeDir as NSString).expandingTildeInPath
         let session = Session(agent: agent, mode: .interactive)
         session.workingDirectory = expandedPath
@@ -2417,10 +2419,12 @@ private struct AddResidentSheet: View {
             List(nonResidents) { agent in
                 Button {
                     agent.isResident = true
-                    if let homeDir = agent.defaultWorkingDirectory {
-                        let expanded = (homeDir as NSString).expandingTildeInPath
-                        ResidentAgentSupport.seedMemoryFileIfNeeded(in: expanded, agentName: agent.name)
+                    // Auto-assign home folder if not already set
+                    if agent.defaultWorkingDirectory == nil || agent.defaultWorkingDirectory!.isEmpty {
+                        agent.defaultWorkingDirectory = Agent.defaultHomePath(for: agent.name)
                     }
+                    let expanded = (agent.defaultWorkingDirectory! as NSString).expandingTildeInPath
+                    ResidentAgentSupport.seedMemoryFileIfNeeded(in: expanded, agentName: agent.name)
                     try? ctx.save()
                 } label: {
                     HStack(spacing: 10) {

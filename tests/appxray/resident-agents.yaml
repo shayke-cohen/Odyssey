@@ -181,12 +181,19 @@ tests:
     assert:
       - element_exists: '@testId("chat.messageInput")'
 
-  - name: "RA-7: Resident chat working directory matches home folder"
+  - name: "RA-7: Resident chat working directory is home folder, not project root"
     description: |
       Verifies that a session created via startResidentSession has its
       workingDirectory set to the agent's defaultWorkingDirectory (home folder),
       NOT to the currently open project's rootPath.
-      Verified via inspector workspace heading.
+
+      Root cause that was fixed: agents added to Residents before having a
+      defaultWorkingDirectory set would fall back to startSession() which used the
+      project root. Fix: AddResidentSheet auto-assigns Agent.defaultHomePath()
+      when adding, and startResidentSession always assigns it defensively.
+
+      The home folder path contains ".odyssey/residents/" — the project root does not.
+      The inspector workspace heading should show the residents path.
     steps:
       - interact:
           action: tap
@@ -194,13 +201,11 @@ tests:
       - interact:
           action: screenshot
           label: "inspector-workspace"
-      - inspect:
-          target: tree
-          filter: "inspector.workspaceHeading"
-          depth: 3
     assert:
       - element_exists: '@testId("inspector.workspaceHeading")'
-      # The path shown should match the agent's home folder, not a project root
+      # Home folder path contains .odyssey/residents/ — project root path does not
+      - screenshot_contains: ".odyssey/residents/"
+      - screenshot_not_contains: "/playground"
 
   # ─── CONTEXT MENU ─────────────────────────────────────────────────────────
 
@@ -276,3 +281,62 @@ tests:
           label: "inspector-files-tab"
     assert:
       - screenshot_contains: "MEMORY.md"
+
+  # ─── HOME FOLDER AUTO-ASSIGN ───────────────────────────────────────────────
+
+  - name: "RA-12: Adding agent without Home Folder auto-assigns ~/.odyssey/residents/{slug}"
+    description: |
+      When an agent is added to Residents via the sheet and it has no
+      defaultWorkingDirectory set, the sheet automatically assigns
+      Agent.defaultHomePath(for: agent.name) = ~/.odyssey/residents/{slug}.
+
+      This fixes the bug where agents with no defaultWorkingDirectory would
+      have resident chats run in the project root instead of a dedicated folder.
+
+      Steps: open the sheet, add an agent (tap first row), then start a new chat
+      and verify the inspector shows a .odyssey/residents/ path.
+
+      Note: Requires at least one non-resident agent without a pre-set home folder.
+      Skip if all non-residents already have defaultWorkingDirectory set.
+    steps:
+      # Open sheet and add first non-resident agent
+      - act:
+          action: setState
+          path: appState.showAddResidentSheet
+          value: true
+      - interact:
+          action: waitFor
+          condition: element
+          selector: '@testId("addResidentSheet.list")'
+          timeout: 3000
+      - interact:
+          action: tap
+          selector: '@index(0, @type("Button"))'
+      - interact:
+          action: screenshot
+          label: "after-add-agent"
+      # Close sheet
+      - act:
+          action: setState
+          path: appState.showAddResidentSheet
+          value: false
+      # Start new chat from the resident row that was just added
+      - interact:
+          action: tap
+          selector: '@testId("sidebar.residentAgent.newChat")'
+      - interact:
+          action: waitFor
+          condition: element
+          selector: '@testId("chat.messageInput")'
+          timeout: 5000
+      # Open inspector
+      - interact:
+          action: tap
+          selector: '@testId("mainWindow.inspectorToggle")'
+      - interact:
+          action: screenshot
+          label: "workspace-after-auto-assign"
+    assert:
+      - element_exists: '@testId("chat.messageInput")'
+      # The auto-assigned home folder must contain .odyssey/residents/
+      - screenshot_contains: ".odyssey/residents/"
