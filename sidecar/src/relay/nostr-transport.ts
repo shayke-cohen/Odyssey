@@ -40,6 +40,8 @@ export class NostrTransport {
   private broadcast: (event: SidecarEvent) => void
   private sub: { close: () => void } | null = null
   private seenEventIds = new Map<string, true>()
+  private statusInterval: ReturnType<typeof setInterval> | null = null
+  private lastConnectedCount = -1
 
   constructor(broadcast: (event: SidecarEvent) => void) {
     this.broadcast = broadcast
@@ -51,7 +53,11 @@ export class NostrTransport {
     this.pubkeyHex = pubkeyHex
     if (relays && relays.length > 0) this.relays = relays
     this.startSubscription()
-    // TODO(Task 5): emit nostr.status once the wire type is added in Task 4
+    // Emit initial status after a short delay to allow relay connections to establish
+    setTimeout(() => this.emitRelayStatus(), 1000)
+    // Clear any existing polling interval before starting a new one
+    if (this.statusInterval !== null) clearInterval(this.statusInterval)
+    this.statusInterval = setInterval(() => this.emitRelayStatus(), 15_000)
   }
 
   addPeer(name: string, pubkeyHex: string, relays: string[]) {
@@ -80,6 +86,13 @@ export class NostrTransport {
     this.handleIncomingEvent(event)
   }
 
+  /** Force-emit a relay status snapshot (exposed for testing). */
+  flushRelayStatus() {
+    // Reset last count so the emit always fires in tests
+    this.lastConnectedCount = -1
+    this.emitRelayStatus()
+  }
+
   async sendMessage(peerName: string, envelope: OdysseyP2PEnvelope): Promise<void> {
     if (!this.privkeyBytes) throw new Error('NostrTransport: identity not set')
     const peer = this.peers.get(peerName)
@@ -90,11 +103,31 @@ export class NostrTransport {
   }
 
   destroy() {
+    if (this.statusInterval !== null) {
+      clearInterval(this.statusInterval)
+      this.statusInterval = null
+    }
     this.sub?.close()
+    this.broadcast({ type: 'nostr.status', connectedRelays: 0, totalRelays: this.relays.length })
     this.pool.destroy()
   }
 
   // ── private ──────────────────────────────────────────────────────────────
+
+  /** Exposed for testing via the public alias `emitRelayStatus`. */
+  private emitRelayStatus() {
+    const statusMap = this.pool.listConnectionStatus()
+    let connected = 0
+    for (const isConnected of statusMap.values()) {
+      if (isConnected) connected++
+    }
+    const total = this.relays.length
+    // Only broadcast when the count changes to avoid redundant events
+    if (connected !== this.lastConnectedCount) {
+      this.lastConnectedCount = connected
+      this.broadcast({ type: 'nostr.status', connectedRelays: connected, totalRelays: total })
+    }
+  }
 
   private startSubscription() {
     if (!this.pubkeyHex) return

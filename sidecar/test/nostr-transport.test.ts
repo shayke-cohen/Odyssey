@@ -81,6 +81,70 @@ describe('NostrTransport round-trip (two instances, no relay)', () => {
   })
 })
 
+describe('NostrTransport relay status', () => {
+  // Use a single fake relay URL — it will never actually connect (no server), so
+  // connectedRelays will always be 0; totalRelays will be 1 (the configured list size).
+  const FAKE_RELAYS = ['wss://localhost:19999']
+
+  it('setIdentity starts relay status polling and flushRelayStatus broadcasts nostr.status', () => {
+    const received: any[] = []
+    const transport = new NostrTransport((event) => received.push(event))
+    const kp = generateNostrKeypair()
+    transport.setIdentity(kp.privkeyHex, kp.pubkeyHex, FAKE_RELAYS)
+
+    // Call flushRelayStatus directly to verify the broadcast without waiting for the timer
+    transport.flushRelayStatus()
+
+    const statusEvents = received.filter((e) => e.type === 'nostr.status')
+    expect(statusEvents.length).toBeGreaterThanOrEqual(1)
+
+    const last = statusEvents[statusEvents.length - 1]
+    expect(last.type).toBe('nostr.status')
+    expect(typeof last.connectedRelays).toBe('number')
+    expect(last.connectedRelays).toBe(0) // no real relay running at localhost:19999
+    expect(last.totalRelays).toBe(1)     // matches FAKE_RELAYS.length
+
+    transport.destroy()
+  })
+
+  it('destroy emits a final nostr.status with connectedRelays 0', () => {
+    const received: any[] = []
+    const transport = new NostrTransport((event) => received.push(event))
+    const kp = generateNostrKeypair()
+    transport.setIdentity(kp.privkeyHex, kp.pubkeyHex, FAKE_RELAYS)
+
+    transport.destroy()
+
+    const finalStatus = received.filter((e) => e.type === 'nostr.status').pop()
+    expect(finalStatus).toBeDefined()
+    expect(finalStatus.connectedRelays).toBe(0)
+    expect(finalStatus.totalRelays).toBe(FAKE_RELAYS.length)
+  })
+
+  it('flushRelayStatus always emits (resets baseline) and each emit has correct shape', () => {
+    const received: any[] = []
+    const transport = new NostrTransport((event) => received.push(event))
+    const kp = generateNostrKeypair()
+    transport.setIdentity(kp.privkeyHex, kp.pubkeyHex, FAKE_RELAYS)
+
+    const before = received.filter((e) => e.type === 'nostr.status').length
+    transport.flushRelayStatus()
+    transport.flushRelayStatus()
+    const after = received.filter((e) => e.type === 'nostr.status').length
+
+    // Each flushRelayStatus resets the baseline so it always emits; expect 2 more
+    expect(after - before).toBe(2)
+
+    // Every status event must have the correct shape
+    for (const ev of received.filter((e) => e.type === 'nostr.status')) {
+      expect(typeof ev.connectedRelays).toBe('number')
+      expect(typeof ev.totalRelays).toBe('number')
+    }
+
+    transport.destroy()
+  })
+})
+
 describe('NostrTransport negative paths', () => {
   it('dedup: same event delivered twice results in only one broadcast', () => {
     const alice = generateNostrKeypair()
