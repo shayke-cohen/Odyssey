@@ -204,8 +204,8 @@ struct SidebarView: View {
                 }
             } header: {
                 residentAgentsHeader
+                    .stableXrayId("sidebar.residentAgentsSection")
             }
-            .stableXrayId("sidebar.residentAgentsSection")
 
             if sortedProjects.isEmpty {
                 emptyState
