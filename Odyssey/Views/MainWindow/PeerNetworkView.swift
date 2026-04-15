@@ -5,6 +5,7 @@ struct PeerNetworkView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var p2p: P2PNetworkManager
+    @EnvironmentObject private var appState: AppState
 
     @State private var selectedPeerId: String?
     @State private var remoteAgents: [WireAgentExport] = []
@@ -30,6 +31,19 @@ struct PeerNetworkView: View {
                     .fill(p2p.isRunning ? Color.green : Color.secondary)
                     .frame(width: 8, height: 8)
                     .xrayId("peerNetwork.statusDot")
+                if appState.nostrRelayTotal > 0 {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(appState.nostrRelayCount > 0 ? Color.green : Color.orange)
+                            .frame(width: 7, height: 7)
+                        Text(appState.nostrRelayCount > 0
+                             ? "\(appState.nostrRelayCount)/\(appState.nostrRelayTotal) relays"
+                             : "Connecting to relays…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityIdentifier("peerNetwork.nostrRelayStatus")
+                }
                 Button {
                     dismiss()
                 } label: {
