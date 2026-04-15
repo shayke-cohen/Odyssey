@@ -1730,9 +1730,14 @@ private struct ModelsSettingsTab: View {
 
 private struct ConnectionSettingsTab: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var p2pNetworkManager: P2PNetworkManager
     @AppStorage(AppSettings.autoConnectSidecarKey, store: AppSettings.store) private var autoConnectSidecar = true
     @AppStorage(AppSettings.wsPortKey, store: AppSettings.store) private var wsPort = AppSettings.defaultWsPort
     @AppStorage(AppSettings.httpPortKey, store: AppSettings.store) private var httpPort = AppSettings.defaultHttpPort
+    @AppStorage(AppSettings.turnEnabledKey, store: AppSettings.store) private var turnEnabled = false
+    @AppStorage(AppSettings.turnURLKey, store: AppSettings.store) private var turnURL = AppSettings.defaultTurnURL
+    @AppStorage(AppSettings.turnUsernameKey, store: AppSettings.store) private var turnUsername = AppSettings.defaultTurnUsername
+    @AppStorage(AppSettings.turnCredentialKey, store: AppSettings.store) private var turnCredential = AppSettings.defaultTurnCredential
 
     var body: some View {
         Form {
@@ -1782,6 +1787,46 @@ private struct ConnectionSettingsTab: View {
                 }
 
                 Text("Changes take effect after restarting the sidecar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Enable TURN relay for internet access", isOn: $turnEnabled)
+                    .xrayId("settings.connection.turnToggle")
+
+                if turnEnabled {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("TURN Server URL")
+                            .font(.callout)
+                        TextField(AppSettings.defaultTurnURL, text: $turnURL)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("settings.connection.turnURLField")
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Username")
+                            .font(.callout)
+                        TextField(AppSettings.defaultTurnUsername, text: $turnUsername)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("settings.connection.turnUsernameField")
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Credential")
+                            .font(.callout)
+                        SecureField(AppSettings.defaultTurnCredential, text: $turnCredential)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("settings.connection.turnCredentialField")
+                    }
+
+                    // Status row
+                    turnRelayStatusRow
+                }
+            } header: {
+                Text("Remote Access (TURN Relay)")
+            } footer: {
+                Text("TURN relay allows iOS to reach this Mac from any network, even through strict NATs. Uses openrelay.metered.ca by default (free, rate-limited). For production use, configure your own TURN server.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -1843,6 +1888,29 @@ private struct ConnectionSettingsTab: View {
 
         case .connecting:
             EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var turnRelayStatusRow: some View {
+        switch p2pNetworkManager.turnStatus {
+        case .idle:
+            EmptyView()
+        case .allocating:
+            HStack(spacing: 8) {
+                ProgressView().scaleEffect(0.7)
+                Text("Allocating relay…")
+                    .foregroundStyle(.secondary)
+            }
+            .xrayId("settings.connection.turnStatus")
+        case .allocated(let relay):
+            Label("Relay active: \(relay)", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+                .xrayId("settings.connection.turnStatus")
+        case .failed(let msg):
+            Label("Relay failed: \(msg)", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.secondary)
+                .xrayId("settings.connection.turnStatus")
         }
     }
 
