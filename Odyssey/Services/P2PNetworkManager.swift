@@ -16,6 +16,7 @@ final class P2PNetworkManager: ObservableObject {
     @Published private(set) var isRunning = false
     @Published var lastError: String?
     @Published private(set) var wanMappingStatus: UPnPPortMapper.MappingStatus = .idle
+    @Published private(set) var turnStatus: TURNAllocator.AllocatorStatus = .idle
 
     private var browser: NWBrowser?
     private let server: PeerCatalogServer
@@ -29,6 +30,8 @@ final class P2PNetworkManager: ObservableObject {
     private var stunDiscoveryTask: Task<Void, Never>? = nil
     private let upnpMapper = UPnPPortMapper()
     private var upnpTask: Task<Void, Never>? = nil
+    private let turnAllocator = TURNAllocator()
+    private var turnAllocationTask: Task<Void, Never>? = nil
 
     init() {
         let empty = try! JSONEncoder().encode(WireAgentExportList(agents: []))
@@ -86,6 +89,29 @@ final class P2PNetworkManager: ObservableObject {
                 self.natManager.setPublicEndpoint("\(ip):\(port)")
             }
         }
+
+        // Start TURN allocation if the user has enabled it in settings.
+        let turnEnabled = AppSettings.store.bool(forKey: AppSettings.turnEnabledKey)
+        if turnEnabled {
+            let url = AppSettings.store.string(forKey: AppSettings.turnURLKey) ?? AppSettings.defaultTurnURL
+            let username = AppSettings.store.string(forKey: AppSettings.turnUsernameKey) ?? AppSettings.defaultTurnUsername
+            let credential = AppSettings.store.string(forKey: AppSettings.turnCredentialKey) ?? AppSettings.defaultTurnCredential
+            let config = OdysseyCore.TURNConfig(url: url, username: username, credential: credential)
+            let allocator = turnAllocator
+            turnAllocationTask = Task { [weak self] in
+                guard let self else { return }
+                do {
+                    let relay = try await allocator.allocate(config: config)
+                    await MainActor.run {
+                        self.turnStatus = .allocated(relayEndpoint: relay)
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.turnStatus = .failed(error.localizedDescription)
+                    }
+                }
+            }
+        }
     }
 
     func stop() {
@@ -93,17 +119,28 @@ final class P2PNetworkManager: ObservableObject {
         stunDiscoveryTask = nil
         upnpTask?.cancel()
         upnpTask = nil
+        turnAllocationTask?.cancel()
+        turnAllocationTask = nil
         browser?.cancel()
         browser = nil
         server.stop()
         peers = []
         isRunning = false
         wanMappingStatus = .idle
+        turnStatus = .idle
         // Fire-and-forget removal so we don't block the main actor during teardown
         let mapper = upnpMapper
+        let allocator = turnAllocator
         Task.detached {
             await mapper.removeMapping()
+            await allocator.stop()
         }
+    }
+
+    /// Returns the pre-allocated TURN relay endpoint string if the allocator has succeeded.
+    var currentTurnRelay: String? {
+        if case .allocated(let relay) = turnStatus { return relay }
+        return nil
     }
 
     /// Re-attempt UPnP/NAT-PMP port mapping. Call this after a network change.

@@ -55,6 +55,12 @@ enum AppSettings {
     static let quickActionUsageOrderKey = "odyssey.chat.quickActionUsageOrder"
     static let quickActionUsageCountsKey = "odyssey.chat.quickActionUsageCounts"
 
+    // MARK: - TURN Relay
+    static let turnEnabledKey = "odyssey.turnEnabled"
+    static let turnURLKey = "odyssey.turnURL"
+    static let turnUsernameKey = "odyssey.turnUsername"
+    static let turnCredentialKey = "odyssey.turnCredential"
+
     // MARK: - Advanced
     static let dataDirectoryKey = "odyssey.dataDirectory"
     static let logLevelKey = "odyssey.logLevel"
@@ -78,6 +84,9 @@ enum AppSettings {
     static let defaultDataDirectory = "~/.odyssey"
     static let defaultLogLevel = "info"
     static let defaultBuiltInConfigOverridePolicy = BuiltInConfigOverridePolicy.yes.rawValue
+    static let defaultTurnURL = "turn:openrelay.metered.ca:443?transport=tcp"
+    static let defaultTurnUsername = "openrelayproject"
+    static let defaultTurnCredential = "openrelayproject"
 
     /// Per-instance UserDefaults store for use with `@AppStorage(_:store:)`.
     nonisolated(unsafe) static let store: UserDefaults = InstanceConfig.userDefaults
@@ -100,6 +109,7 @@ enum AppSettings {
             quickActionUsageOrderKey, quickActionUsageCountsKey,
             dataDirectoryKey, logLevelKey, builtInConfigOverridePolicyKey,
             sharedRoomUserIdKey, sharedRoomDisplayNameKey,
+            turnEnabledKey, turnURLKey, turnUsernameKey, turnCredentialKey,
         ]
     }
 

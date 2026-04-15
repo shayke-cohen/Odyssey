@@ -105,6 +105,7 @@ final class RemoteSidecarManager: ObservableObject {
         var endpoints: [String] = []
         if let lan = credentials.lanHint { endpoints.append(lan) }
         if let wan = credentials.wanHint { endpoints.append(wan) }
+        if let relay = credentials.turnRelay { endpoints.append(relay) }
         return endpoints
     }
 
@@ -139,9 +140,15 @@ final class RemoteSidecarManager: ObservableObject {
         _ = message  // discard — just confirms the connection is live
 
         // Determine method
-        let method: ConnectionMethod = (credentials.lanHint.map { host.hasPrefix($0) } ?? false)
-            ? .lan
-            : .wanDirect
+        let method: ConnectionMethod
+        if let lan = credentials.lanHint, host.hasPrefix(lan) {
+            method = .lan
+        } else if let relay = credentials.turnRelay,
+                  host.hasPrefix(relay.components(separatedBy: ":").first ?? "") {
+            method = .turn
+        } else {
+            method = .wanDirect
+        }
 
         status = .connected(method: method.rawValue)
         eventContinuation?.yield(.connected)
