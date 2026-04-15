@@ -189,11 +189,15 @@ final class SharedRoomTestAPIService: ObservableObject {
                 else {
                     return (400, ["error": "roomId and inviteId are required"])
                 }
+                let joinProjectId: UUID? = {
+                    guard let ctx = modelContext else { return nil }
+                    return (try? ctx.fetch(FetchDescriptor<Project>()))?.first?.id
+                }()
                 let conversation = try await sharedRoomService.acceptInvite(
                     roomId: roomId,
                     inviteId: inviteId,
                     inviteToken: body["inviteToken"] as? String,
-                    projectId: nil
+                    projectId: joinProjectId
                 )
                 return (200, [
                     "conversationId": conversation.id.uuidString,

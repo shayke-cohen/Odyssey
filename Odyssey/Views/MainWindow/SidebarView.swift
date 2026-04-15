@@ -177,8 +177,6 @@ struct SidebarView: View {
     @State private var isResidentHistoryExpanded = false
     @AppStorage("sidebar.residentsExpanded") private var isResidentsSectionExpanded: Bool = true
     @AppStorage("sidebar.projectsExpanded") private var isProjectsSectionExpanded: Bool = true
-    @State private var showAddResidentSheet = false
-
     var body: some View {
         @Bindable var ws = windowState
         List {
@@ -189,11 +187,19 @@ struct SidebarView: View {
                     ForEach(residentAgents) { agent in
                         residentRows(agent)
                     }
-                    if residentAgents.isEmpty {
-                        Text("No residents yet — tap + to add")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 10)
+                    // "Add" row — uses appXrayTapProxy so AppXray's NSButton click fires reliably
+                    Button {
+                        appState.showAddResidentSheet = true
+                    } label: {
+                        Label(residentAgents.isEmpty ? "Add agents to Residents…" : "Add more…",
+                              systemImage: "plus")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add agent to Residents")
+                    .appXrayTapProxy(id: "sidebar.residentAgents.addButton") {
+                        appState.showAddResidentSheet = true
                     }
                 }
             } header: {
@@ -258,8 +264,9 @@ struct SidebarView: View {
             TaskCreationSheet()
                 .environmentObject(appState)
         }
-        .sheet(isPresented: $showAddResidentSheet) {
+        .sheet(isPresented: $appState.showAddResidentSheet) {
             addResidentSheet
+                .environmentObject(appState)
         }
         .sheet(item: $editingTask) { task in
             TaskEditSheet(task: task)
@@ -487,78 +494,25 @@ struct SidebarView: View {
     // MARK: - Resident Agents
 
     private var residentAgentsHeader: some View {
-        HStack {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isResidentsSectionExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: isResidentsSectionExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text("Residents")
-                        .font(.headline.weight(.semibold))
-                }
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isResidentsSectionExpanded.toggle()
             }
-            .buttonStyle(.plain)
-            .xrayId("sidebar.residentAgents.header")
-            Spacer()
-            Button {
-                showAddResidentSheet = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.caption.weight(.semibold))
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: isResidentsSectionExpanded ? "chevron.down" : "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("Residents")
+                    .font(.headline.weight(.semibold))
             }
-            .buttonStyle(.plain)
-            .help("Add agent to Residents")
-            .xrayId("sidebar.residentAgents.addButton")
-            .accessibilityLabel("Add agent to Residents")
         }
+        .buttonStyle(.plain)
+        .xrayId("sidebar.residentAgents.header")
     }
 
     private var addResidentSheet: some View {
-        NavigationStack {
-            List(nonResidentAgents) { agent in
-                Button {
-                    agent.isResident = true
-                    if let homeDir = agent.defaultWorkingDirectory {
-                        let expanded = (homeDir as NSString).expandingTildeInPath
-                        ResidentAgentSupport.seedMemoryFileIfNeeded(in: expanded, agentName: agent.name)
-                    }
-                    try? modelContext.save()
-                } label: {
-                    HStack(spacing: 10) {
-                        let tint = Color.fromAgentColor(agent.color)
-                        sidebarSymbolBadge(symbol: agent.icon, tint: tint, size: 28, cornerRadius: 9)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(agent.name).font(.body)
-                            if let dir = agent.defaultWorkingDirectory {
-                                Text(dir).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                        }
-                        Spacer()
-                        Image(systemName: "plus.circle")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-            .navigationTitle("Add to Residents")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { showAddResidentSheet = false }
-                }
-            }
-            .overlay {
-                if nonResidentAgents.isEmpty {
-                    ContentUnavailableView(
-                        "All agents are Residents",
-                        systemImage: "person.crop.circle.badge.checkmark"
-                    )
-                }
-            }
-        }
+        AddResidentSheet(onDone: { appState.showAddResidentSheet = false })
     }
 
     @ViewBuilder
@@ -2441,3 +2395,75 @@ struct SidebarView: View {
         }
     }
 }
+
+// MARK: - Add Resident Sheet
+
+/// Standalone sheet with its own @Query. The presenting view must pass `.modelContainer(modelContext.container)`
+/// on the sheet content so @Query gets the correct container on macOS (environment may not propagate otherwise).
+private struct AddResidentSheet: View {
+    @Query(sort: \Agent.name)
+    private var allAgents: [Agent]
+
+    private var nonResidents: [Agent] {
+        allAgents.filter { $0.isEnabled && !$0.isResident }
+    }
+
+    @Environment(\.modelContext) private var ctx
+
+    let onDone: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List(nonResidents) { agent in
+                Button {
+                    agent.isResident = true
+                    if let homeDir = agent.defaultWorkingDirectory {
+                        let expanded = (homeDir as NSString).expandingTildeInPath
+                        ResidentAgentSupport.seedMemoryFileIfNeeded(in: expanded, agentName: agent.name)
+                    }
+                    try? ctx.save()
+                } label: {
+                    HStack(spacing: 10) {
+                        let tint = Color.fromAgentColor(agent.color)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(tint.opacity(0.12))
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .stroke(tint.opacity(0.14), lineWidth: 1)
+                            Image(systemName: agent.icon)
+                                .font(.system(size: 28 * 0.42, weight: .semibold))
+                                .foregroundStyle(tint)
+                        }
+                        .frame(width: 28, height: 28)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(agent.name).font(.body)
+                            if let dir = agent.defaultWorkingDirectory {
+                                Text(dir).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                        Image(systemName: "plus.circle").foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .accessibilityIdentifier("addResidentSheet.list")
+            .navigationTitle("Add to Residents")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { onDone() }
+                }
+            }
+            .overlay {
+                if nonResidents.isEmpty {
+                    ContentUnavailableView(
+                        "All agents are Residents",
+                        systemImage: "person.crop.circle.badge.checkmark"
+                    )
+                }
+            }
+        }
+        .frame(minWidth: 400, minHeight: 400)
+    }
+}
+

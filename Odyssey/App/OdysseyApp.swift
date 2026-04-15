@@ -388,7 +388,12 @@ private struct ProjectWindowContent: View {
             ProjectRecords.repairMissingProjects(in: modelContainer.mainContext)
 
             #if DEBUG
-            AppXray.shared.registerObservableObject(appState, name: "appState")
+            AppXray.shared.registerObservableObject(appState, name: "appState", setters: [
+                "showAddResidentSheet": { [weak appState] v in
+                    let val = (v as? Bool) ?? false
+                    DispatchQueue.main.async { appState?.showAddResidentSheet = val }
+                }
+            ])
             #endif
 
             // If we already have a directory, initialize immediately
