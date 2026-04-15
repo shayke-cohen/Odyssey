@@ -9,6 +9,7 @@ import type { ConnectorStore } from "../stores/connector-store.js";
 import type { RelayClient } from "../relay-client.js";
 import type { ConversationStore } from "../stores/conversation-store.js";
 import type { ProjectStore } from "../stores/project-store.js";
+import type { NostrTransport } from "../relay/nostr-transport.js";
 import type { SidecarEvent, AgentConfig } from "../types.js";
 
 export interface ToolContext {
@@ -23,6 +24,7 @@ export interface ToolContext {
   relayClient: RelayClient;
   conversationStore: ConversationStore;
   projectStore: ProjectStore;
+  nostrTransport: NostrTransport;
   broadcast: (event: SidecarEvent) => void;
 
   /**

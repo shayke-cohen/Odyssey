@@ -48,6 +48,12 @@ final class AppState: ObservableObject {
     @Published var completedPlans: [String: CompletedPlan] = [:]
     @Published private(set) var workerStandbySessions: Set<String> = []
     @Published var presenceStore: [String: PresenceStatus] = [:]
+    /// Nostr public key hex (x-only, BIP-340) for this instance — used in invite generation.
+    @Published var nostrPublicKeyHex: String? = nil
+    /// Number of currently connected Nostr relays (updated via nostr.status events).
+    @Published var nostrRelayCount: Int = 0
+    /// Total number of configured Nostr relays.
+    @Published var nostrRelayTotal: Int = 0
     // launchError and autoSendText moved to WindowState (per-window)
 
     /// File-based config sync service (set by OdysseyApp on appear)
@@ -212,6 +218,12 @@ final class AppState: ObservableObject {
     var commandCaptureForTesting: ((SidecarCommand) -> Void)?
     var commandSendOverrideForTesting: ((SidecarCommand) async -> Void)?
     #endif
+
+    init() {
+        if let kp = try? IdentityManager.shared.nostrKeypair(for: InstanceConfig.name) {
+            nostrPublicKeyHex = kp.pubkeyHex
+        }
+    }
 
     // instanceWorkingDirectory, loadInstanceWorkingDirectory, setInstanceWorkingDirectory
     // moved to WindowState.projectDirectory (per-window)
@@ -1189,6 +1201,14 @@ final class AppState: ObservableObject {
                 logger.warning("AppState: iOS push registration failed: \(error ?? "unknown")")
             }
 
+        case .nostrStatus(let connected, let total):
+            nostrRelayCount = connected
+            nostrRelayTotal = total
+            // TODO(nostr-relay): When invite acceptance is implemented on the Mac side,
+            // call sidecarManager?.send(.nostrAddPeer(name:pubkeyHex:relays:)) after
+            // successfully verifying an accepted InvitePayload that contains nostrPubkey.
+            // The iOS side sends invites; the Mac side currently only generates them.
+
         case .connected:
             sidecarStatus = .connected
             disconnectTimer?.invalidate()
@@ -1199,6 +1219,22 @@ final class AppState: ObservableObject {
             registerConnections()
             if let ctx = modelContext {
                 Task { await sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: true) }
+            }
+            // Re-register all stored Nostr peers so the sidecar knows them after restarts/reconnects
+            if let ctx = modelContext {
+                let peers = NostrPeer.all(in: ctx)
+                if !peers.isEmpty {
+                    Task {
+                        for peer in peers {
+                            try? await sidecarManager?.send(.nostrAddPeer(
+                                name: peer.displayName,
+                                pubkeyHex: peer.pubkeyHex,
+                                relays: peer.relays
+                            ))
+                        }
+                        Log.sidecar.info("Re-registered \(peers.count) Nostr peer(s) with sidecar")
+                    }
+                }
             }
             Task {
                 transportManager.onInboundMessage = { [weak self] msg in

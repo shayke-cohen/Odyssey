@@ -67,6 +67,7 @@ struct OdysseyApp: App {
                 ScheduledMission.self,
                 ScheduledMissionRun.self,
                 SharedRoomInvite.self,
+                NostrPeer.self,
             ])
             modelContainer = try ModelContainer(
                 for: schema,

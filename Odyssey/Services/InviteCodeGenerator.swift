@@ -25,6 +25,10 @@ struct InvitePayload: Codable, Sendable, Equatable {
     /// Unix timestamp (seconds since epoch) after which the invite is invalid.
     let exp: TimeInterval
     let singleUse: Bool
+    /// Nostr hex pubkey for internet relay (optional; absent in LAN-only invites).
+    var nostrPubkey: String?
+    /// Preferred Nostr relay URLs (optional).
+    var nostrRelays: [String]?
     /// Base64-encoded Ed25519 signature over canonical JSON (without this field).
     /// Empty string before signing.
     var sig: String
@@ -75,7 +79,9 @@ struct InviteCodeGenerator {
         lanHint: String?,
         wanHint: String?,
         turnConfig: OdysseyCore.TURNConfig? = nil,
-        turnRelay: String? = nil
+        turnRelay: String? = nil,
+        nostrPubkey: String? = nil,
+        nostrRelays: [String]? = nil
     ) async throws -> InvitePayload {
         let identityManager = IdentityManager.shared
 
@@ -119,6 +125,8 @@ struct InviteCodeGenerator {
             hints: hints,
             exp: Date().addingTimeInterval(expiresIn).timeIntervalSince1970,
             singleUse: singleUse,
+            nostrPubkey: nostrPubkey,
+            nostrRelays: (nostrRelays?.isEmpty == false) ? nostrRelays : nil,
             sig: ""
         )
 

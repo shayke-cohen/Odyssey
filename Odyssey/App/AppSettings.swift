@@ -67,6 +67,7 @@ enum AppSettings {
     static let builtInConfigOverridePolicyKey = "odyssey.configSync.builtInOverridePolicy"
     static let sharedRoomUserIdKey = "odyssey.sharedRoom.userId"
     static let sharedRoomDisplayNameKey = "odyssey.sharedRoom.displayName"
+    static let nostrRelaysKey = "nostrRelays"
 
     // MARK: - Defaults
     static let defaultWsPort = 9849

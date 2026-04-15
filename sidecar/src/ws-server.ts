@@ -189,6 +189,15 @@ export class WsServer {
         this.ctx.peerRegistry.remove(command.name);
         break;
 
+      case "nostr.addPeer":
+        this.ctx.nostrTransport.addPeer(command.name, command.pubkeyHex, command.relays)
+        logger.info("nostr", `Added Nostr peer "${command.name}" (${command.pubkeyHex.slice(0, 8)}…)`)
+        break
+      case "nostr.removePeer":
+        this.ctx.nostrTransport.removePeer(command.name)
+        logger.info("nostr", `Removed Nostr peer "${command.name}"`)
+        break
+
       case "generate.agent":
         this.handleGenerateAgent(command).catch((err) => {
           logger.error("ws", `generate.agent handler error: ${err}`);

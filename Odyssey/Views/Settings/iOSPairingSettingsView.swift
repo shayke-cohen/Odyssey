@@ -205,7 +205,9 @@ struct iOSPairingSettingsView: View {
                 singleUse: true,
                 lanHint: lanHint,
                 wanHint: wanHint,
-                turnRelay: p2pNetworkManager.currentTurnRelay
+                turnRelay: p2pNetworkManager.currentTurnRelay,
+                nostrPubkey: appState.nostrPublicKeyHex,
+                nostrRelays: UserDefaults.standard.stringArray(forKey: AppSettings.nostrRelaysKey)
             )
             currentPayload = payload
             qrImage = InviteCodeGenerator.qrCode(for: payload, size: 300)

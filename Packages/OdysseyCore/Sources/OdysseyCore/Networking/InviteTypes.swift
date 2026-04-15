@@ -52,6 +52,10 @@ public struct InvitePayload: Codable, Sendable {
     /// Unix timestamp (seconds since epoch) after which the invite is invalid.
     public let exp: TimeInterval
     public let singleUse: Bool
+    /// Nostr hex pubkey for internet relay (optional; v2+ only).
+    public let nostrPubkey: String?
+    /// Preferred Nostr relay URLs (optional; v2+ only).
+    public let nostrRelays: [String]?
     /// Base64-encoded Ed25519 signature over canonical JSON (without this field).
     public let sig: String
 }
