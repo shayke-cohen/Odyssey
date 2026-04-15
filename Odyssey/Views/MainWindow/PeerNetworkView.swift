@@ -7,6 +7,8 @@ struct PeerNetworkView: View {
     @EnvironmentObject private var p2p: P2PNetworkManager
     @EnvironmentObject private var appState: AppState
 
+    @Query(sort: \NostrPeer.pairedAt, order: .reverse) private var nostrPeers: [NostrPeer]
+
     @State private var selectedPeerId: String?
     @State private var remoteAgents: [WireAgentExport] = []
     @State private var isLoadingList = false
@@ -102,25 +104,73 @@ struct PeerNetworkView: View {
 
     private var peerListColumn: some View {
         Group {
-            if p2p.peers.isEmpty {
+            if p2p.peers.isEmpty && nostrPeers.isEmpty {
                 ContentUnavailableView(
                     "No Peers Found",
                     systemImage: "wifi.exclamationmark",
-                    description: Text("Ensure other Macs run Odyssey on the same network.")
+                    description: Text("Ensure other Macs run Odyssey on the same network or add peers via Nostr invite.")
                 )
                 .xrayId("peerNetwork.emptyPeers")
             } else {
-                List(p2p.peers, id: \.id, selection: $selectedPeerId) { peer in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(peer.displayName)
-                            .font(.headline)
-                        if !peer.metadata.isEmpty {
-                            Text(peer.metadata)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                List(selection: $selectedPeerId) {
+                    if !p2p.peers.isEmpty {
+                        Section("Local Network (Bonjour)") {
+                            ForEach(p2p.peers, id: \.id) { peer in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(peer.displayName)
+                                        .font(.headline)
+                                    if !peer.metadata.isEmpty {
+                                        Text(peer.metadata)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .tag(peer.id)
+                                .xrayId("peerNetwork.peerRow.\(peer.id)")
+                            }
                         }
                     }
-                    .xrayId("peerNetwork.peerRow.\(peer.id)")
+
+                    if !nostrPeers.isEmpty {
+                        Section("Internet Peers (Nostr)") {
+                            ForEach(nostrPeers) { peer in
+                                HStack {
+                                    Image(systemName: "globe")
+                                        .foregroundStyle(.blue)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(peer.displayName)
+                                            .font(.body)
+                                        Text(peer.pubkeyHex.prefix(16) + "…")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .monospaced()
+                                    }
+                                    Spacer()
+                                    if let lastSeen = peer.lastSeenAt {
+                                        Text(lastSeen, style: .relative)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        Text("Never seen")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .tag(nostrPeerTag(peer.id))
+                                .xrayId("peerNetwork.nostrPeerRow.\(peer.id.uuidString)")
+                                .contextMenu {
+                                    Button("Copy Pubkey") {
+                                        copyToClipboard(peer.pubkeyHex)
+                                    }
+                                    .xrayId("peerNetwork.copyPubkeyButton.\(peer.id.uuidString)")
+                                    Button("Remove Peer", role: .destructive) {
+                                        removePeer(peer)
+                                    }
+                                    .xrayId("peerNetwork.removePeerButton.\(peer.id.uuidString)")
+                                }
+                            }
+                        }
+                    }
                 }
                 .xrayId("peerNetwork.peerList")
             }
@@ -241,5 +291,24 @@ struct PeerNetworkView: View {
         } catch {
             importMessage = error.localizedDescription
         }
+    }
+
+    private func removePeer(_ peer: NostrPeer) {
+        let name = peer.displayName
+        modelContext.delete(peer)
+        try? modelContext.save()
+        Task {
+            try? await appState.sidecarManager?.send(.nostrRemovePeer(name: name))
+        }
+    }
+
+    private func copyToClipboard(_ s: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(s, forType: .string)
+    }
+
+    private func nostrPeerTag(_ peerId: UUID) -> String {
+        "nostr_\(peerId.uuidString)"
     }
 }
