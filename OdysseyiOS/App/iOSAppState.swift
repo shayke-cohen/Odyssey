@@ -20,6 +20,7 @@ final class iOSAppState {
     let sidecarManager = RemoteSidecarManager()
     private let credentialStore = PeerCredentialStore()
     private var eventTask: Task<Void, Never>?
+    private var pollTask: Task<Void, Never>?
 
     // MARK: - Lifecycle
 
@@ -126,6 +127,15 @@ final class iOSAppState {
                 self.handleEvent(event)
             }
         }
+        pollTask?.cancel()
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                guard let self, !Task.isCancelled else { break }
+                await self.loadConversations()
+                await self.loadProjects()
+            }
+        }
     }
 
     func handleEvent(_ event: SidecarEvent) {
@@ -140,6 +150,8 @@ final class iOSAppState {
             }
         case .disconnected:
             connectionStatus = .disconnected
+            pollTask?.cancel()
+            pollTask = nil
         case .streamToken(let sessionId, let token):
             streamingBuffers[sessionId, default: ""] += token
         case .sessionResult(let sessionId, _, _, _, _):

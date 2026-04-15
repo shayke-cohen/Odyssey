@@ -39,6 +39,8 @@ final class AppState: ObservableObject {
     @Published var generatedAgentSpec: GeneratedAgentSpec?
     @Published var isGeneratingAgent: Bool = false
     @Published var generateAgentError: String?
+    /// Set to true to open the "Add to Residents" sheet. AppXray tests use setState to set this.
+    @Published var showAddResidentSheet: Bool = false
     @Published var pendingQuestions: [String: AgentQuestion] = [:]
     @Published var pendingConfirmations: [String: AgentConfirmation] = [:]
     @Published var progressTrackers: [String: ProgressTracker] = [:]
@@ -195,6 +197,7 @@ final class AppState: ObservableObject {
 
     private(set) var sidecarManager: SidecarManager?
     private var eventTask: Task<Void, Never>?
+    private var conversationSyncTimer: Task<Void, Never>?
     var modelContext: ModelContext?
     private(set) lazy var transportManager: TransportManager = {
         let tm = TransportManager(instanceName: InstanceConfig.name)
@@ -282,6 +285,7 @@ final class AppState: ObservableObject {
 
             modelContext.insert(conversation)
             try? modelContext.save()
+            Task { await sidecarManager?.pushConversationSync(modelContext: modelContext) }
             windowState.selectedConversationId = conversation.id
 
             if intent.prompt != nil {
@@ -326,6 +330,7 @@ final class AppState: ObservableObject {
             modelContext.insert(session)
             modelContext.insert(conversation)
             try? modelContext.save()
+            Task { await sidecarManager?.pushConversationSync(modelContext: modelContext) }
             windowState.selectedConversationId = conversation.id
 
             if intent.prompt != nil {
@@ -496,6 +501,7 @@ final class AppState: ObservableObject {
 
         modelContext.insert(conversation)
         try? modelContext.save()
+        Task { await sidecarManager?.pushConversationSync(modelContext: modelContext) }
         return conversation.id
     }
 
@@ -1012,6 +1018,9 @@ final class AppState: ObservableObject {
                 sharedRoomAutoFinalizeSessionIds.remove(sessionId)
                 finalizeSharedRoomAgentMessage(sessionId: sessionId)
             }
+            if let ctx = modelContext {
+                Task { await sidecarManager?.pushConversationSync(modelContext: ctx) }
+            }
 
         case .sessionError(let sessionId, let error):
             workerStandbySessions.remove(sessionId)
@@ -1180,9 +1189,21 @@ final class AppState: ObservableObject {
                 }
                 await transportManager.start()
             }
+            conversationSyncTimer?.cancel()
+            conversationSyncTimer = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(30))
+                    guard let self, !Task.isCancelled else { break }
+                    if let ctx = self.modelContext {
+                        await self.sidecarManager?.pushConversationSync(modelContext: ctx)
+                    }
+                }
+            }
 
         case .disconnected:
             sidecarStatus = .disconnected
+            conversationSyncTimer?.cancel()
+            conversationSyncTimer = nil
             pendingQuestions.removeAll()
             pendingConfirmations.removeAll()
             startDisconnectTimer()
@@ -1478,6 +1499,7 @@ final class AppState: ObservableObject {
         // Link task to this conversation
         task.conversationId = conversation.id
         try? modelContext.save()
+        Task { await sidecarManager?.pushConversationSync(modelContext: modelContext) }
 
         windowState.selectedConversationId = conversation.id
 
