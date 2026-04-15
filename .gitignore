@@ -36,3 +36,10 @@ tests/screenshots/
 tests/videos/
 .worktrees/
 Dependencies
+
+# Claude Code / Superpowers runtime
+.claude/scheduled_tasks.lock
+.superpowers/
+
+# Swift Package Manager local build artifacts
+.swiftpm/
