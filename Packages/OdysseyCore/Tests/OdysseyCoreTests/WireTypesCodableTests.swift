@@ -116,7 +116,7 @@ final class WireTypesCodableTests: XCTestCase {
 
     func testInvitePayloadCodableRoundTrip() throws {
         let turn = TURNConfig(url: "turn:relay.example.com:3478", username: "user", credential: "pass")
-        let hints = InviteHints(lan: "192.168.1.42:9849", wan: "203.0.113.7:49152", turn: turn)
+        let hints = InviteHints(lan: "192.168.1.42:9849", wan: "203.0.113.7:49152", turn: turn, relay: nil)
         let original = InvitePayload(
             v: 1,
             type: "device",

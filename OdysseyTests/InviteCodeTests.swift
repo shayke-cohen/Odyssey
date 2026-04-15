@@ -23,7 +23,7 @@ final class InviteCodeTests: XCTestCase {
             tlsCertDER: Data([0x01, 0x02, 0x03]).base64EncodedString(),
             wsToken: Data([0xAA, 0xBB]).base64EncodedString(),
             wsPort: 9849,
-            hints: InviteHints(lan: "192.168.1.5", wan: "203.0.113.5:9849", turn: nil),
+            hints: InviteHints(lan: "192.168.1.5", wan: "203.0.113.5:9849", turn: nil, relay: nil),
             exp: exp ?? Date().addingTimeInterval(300).timeIntervalSince1970,
             singleUse: singleUse,
             sig: ""

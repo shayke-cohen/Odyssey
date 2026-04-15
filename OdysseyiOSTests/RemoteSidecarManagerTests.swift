@@ -110,6 +110,7 @@ final class RemoteSidecarManagerTests: XCTestCase {
             wsPort: 9849,
             lanHint: lanHint,
             wanHint: wanHint,
+            turnRelay: nil,
             turnConfig: nil,
             pairedAt: Date(),
             lastConnectedAt: nil,

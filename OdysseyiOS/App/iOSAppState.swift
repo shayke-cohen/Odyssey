@@ -42,6 +42,7 @@ final class iOSAppState {
                 wsPort: creds.wsPort,
                 lanHint: override.trimmingCharacters(in: .whitespaces),
                 wanHint: nil,
+                turnRelay: nil,
                 turnConfig: nil,
                 pairedAt: creds.pairedAt,
                 lastConnectedAt: creds.lastConnectedAt,

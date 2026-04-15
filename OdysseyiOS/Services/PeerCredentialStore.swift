@@ -13,6 +13,7 @@ public struct PeerCredentials: Codable, Identifiable {
     public let wsPort: Int
     public let lanHint: String?
     public let wanHint: String?
+    public let turnRelay: String?
     public let turnConfig: TURNConfig?
     public let pairedAt: Date
     public var lastConnectedAt: Date?
@@ -28,6 +29,7 @@ public struct PeerCredentials: Codable, Identifiable {
         wsPort: Int,
         lanHint: String?,
         wanHint: String?,
+        turnRelay: String? = nil,
         turnConfig: TURNConfig?,
         pairedAt: Date,
         lastConnectedAt: Date?,
@@ -41,6 +43,7 @@ public struct PeerCredentials: Codable, Identifiable {
         self.wsPort = wsPort
         self.lanHint = lanHint
         self.wanHint = wanHint
+        self.turnRelay = turnRelay
         self.turnConfig = turnConfig
         self.pairedAt = pairedAt
         self.lastConnectedAt = lastConnectedAt
