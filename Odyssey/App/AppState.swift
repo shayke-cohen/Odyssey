@@ -1220,6 +1220,22 @@ final class AppState: ObservableObject {
             if let ctx = modelContext {
                 Task { await sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: true) }
             }
+            // Re-register all stored Nostr peers so the sidecar knows them after restarts/reconnects
+            if let ctx = modelContext {
+                let peers = NostrPeer.all(in: ctx)
+                if !peers.isEmpty {
+                    Task {
+                        for peer in peers {
+                            try? await sidecarManager?.send(.nostrAddPeer(
+                                name: peer.displayName,
+                                pubkeyHex: peer.pubkeyHex,
+                                relays: peer.relays
+                            ))
+                        }
+                        Log.sidecar.info("Re-registered \(peers.count) Nostr peer(s) with sidecar")
+                    }
+                }
+            }
             Task {
                 transportManager.onInboundMessage = { [weak self] msg in
                     await self?.handleInboundTransportMessage(msg)
