@@ -28,7 +28,30 @@ final class iOSAppState {
     /// Connect to the first paired Mac and load initial data.
     func connectToFirstPairedMac() async {
         // Use most-recently paired credential so stale creds from previous test sessions don't take priority.
-        guard let creds = (try? credentialStore.load())?.sorted(by: { $0.pairedAt > $1.pairedAt }).first else { return }
+        guard var creds = (try? credentialStore.load())?.sorted(by: { $0.pairedAt > $1.pairedAt }).first else { return }
+        // Developer override: if the user typed a host:port in Settings, inject it as the LAN hint
+        // so we can recover from stale/missing LAN hints without re-pairing.
+        let override = UserDefaults.standard.string(forKey: "macHostOverride") ?? ""
+        if !override.trimmingCharacters(in: .whitespaces).isEmpty {
+            creds = PeerCredentials(
+                id: creds.id,
+                displayName: creds.displayName,
+                userPublicKeyData: creds.userPublicKeyData,
+                tlsCertDER: creds.tlsCertDER,
+                wsToken: creds.wsToken,
+                wsPort: creds.wsPort,
+                lanHint: override.trimmingCharacters(in: .whitespaces),
+                wanHint: nil,
+                turnConfig: nil,
+                pairedAt: creds.pairedAt,
+                lastConnectedAt: creds.lastConnectedAt,
+                claudeSessionIds: creds.claudeSessionIds
+            )
+        }
+        // Cancel any in-flight reconnect loop and force-disconnect so connect() guard passes.
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        sidecarManager.disconnect()
         // Start the event loop before connecting so .connected/.disconnected events
         // are always processed — including on the very first attempt and after failures.
         startEventLoop()

@@ -236,19 +236,31 @@ struct iOSPairingSettingsView: View {
         var ifaddr: UnsafeMutablePointer<ifaddrs>? = nil
         guard getifaddrs(&ifaddr) == 0 else { return nil }
         defer { freeifaddrs(ifaddr) }
+        // Prefer en0 (WiFi), then en1..en4 (Ethernet/Thunderbolt), then any other active private IPv4
+        let priority = ["en0", "en1", "en2", "en3", "en4"]
+        var found: [String: String] = [:]  // interface name → IP
+        var other: String? = nil
         var current = ifaddr
         while let ptr = current {
             let ifa = ptr.pointee
             if ifa.ifa_addr.pointee.sa_family == UInt8(AF_INET),
                let name = String(validatingCString: ifa.ifa_name),
-               name == "en0" {
+               !name.hasPrefix("lo"), !name.hasPrefix("utun"), !name.hasPrefix("ipsec") {
                 var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
                 getnameinfo(ifa.ifa_addr, socklen_t(ifa.ifa_addr.pointee.sa_len),
                             &hostname, socklen_t(hostname.count), nil, 0, NI_NUMERICHOST)
-                return String(cString: hostname)
+                let ip = String(cString: hostname)
+                if priority.contains(name) {
+                    found[name] = ip
+                } else if other == nil {
+                    other = ip
+                }
             }
             current = ifa.ifa_next
         }
-        return nil
+        for iface in priority {
+            if let ip = found[iface] { return ip }
+        }
+        return other
     }
 }

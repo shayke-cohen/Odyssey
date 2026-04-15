@@ -20,10 +20,10 @@ export class HttpServer {
   start(): void {
     this.server = Bun.serve({
       port: this.port,
-      hostname: "127.0.0.1",
+      hostname: "0.0.0.0",
       fetch: (req) => this.handleRequest(req),
     });
-    logger.info("http", `HTTP API listening on http://127.0.0.1:${this.port}`);
+    logger.info("http", `HTTP API listening on http://0.0.0.0:${this.port}`);
   }
 
   private async handleRequest(req: Request): Promise<Response> {

@@ -20,14 +20,7 @@
     <string>Scan the pairing QR code displayed on your Mac.</string>
     <key>NSAppTransportSecurity</key>
     <dict>
-        <key>NSExceptionDomains</key>
-        <dict>
-            <key>local</key>
-            <dict>
-                <key>NSExceptionAllowsInsecureHTTPLoads</key><false/>
-                <key>NSRequiresCertificateTransparency</key><false/>
-            </dict>
-        </dict>
+        <key>NSAllowsArbitraryLoads</key><true/>
     </dict>
     <key>UIRequiresFullScreen</key><true/>
     <key>UIApplicationSceneManifest</key>
