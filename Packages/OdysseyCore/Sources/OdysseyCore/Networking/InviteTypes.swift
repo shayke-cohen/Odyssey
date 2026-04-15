@@ -4,7 +4,7 @@ import CryptoKit
 
 /// Network location hints embedded in an invite payload.
 /// Field names match the Mac generator (InviteCodeGenerator.swift).
-public struct InviteHints: Codable, Sendable {
+public struct InviteHints: Codable, Sendable, Equatable {
     public let lan: String?
     public let wan: String?
     /// TURN relay config — nested inside hints on the Mac side.
