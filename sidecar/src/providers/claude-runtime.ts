@@ -1,8 +1,21 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "crypto";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { basename, join } from "path";
+import { basename, dirname, join, resolve } from "path";
 import { homedir, userInfo } from "os";
+import { fileURLToPath } from "url";
+
+// Resolve the bundled Claude Code CLI path at module load time.
+// In production, build-sidecar-binary.sh copies cli.js next to odyssey-sidecar.js.
+// In dev, it sits in node_modules/@anthropic-ai/claude-agent-sdk/cli.js.
+const claudeCodeCliPath = (() => {
+  const sidecarDir = dirname(fileURLToPath(import.meta.url));
+  const bundled = resolve(sidecarDir, "claude-code-cli.js");
+  if (existsSync(bundled)) return bundled;
+  const devPath = resolve(sidecarDir, "../../node_modules/@anthropic-ai/claude-agent-sdk/cli.js");
+  if (existsSync(devPath)) return devPath;
+  return undefined;
+})();
 import type { AgentConfig, FileAttachment } from "../types.js";
 import { PLAN_MODE_APPEND } from "../prompts/plan-mode.js";
 import { logger } from "../logger.js";
@@ -294,6 +307,9 @@ export class ClaudeRuntime implements ProviderRuntime {
       strictMcpConfig: true,
       env,
     };
+    if (claudeCodeCliPath) {
+      options.pathToClaudeCodeExecutable = claudeCodeCliPath;
+    }
 
     const appendText = this.buildSystemPromptAppend(config, usePlanMode, true);
     if (appendText) {

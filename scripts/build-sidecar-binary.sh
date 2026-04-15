@@ -34,6 +34,18 @@ mkdir -p "$OUTPUT_DIR"
 
 echo "build-sidecar-binary.sh: built JS bundle → $OUTPUT_JS"
 
+# Copy Claude Code CLI alongside the bundle (claude-agent-sdk spawns it as a subprocess).
+# Without this, @anthropic-ai/claude-agent-sdk/embed can't resolve its embedded cli.js
+# in a non-compiled Bun bundle and every query() immediately exits with code 1.
+CLAUDE_CLI_SRC="$SIDECAR_SRC/node_modules/@anthropic-ai/claude-agent-sdk/cli.js"
+if [[ -f "$CLAUDE_CLI_SRC" ]]; then
+  cp "$CLAUDE_CLI_SRC" "$OUTPUT_DIR/claude-code-cli.js"
+  chmod +x "$OUTPUT_DIR/claude-code-cli.js"
+  echo "build-sidecar-binary.sh: bundled Claude Code CLI → $OUTPUT_DIR/claude-code-cli.js"
+else
+  echo "build-sidecar-binary.sh: WARNING: $CLAUDE_CLI_SRC not found; agent sessions will fail" >&2
+fi
+
 # Bundle the bun runtime binary (already signed with Hardened Runtime by Oven)
 BUN_REAL=$(readlink -f "$BUN_PATH")
 cp "$BUN_REAL" "$OUTPUT_BUN"
