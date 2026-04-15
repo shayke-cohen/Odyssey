@@ -1204,6 +1204,10 @@ final class AppState: ObservableObject {
         case .nostrStatus(let connected, let total):
             nostrRelayCount = connected
             nostrRelayTotal = total
+            // TODO(nostr-relay): When invite acceptance is implemented on the Mac side,
+            // call sidecarManager?.send(.nostrAddPeer(name:pubkeyHex:relays:)) after
+            // successfully verifying an accepted InvitePayload that contains nostrPubkey.
+            // The iOS side sends invites; the Mac side currently only generates them.
 
         case .connected:
             sidecarStatus = .connected
