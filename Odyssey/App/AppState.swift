@@ -48,6 +48,8 @@ final class AppState: ObservableObject {
     @Published var completedPlans: [String: CompletedPlan] = [:]
     @Published private(set) var workerStandbySessions: Set<String> = []
     @Published var presenceStore: [String: PresenceStatus] = [:]
+    /// Nostr public key hex (x-only, BIP-340) for this instance — used in invite generation.
+    @Published var nostrPublicKeyHex: String? = nil
     // launchError and autoSendText moved to WindowState (per-window)
 
     /// File-based config sync service (set by OdysseyApp on appear)
@@ -212,6 +214,12 @@ final class AppState: ObservableObject {
     var commandCaptureForTesting: ((SidecarCommand) -> Void)?
     var commandSendOverrideForTesting: ((SidecarCommand) async -> Void)?
     #endif
+
+    init() {
+        if let kp = try? IdentityManager.shared.nostrKeypair(for: InstanceConfig.name) {
+            nostrPublicKeyHex = kp.pubkeyHex
+        }
+    }
 
     // instanceWorkingDirectory, loadInstanceWorkingDirectory, setInstanceWorkingDirectory
     // moved to WindowState.projectDirectory (per-window)

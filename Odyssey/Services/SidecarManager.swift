@@ -169,6 +169,17 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
             process.environment?["CLAUDESTUDIO_WS_TOKEN"] = token
         }
 
+        // Inject Nostr keypair for internet relay
+        if let nostrKP = try? IdentityManager.shared.nostrKeypair(for: config.instanceName) {
+            process.environment?["ODYSSEY_NOSTR_PRIVKEY_HEX"] = nostrKP.privkeyHex
+            process.environment?["ODYSSEY_NOSTR_PUBKEY_HEX"] = nostrKP.pubkeyHex
+        }
+        // Inject relay list from UserDefaults (fallback: sidecar uses hardcoded defaults)
+        let relays = UserDefaults.standard.stringArray(forKey: AppSettings.nostrRelaysKey) ?? []
+        if !relays.isEmpty {
+            process.environment?["ODYSSEY_NOSTR_RELAYS"] = relays.joined(separator: ",")
+        }
+
         // Inject TLS cert + key paths and cache the DER bytes for cert pinning
         if let tlsBundle = try? IdentityManager.shared.tlsCertificate(for: config.instanceName) {
             process.environment?["ODYSSEY_TLS_CERT"] = tlsBundle.certPEMPath
