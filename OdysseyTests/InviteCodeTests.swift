@@ -1,5 +1,6 @@
 // OdysseyTests/InviteCodeTests.swift
 import CryptoKit
+import OdysseyCore
 import XCTest
 @testable import Odyssey
 
@@ -11,11 +12,11 @@ final class InviteCodeTests: XCTestCase {
         exp: TimeInterval? = nil,
         singleUse: Bool = true,
         displayName: String = "Test Mac"
-    ) throws -> (payload: InvitePayload, privateKey: Curve25519.Signing.PrivateKey) {
+    ) throws -> (payload: Odyssey.InvitePayload, privateKey: Curve25519.Signing.PrivateKey) {
         let key = Curve25519.Signing.PrivateKey()
         let pubKeyB64 = key.publicKey.rawRepresentation.base64EncodedString()
 
-        var payload = InvitePayload(
+        var payload = Odyssey.InvitePayload(
             v: 1,
             type: "device",
             userPublicKey: pubKeyB64,
@@ -23,7 +24,7 @@ final class InviteCodeTests: XCTestCase {
             tlsCertDER: Data([0x01, 0x02, 0x03]).base64EncodedString(),
             wsToken: Data([0xAA, 0xBB]).base64EncodedString(),
             wsPort: 9849,
-            hints: InviteHints(lan: "192.168.1.5", wan: "203.0.113.5:9849", turn: nil),
+            hints: OdysseyCore.InviteHints(lan: "192.168.1.5", wan: "203.0.113.5:9849", turn: nil, relay: nil),
             exp: exp ?? Date().addingTimeInterval(300).timeIntervalSince1970,
             singleUse: singleUse,
             sig: ""
@@ -60,7 +61,7 @@ final class InviteCodeTests: XCTestCase {
     func testTamperedInviteRejected() throws {
         var (payload, _) = try makeSignedPayload()
         // Replace displayName but keep the original sig — signature should fail.
-        payload = InvitePayload(
+        payload = Odyssey.InvitePayload(
             v: payload.v,
             type: payload.type,
             userPublicKey: payload.userPublicKey,

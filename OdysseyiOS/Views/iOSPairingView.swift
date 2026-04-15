@@ -160,6 +160,7 @@ struct iOSPairingView: View {
                 wsPort: payload.wsPort,
                 lanHint: payload.hints.lan,
                 wanHint: payload.hints.wan,
+                turnRelay: payload.hints.relay,
                 turnConfig: payload.hints.turn,
                 pairedAt: Date(),
                 lastConnectedAt: nil,

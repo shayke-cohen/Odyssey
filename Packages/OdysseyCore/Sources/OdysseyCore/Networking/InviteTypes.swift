@@ -4,16 +4,19 @@ import CryptoKit
 
 /// Network location hints embedded in an invite payload.
 /// Field names match the Mac generator (InviteCodeGenerator.swift).
-public struct InviteHints: Codable, Sendable {
+public struct InviteHints: Codable, Sendable, Equatable {
     public let lan: String?
     public let wan: String?
     /// TURN relay config — nested inside hints on the Mac side.
     public let turn: TURNConfig?
+    /// Pre-allocated TURN relay endpoint "host:port" — simple WebSocket fallback.
+    public let relay: String?
 
-    public init(lan: String?, wan: String?, turn: TURNConfig? = nil) {
+    public init(lan: String?, wan: String?, turn: TURNConfig? = nil, relay: String? = nil) {
         self.lan = lan
         self.wan = wan
         self.turn = turn
+        self.relay = relay
     }
 }
 

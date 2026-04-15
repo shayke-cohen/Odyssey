@@ -10,12 +10,6 @@ private let logger = Logger(subsystem: "com.odyssey.app", category: "InviteCode"
 
 // MARK: - Invite Payload Types
 
-struct InviteHints: Codable, Sendable, Equatable {
-    let lan: String?
-    let wan: String?
-    let turn: OdysseyCore.TURNConfig?
-}
-
 struct InvitePayload: Codable, Sendable, Equatable {
     let v: Int
     let type: String
@@ -27,7 +21,7 @@ struct InvitePayload: Codable, Sendable, Equatable {
     /// Base64-encoded bearer token bytes.
     let wsToken: String
     let wsPort: Int
-    let hints: InviteHints
+    let hints: OdysseyCore.InviteHints
     /// Unix timestamp (seconds since epoch) after which the invite is invalid.
     let exp: TimeInterval
     let singleUse: Bool
@@ -80,7 +74,8 @@ struct InviteCodeGenerator {
         singleUse: Bool = true,
         lanHint: String?,
         wanHint: String?,
-        turnConfig: OdysseyCore.TURNConfig? = nil
+        turnConfig: OdysseyCore.TURNConfig? = nil,
+        turnRelay: String? = nil
     ) async throws -> InvitePayload {
         let identityManager = IdentityManager.shared
 
@@ -111,7 +106,7 @@ struct InviteCodeGenerator {
             throw InviteCodeError.certificateExportFailed
         }
 
-        let hints = InviteHints(lan: lanHint, wan: wanHint, turn: turnConfig)
+        let hints = OdysseyCore.InviteHints(lan: lanHint, wan: wanHint, turn: turnConfig, relay: turnRelay)
 
         var payload = InvitePayload(
             v: 1,

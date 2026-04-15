@@ -120,6 +120,7 @@
 		7F5D25D08E8C889F7C040B3D /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E549966ABFA0FB4CE2593247 /* ChatView.swift */; };
 		80C74715980389A86D3110AA /* PeerNetworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D86828EF91EA2BA1CA9EFF0 /* PeerNetworkView.swift */; };
 		81916B0235EECCF5432D86C6 /* DefaultMCPs.json in Resources */ = {isa = PBXBuildFile; fileRef = B0AF535FFB97A018FDF5CE70 /* DefaultMCPs.json */; };
+		81C95B0A72E17D80CD2F84B1 /* TURNAllocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B724D409EFAEE01DDC826E /* TURNAllocator.swift */; };
 		826B023429A708501C91D46B /* ConfigFileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB47CB1FF7ECC13A7E4F60C4 /* ConfigFileManager.swift */; };
 		84DEA88B2E3F0B1D2097F49C /* InlineHTMLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0767BDA0E45E895D8CBC2D /* InlineHTMLView.swift */; };
 		86F3EA0D9EA3076ED5F0A908 /* DefaultSkills in Resources */ = {isa = PBXBuildFile; fileRef = F25E68993F1578F447F078C1 /* DefaultSkills */; };
@@ -133,6 +134,7 @@
 		8DC5F65DB3F35D3D5BCDF4CF /* ScheduleSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D63B2D984AA99142081F65 /* ScheduleSupport.swift */; };
 		8F8BFED0ECFA0728C6ED1854 /* CatalogModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9D08315587E2BFE101FAAB /* CatalogModelTests.swift */; };
 		8FB19E2659F7283E3A2E7C4E /* LocalProviderSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D163AC9F9E014E2707DCEF3 /* LocalProviderSupport.swift */; };
+		9014F66ECF8028220D72BBBA /* UPnPPortMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02EBB5B173B2756983D668C1 /* UPnPPortMapper.swift */; };
 		920CA70BA819DCC9F0102FF9 /* AppXray in Frameworks */ = {isa = PBXBuildFile; productRef = F472AA3C0069B43CB2B3D9F8 /* AppXray */; };
 		928101183C5248CD6252F534 /* Peer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D226D7279D998140E54DD3B3 /* Peer.swift */; };
 		94202B2B5FD645E1DA50D3EF /* SharedRoomInviteInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B401E198A5564D7C7A02D22 /* SharedRoomInviteInboxView.swift */; };
@@ -269,6 +271,7 @@
 		0241E93E60A7151197834BB4 /* ChatComposerAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatComposerAvailabilityTests.swift; sourceTree = "<group>"; };
 		025A005B776366EC801B1187 /* CodeBlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeBlockView.swift; sourceTree = "<group>"; };
 		02A666C61EA09C0973658B67 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		02EBB5B173B2756983D668C1 /* UPnPPortMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UPnPPortMapper.swift; sourceTree = "<group>"; };
 		04D37285EBA16059653F9996 /* ScheduleLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleLibraryView.swift; sourceTree = "<group>"; };
 		076A47F0D7ADD33F5D6C2DE2 /* OdysseyiOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OdysseyiOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		088C72857AA4400D375FE883 /* RichChatComponentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichChatComponentTests.swift; sourceTree = "<group>"; };
@@ -494,6 +497,7 @@
 		F3A03C3B8C9090C7B89651FA /* GroupRoleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupRoleTests.swift; sourceTree = "<group>"; };
 		F4B0BF582D74A73D69F4E2B8 /* GroupSummaryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSummaryBuilder.swift; sourceTree = "<group>"; };
 		F4EB72AF160414D388FB1B8A /* ConversationMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationMessage.swift; sourceTree = "<group>"; };
+		F6B724D409EFAEE01DDC826E /* TURNAllocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TURNAllocator.swift; sourceTree = "<group>"; };
 		F6BEDE526BD10038E3730943 /* ChatSendRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSendRouting.swift; sourceTree = "<group>"; };
 		F83A88365858CD326A39D1CB /* AgentSidebarRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSidebarRowView.swift; sourceTree = "<group>"; };
 		F8575CAE7FCD08CDE2BA7635 /* Odyssey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Odyssey.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -926,6 +930,8 @@
 				AEE6D5BFEC4719B2DBEFB703 /* SidecarManager.swift */,
 				CB40D1714862410A5EDA2D0F /* SidecarProtocol.swift */,
 				F284C7E821B9B70D3FF28CF5 /* TransportManager.swift */,
+				F6B724D409EFAEE01DDC826E /* TURNAllocator.swift */,
+				02EBB5B173B2756983D668C1 /* UPnPPortMapper.swift */,
 				2E6F214B3DA3B4C401EBC4CE /* WorktreeCleanup.swift */,
 				5707ABC7E58B374D9A0915E9 /* WorktreeManager.swift */,
 			);
@@ -1434,12 +1440,14 @@
 				05F7C7B2199B733585ABBFC6 /* StableXrayModifier.swift in Sources */,
 				5FD01F053C0953E2D5D16037 /* StatusBadge.swift in Sources */,
 				09051C6758B5793FC83FE211 /* StreamingIndicator.swift in Sources */,
+				81C95B0A72E17D80CD2F84B1 /* TURNAllocator.swift in Sources */,
 				8AD6AE63E6AD10C8F82DF2F1 /* TaskCreationSheet.swift in Sources */,
 				344EB5016AD2460EB479251A /* TaskEditSheet.swift in Sources */,
 				258BF9C6F0D8FA4FA5270768 /* TaskItem.swift in Sources */,
 				BFD29E858CE515DD4400DC7D /* TerminalOutputView.swift in Sources */,
 				339AB580DED537F9467BCAC4 /* ToolCallView.swift in Sources */,
 				A5F456BAEBB6C649F464697C /* TransportManager.swift in Sources */,
+				9014F66ECF8028220D72BBBA /* UPnPPortMapper.swift in Sources */,
 				1C65270709A2A7F89B0A122D /* UnifiedLogEntry.swift in Sources */,
 				0BA8A404E682AF5BEF8D2C62 /* UserIdentity.swift in Sources */,
 				DB83A2142A011F0A770A4208 /* UserInviteSheet.swift in Sources */,

@@ -42,6 +42,7 @@ final class iOSAppState {
                 wsPort: creds.wsPort,
                 lanHint: override.trimmingCharacters(in: .whitespaces),
                 wanHint: nil,
+                turnRelay: nil,
                 turnConfig: nil,
                 pairedAt: creds.pairedAt,
                 lastConnectedAt: creds.lastConnectedAt,
@@ -193,8 +194,8 @@ final class iOSAppState {
                 await self?.loadProjects()
             }
             if let peer = sidecarManager.connectedPeer {
-                let method: RemoteSidecarManager.ConnectionMethod = peer.lanHint != nil ? .lan : .wanDirect
-                connectionStatus = .connected(method: method.rawValue)
+                // Sync from sidecarManager which has the correct method set during WebSocket connection
+                connectionStatus = sidecarManager.status
             } else {
                 connectionStatus = .connected(method: "lan")
             }
