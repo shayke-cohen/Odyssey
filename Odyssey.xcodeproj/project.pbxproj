@@ -53,6 +53,7 @@
 		2A43F6C6D519EE4046F8D48C /* MessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = C098B6CED63A531521590DFB /* MessageBubble.swift */; };
 		2A9DDDE1996FE17E27E9360E /* GroupPromptBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E1EC3CD0886247494C4B74 /* GroupPromptBuilderTests.swift */; };
 		2B0E80A425A52589957FC728 /* FileContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122B3655F0302ACD752D5C72 /* FileContentView.swift */; };
+		2BE0D4A4E22AFBFFDB75FEBD /* NostrPeer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 799963FBF5DB8B39EDA381F5 /* NostrPeer.swift */; };
 		2D0A0ECBAD170DF82685020B /* SidebarActivityIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7333AE73C0663A0A85F8F9A /* SidebarActivityIndicator.swift */; };
 		2E20FAA5CAD426395D5BE5B1 /* NewGroupThreadSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA04E7FA48238BEC1518062 /* NewGroupThreadSheet.swift */; };
 		2F60E7E2B593E260764212A2 /* SharedWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0CB5B543443F65B40074D0 /* SharedWorkspace.swift */; };
@@ -367,6 +368,7 @@
 		78F1DC54EF71599B30FD4FA9 /* ConnectionVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionVault.swift; sourceTree = "<group>"; };
 		79283BBF8FDB8B117970161D /* PasteableTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteableTextField.swift; sourceTree = "<group>"; };
 		795EF2C6E716A348A0270D65 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
+		799963FBF5DB8B39EDA381F5 /* NostrPeer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NostrPeer.swift; sourceTree = "<group>"; };
 		7A3E6F09CE62E2D34C3D9DFC /* ScheduledMissionSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledMissionSupportTests.swift; sourceTree = "<group>"; };
 		7B22A5D272BEE59AA3D3C5D8 /* DefaultPermissionPresets.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = DefaultPermissionPresets.json; sourceTree = "<group>"; };
 		7D163AC9F9E014E2707DCEF3 /* LocalProviderSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalProviderSupport.swift; sourceTree = "<group>"; };
@@ -836,6 +838,7 @@
 				C61B9B11C3E686060A4ABC25 /* GroupRole.swift */,
 				D316A7444D5C7AF4A4C23D84 /* MCPServer.swift */,
 				BFD19B50DA0A5BB9D7845A11 /* MessageAttachment.swift */,
+				799963FBF5DB8B39EDA381F5 /* NostrPeer.swift */,
 				EABC674EDD3F47999BEA9FAE /* Participant.swift */,
 				D226D7279D998140E54DD3B3 /* Peer.swift */,
 				EFE61F38DD7B9E57DF10B0B5 /* PermissionSet.swift */,
@@ -1376,6 +1379,7 @@
 				D499D740BF66FDAF98B17443 /* NATTraversalManager.swift in Sources */,
 				2E20FAA5CAD426395D5BE5B1 /* NewGroupThreadSheet.swift in Sources */,
 				1DE9CE05CAF686E47698C3AB /* NewSessionSheet.swift in Sources */,
+				2BE0D4A4E22AFBFFDB75FEBD /* NostrPeer.swift in Sources */,
 				438A8185A2A921F2F912027A /* OdysseyApp.swift in Sources */,
 				C7E04ED21BAE8762652B422A /* OllamaCatalogService.swift in Sources */,
 				05DC85A4A120D1D2706D08AC /* P2PNetworkManager.swift in Sources */,
