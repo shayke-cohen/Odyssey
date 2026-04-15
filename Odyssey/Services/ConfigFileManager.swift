@@ -303,8 +303,8 @@ struct BuiltInConfigDriftSummary {
 
 /// Pure file I/O for config directory. No SwiftData dependency.
 enum ConfigFileManager {
-    private static let bundledAgentSlugs = ["orchestrator", "coder", "reviewer", "researcher", "tester", "devops", "writer", "product-manager", "analyst", "designer", "config-agent"]
-    private static let bundledSkillSlugs = ["peer-collaboration", "blackboard-patterns", "delegation-patterns", "workspace-collaboration", "agent-identity", "artifact-handoff-gate", "product-artifact-gate", "config-editing", "github-workflow"]
+    private static let bundledAgentSlugs = ["orchestrator", "coder", "reviewer", "researcher", "tester", "devops", "writer", "product-manager", "analyst", "designer", "config-agent", "friday"]
+    private static let bundledSkillSlugs = ["peer-collaboration", "blackboard-patterns", "delegation-patterns", "workspace-collaboration", "agent-identity", "artifact-handoff-gate", "product-artifact-gate", "config-editing", "github-workflow", "task-board-patterns", "personal-context"]
     private static let bundledTemplateNames = ["specialist", "worker", "coordinator"]
 
     static var configDirectory: URL {
