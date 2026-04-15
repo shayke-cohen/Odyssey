@@ -2207,8 +2207,15 @@ struct SidebarView: View {
     private func startSession(with agent: Agent, in project: Project? = nil) {
         let targetProject = project ?? sortedProjects.first(where: { $0.id == windowState.selectedProjectId })
         let session = Session(agent: agent, mode: .interactive)
-        if session.workingDirectory.isEmpty, !(targetProject?.rootPath ?? windowState.projectDirectory).isEmpty {
-            session.workingDirectory = targetProject?.rootPath ?? windowState.projectDirectory
+        if session.workingDirectory.isEmpty {
+            // Resident agents (defaultWorkingDirectory set) run in their own home folder;
+            // everyone else runs in the project root.
+            let fallback = targetProject?.rootPath ?? windowState.projectDirectory
+            if let residentDir = agent.defaultWorkingDirectory, !residentDir.isEmpty {
+                session.workingDirectory = residentDir
+            } else if !fallback.isEmpty {
+                session.workingDirectory = fallback
+            }
         }
         let conversation = Conversation(
             topic: agent.name,
