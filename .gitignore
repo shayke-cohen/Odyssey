@@ -20,6 +20,8 @@ DerivedData/
 sidecar/node_modules/
 sidecar/dist/
 sidecar/bun.lockb
+*.bun-build
+.bun-build
 
 # Dependencies (SPM local packages from private repos)
 Dependencies/
