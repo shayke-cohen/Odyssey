@@ -80,6 +80,20 @@ const wsServer = new WsServer(WS_PORT, sessionManager, toolContext, {
 
 // Multi-target broadcast: WS clients + SSE subscribers + Webhooks
 broadcastFn = (event) => {
+  // Mirror session results into the conversation store so iOS can read messages via REST.
+  if (event.type === "session.result") {
+    const sessionId = event.sessionId;
+    if (conversationStore.hasConversation(sessionId)) {
+      conversationStore.appendMessage(sessionId, {
+        id: `result-${sessionId}-${Date.now()}`,
+        text: event.result,
+        type: "chat",
+        senderParticipantId: "agent",
+        timestamp: new Date().toISOString(),
+        isStreaming: false,
+      });
+    }
+  }
   wsServer.broadcast(event);
   sseManager.broadcast(event);
   webhookManager.dispatch(event);

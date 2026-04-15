@@ -64,6 +64,7 @@ struct AgentListItem: View {
 
 struct NewConversationSheet: View {
     let agent: AgentSummaryWire
+    let onCreated: (ConversationSummaryWire) -> Void
     @Environment(iOSAppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     @State private var initialMessage = ""
@@ -115,7 +116,6 @@ struct NewConversationSheet: View {
         defer { isCreating = false }
         errorMessage = nil
         do {
-            // Use a new UUID as the conversation id
             let conversationId = UUID().uuidString
             try await appState.startOrResumeSession(
                 conversationId: conversationId,
@@ -123,10 +123,23 @@ struct NewConversationSheet: View {
                 model: agent.model,
                 workingDirectory: nil
             )
-            if !initialMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                try await appState.send(initialMessage, to: conversationId)
+            let trimmed = initialMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                try await appState.send(trimmed, to: conversationId)
             }
-            await appState.loadConversations()
+            let now = ISO8601DateFormatter().string(from: Date())
+            let conversation = ConversationSummaryWire(
+                id: conversationId,
+                topic: agent.name,
+                lastMessageAt: now,
+                lastMessagePreview: trimmed,
+                unread: false,
+                participants: [],
+                projectId: nil,
+                projectName: nil,
+                workingDirectory: nil
+            )
+            onCreated(conversation)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
@@ -174,9 +187,10 @@ struct iOSAgentListView: View {
     @State private var agents: [AgentSummaryWire] = []
     @State private var selectedAgent: AgentSummaryWire?
     @State private var isLoadingAgents = false
+    @State private var path = NavigationPath()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if isLoadingAgents {
                     ProgressView("Loading agents…")
@@ -212,10 +226,24 @@ struct iOSAgentListView: View {
                     .accessibilityLabel("Refresh agents")
                 }
             }
+            .navigationDestination(for: ConversationSummaryWire.self) { conversation in
+                iOSChatView(conversation: conversation)
+            }
         }
         .sheet(item: $selectedAgent) { agent in
-            NewConversationSheet(agent: agent)
-                .environment(appState)
+            NewConversationSheet(agent: agent) { conversation in
+                // Insert at top of list so it appears in the Conversations tab.
+                if !appState.conversations.contains(where: { $0.id == conversation.id }) {
+                    appState.conversations.insert(conversation, at: 0)
+                }
+                selectedAgent = nil
+                // Small delay lets the sheet begin dismissing before we push.
+                Task {
+                    try? await Task.sleep(for: .milliseconds(350))
+                    path.append(conversation)
+                }
+            }
+            .environment(appState)
         }
         .task {
             await loadAgents()

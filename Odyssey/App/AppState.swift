@@ -1195,6 +1195,8 @@ final class AppState: ObservableObject {
             disconnectTimer = nil
             Task { await recoverSessions() }
             sendToSidecar(.taskList(filter: nil))
+            registerAgentDefinitions()
+            registerConnections()
             if let ctx = modelContext {
                 Task { await sidecarManager?.pushConversationSync(modelContext: ctx) }
             }

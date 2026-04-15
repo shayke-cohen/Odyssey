@@ -43,8 +43,13 @@ struct iOSChatView: View {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
-                .onChange(of: streamingBuffer) { _, _ in
+                .onChange(of: streamingBuffer) { old, new in
                     withAnimation { proxy.scrollTo("streaming", anchor: .bottom) }
+                    // When streaming ends, reload permanent messages and clear sending state.
+                    if old != nil && new == nil {
+                        isSending = false
+                        Task { messages = await appState.loadMessages(for: conversation.id) }
+                    }
                 }
             }
 
@@ -71,13 +76,17 @@ struct iOSChatView: View {
                     }
 
                 Button {
-                    Task { await send() }
+                    if isSending {
+                        Task { await stop() }
+                    } else {
+                        Task { await send() }
+                    }
                 } label: {
                     Image(systemName: isSending ? "stop.circle.fill" : "arrow.up.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(canSend ? .blue : .gray)
+                        .foregroundStyle(canSend || isSending ? .blue : .gray)
                 }
-                .disabled(!canSend)
+                .disabled(!canSend && !isSending)
                 .accessibilityIdentifier("chat.sendButton")
                 .accessibilityLabel(isSending ? "Stop" : "Send message")
             }
@@ -88,6 +97,13 @@ struct iOSChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             messages = await appState.loadMessages(for: conversation.id)
+            // If the session completed before this view appeared (fast response),
+            // the streaming buffer was already cleared. Retry once after a short
+            // delay to pick up messages that were just written to the sidecar.
+            if messages.isEmpty {
+                try? await Task.sleep(for: .seconds(1))
+                messages = await appState.loadMessages(for: conversation.id)
+            }
         }
     }
 
@@ -101,12 +117,22 @@ struct iOSChatView: View {
         inputText = ""
         isSending = true
         errorMessage = nil
-        defer { isSending = false }
         do {
             try await appState.send(text, to: conversation.id)
+            // isSending stays true until streamingBuffer clears (onChange resets it).
+        } catch {
+            errorMessage = error.localizedDescription
+            isSending = false
+        }
+    }
+
+    private func stop() async {
+        do {
+            try await appState.pause(conversation.id)
         } catch {
             errorMessage = error.localizedDescription
         }
+        isSending = false
     }
 }
 

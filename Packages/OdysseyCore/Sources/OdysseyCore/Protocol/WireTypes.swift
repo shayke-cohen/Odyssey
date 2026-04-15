@@ -3,7 +3,7 @@ import Foundation
 
 /// Wire representation of a conversation/thread as returned by the REST API.
 /// The iOS app reads these from GET /api/v1/conversations.
-public struct ConversationSummaryWire: Codable, Sendable, Identifiable {
+public struct ConversationSummaryWire: Codable, Sendable, Identifiable, Hashable {
     public let id: String
     public let topic: String
     /// ISO 8601 timestamp string, e.g. "2026-04-13T10:00:00Z"
@@ -79,7 +79,7 @@ public struct MessageWire: Codable, Sendable, Identifiable {
 }
 
 /// Wire representation of a conversation participant.
-public struct ParticipantWire: Codable, Sendable {
+public struct ParticipantWire: Codable, Sendable, Hashable {
     public let id: String
     public let displayName: String
     public let isAgent: Bool

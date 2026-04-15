@@ -117,6 +117,11 @@ final class iOSAppState {
         )
     }
 
+    /// Pause (interrupt) the active agent session for a conversation.
+    func pause(_ conversationId: String) async throws {
+        try await sidecarManager.send(.sessionPause(sessionId: conversationId))
+    }
+
     // MARK: - Event loop
 
     private func startEventLoop() {

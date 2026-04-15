@@ -81,4 +81,21 @@ export class ConversationStore {
   hasConversation(id: string): boolean {
     return this.conversations.has(id);
   }
+
+  /** Create a minimal conversation entry for iOS-initiated sessions that don't originate from Mac SwiftData. */
+  ensureConversation(id: string, topic: string): void {
+    if (!this.conversations.has(id)) {
+      this.conversations.set(id, {
+        id,
+        topic,
+        lastMessageAt: new Date().toISOString(),
+        lastMessagePreview: "",
+        unread: false,
+        participants: [],
+        projectId: null,
+        projectName: null,
+        workingDirectory: null,
+      });
+    }
+  }
 }

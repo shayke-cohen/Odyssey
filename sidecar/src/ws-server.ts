@@ -96,13 +96,27 @@ export class WsServer {
   private async handleCommand(command: SidecarCommand): Promise<void> {
     switch (command.type) {
       case "session.create": {
+        // Ensure a conversation entry exists so iOS can retrieve messages via REST.
+        this.ctx.conversationStore.ensureConversation(
+          command.conversationId,
+          command.agentConfig.name,
+        );
         await this.sessionManager.createSession(
           command.conversationId,
           command.agentConfig,
         );
         break;
       }
-      case "session.message":
+      case "session.message": {
+        // Persist the user message so iOS can read it back via REST.
+        this.ctx.conversationStore.appendMessage(command.sessionId, {
+          id: `user-${command.sessionId}-${Date.now()}`,
+          text: command.text,
+          type: "chat",
+          senderParticipantId: "user",
+          timestamp: new Date().toISOString(),
+          isStreaming: false,
+        });
         await this.sessionManager.sendMessage(
           command.sessionId,
           command.text,
@@ -110,6 +124,7 @@ export class WsServer {
           command.planMode,
         );
         break;
+      }
       case "session.resume":
         await this.sessionManager.resumeSession(
           command.sessionId,
