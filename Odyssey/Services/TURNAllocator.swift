@@ -143,7 +143,7 @@ actor TURNAllocator {
         let unauthReq = Self.buildAllocateRequest(transactionID: txID1, auth: nil)
         try await sendMessage(conn: conn, data: unauthReq)
 
-        let response1 = try await readSTUNMessage(conn: conn)
+        let response1 = try await withTimeout(seconds: 10) { try await self.readSTUNMessage(conn: conn) }
         let (type1, _, attrs1) = try Self.parseSTUNMessage(response1)
 
         guard type1 == Self.allocateError else {
@@ -176,17 +176,20 @@ actor TURNAllocator {
         logger.debug("TURN 401 received, realm=\(realmVal), authenticating…")
 
         // Phase 2: authenticated Allocate
+        guard let authKey = self.authKey else {
+            throw TURNError.authenticationFailed
+        }
         let txID2 = Self.randomTransactionID()
         let auth = AuthContext(
             username: config.username,
             realm: realmVal,
             nonce: nonceVal,
-            key: self.authKey!
+            key: authKey
         )
         let authReq = Self.buildAllocateRequest(transactionID: txID2, auth: auth)
         try await sendMessage(conn: conn, data: authReq)
 
-        let response2 = try await readSTUNMessage(conn: conn)
+        let response2 = try await withTimeout(seconds: 10) { try await self.readSTUNMessage(conn: conn) }
         let (type2, _, attrs2) = try Self.parseSTUNMessage(response2)
 
         if type2 == Self.allocateError {
@@ -226,6 +229,22 @@ actor TURNAllocator {
         authKey = nil
         controlBuffer = Data()
         logger.info("TURN allocator stopped")
+    }
+
+    // MARK: - Timeout Helper
+
+    /// Run `operation` with a deadline; throws `TURNError.timeout` if it doesn't complete in time.
+    private func withTimeout<T: Sendable>(seconds: Double, operation: @escaping @Sendable () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask { try await operation() }
+            group.addTask {
+                try await Task.sleep(for: .seconds(seconds))
+                throw TURNError.timeout
+            }
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
     }
 
     // MARK: - TCP Connection Helpers
@@ -309,10 +328,9 @@ actor TURNAllocator {
                 } else if let data, data.count == count {
                     continuation.resume(returning: data)
                 } else if let data, data.count > 0 {
-                    // We got a partial read — this shouldn't happen with
-                    // minimumIncompleteLength == count, but handle it gracefully
-                    // by returning what we have (caller may need to loop)
-                    continuation.resume(returning: data)
+                    // Partial read — minimumIncompleteLength should prevent this,
+                    // but if it happens the data is unusable without the full frame.
+                    continuation.resume(throwing: TURNError.truncatedMessage)
                 } else {
                     continuation.resume(throwing: TURNError.truncatedMessage)
                 }
@@ -410,16 +428,24 @@ actor TURNAllocator {
 
     /// Opens a new TCP connection to the TURN server, sends ConnectionBind,
     /// and hands the resulting bridged connection to the caller.
+    ///
+    /// RFC 6062 §5.3 (server-push / incoming peer flow):
+    /// TURN has already sent us a ConnectionAttempt indication with a connection-id.
+    /// We open a NEW TCP connection and send only ConnectionBind — no Connect step.
     private func establishDataConnection(connectionID: UInt32, config: TURNConfig) async {
         do {
             let (host, port) = try Self.parseURL(config.url)
             let dataConn = try await openTCPConnection(host: host, port: port)
+
+            // Track in-flight connections so stop() can cancel them
+            pendingDataConnections[connectionID] = dataConn
 
             guard let realm = self.realm,
                   let nonce = self.nonce,
                   let authKey = self.authKey else {
                 logger.error("Missing auth state for ConnectionBind")
                 dataConn.cancel()
+                pendingDataConnections.removeValue(forKey: connectionID)
                 return
             }
 
@@ -430,25 +456,9 @@ actor TURNAllocator {
                 key: authKey
             )
 
-            // RFC 6062 §5.3: Send Connect request on the new data connection first
-            let connectTxID = Self.randomTransactionID()
-            let connectReq = Self.buildConnectRequest(
-                transactionID: connectTxID,
-                connectionID: connectionID,
-                auth: auth
-            )
-            try await sendMessage(conn: dataConn, data: connectReq)
-
-            let connectResp = try await readSTUNMessage(conn: dataConn)
-            let (connectType, _, _) = try Self.parseSTUNMessage(connectResp)
-            guard connectType == Self.connectSuccess else {
-                logger.error("Connect failed, response type: 0x\(String(connectType, radix: 16))")
-                dataConn.cancel()
-                return
-            }
-            logger.debug("TURN Connect succeeded for connectionID=\(connectionID)")
-
-            // Now send ConnectionBind to activate the data channel
+            // RFC 6062 §5.3: Send only ConnectionBind (0x000B) on the new data connection.
+            // The Connect (0x000A) step is for client-initiated outbound flows (§4.3) only;
+            // for the server-push incoming case the connection-id is already bound by TURN.
             let bindTxID = Self.randomTransactionID()
             let bindReq = Self.buildConnectionBindRequest(
                 transactionID: bindTxID,
@@ -458,22 +468,25 @@ actor TURNAllocator {
             try await sendMessage(conn: dataConn, data: bindReq)
 
             // Read the response
-            let response = try await readSTUNMessage(conn: dataConn)
+            let response = try await withTimeout(seconds: 10) { try await self.readSTUNMessage(conn: dataConn) }
             let (respType, _, _) = try Self.parseSTUNMessage(response)
 
             guard respType == Self.connectionBindOK else {
                 logger.error("ConnectionBind failed, response type: 0x\(String(respType, radix: 16))")
                 dataConn.cancel()
+                pendingDataConnections.removeValue(forKey: connectionID)
                 return
             }
 
             logger.info("ConnectionBind succeeded for connectionID=\(connectionID)")
 
-            // Hand the bridged connection to the caller
+            // Remove from pending and hand the bridged connection to the caller
+            pendingDataConnections.removeValue(forKey: connectionID)
             onDataConnection?(dataConn)
 
         } catch {
             logger.error("Failed to establish data connection: \(error.localizedDescription)")
+            pendingDataConnections.removeValue(forKey: connectionID)
         }
     }
 
@@ -486,19 +499,29 @@ actor TURNAllocator {
                 try? await Task.sleep(for: .seconds(540))
                 guard !Task.isCancelled else { break }
                 guard let self else { break }
-                await self.sendRefresh()
+                do {
+                    try await self.sendRefresh()
+                } catch {
+                    logger.error("TURN refresh failed, allocation expired: \(error)")
+                    await self.markRefreshFailed(error: error)
+                    break
+                }
             }
         }
     }
 
-    private func sendRefresh() {
+    private func markRefreshFailed(error: Error) {
+        status = .failed("Allocation expired: \(error.localizedDescription)")
+    }
+
+    private func sendRefresh() async throws {
         guard let conn = controlConn,
               let config = self.config,
               let realm = self.realm,
               let nonce = self.nonce,
               let authKey = self.authKey else {
             logger.warning("Cannot refresh: missing connection or auth state")
-            return
+            throw TURNError.authenticationFailed
         }
 
         let auth = AuthContext(
@@ -510,13 +533,8 @@ actor TURNAllocator {
         let txID = Self.randomTransactionID()
         let msg = Self.buildRefreshRequest(transactionID: txID, auth: auth)
 
-        conn.send(content: msg, completion: .contentProcessed { error in
-            if let error {
-                logger.error("TURN refresh send failed: \(error.localizedDescription)")
-            } else {
-                logger.debug("TURN refresh sent")
-            }
-        })
+        try await sendMessage(conn: conn, data: msg)
+        logger.debug("TURN refresh sent")
     }
 
     // MARK: - STUN Message Building
@@ -625,7 +643,8 @@ actor TURNAllocator {
     }
 
     /// Build a Connect Request (RFC 6062, 0x000A) with CONNECTION-ID.
-    /// This must be sent on the new data TCP connection before ConnectionBind.
+    /// Used only for client-initiated outbound flows (§4.3); not used in the
+    /// server-push incoming flow (§5.3) handled by this allocator.
     private static func buildConnectRequest(
         transactionID: Data,
         connectionID: UInt32,
