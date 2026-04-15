@@ -17,6 +17,8 @@ export type SidecarCommand =
   | { type: "delegate.task"; sessionId: string; toAgent: string; task: string; context?: string; waitForResult: boolean }
   | { type: "peer.register"; name: string; endpoint: string; agents: PeerAgentWire[] }
   | { type: "peer.remove"; name: string }
+  | { type: "nostr.addPeer"; name: string; pubkeyHex: string; relays: string[] }
+  | { type: "nostr.removePeer"; name: string }
   | { type: "generate.agent"; requestId: string; prompt: string; availableSkills: SkillCatalogEntry[]; availableMCPs: MCPCatalogEntry[] }
   | { type: "session.questionAnswer"; sessionId: string; questionId: string; answer: string; selectedOptions?: string[] }
   | { type: "session.confirmationAnswer"; sessionId: string; confirmationId: string; approved: boolean; modifiedAction?: string }
@@ -226,7 +228,8 @@ export type SidecarEvent =
   | { type: "connector.list.result"; connections: ConnectorConfig[] }
   | { type: "connector.statusChanged"; connection: ConnectorConfig }
   | { type: "connector.audit"; sessionId?: string; connectionId: string; provider: ConnectorProvider; action: string; outcome: string; summary: string }
-  | { type: "ios.pushRegistered"; apnsToken: string; success: boolean; error?: string };
+  | { type: "ios.pushRegistered"; apnsToken: string; success: boolean; error?: string }
+  | { type: "nostr.status"; connectedRelays: number; totalRelays: number };
 
 export interface QuestionOption {
   label: string;
@@ -390,3 +393,5 @@ export interface WebhookRegistration {
   disabled: boolean;
   createdAt: string;
 }
+
+export type { OdysseyP2PEnvelope } from './relay/nostr-transport.js'
