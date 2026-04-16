@@ -13,11 +13,14 @@
 | Sidecar integration | 80 pass / 0 fail | 80 pass / 0 fail | 0 |
 | Sidecar API | 61 pass / **5 fail** | 66 pass / 0 fail | +5 tests fixed |
 | Sidecar E2E (live Claude) | 40 pass / 7 skip / 0 fail | 54 pass / 7 skip / 0 fail | +14 |
-| Sidecar root (Nostr) | 22 pass / 0 fail | 22 pass / 0 fail | 0 |
-| **Sidecar total** | **306 pass / 5 fail** | **357 pass / 0 fail** | **+51, 5 fixed** |
+| Sidecar root (Nostr crypto+transport) | 22 pass / 0 fail | 22 pass / 0 fail | 0 |
+| Sidecar Nostr live relay | not run | 1 pass / 0 fail | +1 |
+| Sidecar security (exploit) | not run | 18 pass / 0 fail | +18 |
+| Legacy `sidecar-api.test.ts` harness | not run | 11 pass / 0 fail | +11 |
+| **Sidecar total** | **306 pass / 5 fail** | **387 pass / 0 fail** | **+81, 5 fixed** |
 | Swift XCTest (macOS) | **LOAD FAILED** (signing) | **649 pass / 1 skip / 0 fail** | +18 new, unblocked |
 | iOS XCTest | 24 pass / 0 fail | 30 pass / 0 fail | +6 |
-| **All unit/integ/e2e** | — | **~1036 pass / 0 fail** | |
+| **All unit/integ/e2e** | — | **~1066 pass / 0 fail** | |
 | AppXray macOS UI | existing yaml | smoke run via MCP; noted gaps | — |
 | Argus iOS UI | none | pairing smoke — state-machine verified live | new |
 
