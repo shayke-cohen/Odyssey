@@ -36,9 +36,28 @@ struct ScheduleLibraryView: View {
                 header
                 Divider()
                 if filteredSchedules.isEmpty {
-                    ContentUnavailableView("No schedules for this project", systemImage: "clock.badge")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .stableXrayId("scheduleLibrary.emptyState")
+                    VStack(spacing: 16) {
+                        Image(systemName: "clock.badge")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.secondary)
+                        Text("No schedules for this project")
+                            .font(.headline)
+                        Text("Schedule recurring agent missions — daily standups, weekly cleanups, hourly inbox checks.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        Button("Create Your First Schedule") {
+                            editingSchedule = nil
+                            editorDraft = ScheduledMissionDraft(projectDirectory: windowState.projectDirectory)
+                            editorDraft.projectId = windowState.selectedProjectId
+                            showingEditor = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .stableXrayId("scheduleLibrary.createFirstButton")
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .stableXrayId("scheduleLibrary.emptyState")
                 } else {
                     List(filteredSchedules, selection: $selectedScheduleId) { schedule in
                         row(for: schedule)

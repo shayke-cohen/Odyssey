@@ -49,6 +49,36 @@ struct ScheduledMissionCadence {
         }
     }
 
+    static func cadenceSummary(forDraft draft: ScheduledMissionDraft) -> String {
+        switch draft.cadenceKind {
+        case .hourlyInterval:
+            let hours = max(1, draft.intervalHours)
+            return hours == 1 ? "Every hour" : "Every \(hours) hours"
+        case .dailyTime:
+            let formatter = DateFormatter()
+            formatter.locale = .current
+            formatter.setLocalizedDateFormatFromTemplate("HH:mm")
+            let base = Calendar.current.date(
+                from: DateComponents(
+                    year: 2001,
+                    month: 1,
+                    day: 1,
+                    hour: draft.localHour,
+                    minute: draft.localMinute
+                )
+            ) ?? Date()
+            let time = formatter.string(from: base)
+            let days = draft.daysOfWeek
+            if days.isEmpty || days.count == ScheduledMissionWeekday.allCases.count {
+                return "Daily at \(time)"
+            }
+            if days == [.monday, .tuesday, .wednesday, .thursday, .friday] {
+                return "Weekdays at \(time)"
+            }
+            return "\(days.map(\.shortLabel).joined(separator: " ")) at \(time)"
+        }
+    }
+
     static func cadenceSummary(for schedule: ScheduledMission) -> String {
         switch schedule.cadenceKind {
         case .hourlyInterval:

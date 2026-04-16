@@ -9,6 +9,8 @@ struct ScheduleDetailView: View {
 
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
+    @State private var isStartingRun = false
+    @State private var showingAllRuns = false
     @Query private var schedules: [ScheduledMission]
     @Query(sort: \ScheduledMissionRun.startedAt, order: .reverse) private var runs: [ScheduledMissionRun]
     @Query(sort: \Agent.name) private var agents: [Agent]
@@ -66,10 +68,16 @@ struct ScheduleDetailView: View {
             }
 
             HStack(spacing: 8) {
-                Button("Run Now") {
+                Button(isStartingRun ? "Starting…" : "Run Now") {
+                    isStartingRun = true
                     appState.runScheduledMissionNow(schedule.id, windowState: windowState)
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.5))
+                        isStartingRun = false
+                    }
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(isStartingRun)
                 .stableXrayId("scheduleDetail.runNowButton")
 
                 Button(schedule.isEnabled ? "Pause" : "Enable") {
@@ -94,6 +102,17 @@ struct ScheduleDetailView: View {
                 }
 
                 Menu {
+                    Button("Skip Next Run") {
+                        skipNextRun(schedule)
+                    }
+                    .disabled(schedule.nextRunAt == nil)
+                    Button("Snooze 1 day") {
+                        if let next = schedule.nextRunAt {
+                            schedule.nextRunAt = next.addingTimeInterval(86400)
+                        }
+                    }
+                    .disabled(schedule.nextRunAt == nil)
+                    Divider()
                     Button("Duplicate") { onDuplicate(schedule) }
                     Button("Delete", role: .destructive) { onDelete(schedule) }
                 } label: {
@@ -131,7 +150,20 @@ struct ScheduleDetailView: View {
                 infoLine("Project", value: schedule.projectDirectory)
                 infoLine("Closed-app execution", value: schedule.runWhenAppClosed ? "Enabled" : "Disabled")
                 if schedule.runWhenAppClosed {
-                    infoLine("launchd", value: schedule.launchdJobLabel ?? "Pending sync")
+                    if let label = schedule.launchdJobLabel {
+                        infoLine("launchd", value: label)
+                    } else {
+                        HStack(spacing: 8) {
+                            infoLine("launchd", value: "Pending sync")
+                            Button("Resync") {
+                                appState.syncScheduledMission(schedule)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .help("Re-register this schedule with launchd. Click if it's been pending for a while.")
+                            .stableXrayId("scheduleDetail.launchdResyncButton")
+                        }
+                    }
                 }
                 if let lastConversation {
                     Button(lastConversation.topic ?? "Open linked conversation") {
@@ -155,33 +187,84 @@ struct ScheduleDetailView: View {
             } else {
                 VStack(spacing: 8) {
                     ForEach(scheduleRuns.prefix(12)) { run in
-                        HStack {
-                            statusBadge(run.status.displayName, color: color(for: run.status))
-                            Text(run.scheduledFor.formatted(date: .abbreviated, time: .shortened))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            if let summary = run.summary, !summary.isEmpty {
-                                Text(summary)
-                                    .font(.caption)
-                                    .lineLimit(1)
-                            } else if let error = run.errorMessage, !error.isEmpty {
-                                Text(error)
-                                    .font(.caption)
-                                    .foregroundStyle(.red)
-                                    .lineLimit(1)
-                            } else if let reason = run.skipReason {
-                                Text(reason)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                        runRow(run)
+                    }
+                    if scheduleRuns.count > 12 {
+                        Button("View all (\(scheduleRuns.count))") {
+                            showingAllRuns = true
                         }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color.accentColor)
+                        .font(.caption)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .stableXrayId("scheduleDetail.viewAllRunsButton")
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .sheet(isPresented: $showingAllRuns) {
+                    ScheduleRunListSheet(runs: scheduleRuns) { convoId in
+                        windowState.selectedConversationId = convoId
+                        showingAllRuns = false
+                    }
+                }
             }
         }
         .stableXrayId("scheduleDetail.historyCard")
+    }
+
+    @ViewBuilder
+    private func runRow(_ run: ScheduledMissionRun) -> some View {
+        let isClickable = run.conversationId != nil
+        HStack {
+            statusBadge(run.status.displayName, color: color(for: run.status))
+            Text(run.scheduledFor.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            if let summary = run.summary, !summary.isEmpty {
+                Text(summary)
+                    .font(.caption)
+                    .lineLimit(1)
+            } else if let error = run.errorMessage, !error.isEmpty {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(1)
+            } else if let reason = run.skipReason {
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if isClickable {
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let convoId = run.conversationId {
+                windowState.selectedConversationId = convoId
+            }
+        }
+        .help(isClickable ? "Open this run's conversation" : "")
+    }
+
+    private func skipNextRun(_ schedule: ScheduledMission) {
+        guard let currentNext = schedule.nextRunAt else { return }
+        // Advance past the current next-run by computing the next-after-next occurrence
+        if let afterNext = ScheduledMissionCadence.nextOccurrence(for: schedule, after: currentNext) {
+            schedule.nextRunAt = afterNext
+        } else {
+            // Fallback: advance by one cadence period
+            switch schedule.cadenceKind {
+            case .hourlyInterval:
+                let hours = max(1, schedule.intervalHours ?? 1)
+                schedule.nextRunAt = currentNext.addingTimeInterval(TimeInterval(hours * 3600))
+            case .dailyTime:
+                schedule.nextRunAt = currentNext.addingTimeInterval(86400)
+            }
+        }
     }
 
     private func targetName(for schedule: ScheduledMission) -> String {
@@ -232,5 +315,95 @@ struct ScheduleDetailView: View {
                 .fontWeight(.medium)
             Text(value)
         }
+    }
+}
+
+struct ScheduleRunListSheet: View {
+    let runs: [ScheduledMissionRun]
+    let onSelect: (UUID) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("All Runs (\(runs.count))")
+                    .font(.headline)
+                Spacer()
+                Button("Done") { dismiss() }
+                    .stableXrayId("scheduleRunList.doneButton")
+            }
+            .padding()
+            Divider()
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    ForEach(runs) { run in
+                        runRow(run)
+                            .padding(.horizontal)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+        }
+        .frame(minWidth: 540, minHeight: 400)
+        .stableXrayId("scheduleRunList.sheet")
+    }
+
+    @ViewBuilder
+    private func runRow(_ run: ScheduledMissionRun) -> some View {
+        let isClickable = run.conversationId != nil
+        HStack {
+            statusBadge(run.status.displayName, color: color(for: run.status))
+            Text(run.scheduledFor.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            if let summary = run.summary, !summary.isEmpty {
+                Text(summary)
+                    .font(.caption)
+                    .lineLimit(1)
+            } else if let error = run.errorMessage, !error.isEmpty {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(1)
+            } else if let reason = run.skipReason {
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if isClickable {
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let convoId = run.conversationId {
+                onSelect(convoId)
+            }
+        }
+        .help(isClickable ? "Open this run's conversation" : "")
+    }
+
+    private func color(for status: ScheduledMissionRunStatus) -> Color {
+        switch status {
+        case .running: return .blue
+        case .succeeded: return .green
+        case .failed: return .red
+        case .skipped: return .orange
+        }
+    }
+
+    private func statusBadge(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.12))
+            .foregroundStyle(color)
+            .clipShape(Capsule())
     }
 }
