@@ -11,6 +11,7 @@ import Foundation
 /// 3. **UI** — `@AppStorage` toggles in Settings › Labs, gated by the master `showAdvanced` switch.
 ///
 /// All keys are included in `AppSettings.allKeys` so "Reset All Settings" clears them.
+/// Setting `showAdvanced` in `ODYSSEY_FEATURES` also force-enables the master gate, since the env-var path bypasses gating.
 enum FeatureFlags {
 
     // MARK: - Master switch
@@ -88,11 +89,11 @@ enum FeatureFlags {
     ///    (bypasses the master gate — for developer one-off testing).
     /// 2. For `showAdvancedKey` itself, return its `UserDefaults` value directly.
     /// 3. For any per-feature flag, the master `showAdvancedKey` must also be `true`.
-    static func isEnabled(_ key: String) -> Bool {
+    nonisolated static func isEnabled(_ key: String) -> Bool {
         // Env-var bypass — `ODYSSEY_FEATURES=peerNetwork,workshop` skips the master gate.
         if let env = ProcessInfo.processInfo.environment["ODYSSEY_FEATURES"] {
             let suffix = key.replacingOccurrences(of: "odyssey.features.", with: "")
-            if env.split(separator: ",").map(String.init).contains(suffix) {
+            if env.split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }).contains(suffix) {
                 return true
             }
         }
