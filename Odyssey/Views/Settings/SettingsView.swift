@@ -2449,7 +2449,6 @@ private struct DeveloperSettingsTab: View {
     @AppStorage(AppSettings.dataDirectoryKey, store: AppSettings.store) private var dataDirectory = AppSettings.defaultDataDirectory
     @AppStorage(AppSettings.logLevelKey, store: AppSettings.store) private var logLevel = AppSettings.defaultLogLevel
     @AppStorage(AppSettings.builtInConfigOverridePolicyKey, store: AppSettings.store) private var builtInConfigOverridePolicy = AppSettings.defaultBuiltInConfigOverridePolicy
-    @AppStorage(AppSettings.useLegacyChatChromeKey, store: AppSettings.store) private var useLegacyChatChrome = false
     @State private var showResetConfirmation = false
 
     private var selectedLogLevel: Binding<LogLevel> {
@@ -2584,14 +2583,6 @@ private struct DeveloperSettingsTab: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            }
-
-            Section("UI Experiments") {
-                Toggle("Use legacy chat chrome", isOn: $useLegacyChatChrome)
-                    .xrayId("settings.developer.useLegacyChatChromeToggle")
-                Text("Temporary comparison toggle for the Focus First chat redesign. Turn this on to restore the previous toolbar, header, and composer layout locally.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Section {

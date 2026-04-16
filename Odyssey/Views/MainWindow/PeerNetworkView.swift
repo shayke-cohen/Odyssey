@@ -61,12 +61,26 @@ struct PeerNetworkView: View {
             Divider()
 
             if let err = p2p.lastError {
-                Text(err)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .xrayId("peerNetwork.bannerError")
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(friendlyMessage(for: err))
+                        .font(.caption)
+                        .lineLimit(2)
+                    Spacer()
+                    Button("Try Again") {
+                        p2p.stop()
+                        p2p.attach(modelContext: modelContext)
+                        p2p.start()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+                .padding(8)
+                .background(Color.orange.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .padding(.horizontal)
+                .xrayId("peerNetwork.bannerError")
             }
 
             HSplitView {
@@ -205,8 +219,9 @@ struct PeerNetworkView: View {
                             Task { await loadAgents(from: peer) }
                         } label: {
                             if isLoadingList {
-                                ProgressView()
+                                ProgressView("Loading agents…")
                                     .scaleEffect(0.7)
+                                    .progressViewStyle(.circular)
                             } else {
                                 Text("Browse agents")
                             }
@@ -216,10 +231,23 @@ struct PeerNetworkView: View {
                     }
 
                     if let listError {
-                        Text(listError)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .xrayId("peerNetwork.listError")
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text(friendlyMessage(for: listError))
+                                .font(.caption)
+                                .lineLimit(2)
+                            Spacer()
+                            Button("Try Again") {
+                                Task { await loadAgents(from: peer) }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                        .padding(8)
+                        .background(Color.orange.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .xrayId("peerNetwork.listError")
                     }
 
                     if let importMessage {
@@ -273,6 +301,21 @@ struct PeerNetworkView: View {
             listError = error.localizedDescription
             remoteAgents = []
         }
+    }
+
+    private func friendlyMessage(for error: String) -> String {
+        let prefixes = ["NSURLErrorDomain", "Error Domain=", "The operation couldn't be completed."]
+        var msg = error
+        for prefix in prefixes {
+            if msg.hasPrefix(prefix) {
+                msg = "Network error — check your connection."
+                break
+            }
+        }
+        if msg.count > 80 {
+            msg = String(msg.prefix(80)) + "…"
+        }
+        return msg
     }
 
     private func importAgent(_ w: WireAgentExport, peerName: String) {

@@ -136,7 +136,6 @@ struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
-    @AppStorage(AppSettings.useLegacyChatChromeKey, store: AppSettings.store) private var useLegacyChatChrome = false
     @AppStorage(FeatureFlags.showAdvancedKey, store: AppSettings.store) private var masterFlag = false
     @AppStorage(FeatureFlags.workshopKey, store: AppSettings.store) private var workshopFlag = false
     @AppStorage(FeatureFlags.autoAssembleKey, store: AppSettings.store) private var autoAssembleFlag = false
@@ -386,67 +385,55 @@ struct SidebarView: View {
 
     private var utilitySection: some View {
         Section {
-            if useLegacyChatChrome {
+            Menu {
                 Button {
                     windowState.showNewSessionSheet = true
                 } label: {
-                    Label("New Thread", systemImage: "square.and.pencil")
+                    Label("New Thread", systemImage: "plus.bubble")
                 }
-                .buttonStyle(.plain)
-                .appXrayTapProxy(id: "sidebar.utility.newThread") {
-                    windowState.showNewSessionSheet = true
-                }
-            } else {
-                Menu {
-                    Button {
-                        windowState.showNewSessionSheet = true
-                    } label: {
-                        Label("New Thread", systemImage: "plus.bubble")
-                    }
-                    .keyboardShortcut("n", modifiers: .command)
+                .keyboardShortcut("n", modifiers: .command)
 
-                    Button {
-                        windowState.showNewGroupThreadSheet = true
-                    } label: {
-                        Label("Group Thread", systemImage: "bubble.left.and.bubble.right.fill")
-                    }
-                    .keyboardShortcut("n", modifiers: [.command, .option])
-
-                    Button {
-                        createQuickChatFromSidebar()
-                    } label: {
-                        Label("Quick Chat", systemImage: "plus.message")
-                    }
-                    .keyboardShortcut("n", modifiers: [.command, .shift])
+                Button {
+                    windowState.showNewGroupThreadSheet = true
                 } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 18, weight: .medium))
-                            .frame(width: 18, height: 18)
-                            .foregroundStyle(.primary)
-
-                        Text("New")
-                            .font(.title3.weight(.medium))
-                            .foregroundStyle(.primary)
-
-                        Spacer(minLength: 8)
-
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .modifier(SidebarChromeButtonModifier(tint: .accentColor))
-                    .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    Label("Group Thread", systemImage: "bubble.left.and.bubble.right.fill")
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .help("Create a new thread, group thread, or quick chat")
-                .xrayId("sidebar.utility.newMenu")
-                .accessibilityLabel("New")
+                .keyboardShortcut("n", modifiers: [.command, .option])
+
+                Button {
+                    createQuickChatFromSidebar()
+                } label: {
+                    Label("Quick Chat", systemImage: "plus.message")
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(.primary)
+
+                    Text("New")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(.primary)
+
+                    Spacer(minLength: 8)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .modifier(SidebarChromeButtonModifier(tint: .accentColor))
+                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .help("Create a new thread, group thread, or quick chat")
+            .xrayId("sidebar.utility.newMenu")
+            .accessibilityLabel("New")
 
             Button {
                 windowState.openLibrary()
