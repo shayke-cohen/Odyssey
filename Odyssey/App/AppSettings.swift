@@ -49,8 +49,6 @@ enum AppSettings {
     static let renderPDFKey = "odyssey.chat.renderPDF"
     static let showSessionSummaryKey = "odyssey.chat.showSessionSummary"
     static let showSuggestionChipsKey = "odyssey.chat.showSuggestionChips"
-    static let useLegacyChatChromeKey = "odyssey.chat.useLegacyChrome"
-
     // MARK: - Quick Actions
     static let quickActionUsageOrderKey = "odyssey.chat.quickActionUsageOrder"
     static let quickActionUsageCountsKey = "odyssey.chat.quickActionUsageCounts"
@@ -106,12 +104,11 @@ enum AppSettings {
             notificationsEnabledKey, notificationSoundEnabledKey,
             renderMermaidKey, renderHTMLKey, renderDiffsKey, renderTerminalKey,
             renderAdmonitionsKey, renderPDFKey, showSessionSummaryKey, showSuggestionChipsKey,
-            useLegacyChatChromeKey,
             quickActionUsageOrderKey, quickActionUsageCountsKey,
             dataDirectoryKey, logLevelKey, builtInConfigOverridePolicyKey,
             sharedRoomUserIdKey, sharedRoomDisplayNameKey,
             turnEnabledKey, turnURLKey, turnUsernameKey, turnCredentialKey,
-        ]
+        ] + FeatureFlags.all
     }
 
     static func resetAll() {

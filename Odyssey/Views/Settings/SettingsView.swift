@@ -7,6 +7,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case connection
     case connectors
     case chatDisplay
+    case labs
     case developer
     case iosPairing
     case federation
@@ -21,6 +22,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .connection: "Connection"
         case .connectors: "Connectors"
         case .chatDisplay: "Chat Display"
+        case .labs: "Labs"
         case .developer: "Developer"
         case .iosPairing: "iOS Pairing"
         case .federation: "Federation"
@@ -35,6 +37,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .connection: "Sidecar lifecycle and local ports"
         case .connectors: "OAuth setup, broker config, and tokens"
         case .chatDisplay: "Rendering and conversation chrome"
+        case .labs: "Experimental and power-user feature flags"
         case .developer: "Paths, diagnostics, and experimental controls"
         case .iosPairing: "QR code and device pairing for iOS access"
         case .federation: "Matrix account and cross-user sharing"
@@ -49,6 +52,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .connection: "network"
         case .connectors: "link.badge.plus"
         case .chatDisplay: "bubble.left.and.text.bubble.right"
+        case .labs: "flask"
         case .developer: "wrench.and.screwdriver"
         case .iosPairing: "iphone.and.arrow.forward"
         case .federation: "person.2.wave.2"
@@ -63,6 +67,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .connection: "settings.tab.connection"
         case .connectors: "settings.tab.connectors"
         case .chatDisplay: "settings.tab.chatDisplay"
+        case .labs: "settings.tab.labs"
         case .developer: "settings.tab.developer"
         case .iosPairing: "settings.tab.iosPairing"
         case .federation: "settings.tab.federation"
@@ -74,8 +79,28 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @State private var selectedSection: SettingsSection
     @StateObject private var modelsState = ModelsSettingsState()
+    @AppStorage(FeatureFlags.showAdvancedKey, store: AppSettings.store) private var masterFlag = false
+    @AppStorage(FeatureFlags.federationKey, store: AppSettings.store) private var federationFlag = false
+    @AppStorage(FeatureFlags.debugLogsKey, store: AppSettings.store) private var debugLogsFlag = false
+    @AppStorage(FeatureFlags.devModeKey, store: AppSettings.store) private var devModeFlag = false
 
     private let onBackToApp: (() -> Void)?
+
+    private var federationEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.federationKey) || (masterFlag && federationFlag) }
+    private var devModeEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.devModeKey) || (masterFlag && devModeFlag) }
+
+    private var visibleSections: [SettingsSection] {
+        SettingsSection.allCases.filter { section in
+            switch section {
+            case .iosPairing, .federation, .acceptInvite:
+                return federationEnabled
+            case .developer:
+                return devModeEnabled
+            default:
+                return true
+            }
+        }
+    }
 
     init(
         initialSection: SettingsSection = .general,
@@ -115,7 +140,7 @@ struct SettingsView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(SettingsSection.allCases) { section in
+                ForEach(visibleSections) { section in
                     Button {
                         selectedSection = section
                     } label: {
@@ -188,6 +213,8 @@ struct SettingsView: View {
                 ConnectorsSettingsTab()
             case .chatDisplay:
                 ChatDisplaySettingsTab()
+            case .labs:
+                LabsSettingsView()
             case .developer:
                 DeveloperSettingsTab()
             case .iosPairing:
@@ -2116,18 +2143,21 @@ private struct ConnectorRowView: View {
                     onConnect()
                 }
                 .disabled(!missingConfiguration.isEmpty)
+                .help(missingConfiguration.isEmpty ? "Authorize this provider via OAuth." : "Fill in the required configuration fields before connecting.")
                 .xrayId("settings.connectors.connectButton.\(provider.rawValue)")
 
                 Button("Test") {
                     onTest()
                 }
                 .disabled(connection == nil)
+                .help(connection == nil ? "Connect first to test the integration." : "Send a test request to verify the connection.")
                 .xrayId("settings.connectors.testButton.\(provider.rawValue)")
 
                 Button("Revoke") {
                     onRevoke()
                 }
                 .disabled(connection == nil)
+                .help(connection == nil ? "No active connection to revoke." : "Revoke the stored token and disconnect this provider.")
                 .foregroundStyle(.red)
                 .xrayId("settings.connectors.revokeButton.\(provider.rawValue)")
 
@@ -2422,7 +2452,6 @@ private struct DeveloperSettingsTab: View {
     @AppStorage(AppSettings.dataDirectoryKey, store: AppSettings.store) private var dataDirectory = AppSettings.defaultDataDirectory
     @AppStorage(AppSettings.logLevelKey, store: AppSettings.store) private var logLevel = AppSettings.defaultLogLevel
     @AppStorage(AppSettings.builtInConfigOverridePolicyKey, store: AppSettings.store) private var builtInConfigOverridePolicy = AppSettings.defaultBuiltInConfigOverridePolicy
-    @AppStorage(AppSettings.useLegacyChatChromeKey, store: AppSettings.store) private var useLegacyChatChrome = false
     @State private var showResetConfirmation = false
 
     private var selectedLogLevel: Binding<LogLevel> {
@@ -2559,14 +2588,6 @@ private struct DeveloperSettingsTab: View {
                 }
             }
 
-            Section("UI Experiments") {
-                Toggle("Use legacy chat chrome", isOn: $useLegacyChatChrome)
-                    .xrayId("settings.developer.useLegacyChatChromeToggle")
-                Text("Temporary comparison toggle for the Focus First chat redesign. Turn this on to restore the previous toolbar, header, and composer layout locally.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
             Section {
                 HStack {
                     Button("Open Data Directory in Finder") {
@@ -2653,7 +2674,7 @@ private struct DeveloperSettingsTab: View {
     }
 }
 
-private extension View {
+extension View {
     func settingsDetailLayout(maxWidth: CGFloat = 1040) -> some View {
         self
             .scrollContentBackground(.hidden)

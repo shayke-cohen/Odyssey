@@ -172,6 +172,7 @@
 		B5A85727EB4EFCB322806746 /* ConfigSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55A5CCDEF8324B36924D8363 /* ConfigSyncService.swift */; };
 		B5AE7E759218DC99B3A25A0A /* ChatNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F6520C03D94A2A11A5FBFC /* ChatNotificationManager.swift */; };
 		B92233E3D31EC1E45A0A6200 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 594366D0488F694D25328EE1 /* WelcomeView.swift */; };
+		BBE755C674C1AA9AAEC642AF /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A595D81FC8BC41D81D994C8 /* FeatureFlags.swift */; };
 		BBED523CD245162D7C30D53B /* WindowStateInspectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33D8A314CF6803BBED0193BB /* WindowStateInspectorTests.swift */; };
 		BBF0A2F6F0D483DAD2A92305 /* SharedRoomTestAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCE6D142C077AE4DEEC447C /* SharedRoomTestAPIService.swift */; };
 		BD045AD0591CB0421BDB3530 /* Participant.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABC674EDD3F47999BEA9FAE /* Participant.swift */; };
@@ -227,6 +228,7 @@
 		EAF78F4C67040AE9043A941D /* MatrixClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC9DCC77E362953C9BA85724 /* MatrixClientTests.swift */; };
 		EC7DF5261937DE6DD9291993 /* CodeBlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025A005B776366EC801B1187 /* CodeBlockView.swift */; };
 		ED575B00DFF5ED8809389F25 /* WorkshopEntityRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC0ED635AA00B4C404C8C2B /* WorkshopEntityRow.swift */; };
+		EE907D6938D3AD4C68E8C8DA /* LabsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E3F980D946675CC72761A82 /* LabsSettingsView.swift */; };
 		EEF2BE3DA7BDC1F9A1E30F96 /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 469C8EB1BC85EAD15272406A /* FileTreeView.swift */; };
 		EFC471EA50980B52969EBE32 /* ScheduledMission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF738A4F1E23CAE25A34EA2 /* ScheduledMission.swift */; };
 		F01AB6001B7A44A030B8C820 /* SharedRoomLocalRecordStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC4ADB815A66C098FB80B7E6 /* SharedRoomLocalRecordStore.swift */; };
@@ -365,6 +367,7 @@
 		63263BABF78A5A722099C0D5 /* RemoteSidecarManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteSidecarManagerTests.swift; sourceTree = "<group>"; };
 		64E578B5DF4181B43F9663DD /* OllamaCatalogServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaCatalogServiceTests.swift; sourceTree = "<group>"; };
 		680B00C4A69862BF85359F94 /* SidecarProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidecarProtocolTests.swift; sourceTree = "<group>"; };
+		6A595D81FC8BC41D81D994C8 /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
 		6A6A58F5009F43029D2A1318 /* OdysseyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OdysseyApp.swift; sourceTree = "<group>"; };
 		6C288F9BEDF59A8B12457C2C /* ChatExportPresenters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatExportPresenters.swift; sourceTree = "<group>"; };
 		6CBE6D508B750D68D5F8FF29 /* SharedRoomLocalBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedRoomLocalBackendTests.swift; sourceTree = "<group>"; };
@@ -405,6 +408,7 @@
 		9C5D299B83616907AB3C2C2E /* IdentityManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityManagerTests.swift; sourceTree = "<group>"; };
 		9CD81DB5E21BC1946BE680EB /* Skill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skill.swift; sourceTree = "<group>"; };
 		9D29297C259FD8E3F615A2B7 /* AppStateScheduleLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateScheduleLaunchTests.swift; sourceTree = "<group>"; };
+		9E3F980D946675CC72761A82 /* LabsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabsSettingsView.swift; sourceTree = "<group>"; };
 		9E8D12553E2B55D63FE8835A /* AutoAssembleSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoAssembleSheet.swift; sourceTree = "<group>"; };
 		9EE04ECE5D3AB8722B65AA99 /* Odyssey.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Odyssey.entitlements; sourceTree = "<group>"; };
 		9F0CB5B543443F65B40074D0 /* SharedWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedWorkspace.swift; sourceTree = "<group>"; };
@@ -702,6 +706,7 @@
 			children = (
 				226B39199F165D6EB3A78B0A /* AppSettings.swift */,
 				957017106E8E7620AE12E63E /* AppState.swift */,
+				6A595D81FC8BC41D81D994C8 /* FeatureFlags.swift */,
 				421BD35AD8A7D15F8F0F18F9 /* InstanceConfig.swift */,
 				47F0356CCB7C03690085BBE3 /* LaunchIntent.swift */,
 				DF6895FFD3EC3B3420BEA31A /* LegacyInstanceMigration.swift */,
@@ -875,6 +880,7 @@
 			children = (
 				7B8D0A4DFEB1D22D0F288817 /* AcceptInviteView.swift */,
 				DEBB5F451810E6E796C0EBDD /* iOSPairingSettingsView.swift */,
+				9E3F980D946675CC72761A82 /* LabsSettingsView.swift */,
 				AB6CC157699DCF76711322CD /* MatrixAccountView.swift */,
 				3425ADDEEC2EEF966F8759BA /* SettingsView.swift */,
 			);
@@ -1377,6 +1383,7 @@
 				17A35F4B23F27194E5B6F2F4 /* DebugLogView.swift in Sources */,
 				FCE5AF3A36C58B1B655C3EF8 /* DefaultsSeeder.swift in Sources */,
 				F641FC61384EE69649180C3A /* ExecutionModePromptBuilder.swift in Sources */,
+				BBE755C674C1AA9AAEC642AF /* FeatureFlags.swift in Sources */,
 				2B0E80A425A52589957FC728 /* FileContentView.swift in Sources */,
 				BF0FC6E56BB42381E1BE02C4 /* FileExplorerView.swift in Sources */,
 				0BEEE07AC92100BBA52500C1 /* FileNode.swift in Sources */,
@@ -1407,6 +1414,7 @@
 				C3013C6A6A591C7F37DFCDA6 /* InstanceConfig.swift in Sources */,
 				E6A7A06897437405DCFF5484 /* IntentLibraryHubView.swift in Sources */,
 				E7A4B8B80E4B98B4C13F5C79 /* InviteCodeGenerator.swift in Sources */,
+				EE907D6938D3AD4C68E8C8DA /* LabsSettingsView.swift in Sources */,
 				9BD78B6E2A75C023FFFAEFF4 /* LaunchIntent.swift in Sources */,
 				64641E9A3B96E23ED26C09E8 /* LegacyInstanceMigration.swift in Sources */,
 				62C3C1A65B88F0974FD97BEC /* LocalFileReferenceSupport.swift in Sources */,

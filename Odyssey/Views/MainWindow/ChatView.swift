@@ -297,8 +297,11 @@ struct ChatView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var sharedRoomService: SharedRoomService
     @Environment(WindowState.self) private var windowState: WindowState
-    @AppStorage(AppSettings.useLegacyChatChromeKey, store: AppSettings.store) private var useLegacyChatChrome = false
+    @AppStorage(FeatureFlags.showAdvancedKey, store: AppSettings.store) private var masterFlag = false
+    @AppStorage(FeatureFlags.federationKey, store: AppSettings.store) private var federationFlag = false
     @StateObject private var quickActionTracker = QuickActionUsageTracker()
+
+    private var federationEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.federationKey) || (masterFlag && federationFlag) }
     @State private var inputText = ""
     @State private var inputHeight: CGFloat = PasteableTextField.minHeight
     @State private var isProcessing = false
@@ -635,23 +638,11 @@ struct ChatView: View {
     }
 
     private var activeChatHeader: some View {
-        Group {
-            if useLegacyChatChrome {
-                legacyChatHeader
-            } else {
-                simplifiedChatHeader
-            }
-        }
+        simplifiedChatHeader
     }
 
     private var activeInputArea: some View {
-        Group {
-            if useLegacyChatChrome {
-                legacyInputArea
-            } else {
-                simplifiedInputArea
-            }
-        }
+        simplifiedInputArea
     }
 
     private var currentMissionText: String? {
@@ -869,23 +860,23 @@ struct ChatView: View {
                 .environmentObject(appState)
                 .environment(\.modelContext, modelContext)
         }
-        .alert("Commands", isPresented: $showSlashHelp) {
-            Button("OK", role: .cancel) {}
+        .alert("Slash Commands", isPresented: $showSlashHelp) {
+            Button("Dismiss", role: .cancel) {}
         } message: {
-            Text("/help — this list\n/topic <name> or /rename <name> — rename conversation\n/agents — add agents to this chat\n@AgentName — add that agent to the group if missing; everyone still receives each message")
+            Text("/help or /? — show this list\n/topic <name> or /rename <name> — rename the conversation\n/agents — open the Add Agents sheet\n@AgentName — invite that agent to this conversation\n\nTip: start a message with // to send a literal slash without triggering a command.")
         }
         .alert("Unknown command", isPresented: $showUnknownSlash) {
-            Button("OK", role: .cancel) {}
+            Button("Dismiss", role: .cancel) {}
         } message: {
             Text("Unknown command /\(unknownSlashName). Try /help.")
         }
         .alert("Mention", isPresented: $showMentionError) {
-            Button("OK", role: .cancel) {}
+            Button("Dismiss", role: .cancel) {}
         } message: {
             Text(mentionErrorDetail)
         }
         .alert("Recovery", isPresented: $showRecoveryError) {
-            Button("OK", role: .cancel) {}
+            Button("Dismiss", role: .cancel) {}
         } message: {
             Text(recoveryErrorDetail)
         }
@@ -913,171 +904,6 @@ struct ChatView: View {
     }
 
     // MARK: - Chat Header
-
-    @ViewBuilder
-    private var legacyChatHeader: some View {
-        VStack(spacing: 4) {
-            HStack(alignment: .center, spacing: 8) {
-                agentIconButton
-
-                if isEditingTopic {
-                    TextField("Conversation name", text: $editedTopic)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.headline)
-                        .focused($topicFieldFocused)
-                        .frame(maxWidth: 300)
-                        .onSubmit { commitRename() }
-                        .onExitCommand { cancelRename() }
-                        .xrayId("chat.topicField")
-                } else {
-                    Text(conversation?.topic ?? "Chat")
-                        .font(.headline)
-                        .lineLimit(1)
-                        .xrayId("chat.topicTitle")
-                }
-
-                Spacer()
-
-                if planModeEnabled {
-                    Text("Plan Mode")
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.orange, in: Capsule())
-                        .xrayId("chat.planModeBadge")
-                }
-
-                if let convo = conversation, convo.isSharedRoom {
-                    Text(sharedRoomStatusLabel(for: convo))
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(sharedRoomStatusColor(for: convo), in: Capsule())
-                        .xrayId("chat.sharedRoomStatusBadge")
-                }
-
-                executionModeToggleButton
-
-                if conversationSessions.count > 1 {
-                    Menu {
-                        let allEnabled = enabledPeerCategories.count == PeerChannelCategory.allCases.count
-                        Button {
-                            if allEnabled {
-                                enabledPeerCategories.removeAll()
-                            } else {
-                                enabledPeerCategories = Set(PeerChannelCategory.allCases)
-                            }
-                        } label: {
-                            Label(allEnabled ? "Hide All" : "Show All",
-                                  systemImage: allEnabled ? "eye.slash" : "eye")
-                        }
-                        Divider()
-                        ForEach(PeerChannelCategory.allCases, id: \.self) { category in
-                            Button {
-                                if enabledPeerCategories.contains(category) {
-                                    enabledPeerCategories.remove(category)
-                                } else {
-                                    enabledPeerCategories.insert(category)
-                                }
-                            } label: {
-                                Label {
-                                    Text(category.rawValue)
-                                } icon: {
-                                    Image(systemName: enabledPeerCategories.contains(category)
-                                        ? "checkmark.circle.fill" : "circle")
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: enabledPeerCategories.isEmpty
-                                ? "line.3.horizontal.decrease.circle"
-                                : "line.3.horizontal.decrease.circle.fill")
-                            Text("Comms")
-                        }
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(enabledPeerCategories.isEmpty ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.blue.opacity(0.15)))
-                        .clipShape(Capsule())
-                    }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                    .xrayId("chat.peerChannelFilter")
-                }
-
-                Button {
-                    windowState.openInspector(tab: .blackboard)
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: windowState.inspectorVisible && windowState.selectedInspectorTab == .blackboard
-                            ? "square.grid.2x2.fill"
-                            : "square.grid.2x2")
-                        Text("Board")
-                    }
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(windowState.inspectorVisible && windowState.selectedInspectorTab == .blackboard
-                        ? AnyShapeStyle(.teal.opacity(0.15))
-                        : AnyShapeStyle(.quaternary))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .help("Open blackboard")
-                .xrayId("chat.openBlackboardButton")
-                .accessibilityLabel("Open blackboard")
-
-                if let model = currentModel {
-                    Text(modelShortName(model))
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.quaternary)
-                        .clipShape(Capsule())
-                        .xrayId("chat.modelPill")
-                }
-
-                if let cost = liveCost, cost > 0 {
-                    Text(String(format: "$%.4f", cost))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .xrayId("chat.liveCostLabel")
-                }
-
-                if let convo = conversation {
-                    legacyHeaderActions(convo)
-                }
-            }
-
-            if let mission = primarySession?.mission, !mission.isEmpty {
-                HStack {
-                    Text(mission)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .xrayId("chat.missionPreview")
-                    Spacer()
-                }
-            }
-
-            if hasRecoverableInterruption {
-                recoveryBanner
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(.bar)
-    }
 
     private var recoveryBanner: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -1173,153 +999,6 @@ struct ChatView: View {
                 .font(.title3)
                 .xrayId("chat.chatIcon")
         }
-    }
-
-    @ViewBuilder
-    private func legacyHeaderActions(_ convo: Conversation) -> some View {
-        HStack(spacing: 6) {
-            let sessionKeys = convo.sessions.map(\.id.uuidString)
-            let hasLiveActivity = sessionKeys.contains { appState.sessionActivity[$0]?.isActive == true }
-            let hasInterruptedSessions = convo.sessions.contains { $0.status == .interrupted }
-
-            if hasLiveActivity {
-                Button { pauseSession() } label: {
-                    Image(systemName: "stop.fill")
-                }
-                .help("Stop agent")
-                .xrayId("chat.stopButton")
-                .accessibilityLabel("Stop agent")
-            } else if hasInterruptedSessions {
-                Button { restoreInterruptedSessions() } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .help("Restore agent context")
-                .xrayId("chat.restoreContextButton")
-                .accessibilityLabel("Restore agent context")
-            }
-
-            Menu {
-                if !convo.sessions.isEmpty {
-                    Button { forkConversation() } label: {
-                        Label("Fork Conversation", systemImage: "arrow.branch")
-                    }
-                    .xrayId("chat.moreOptions.fork")
-                }
-                if convo.status == .active {
-                    Button { closeConversation(convo) } label: {
-                        Label("Close Conversation", systemImage: "xmark.circle")
-                    }
-                    .xrayId("chat.moreOptions.closeConversation")
-                    .accessibilityLabel("Close conversation")
-                }
-                Divider()
-                Button {
-                    editedTopic = convo.topic ?? ""
-                    isEditingTopic = true
-                    topicFieldFocused = true
-                } label: {
-                    Label("Rename", systemImage: "pencil")
-                }
-                .xrayId("chat.moreOptions.rename")
-                Button {
-                    scheduleDraft = makeScheduleDraft(from: latestUserChatMessage)
-                    showingScheduleEditor = true
-                } label: {
-                    Label("Schedule This Mission", systemImage: "clock.badge")
-                }
-                .xrayId("chat.moreOptions.scheduleMission")
-                .accessibilityLabel("Schedule This Mission")
-                Button { duplicateConversation(convo) } label: {
-                    Label("Duplicate", systemImage: "doc.on.doc")
-                }
-                .xrayId("chat.moreOptions.duplicate")
-                Divider()
-                Menu {
-                    Button {
-                        Task { await exportChatTranscript(kind: .markdown, destination: .save) }
-                    } label: {
-                        Label("Markdown…", systemImage: "doc.richtext")
-                    }
-                    .disabled(!canExportChat)
-                    .xrayId("chat.export.markdown")
-                    Button {
-                        Task { await exportChatTranscript(kind: .html, destination: .save) }
-                    } label: {
-                        Label("HTML…", systemImage: "doc.richtext")
-                    }
-                    .disabled(!canExportChat)
-                    .xrayId("chat.export.html")
-                    Button {
-                        Task { await exportChatTranscript(kind: .pdf, destination: .save) }
-                    } label: {
-                        Label("PDF…", systemImage: "doc.fill")
-                    }
-                    .disabled(!canExportChat)
-                    .xrayId("chat.export.pdf")
-                } label: {
-                    Label("Export", systemImage: "square.and.arrow.down")
-                }
-                .disabled(!canExportChat)
-                .xrayId("chat.exportSubmenu")
-                .accessibilityLabel("Export chat")
-                Menu {
-                    Button {
-                        Task { await exportChatTranscript(kind: .markdown, destination: .share) }
-                    } label: {
-                        Label("Markdown", systemImage: "doc.richtext")
-                    }
-                    .disabled(!canExportChat)
-                    .xrayId("chat.share.markdown")
-                    Button {
-                        Task { await exportChatTranscript(kind: .html, destination: .share) }
-                    } label: {
-                        Label("HTML", systemImage: "doc.richtext")
-                    }
-                    .disabled(!canExportChat)
-                    .xrayId("chat.share.html")
-                    Button {
-                        Task { await exportChatTranscript(kind: .pdf, destination: .share) }
-                    } label: {
-                        Label("PDF", systemImage: "doc.fill")
-                    }
-                    .disabled(!canExportChat)
-                    .xrayId("chat.share.pdf")
-                } label: {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-                .disabled(!canExportChat)
-                .xrayId("chat.shareSubmenu")
-                .accessibilityLabel("Share chat")
-                Divider()
-                Toggle(isOn: Binding(
-                    get: { AppSettings.store.object(forKey: AppSettings.notificationsEnabledKey) as? Bool ?? true },
-                    set: { AppSettings.store.set($0, forKey: AppSettings.notificationsEnabledKey) }
-                )) {
-                    Label("Notifications", systemImage: "bell")
-                }
-                .xrayId("chat.moreOptions.notificationsToggle")
-                Toggle(isOn: Binding(
-                    get: { AppSettings.store.object(forKey: AppSettings.notificationSoundEnabledKey) as? Bool ?? true },
-                    set: { AppSettings.store.set($0, forKey: AppSettings.notificationSoundEnabledKey) }
-                )) {
-                    Label("Sound", systemImage: "speaker.wave.2")
-                }
-                .xrayId("chat.moreOptions.soundToggle")
-                Divider()
-                Button { showClearConfirmation = true } label: {
-                    Label("Clear Messages", systemImage: "trash")
-                }
-                .xrayId("chat.moreOptions.clearMessages")
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 20)
-            .help("More options")
-            .xrayId("chat.moreOptionsMenu")
-            .accessibilityLabel("More options")
-        }
-        .buttonStyle(.borderless)
     }
 
     @ViewBuilder
@@ -1549,20 +1228,15 @@ struct ChatView: View {
             }
             .xrayId("chat.sessionMenu.openBlackboard")
 
-            if let model = currentModel {
-                Button {} label: {
+            Section {
+                if let model = currentModel {
                     Label("Model: \(modelShortName(model))", systemImage: "cpu")
+                        .xrayId("chat.sessionMenu.model")
                 }
-                .disabled(true)
-                .xrayId("chat.sessionMenu.model")
-            }
-
-            if let cost = liveCost, cost > 0 {
-                Button {} label: {
+                if let cost = liveCost, cost > 0 {
                     Label(String(format: "Cost: $%.4f", cost), systemImage: "dollarsign.circle")
+                        .xrayId("chat.sessionMenu.cost")
                 }
-                .disabled(true)
-                .xrayId("chat.sessionMenu.cost")
             }
 
             if conversationSessions.count > 1 {
@@ -1995,206 +1669,6 @@ struct ChatView: View {
     }
 
     @ViewBuilder
-    private var legacyInputArea: some View {
-        VStack(spacing: 0) {
-            if !pendingAttachments.isEmpty {
-                pendingAttachmentStrip
-            }
-
-            if let sub = sendingToSubtitle {
-                Text(sub)
-                    .font(caption2Font)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 6)
-                    .xrayId("chat.sendingToHint")
-            }
-
-            if shouldShowMentionAllSuggestion || !mentionAutocompleteAgents.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        if shouldShowMentionAllSuggestion {
-                            Button {
-                                insertMentionCompletion(agentName: ChatSendRouting.mentionAllToken)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("@all")
-                                        .font(captionFont)
-                                    Text("Broadcast to everyone in chat")
-                                        .font(caption2Font)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(.quaternary, in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .xrayId("chat.mentionSuggestion.all")
-                        }
-
-                        ForEach(mentionAutocompleteAgents) { agent in
-                            Button {
-                                insertMentionCompletion(agentName: agent.name)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(agent.name)
-                                        .font(captionFont)
-                                    Text(agentMentionHint(for: agent))
-                                        .font(caption2Font)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(.quaternary, in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .xrayId("chat.mentionSuggestion.\(agent.id.uuidString)")
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-                }
-                .xrayId("chat.mentionSuggestions")
-            }
-
-            if !hasUserChatMessages && !isProcessing && mentionAutocompleteAgents.isEmpty {
-                actionChipsStrip
-            }
-
-            // Taller text input
-            PasteableTextField(
-                text: $inputText,
-                desiredHeight: $inputHeight,
-                onImagePaste: { data, mediaType in
-                    guard AttachmentStore.validate(data: data, mediaType: mediaType) else { return }
-                    pendingAttachments.append((id: UUID(), data: data, mediaType: mediaType, fileName: "pasted.png"))
-                },
-                onSubmit: { if canSend { sendMessage() } },
-                canSubmitOnReturn: { canSend }
-            )
-            .frame(height: inputHeight)
-            .xrayId("chat.messageInput")
-            .accessibilityIdentifier("chat.messageInput")
-            .help("Return sends when there is text or attachments. Shift-Return inserts a new line. Sending during an active turn interrupts it. ⌘↩ also sends.")
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 6)
-
-            // Row 1: Quick action capsules (hybrid: left=text labels, right=icon-only)
-            QuickActionsRow(
-                actions: quickActionTracker.orderedActions,
-                isProcessing: isProcessing,
-                onAction: { sendQuickAction($0) }
-            )
-            .xrayId("chat.quickActions")
-
-            // Row 2: Input tools + Send
-            HStack(spacing: 6) {
-                Button {
-                    showAddAgentsSheet = true
-                } label: {
-                    Label(conversation?.isSharedRoom == true ? "My Agents" : "Add", systemImage: "plus.circle")
-                        .font(captionFont)
-                }
-                .buttonStyle(.borderless)
-                .xrayId("chat.addParticipantsButton")
-                .accessibilityLabel(conversation?.isSharedRoom == true ? "Add my agents" : "Add agents or groups")
-                .help(conversation?.isSharedRoom == true ? "Add your local agents to this shared room" : "Add agents or groups to this thread")
-                .disabled(isProcessing)
-
-                Button {
-                    windowState.sharedRoomInviteConversationId = conversationId
-                    windowState.showSharedRoomInviteSheet = true
-                } label: {
-                    Label(conversation?.isSharedRoom == true ? "Add People" : "Share Room", systemImage: "person.badge.plus")
-                        .font(captionFont)
-                }
-                .buttonStyle(.borderless)
-                .xrayId("chat.shareRoomButton")
-                .accessibilityLabel(conversation?.isSharedRoom == true ? "Add people to room" : "Share this conversation as a room")
-                .help(conversation?.isSharedRoom == true ? "Invite people to this shared room" : "Convert this conversation into a shared room and invite people")
-                .disabled(isProcessing)
-
-                Button {
-                    showFileImporter = true
-                } label: {
-                    Label("Attach", systemImage: "paperclip")
-                        .font(captionFont)
-                }
-                .buttonStyle(.borderless)
-                .xrayId("chat.attachButton")
-                .accessibilityLabel("Attach file")
-                .help("Attach file")
-                .disabled(isProcessing)
-
-                Button {
-                    conversation?.planModeEnabled.toggle()
-                    try? modelContext.save()
-                } label: {
-                    Label("Plan", systemImage: "doc.text.magnifyingglass")
-                        .font(captionFont)
-                        .foregroundStyle(planModeEnabled ? .orange : .secondary)
-                }
-                .buttonStyle(.borderless)
-                .xrayId("chat.planModeToggle")
-                .accessibilityLabel("Toggle plan mode")
-                .help(planModeEnabled ? "Plan mode on — agent will read and plan only" : "Plan mode off — agent can make changes")
-                .disabled(isProcessing)
-
-                if conversation?.sessions.count ?? 0 > 1 {
-                    Menu {
-                        routingModeMenuItems
-                    } label: {
-                        Label(groupRoutingModeForConversation.shortLabel, systemImage: "arrow.triangle.branch")
-                            .font(captionFont)
-                            .foregroundStyle(groupRoutingModeForConversation == .mentionAware ? .green : .secondary)
-                    }
-                    .menuStyle(.borderlessButton)
-                    .xrayId("chat.routingModeMenu")
-                    .accessibilityLabel("Choose routing mode")
-                    .help(
-                        groupRoutingModeForConversation == .mentionAware
-                        ? "Mention-aware routing: @mentions target specific agents, otherwise the coordinator leads if one exists"
-                        : "Broad routing: user turns go to everyone and peer replies may fan out across the group"
-                    )
-                    .disabled(isProcessing)
-                }
-
-                Spacer()
-
-                Button {
-                    sendMessage()
-                } label: {
-                    Text("Send ↵")
-                        .font(.system(size: 12 * appTextScale, weight: .semibold))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 5)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
-                .xrayId("chat.sendButton")
-                .accessibilityIdentifier("chat.sendButton")
-                .accessibilityLabel("Send message")
-                .appXrayTapProxy(id: "chat.sendButton") { sendMessage() }
-                .disabled(!canSend)
-                .keyboardShortcut(.return, modifiers: .command)
-                .help("Send message. If agents are still working, this interrupts the current turn and starts a new one. (Return or ⌘Return)")
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .padding(.bottom, 4)
-        }
-        .background(.bar)
-        .onDrop(of: [.image, .fileURL, .plainText, .pdf], isTargeted: nil) { providers in
-            handleDrop(providers)
-            return true
-        }
-    }
-
-    @ViewBuilder
     private var simplifiedInputArea: some View {
         VStack(spacing: 0) {
             if !pendingAttachments.isEmpty {
@@ -2283,12 +1757,14 @@ struct ChatView: View {
                               systemImage: "plus.circle")
                     }
 
-                    Button {
-                        windowState.sharedRoomInviteConversationId = conversationId
-                        windowState.showSharedRoomInviteSheet = true
-                    } label: {
-                        Label(conversation?.isSharedRoom == true ? "Add People" : "Share Room",
-                              systemImage: "person.badge.plus")
+                    if federationEnabled {
+                        Button {
+                            windowState.sharedRoomInviteConversationId = conversationId
+                            windowState.showSharedRoomInviteSheet = true
+                        } label: {
+                            Label(conversation?.isSharedRoom == true ? "Add People" : "Share Room",
+                                  systemImage: "person.badge.plus")
+                        }
                     }
 
                     Button {

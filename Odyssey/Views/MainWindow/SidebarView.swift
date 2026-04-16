@@ -136,7 +136,10 @@ struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
     @Environment(\.modelContext) private var modelContext
-    @AppStorage(AppSettings.useLegacyChatChromeKey, store: AppSettings.store) private var useLegacyChatChrome = false
+    @AppStorage(FeatureFlags.showAdvancedKey, store: AppSettings.store) private var masterFlag = false
+    @AppStorage(FeatureFlags.workshopKey, store: AppSettings.store) private var workshopFlag = false
+    @AppStorage(FeatureFlags.autoAssembleKey, store: AppSettings.store) private var autoAssembleFlag = false
+    @AppStorage(FeatureFlags.autonomousMissionsKey, store: AppSettings.store) private var autonomousMissionsFlag = false
     @AppStorage("sidebar.showArchivedProjectSection") private var showsArchivedProjectSection = false
     @AppStorage("sidebar.showProjectTasksSection") private var showsProjectTasksSection = false
     @AppStorage("sidebar.showProjectSchedulesSection") private var showsProjectSchedulesSection = false
@@ -177,6 +180,11 @@ struct SidebarView: View {
     @State private var isResidentHistoryExpanded = false
     @AppStorage("sidebar.residentsExpanded") private var isResidentsSectionExpanded: Bool = true
     @AppStorage("sidebar.projectsExpanded") private var isProjectsSectionExpanded: Bool = true
+
+    private var workshopEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.workshopKey) || (masterFlag && workshopFlag) }
+    private var autoAssembleEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.autoAssembleKey) || (masterFlag && autoAssembleFlag) }
+    private var autonomousMissionsEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.autonomousMissionsKey) || (masterFlag && autonomousMissionsFlag) }
+
     var body: some View {
         @Bindable var ws = windowState
         List {
@@ -377,67 +385,55 @@ struct SidebarView: View {
 
     private var utilitySection: some View {
         Section {
-            if useLegacyChatChrome {
+            Menu {
                 Button {
                     windowState.showNewSessionSheet = true
                 } label: {
-                    Label("New Thread", systemImage: "square.and.pencil")
+                    Label("New Thread", systemImage: "plus.bubble")
                 }
-                .buttonStyle(.plain)
-                .appXrayTapProxy(id: "sidebar.utility.newThread") {
-                    windowState.showNewSessionSheet = true
-                }
-            } else {
-                Menu {
-                    Button {
-                        windowState.showNewSessionSheet = true
-                    } label: {
-                        Label("New Thread", systemImage: "plus.bubble")
-                    }
-                    .keyboardShortcut("n", modifiers: .command)
+                .keyboardShortcut("n", modifiers: .command)
 
-                    Button {
-                        windowState.showNewGroupThreadSheet = true
-                    } label: {
-                        Label("Group Thread", systemImage: "bubble.left.and.bubble.right.fill")
-                    }
-                    .keyboardShortcut("n", modifiers: [.command, .option])
-
-                    Button {
-                        createQuickChatFromSidebar()
-                    } label: {
-                        Label("Quick Chat", systemImage: "plus.message")
-                    }
-                    .keyboardShortcut("n", modifiers: [.command, .shift])
+                Button {
+                    windowState.showNewGroupThreadSheet = true
                 } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 18, weight: .medium))
-                            .frame(width: 18, height: 18)
-                            .foregroundStyle(.primary)
-
-                        Text("New")
-                            .font(.title3.weight(.medium))
-                            .foregroundStyle(.primary)
-
-                        Spacer(minLength: 8)
-
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .modifier(SidebarChromeButtonModifier(tint: .accentColor))
-                    .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    Label("Group Thread", systemImage: "bubble.left.and.bubble.right.fill")
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .help("Create a new thread, group thread, or quick chat")
-                .xrayId("sidebar.utility.newMenu")
-                .accessibilityLabel("New")
+                .keyboardShortcut("n", modifiers: [.command, .option])
+
+                Button {
+                    createQuickChatFromSidebar()
+                } label: {
+                    Label("Quick Chat", systemImage: "plus.message")
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(.primary)
+
+                    Text("New")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(.primary)
+
+                    Spacer(minLength: 8)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .modifier(SidebarChromeButtonModifier(tint: .accentColor))
+                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .help("Create a new thread, group thread, or quick chat")
+            .xrayId("sidebar.utility.newMenu")
+            .accessibilityLabel("New")
 
             Button {
                 windowState.openLibrary()
@@ -715,24 +711,26 @@ struct SidebarView: View {
             .xrayId(catalog.xrayId)
             .accessibilityLabel(catalog.helpText)
 
-            Divider()
-                .frame(height: 16)
+            if workshopEnabled {
+                Divider()
+                    .frame(height: 16)
 
-            let workshop = SidebarBottomBarItem.workshop
-            Button {
-                windowState.showWorkshop = true
-            } label: {
-                Label(workshop.rawValue, systemImage: workshop.icon)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .font(.caption)
-                    .frame(minHeight: 24)
-                    .frame(maxWidth: .infinity)
+                let workshop = SidebarBottomBarItem.workshop
+                Button {
+                    windowState.showWorkshop = true
+                } label: {
+                    Label(workshop.rawValue, systemImage: workshop.icon)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .font(.caption)
+                        .frame(minHeight: 24)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .help(workshop.helpText)
+                .xrayId(workshop.xrayId)
+                .keyboardShortcut("w", modifiers: [.command, .shift])
+                .accessibilityLabel(workshop.helpText)
             }
-            .buttonStyle(.plain)
-            .help(workshop.helpText)
-            .xrayId(workshop.xrayId)
-            .keyboardShortcut("w", modifiers: [.command, .shift])
-            .accessibilityLabel(workshop.helpText)
 
             Divider()
                 .frame(height: 16)
@@ -771,23 +769,25 @@ struct SidebarView: View {
             .xrayId(agents.xrayId)
             .accessibilityLabel(agents.helpText)
 
-            Divider()
-                .frame(height: 16)
+            if autoAssembleEnabled {
+                Divider()
+                    .frame(height: 16)
 
-            let autoAssemble = SidebarBottomBarItem.autoAssemble
-            Button {
-                showAutoAssemble = true
-            } label: {
-                Image(systemName: autoAssemble.icon)
-                    .font(.caption)
-                    .frame(width: 24, height: 24)
-                    .frame(maxWidth: .infinity)
+                let autoAssemble = SidebarBottomBarItem.autoAssemble
+                Button {
+                    showAutoAssemble = true
+                } label: {
+                    Image(systemName: autoAssemble.icon)
+                        .font(.caption)
+                        .frame(width: 24, height: 24)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .help(autoAssemble.helpText)
+                .xrayId(autoAssemble.xrayId)
+                .accessibilityLabel(autoAssemble.helpText)
+                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .help(autoAssemble.helpText)
-            .xrayId(autoAssemble.xrayId)
-            .accessibilityLabel(autoAssemble.helpText)
-            .contentShape(Rectangle())
 
             Divider()
                 .frame(height: 16)
@@ -1209,6 +1209,7 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.plain)
                 .modifier(SidebarChromeButtonModifier(tint: projectTint(project)))
+                .accessibilityLabel("Add task to \(project.name)")
                 .xrayId("sidebar.projectTasksAdd.\(project.id.uuidString)")
             }
 
@@ -1438,6 +1439,7 @@ struct SidebarView: View {
                                 .frame(width: 20, height: 20)
                         }
                         .buttonStyle(.plain)
+                        .keyboardShortcut("t", modifiers: [.command, .shift])
                         .xrayId("sidebar.tasksAddButton")
                         .accessibilityLabel("Add task")
                         .contentShape(Rectangle())
@@ -1648,7 +1650,7 @@ struct SidebarView: View {
                             windowState.selectedConversationId = convoId
                         }
                     },
-                    onNewAutonomousChat: group.autonomousCapable ? {
+                    onNewAutonomousChat: (autonomousMissionsEnabled && group.autonomousCapable) ? {
                         autonomousGroup = group
                     } : nil,
                     onSelectConversation: { conv in
@@ -1810,6 +1812,7 @@ struct SidebarView: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .xrayId("sidebar.moreMenu.\(convo.id.uuidString)")
+                .accessibilityLabel("More options for \(convo.topic ?? "this thread")")
             }
             SidebarActivityIndicator(
                 summary: activity,

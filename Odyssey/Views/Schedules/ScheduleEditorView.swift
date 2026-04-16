@@ -37,6 +37,9 @@ struct ScheduleEditorView: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    if !isEditing {
+                        templateChipsSection
+                    }
                     identitySection
                     targetSection
                     missionSection
@@ -68,6 +71,89 @@ struct ScheduleEditorView: View {
         .padding(.horizontal, 28)
         .padding(.top, 24)
         .padding(.bottom, 20)
+    }
+
+    private struct ScheduleTemplate {
+        let name: String
+        let displayName: String
+        let scheduleName: String
+        let cadenceKind: ScheduledMissionCadenceKind
+        let intervalHours: Int
+        let localHour: Int
+        let localMinute: Int
+        let daysOfWeek: [ScheduledMissionWeekday]
+        let promptTemplate: String
+    }
+
+    private static let scheduleTemplates: [ScheduleTemplate] = [
+        ScheduleTemplate(
+            name: "dailyStandup",
+            displayName: "Daily standup at 9 AM",
+            scheduleName: "Daily Standup",
+            cadenceKind: .dailyTime,
+            intervalHours: 1,
+            localHour: 9,
+            localMinute: 0,
+            daysOfWeek: [.monday, .tuesday, .wednesday, .thursday, .friday],
+            promptTemplate: "Summarize what this project worked on yesterday and any open blockers."
+        ),
+        ScheduleTemplate(
+            name: "weeklyCleanup",
+            displayName: "Weekly cleanup on Friday",
+            scheduleName: "Weekly Cleanup",
+            cadenceKind: .dailyTime,
+            intervalHours: 1,
+            localHour: 17,
+            localMinute: 0,
+            daysOfWeek: [.friday],
+            promptTemplate: "Review the project for stale branches, open PRs, and any cleanup tasks to wrap up the week."
+        ),
+        ScheduleTemplate(
+            name: "hourlyCheck",
+            displayName: "Hourly check",
+            scheduleName: "Hourly Check",
+            cadenceKind: .hourlyInterval,
+            intervalHours: 1,
+            localHour: 9,
+            localMinute: 0,
+            daysOfWeek: [],
+            promptTemplate: "Check for any new issues, alerts, or important updates in the project."
+        ),
+    ]
+
+    private var templateChipsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Start from a template")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                ForEach(Self.scheduleTemplates, id: \.name) { template in
+                    Button(template.displayName) {
+                        applyTemplate(template)
+                    }
+                    .buttonStyle(.bordered)
+                    .stableXrayId("scheduleEditor.template.\(template.name)")
+                }
+                Button("Custom") {
+                    draft = ScheduledMissionDraft(
+                        projectDirectory: draft.projectDirectory
+                    )
+                    draft.projectId = initialDraft.projectId
+                }
+                .buttonStyle(.bordered)
+                .stableXrayId("scheduleEditor.template.custom")
+            }
+        }
+    }
+
+    private func applyTemplate(_ template: ScheduleTemplate) {
+        draft.name = template.scheduleName
+        draft.cadenceKind = template.cadenceKind
+        draft.intervalHours = template.intervalHours
+        draft.localHour = template.localHour
+        draft.localMinute = template.localMinute
+        draft.daysOfWeek = template.daysOfWeek
+        draft.promptTemplate = template.promptTemplate
     }
 
     private var identitySection: some View {
@@ -290,6 +376,10 @@ struct ScheduleEditorView: View {
             VStack(alignment: .leading, spacing: 18) {
                 cadenceKindField
                 cadenceDetailSection
+                Text(ScheduledMissionCadence.cadenceSummary(forDraft: draft))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .stableXrayId("scheduleEditor.cadencePreview")
             }
         }
     }
