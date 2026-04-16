@@ -172,6 +172,7 @@
 		B5A85727EB4EFCB322806746 /* ConfigSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55A5CCDEF8324B36924D8363 /* ConfigSyncService.swift */; };
 		B5AE7E759218DC99B3A25A0A /* ChatNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F6520C03D94A2A11A5FBFC /* ChatNotificationManager.swift */; };
 		B92233E3D31EC1E45A0A6200 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 594366D0488F694D25328EE1 /* WelcomeView.swift */; };
+		BBE755C674C1AA9AAEC642AF /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A595D81FC8BC41D81D994C8 /* FeatureFlags.swift */; };
 		BBED523CD245162D7C30D53B /* WindowStateInspectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33D8A314CF6803BBED0193BB /* WindowStateInspectorTests.swift */; };
 		BBF0A2F6F0D483DAD2A92305 /* SharedRoomTestAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCE6D142C077AE4DEEC447C /* SharedRoomTestAPIService.swift */; };
 		BD045AD0591CB0421BDB3530 /* Participant.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABC674EDD3F47999BEA9FAE /* Participant.swift */; };
@@ -365,6 +366,7 @@
 		63263BABF78A5A722099C0D5 /* RemoteSidecarManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteSidecarManagerTests.swift; sourceTree = "<group>"; };
 		64E578B5DF4181B43F9663DD /* OllamaCatalogServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaCatalogServiceTests.swift; sourceTree = "<group>"; };
 		680B00C4A69862BF85359F94 /* SidecarProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidecarProtocolTests.swift; sourceTree = "<group>"; };
+		6A595D81FC8BC41D81D994C8 /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
 		6A6A58F5009F43029D2A1318 /* OdysseyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OdysseyApp.swift; sourceTree = "<group>"; };
 		6C288F9BEDF59A8B12457C2C /* ChatExportPresenters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatExportPresenters.swift; sourceTree = "<group>"; };
 		6CBE6D508B750D68D5F8FF29 /* SharedRoomLocalBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedRoomLocalBackendTests.swift; sourceTree = "<group>"; };
@@ -702,6 +704,7 @@
 			children = (
 				226B39199F165D6EB3A78B0A /* AppSettings.swift */,
 				957017106E8E7620AE12E63E /* AppState.swift */,
+				6A595D81FC8BC41D81D994C8 /* FeatureFlags.swift */,
 				421BD35AD8A7D15F8F0F18F9 /* InstanceConfig.swift */,
 				47F0356CCB7C03690085BBE3 /* LaunchIntent.swift */,
 				DF6895FFD3EC3B3420BEA31A /* LegacyInstanceMigration.swift */,
@@ -1377,6 +1380,7 @@
 				17A35F4B23F27194E5B6F2F4 /* DebugLogView.swift in Sources */,
 				FCE5AF3A36C58B1B655C3EF8 /* DefaultsSeeder.swift in Sources */,
 				F641FC61384EE69649180C3A /* ExecutionModePromptBuilder.swift in Sources */,
+				BBE755C674C1AA9AAEC642AF /* FeatureFlags.swift in Sources */,
 				2B0E80A425A52589957FC728 /* FileContentView.swift in Sources */,
 				BF0FC6E56BB42381E1BE02C4 /* FileExplorerView.swift in Sources */,
 				0BEEE07AC92100BBA52500C1 /* FileNode.swift in Sources */,

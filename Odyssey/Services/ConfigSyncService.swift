@@ -118,6 +118,7 @@ final class ConfigSyncService {
         applyBundledBuiltInSyncPolicy()
 
         // Full sync to pick up any offline edits or new factory defaults
+        // Note: performFullSync() also calls syncFeaturesFromDisk() for features.json support.
         performFullSync()
 
         // Start watching
@@ -194,6 +195,9 @@ final class ConfigSyncService {
         syncSkills(context: context)
         syncAgents(context: context, templates: templates)
         syncGroups(context: context)
+
+        // Sync feature flags from features.json (restart-free flag flipping)
+        syncFeaturesFromDisk()
 
         // Repair: ensure every resident agent has a home folder
         repairResidentHomeFolders(context: context)
@@ -628,6 +632,51 @@ final class ConfigSyncService {
 
         for entity in existing where entity.configSlug != nil && !seenSlugs.contains(entity.configSlug!) {
             entity.isEnabled = false
+        }
+    }
+
+    // MARK: - Feature Flags Sync (features.json → UserDefaults)
+
+    /// URL for the feature-flags file: `~/.odyssey/config/features.json`.
+    ///
+    /// Format: `{ "workshop": true, "peerNetwork": false, ... }` where keys are the
+    /// suffix portion of the full flag key (i.e. without the `odyssey.features.` prefix).
+    private static var featuresFileURL: URL {
+        ConfigFileManager.configDirectory.appendingPathComponent("features.json")
+    }
+
+    /// Reads `features.json` from disk and writes matching values into `AppSettings.store`.
+    ///
+    /// - Only keys that correspond to known `FeatureFlags.all` entries are applied.
+    /// - The file's boolean values overwrite whatever is currently stored in `UserDefaults`.
+    /// - If the file is absent or malformed, this is a no-op (existing `UserDefaults` values
+    ///   are left intact, so defaults remain in effect).
+    func syncFeaturesFromDisk() {
+        let url = Self.featuresFileURL
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let raw = try JSONDecoder().decode([String: Bool].self, from: data)
+
+            // Build a lookup: suffix → full key (e.g. "workshop" → "odyssey.features.workshop")
+            let suffixToKey: [String: String] = Dictionary(
+                uniqueKeysWithValues: FeatureFlags.all.map { key in
+                    let suffix = key.replacingOccurrences(of: "odyssey.features.", with: "")
+                    return (suffix, key)
+                }
+            )
+
+            for (suffix, value) in raw {
+                guard let fullKey = suffixToKey[suffix] else {
+                    Log.configSync.warning("features.json: unknown flag key '\(suffix, privacy: .public)' — skipped")
+                    continue
+                }
+                AppSettings.store.set(value, forKey: fullKey)
+            }
+            Log.configSync.info("Feature flags synced from features.json (\(raw.count) entries)")
+        } catch {
+            Log.configSync.error("Failed to read features.json: \(error)")
         }
     }
 

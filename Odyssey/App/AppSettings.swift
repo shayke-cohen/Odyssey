@@ -111,7 +111,7 @@ enum AppSettings {
             dataDirectoryKey, logLevelKey, builtInConfigOverridePolicyKey,
             sharedRoomUserIdKey, sharedRoomDisplayNameKey,
             turnEnabledKey, turnURLKey, turnUsernameKey, turnCredentialKey,
-        ]
+        ] + FeatureFlags.all
     }
 
     static func resetAll() {
