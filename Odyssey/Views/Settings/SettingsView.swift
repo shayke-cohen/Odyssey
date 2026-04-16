@@ -92,7 +92,7 @@ struct SettingsView: View {
     private var visibleSections: [SettingsSection] {
         SettingsSection.allCases.filter { section in
             switch section {
-            case .iosPairing, .federation, .acceptInvite:
+            case .connectors, .iosPairing, .federation, .acceptInvite:
                 return federationEnabled
             case .developer:
                 return devModeEnabled
