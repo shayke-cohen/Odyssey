@@ -2660,7 +2660,7 @@ private struct DeveloperSettingsTab: View {
     }
 }
 
-private extension View {
+extension View {
     func settingsDetailLayout(maxWidth: CGFloat = 1040) -> some View {
         self
             .scrollContentBackground(.hidden)

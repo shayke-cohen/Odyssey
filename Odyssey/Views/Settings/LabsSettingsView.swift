@@ -11,7 +11,7 @@ struct LabsSettingsView: View {
             // Master gate toggle
             Section {
                 Toggle("Show advanced features", isOn: $showAdvanced)
-                    .accessibilityIdentifier("settings.labs.toggle.showAdvanced")
+                    .xrayId("settings.labs.toggle.showAdvanced")
             } footer: {
                 Text("Reveals experimental and power-user features below.")
                     .font(.caption)
@@ -30,11 +30,8 @@ struct LabsSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .frame(maxWidth: 1040, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.horizontal, 24)
-        .padding(.bottom, 28)
-        .accessibilityIdentifier("settings.labs.form")
+        .settingsDetailLayout()
+        .xrayId("settings.labs.form")
     }
 
     // MARK: - Sections
@@ -106,12 +103,21 @@ struct LabsSettingsView: View {
 // MARK: - Row helper
 
 private struct LabsToggleRow: View {
-    let key: String
     let title: String
     let description: String
+    let suffix: String
+
+    @AppStorage private var enabled: Bool
+
+    init(key: String, title: String, description: String) {
+        self.title = title
+        self.description = description
+        self.suffix = key.replacingOccurrences(of: "odyssey.features.", with: "")
+        self._enabled = AppStorage(wrappedValue: false, key, store: AppSettings.store)
+    }
 
     var body: some View {
-        Toggle(isOn: binding) {
+        Toggle(isOn: $enabled) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                 Text(description)
@@ -119,15 +125,6 @@ private struct LabsToggleRow: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .accessibilityIdentifier(
-            "settings.labs.toggle.\(key.replacingOccurrences(of: "odyssey.features.", with: ""))"
-        )
-    }
-
-    private var binding: Binding<Bool> {
-        Binding(
-            get: { AppSettings.store.bool(forKey: key) },
-            set: { AppSettings.store.set($0, forKey: key) }
-        )
+        .xrayId("settings.labs.toggle.\(suffix)")
     }
 }
