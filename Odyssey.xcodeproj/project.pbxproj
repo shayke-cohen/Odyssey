@@ -1139,6 +1139,14 @@
 						DevelopmentTeam = U6BSY4N9E3;
 						ProvisioningStyle = Automatic;
 					};
+					B1E664E5689947FB624DCB21 = {
+						DevelopmentTeam = U6BSY4N9E3;
+						ProvisioningStyle = Automatic;
+					};
+					CE69A1BAAA00E5ABC7D31592 = {
+						DevelopmentTeam = U6BSY4N9E3;
+						ProvisioningStyle = Automatic;
+					};
 					FF88E42E86B37D102EB4907D = {
 						DevelopmentTeam = U6BSY4N9E3;
 						ProvisioningStyle = Automatic;
@@ -1560,6 +1568,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = U6BSY4N9E3;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1579,7 +1589,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = U6BSY4N9E3;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1742,7 +1754,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = U6BSY4N9E3;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1759,6 +1773,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = U6BSY4N9E3;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

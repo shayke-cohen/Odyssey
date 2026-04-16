@@ -105,6 +105,8 @@ targets:
         SWIFT_VERSION: "5.9"
         PRODUCT_BUNDLE_IDENTIFIER: com.odyssey.ios.tests
         GENERATE_INFOPLIST_FILE: true
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: U6BSY4N9E3
     sources:
       - OdysseyiOSTests
     dependencies:
@@ -121,3 +123,5 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.odyssey.tests
         GENERATE_INFOPLIST_FILE: true
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: U6BSY4N9E3

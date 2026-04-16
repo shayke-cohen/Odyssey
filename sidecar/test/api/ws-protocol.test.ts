@@ -16,6 +16,9 @@ import { WorkspaceStore } from "../../src/stores/workspace-store.js";
 import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
 import { ConnectorStore } from "../../src/stores/connector-store.js";
+import { ConversationStore } from "../../src/stores/conversation-store.js";
+import { ProjectStore } from "../../src/stores/project-store.js";
+import { NostrTransport } from "../../src/relay/nostr-transport.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import type { AgentConfig, SidecarEvent } from "../../src/types.js";
 
@@ -69,6 +72,9 @@ beforeAll(() => {
     workspaces: new WorkspaceStore(),
     peerRegistry: new PeerRegistry(),
     connectors: new ConnectorStore(),
+    conversationStore: new ConversationStore(),
+    projectStore: new ProjectStore(),
+    nostrTransport: new NostrTransport(() => {}),
     relayClient: {
       isConnected: () => false,
       connect: async () => {},
