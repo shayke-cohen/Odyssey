@@ -96,13 +96,19 @@ struct ConfigurationSettingsTab: View {
             sectionPane
                 .frame(width: 130)
             Divider()
-            // Middle pane: item list
-            itemListPane
-                .frame(width: 200)
-            Divider()
-            // Right pane: detail
-            detailPane
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if selectedSection == .templates {
+                // Templates has its own full-featured view
+                TemplatesSettingsTab()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                // Middle pane: item list
+                itemListPane
+                    .frame(width: 200)
+                Divider()
+                // Right pane: detail
+                detailPane
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .sheet(isPresented: $showingNewAgent) {
             AgentEditorView(agent: nil) { newAgent in
