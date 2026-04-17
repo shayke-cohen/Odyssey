@@ -21,6 +21,7 @@ export class SessionManager {
   private readonly autonomousResults = new Map<string, { resolve: (result: string) => void }>();
   private readonly pendingCreates = new Map<string, Promise<void>>();
   private readonly runtimes: Record<"claude" | "codex" | "foundation" | "mlx", ProviderRuntime>;
+  private readonly suppressedEvalSessions = new Set<string>();
   private static readonly OLLAMA_CLAUDE_TURN_TIMEOUT_MS = 360_000;
   private static readonly OLLAMA_TURN_TIMEOUT_CODE = "OLLAMA_TURN_TIMEOUT";
 
@@ -29,8 +30,14 @@ export class SessionManager {
     private readonly registry: SessionRegistry,
     private readonly toolCtx: ToolContext,
   ) {
+    const suppressAwareEmit = (event: SidecarEvent) => {
+      if ("sessionId" in event && typeof event.sessionId === "string" && this.suppressedEvalSessions.has(event.sessionId)) {
+        return;
+      }
+      emit(event);
+    };
     const deps = {
-      emit,
+      emit: suppressAwareEmit,
       registry,
       toolCtx,
     };
@@ -458,6 +465,7 @@ export class SessionManager {
       return null;
     }
 
+    this.suppressedEvalSessions.add(sessionId);
     try {
       const result = await this.sendWithProviderTimeout(
         this.runtimeFor(config),
@@ -485,6 +493,8 @@ export class SessionManager {
     } catch (err) {
       logger.error("session", `evaluateSession error for ${sessionId}: ${String(err)}`);
       return null;
+    } finally {
+      this.suppressedEvalSessions.delete(sessionId);
     }
   }
 

@@ -990,34 +990,37 @@ final class AppState: ObservableObject {
         Task {
             try? await Task.sleep(for: .milliseconds(500))
             guard self.evaluatingConversations.contains(convId) else { return }
+            guard let ctx = self.modelContext else { return }
+
+            // Re-fetch conversation after the suspension point to avoid stale SwiftData access.
+            guard let convUUID = UUID(uuidString: convId) else { return }
+            let convDescriptor = FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == convUUID })
+            guard let freshConvo = try? ctx.fetch(convDescriptor).first else { return }
 
             var coordinatorSessionId: String? = nil
-            if let groupId = conversation.sourceGroupId,
-               let ctx = self.modelContext {
+            if let groupId = freshConvo.sourceGroupId {
                 let descriptor = FetchDescriptor<AgentGroup>(predicate: #Predicate { $0.id == groupId })
                 if let sourceGroup = try? ctx.fetch(descriptor).first,
                    let coordinatorId = sourceGroup.coordinatorAgentId {
-                    coordinatorSessionId = conversation.sessions
+                    coordinatorSessionId = freshConvo.sessions
                         .first(where: { $0.agent?.id == coordinatorId })?
                         .id.uuidString
                 }
             }
 
-            if let ctx = self.modelContext {
-                let evalMsg = ConversationMessage(
-                    text: "__idle_evaluation__",
-                    type: .systemEvaluation,
-                    conversation: conversation
-                )
-                ctx.insert(evalMsg)
-                try? ctx.save()
-            }
+            let evalMsg = ConversationMessage(
+                text: "__idle_evaluation__",
+                type: .systemEvaluation,
+                conversation: freshConvo
+            )
+            ctx.insert(evalMsg)
+            try? ctx.save()
 
             self.sendToSidecar(.conversationEvaluate(
                 conversationId: convId,
-                goal: conversation.goal,
+                goal: freshConvo.goal,
                 coordinatorSessionId: coordinatorSessionId,
-                sessionIds: conversation.sessions.map { $0.id.uuidString }
+                sessionIds: freshConvo.sessions.map { $0.id.uuidString }
             ))
         }
     }

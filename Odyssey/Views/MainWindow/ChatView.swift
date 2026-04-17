@@ -403,8 +403,11 @@ struct ChatView: View {
 
     private var displayMessages: [ConversationMessage] {
         let allEnabled = enabledPeerCategories.count == PeerChannelCategory.allCases.count
-        if allEnabled { return sortedMessages }
+        if allEnabled {
+            return sortedMessages.filter { $0.type != .systemEvaluation }
+        }
         return sortedMessages.filter { msg in
+            guard msg.type != .systemEvaluation else { return false }
             guard let category = msg.type.peerChannelCategory else { return true }
             return enabledPeerCategories.contains(category)
         }
