@@ -755,6 +755,10 @@ struct ChatView: View {
     }
 
     var body: some View {
+        chatCoreContentWithSheets
+    }
+
+    private var chatCoreContent: some View {
         VStack(spacing: 0) {
             activeChatHeader
             Divider()
@@ -878,6 +882,10 @@ struct ChatView: View {
         } message: {
             Text("All messages in this conversation will be deleted. The conversation will remain.")
         }
+    }
+
+    private var chatCoreContentWithSheets: some View {
+        chatCoreContent
         .sheet(item: $previewAttachment) { attachment in
             ImagePreviewOverlay(attachment: attachment)
         }
@@ -911,62 +919,8 @@ struct ChatView: View {
                 .environmentObject(appState)
                 .environment(\.modelContext, modelContext)
         }
-        // Slash command sheets
-        .sheet(isPresented: $showSlashMemoryEditor) {
-            MemoryEditorSheet(agent: conversation?.primarySession?.agent)
-        }
-        .sheet(isPresented: $showSlashSkillsSheet) {
-            SlashSkillsSheet(session: conversation?.primarySession)
-                .environmentObject(appState)
-                .environment(\.modelContext, modelContext)
-        }
-        .sheet(isPresented: $showSlashMCPSheet) {
-            SlashMCPSheet(session: conversation?.primarySession)
-                .environmentObject(appState)
-        }
-        .sheet(isPresented: $showSlashPermissionsSheet) {
-            SlashPermissionsSheet(session: conversation?.primarySession)
-        }
-        .sheet(isPresented: $showSlashExportPicker) {
-            SlashExportPickerSheet { format in
-                if let convo = conversation {
-                    exportTranscript(format: format, convo: convo)
-                }
-                showSlashExportPicker = false
-            }
-        }
-        .sheet(isPresented: $showSlashModelPicker) {
-            SlashModelPickerSheet(currentModel: conversation?.primarySession?.agent?.model ?? "") { model in
-                appState.sendToSidecar(.sessionUpdateModel(
-                    sessionId: conversation?.primarySession?.id.uuidString ?? "",
-                    model: model
-                ))
-                showSlashModelPicker = false
-            }
-        }
-        .sheet(isPresented: $showSlashEffortPicker) {
-            SlashEffortPickerSheet { effort in
-                appState.sendToSidecar(.sessionUpdateEffort(
-                    sessionId: conversation?.primarySession?.id.uuidString ?? "",
-                    effort: effort
-                ))
-                showSlashEffortPicker = false
-            }
-        }
-        .sheet(isPresented: $showSlashModePicker) {
-            SlashModePicker(currentMode: conversation?.primarySession?.mode ?? .interactive) { mode in
-                applyExecutionModeChange(mode)
-                showSlashModePicker = false
-            }
-        }
-        .sheet(isPresented: $showSlashBranchPicker) {
-            SlashBranchPickerSheet { action in
-                if let convo = conversation {
-                    sendPromptInjection(branchPrompt(for: action), in: convo)
-                }
-                showSlashBranchPicker = false
-            }
-        }
+        // Slash command sheets — attached via background to avoid type-checker overload
+        .background(slashCommandSheets)
         .alert("Slash Commands", isPresented: $showSlashHelp) {
             Button("Dismiss", role: .cancel) {}
         } message: {
@@ -1008,6 +962,61 @@ struct ChatView: View {
                 Text("Autonomous mode avoids follow-up questions unless progress is blocked. The next turn will run autonomously after you switch.")
             }
         }
+    }
+
+    @ViewBuilder
+    private var slashCommandSheets: some View {
+        Color.clear
+            .sheet(isPresented: $showSlashMemoryEditor) {
+                MemoryEditorSheet(agent: conversation?.primarySession?.agent)
+            }
+            .sheet(isPresented: $showSlashSkillsSheet) {
+                SlashSkillsSheet(session: conversation?.primarySession)
+                    .environmentObject(appState)
+                    .environment(\.modelContext, modelContext)
+            }
+            .sheet(isPresented: $showSlashMCPSheet) {
+                SlashMCPSheet(session: conversation?.primarySession)
+                    .environmentObject(appState)
+            }
+            .sheet(isPresented: $showSlashPermissionsSheet) {
+                SlashPermissionsSheet(session: conversation?.primarySession)
+                    .environment(\.modelContext, modelContext)
+            }
+            .sheet(isPresented: $showSlashExportPicker) {
+                SlashExportPickerSheet { format in
+                    if let convo = conversation { exportTranscript(format: format, convo: convo) }
+                    showSlashExportPicker = false
+                }
+            }
+            .sheet(isPresented: $showSlashModelPicker) {
+                SlashModelPickerSheet(currentModel: conversation?.primarySession?.agent?.model ?? "") { model in
+                    appState.sendToSidecar(.sessionUpdateModel(
+                        sessionId: conversation?.primarySession?.id.uuidString ?? "", model: model))
+                    showSlashModelPicker = false
+                }
+            }
+            .sheet(isPresented: $showSlashEffortPicker) {
+                SlashEffortPickerSheet { effort in
+                    appState.sendToSidecar(.sessionUpdateEffort(
+                        sessionId: conversation?.primarySession?.id.uuidString ?? "", effort: effort))
+                    showSlashEffortPicker = false
+                }
+            }
+            .sheet(isPresented: $showSlashModePicker) {
+                SlashModePicker(currentMode: conversation?.primarySession?.mode ?? .interactive) { mode in
+                    if let execMode = ConversationExecutionMode(rawValue: mode.rawValue) {
+                        applyExecutionModeChange(execMode)
+                    }
+                    showSlashModePicker = false
+                }
+            }
+            .sheet(isPresented: $showSlashBranchPicker) {
+                SlashBranchPickerSheet { action in
+                    if let convo = conversation { sendPromptInjection(branchPrompt(for: action), in: convo) }
+                    showSlashBranchPicker = false
+                }
+            }
     }
 
     // MARK: - Chat Header
@@ -3218,13 +3227,7 @@ struct ChatView: View {
     }
 
     private func appendInfoMessage(_ text: String, in convo: Conversation) {
-        let msg = ConversationMessage(
-            conversationId: convo.id,
-            type: .text,
-            content: text,
-            role: .assistant,
-            senderName: "Odyssey"
-        )
+        let msg = ConversationMessage(text: text, type: .system, conversation: convo)
         convo.messages.append(msg)
         try? modelContext.save()
     }
@@ -3271,11 +3274,34 @@ struct ChatView: View {
 
     private func exportTranscript(format: String, convo: Conversation) {
         Task {
-            let transcript = ChatTranscriptExport.export(conversation: convo, format: format)
-            let ext = format == "html" ? "html" : format == "json" ? "json" : "md"
-            let name = (convo.topic ?? "conversation") + ".\(ext)"
-            if let url = await ChatExportPresenters.runSavePanel(suggestedFileName: name, allowedTypes: []) {
-                try? transcript.write(to: url, atomically: true, encoding: .utf8)
+            guard let snap = chatExportSnapshot() else { return }
+            let base = ChatTranscriptExport.suggestedBaseFileName(for: snap)
+            switch format {
+            case "html":
+                let content = ChatTranscriptExport.html(snap)
+                if let url = await ChatExportPresenters.runSavePanel(suggestedFileName: "\(base).html", allowedTypes: [.html]) {
+                    try? Data(content.utf8).write(to: url, options: .atomic)
+                }
+            case "json":
+                let rows = snap.rows.compactMap { row -> [String: String]? in
+                    switch row.kind {
+                    case .chat(let sender, _, let text, _, _):
+                        return ["role": sender.role.rawValue, "name": sender.displayName, "text": text]
+                    case .labeled(_, _, let sender, _, let text, _):
+                        return ["role": sender.role.rawValue, "name": sender.displayName, "text": text]
+                    default:
+                        return nil
+                    }
+                }
+                let data = (try? JSONSerialization.data(withJSONObject: rows, options: .prettyPrinted)) ?? Data()
+                if let url = await ChatExportPresenters.runSavePanel(suggestedFileName: "\(base).json", allowedTypes: []) {
+                    try? data.write(to: url, options: .atomic)
+                }
+            default:
+                let content = ChatTranscriptExport.markdown(snap)
+                if let url = await ChatExportPresenters.runSavePanel(suggestedFileName: "\(base).md", allowedTypes: [ChatExportPresenters.markdownType]) {
+                    try? Data(content.utf8).write(to: url, options: .atomic)
+                }
             }
         }
     }
@@ -3360,9 +3386,12 @@ struct ChatView: View {
     }
 
     private func createLoopMission(everyMinutes: Int, convo: Conversation) {
-        let draft = ScheduledMissionDraft()
-        draft.prompt = convo.topic ?? "Continue the current task"
-        draft.intervalMinutes = everyMinutes
+        var draft = ScheduledMissionDraft(
+            name: convo.topic ?? "Repeat task",
+            promptTemplate: convo.topic ?? "Continue the current task"
+        )
+        draft.cadenceKind = .hourlyInterval
+        draft.intervalHours = max(1, everyMinutes / 60)
         scheduleDraft = draft
         showingScheduleEditor = true
     }

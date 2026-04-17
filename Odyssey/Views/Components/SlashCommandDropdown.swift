@@ -61,7 +61,7 @@ struct SlashCommandDropdown: View {
                 if cmd.hasSubPicker {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10))
-                        .foregroundStyle(isSelected ? .white.opacity(0.7) : .tertiary)
+                        .foregroundStyle(isSelected ? .white.opacity(0.7) : Color.secondary.opacity(0.6))
                 }
             }
             .padding(.horizontal, 12)
@@ -105,7 +105,7 @@ struct SlashSubPickerView: View {
                         .font(.system(size: 11, weight: .semibold))
                     Text("/\(command.name)")
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.accent)
+                        .foregroundStyle(Color.accentColor)
                     Text(subPickerTitle(for: command))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)

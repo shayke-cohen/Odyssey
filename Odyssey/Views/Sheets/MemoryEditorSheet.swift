@@ -68,8 +68,8 @@ struct MemoryEditorSheet: View {
         }
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-        }
+        } catch {}
+        content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
         isLoading = false
     }
 
