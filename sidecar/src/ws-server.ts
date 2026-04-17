@@ -5,8 +5,20 @@ import type { ToolContext } from "./tools/tool-context.js";
 import { resolveQuestion } from "./tools/ask-user-tool.js";
 import { logger } from "./logger.js";
 import { probeConnector } from "./connectors/provider-runtime.js";
-import Anthropic from "@anthropic-ai/sdk";
+import { query } from "@anthropic-ai/claude-agent-sdk";
 import { ConversationEvaluator } from "./conversation-evaluator.js";
+import { existsSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const _claudeCodeCliPath = (() => {
+  const sidecarDir = dirname(fileURLToPath(import.meta.url));
+  const bundled = resolve(sidecarDir, "claude-code-cli.js");
+  if (existsSync(bundled)) return bundled;
+  const devPath = resolve(sidecarDir, "../../node_modules/@anthropic-ai/claude-agent-sdk/cli.js");
+  if (existsSync(devPath)) return devPath;
+  return undefined;
+})();
 
 export interface WsServerOptions {
   token?: string;
@@ -568,10 +580,32 @@ export class WsServer {
     }
   }
 
+  /** Single-turn generation via the Agent SDK (uses Claude Code auth, no API key needed). */
+  private async queryOnce(systemInstructions: string, userRequest: string, model: string): Promise<string> {
+    const fullPrompt = `${systemInstructions}\n\n---\n\nUser request: ${userRequest}\n\nRespond with ONLY valid JSON as specified above. No markdown, no code fences.`;
+    const options: Record<string, any> = {
+      model,
+      maxTurns: 1,
+      permissionMode: "bypassPermissions",
+      allowDangerouslySkipPermissions: true,
+    };
+    if (_claudeCodeCliPath) options.pathToClaudeCodeExecutable = _claudeCodeCliPath;
+    const stream = query({ prompt: fullPrompt, options });
+    let resultText = "";
+    for await (const message of stream) {
+      const msg = message as any;
+      if (msg.type === "assistant") {
+        for (const block of msg.message?.content ?? []) {
+          if (block.type === "text" && block.text) resultText += block.text;
+        }
+      }
+    }
+    return resultText.trim();
+  }
+
   private async handleGenerateAgent(
     command: Extract<SidecarCommand, { type: "generate.agent" }>
   ): Promise<void> {
-    const anthropic = new Anthropic();
 
     const validIcons = [
       "cpu", "brain", "terminal", "doc.text", "magnifyingglass", "shield",
@@ -632,20 +666,7 @@ ${mcpsCatalog}`;
 
     logger.info("ws", `generate.agent: generating agent from prompt: "${command.prompt.substring(0, 100)}..."`);
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: "user", content: command.prompt }],
-    });
-
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      throw new Error("No text response from Claude");
-    }
-
-    let jsonText = textBlock.text.trim();
-    // Strip markdown code fences if present
+    let jsonText = await this.queryOnce(systemPrompt, command.prompt, "claude-sonnet-4-6");
     if (jsonText.startsWith("```")) {
       jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
     }
@@ -685,7 +706,6 @@ ${mcpsCatalog}`;
   private async handleGenerateSkill(
     command: Extract<SidecarCommand, { type: "generate.skill" }>
   ): Promise<void> {
-    const anthropic = new Anthropic();
 
     const validCategories = command.availableCategories.length > 0
       ? command.availableCategories.join(", ")
@@ -721,19 +741,7 @@ ${mcpsCatalog}`;
 
     logger.info("ws", `generate.skill: generating skill from prompt: "${command.prompt.substring(0, 100)}..."`);
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: "user", content: command.prompt }],
-    });
-
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      throw new Error("No text response from Claude");
-    }
-
-    let jsonText = textBlock.text.trim();
+    let jsonText = await this.queryOnce(systemPrompt, command.prompt, "claude-sonnet-4-6");
     if (jsonText.startsWith("```")) {
       jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
     }
@@ -763,7 +771,6 @@ ${mcpsCatalog}`;
   private async handleGenerateTemplate(
     command: Extract<SidecarCommand, { type: "generate.template" }>
   ): Promise<void> {
-    const anthropic = new Anthropic();
 
     const agentContext = command.agentSystemPrompt
       ? `\n\n## Agent System Prompt\n${command.agentSystemPrompt.substring(0, 500)}`
@@ -785,19 +792,7 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact schema:
 
     logger.info("ws", `generate.template: generating template for agent "${command.agentName}"`);
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: "user", content: command.intent }],
-    });
-
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      throw new Error("No text response from Claude");
-    }
-
-    let jsonText = textBlock.text.trim();
+    let jsonText = await this.queryOnce(systemPrompt, command.intent, "claude-haiku-4-5-20251001");
     if (jsonText.startsWith("```")) {
       jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
     }
