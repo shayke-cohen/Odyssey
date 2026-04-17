@@ -115,7 +115,7 @@ struct GroupPickerPopover: View {
                             .fill(Color.fromAgentColor(agent.color))
                             .frame(width: 6, height: 6)
                     }
-                    Text("\(group.agentIds.count) agents")
+                    Text("\(memberAgents.count) agents")
                         .font(.system(size: 10))
                         .foregroundStyle(.quaternary)
                 }
