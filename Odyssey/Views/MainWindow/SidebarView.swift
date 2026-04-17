@@ -1802,7 +1802,7 @@ struct SidebarView: View {
 
     private func conversationsForGroup(_ group: AgentGroup, in project: Project? = nil) -> [Conversation] {
         conversations.filter {
-            $0.sourceGroupId == group.id && (project == nil || $0.projectId == project?.id)
+            $0.sourceGroupId == group.id && (project == nil ? $0.projectId == nil : $0.projectId == project?.id)
         }
     }
 
@@ -1811,7 +1811,13 @@ struct SidebarView: View {
         return allSessions
             .filter { $0.agent?.id == agent.id }
             .compactMap { $0.conversations.first }
-            .filter { project == nil || $0.projectId == project?.id }
+            .filter {
+                if let project {
+                    $0.projectId == project.id
+                } else {
+                    $0.projectId == nil   // global agent section: only non-project chats
+                }
+            }
             .filter { seen.insert($0.id).inserted }
     }
 
@@ -1824,16 +1830,7 @@ struct SidebarView: View {
     }
 
     private func conversationsForProject(_ project: Project) -> [Conversation] {
-        let agentSessionConversationIds = Set(
-            allSessions
-                .filter { $0.agent != nil }
-                .flatMap { $0.conversations.map { $0.id } }
-        )
-        return conversations.filter {
-            $0.projectId == project.id
-            && $0.sourceGroupId == nil
-            && !agentSessionConversationIds.contains($0.id)
-        }
+        conversations.filter { $0.projectId == project.id && $0.sourceGroupId == nil }
     }
 
     private func projectForConversation(_ convo: Conversation) -> Project? {
