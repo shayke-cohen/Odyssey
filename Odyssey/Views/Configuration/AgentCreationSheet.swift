@@ -19,6 +19,7 @@ struct AgentCreationSheet: View {
     @Query(sort: \Skill.name) private var allSkills: [Skill]
     @Query(sort: \MCPServer.name) private var allMCPs: [MCPServer]
 
+    var existingAgent: Agent? = nil
     let onSave: (Agent) -> Void
 
     // MARK: Mode
@@ -48,6 +49,26 @@ struct AgentCreationSheet: View {
     // @State private var selectedSkillIds: Set<UUID> = []
     // @State private var selectedMCPIds: Set<UUID> = []
     // @State private var selectedPermissionId: UUID? = nil
+
+    // MARK: - Init (pre-fill for edit use-case)
+
+    init(existingAgent: Agent? = nil, onSave: @escaping (Agent) -> Void) {
+        self.existingAgent = existingAgent
+        self.onSave = onSave
+        if let a = existingAgent {
+            _name = State(initialValue: a.name)
+            _agentDescription = State(initialValue: a.agentDescription)
+            _icon = State(initialValue: a.icon)
+            _color = State(initialValue: a.color)
+            _provider = State(initialValue: AgentDefaults.normalizedProviderSelection(a.provider).rawValue)
+            _model = State(initialValue: a.model.isEmpty ? AgentDefaults.inheritMarker : a.model)
+            _systemPrompt = State(initialValue: a.systemPrompt)
+            _maxTurns = State(initialValue: a.maxTurns.map { String($0) } ?? "")
+            _maxBudget = State(initialValue: a.maxBudget.map { String($0) } ?? "")
+            _instancePolicy = State(initialValue: a.instancePolicy)
+            _mode = State(initialValue: .manual)
+        }
+    }
 
     // MARK: - Body
 
@@ -91,7 +112,7 @@ struct AgentCreationSheet: View {
     @ViewBuilder
     private var sheetHeader: some View {
         HStack {
-            Text("New Agent")
+            Text(existingAgent != nil ? "Edit Agent" : "New Agent")
                 .font(.title3)
                 .fontWeight(.semibold)
                 .accessibilityIdentifier("agentCreation.title")
@@ -262,7 +283,7 @@ struct AgentCreationSheet: View {
                 .disabled(promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGenerating)
                 .accessibilityIdentifier("agentCreation.generateButton")
             } else {
-                Button("Create Agent") {
+                Button(existingAgent != nil ? "Save" : "Create Agent") {
                     save()
                 }
                 .buttonStyle(.borderedProminent)
@@ -323,6 +344,7 @@ struct AgentCreationSheet: View {
     /// Save the manually-configured agent.
     private func save() {
         performAgentSave(
+            existingAgent: existingAgent,
             name: name,
             agentDescription: agentDescription,
             icon: icon.isEmpty ? "cpu" : icon,
@@ -342,9 +364,10 @@ struct AgentCreationSheet: View {
 
 // MARK: - performAgentSave (free function for testability)
 
-/// Creates a new `Agent` in SwiftData and writes its config file.
+/// Creates or updates an `Agent` in SwiftData and writes its config file.
 /// Extracted as a free function so unit tests can call it without a live view.
 func performAgentSave(
+    existingAgent: Agent? = nil,
     name: String,
     agentDescription: String,
     icon: String,
@@ -385,22 +408,34 @@ func performAgentSave(
     // Write to disk — ConfigSyncService will pick it up via file-watching
     try? ConfigFileManager.writeBack(agentSlug: slug, config: dto, prompt: systemPrompt)
 
-    // Insert into SwiftData
-    let agent = Agent(
-        name: name,
-        agentDescription: agentDescription,
-        systemPrompt: systemPrompt,
-        provider: provider,
-        model: model,
-        icon: icon.isEmpty ? "cpu" : icon,
-        color: color.isEmpty ? "blue" : color
-    )
+    // Insert or update SwiftData
+    let agent: Agent
+    if let existing = existingAgent {
+        agent = existing
+    } else {
+        agent = Agent(
+            name: name,
+            agentDescription: agentDescription,
+            systemPrompt: systemPrompt,
+            provider: provider,
+            model: model,
+            icon: icon.isEmpty ? "cpu" : icon,
+            color: color.isEmpty ? "blue" : color
+        )
+        modelContext.insert(agent)
+    }
+    agent.name = name
+    agent.agentDescription = agentDescription
+    agent.systemPrompt = systemPrompt
+    agent.provider = provider
+    agent.model = model
+    agent.icon = icon.isEmpty ? "cpu" : icon
+    agent.color = color.isEmpty ? "blue" : color
     agent.configSlug = slug
     agent.maxTurns = maxTurns
     agent.maxBudget = maxBudget
     agent.instancePolicy = instancePolicy
     agent.updatedAt = Date()
-    modelContext.insert(agent)
     try? modelContext.save()
 
     onSave(agent)

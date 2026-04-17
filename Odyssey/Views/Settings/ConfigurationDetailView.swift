@@ -38,8 +38,7 @@ struct ConfigurationDetailView: View {
         }
         .sheet(isPresented: $showingAgentEditor) {
             if case .agent(let agent) = item {
-                AgentEditorView(agent: agent) { updated in
-                    do { try modelContext.save() } catch { print("ConfigurationDetailView: save failed: \(error)") }
+                AgentCreationSheet(existingAgent: agent) { _ in
                     showingAgentEditor = false
                 }
             }
@@ -51,8 +50,7 @@ struct ConfigurationDetailView: View {
         }
         .sheet(isPresented: $showingSkillEditor) {
             if case .skill(let skill) = item {
-                SkillEditorView(skill: skill) { updated in
-                    do { try modelContext.save() } catch { print("ConfigurationDetailView: save failed: \(error)") }
+                SkillCreationSheet(existingSkill: skill) { _ in
                     showingSkillEditor = false
                 }
             }

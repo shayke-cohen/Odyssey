@@ -105,14 +105,13 @@ struct TemplatesSettingsTab: View {
             }
         }
         .sheet(item: $editingTemplate) { template in
-            PromptTemplateEditorSheet(
-                mode: .edit(template),
-                onSave: { updatedName, updatedPrompt in
-                    updateTemplate(template, name: updatedName, prompt: updatedPrompt)
-                    editingTemplate = nil
-                },
-                onCancel: { editingTemplate = nil }
-            )
+            PromptTemplateCreationSheet(
+                ownerAgent: selectedAgent,
+                ownerGroup: selectedGroup,
+                existingTemplate: template
+            ) { _ in
+                editingTemplate = nil
+            }
         }
         .sheet(isPresented: $showingNewSheet) {
             PromptTemplateCreationSheet(

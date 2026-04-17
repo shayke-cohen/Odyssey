@@ -10,6 +10,7 @@ struct SkillCreationSheet: View {
 
     @Query(sort: \MCPServer.name) private var allMCPs: [MCPServer]
 
+    var existingSkill: Skill? = nil
     let onSave: (Skill) -> Void
 
     // MARK: Mode
@@ -43,6 +44,23 @@ struct SkillCreationSheet: View {
     @State private var version: String = "1.0"
 
     private let categories = ["General", "Security", "Code Review", "Architecture", "Testing", "DevOps"]
+
+    // MARK: - Init (pre-fill for edit use-case)
+
+    init(existingSkill: Skill? = nil, onSave: @escaping (Skill) -> Void) {
+        self.existingSkill = existingSkill
+        self.onSave = onSave
+        if let s = existingSkill {
+            _name = State(initialValue: s.name)
+            _skillDescription = State(initialValue: s.skillDescription)
+            _category = State(initialValue: s.category.isEmpty ? "General" : s.category)
+            _triggers = State(initialValue: s.triggers)
+            _mcpServerIds = State(initialValue: s.mcpServerIds)
+            _content = State(initialValue: s.content)
+            _version = State(initialValue: s.version.isEmpty ? "1.0" : s.version)
+            _mode = State(initialValue: .manual)
+        }
+    }
 
     // MARK: - Body
 
@@ -86,7 +104,7 @@ struct SkillCreationSheet: View {
     @ViewBuilder
     private var sheetHeader: some View {
         HStack {
-            Text("New Skill")
+            Text(existingSkill != nil ? "Edit Skill" : "New Skill")
                 .font(.title3)
                 .fontWeight(.semibold)
                 .accessibilityIdentifier("skillCreation.title")
@@ -297,7 +315,7 @@ struct SkillCreationSheet: View {
                 .disabled(promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGenerating)
                 .accessibilityIdentifier("skillCreation.generateButton")
             } else {
-                Button("Create Skill") {
+                Button(existingSkill != nil ? "Save" : "Create Skill") {
                     save()
                 }
                 .buttonStyle(.borderedProminent)
@@ -358,7 +376,7 @@ struct SkillCreationSheet: View {
     private func save() {
         do {
             try performSkillSave(
-                existingSkill: nil,
+                existingSkill: existingSkill,
                 name: name,
                 skillDescription: skillDescription,
                 category: category,
