@@ -19,6 +19,7 @@ struct AgentSidebarRowView: View {
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
             ForEach(conversations.prefix(10)) { conv in
+                let isConvSelected = selectedConversationId == conv.id
                 Button {
                     onSelectConversation(conv)
                 } label: {
@@ -30,15 +31,20 @@ struct AgentSidebarRowView: View {
                         }
                         Image(systemName: "bubble.left")
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(isConvSelected ? Color.accentColor.opacity(1) : Color.secondary.opacity(0.5))
                         Text(conv.topic ?? "Untitled")
                             .font(conv.isUnread ? .caption.bold() : .caption)
+                            .foregroundStyle(isConvSelected ? Color.primary : .primary)
                             .lineLimit(1)
                         Spacer()
                         Text(conv.startedAt, style: .relative)
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
+                    .padding(.vertical, 3)
+                    .padding(.horizontal, 6)
+                    .background(isConvSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)
                 .stableXrayId("sidebar.agentRow.\(agent.id.uuidString).chatRow.\(conv.id.uuidString)")

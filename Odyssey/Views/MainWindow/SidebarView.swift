@@ -213,6 +213,14 @@ struct SidebarView: View {
                let projectId = selectedConversation.projectId {
                 windowState.selectProject(id: projectId, preserveSelection: true)
                 expandedProjectIds.insert(projectId)
+            } else if let selectedConversation = conversations.first(where: { $0.id == selectedId }),
+                      selectedConversation.projectId == nil {
+                // Expand the owning agent or group so the active row is visible
+                if let agent = agents.first(where: { conversationsForAgent($0).contains { $0.id == selectedId } }) {
+                    expandedAgentIds.insert(agent.id)
+                } else if let group = groups.first(where: { conversationsForGroup($0).contains { $0.id == selectedId } }) {
+                    expandedGroupIds.insert(group.id)
+                }
             } else if let task = taskItems.first(where: { $0.id == selectedId }) {
                 if let convId = task.conversationId {
                     DispatchQueue.main.async {
