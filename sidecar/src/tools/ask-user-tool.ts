@@ -143,6 +143,7 @@ export function createAskUserTool(ctx: ToolContext, callingSessionId: string, on
           .describe("Configuration for the selected input_type"),
         timeout_seconds: z
           .number()
+          .positive()
           .optional()
           .describe(
             "Hint to shorten the auto-routing timeout (seconds). Only effective when Auto-Answer mode is active. Cannot exceed the mode default (30s in auto modes). Ignored when mode is Off.",
@@ -178,7 +179,7 @@ export function createAskUserTool(ctx: ToolContext, callingSessionId: string, on
               let targetName = ctx.delegation.resolveTarget(callingSessionId, undefined);
 
               // For by_agents mode where resolveTarget returns undefined, use least-busy agent
-              if (!targetName) {
+              if (!targetName && delegationConfig.mode === "by_agents") {
                 const leastBusySessionId = leastBusyAgent(ctx, callingSessionId);
                 if (leastBusySessionId) {
                   const sessionState = ctx.sessions.get(leastBusySessionId);
