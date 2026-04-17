@@ -9,6 +9,9 @@ import Foundation
 //   - File-backed DTOs below (AgentConfigFileDTO, GroupConfigFileDTO, etc.) parse the
 //     user-editable files under ~/.odyssey/config/ that reference other entities by slug.
 
+// Note: these DTOs use camelCase JSON keys (Swift default). Files must use camelCase,
+// not snake_case, for compound field names (e.g. "maxTurns", "autoReplyEnabled").
+
 // MARK: AgentConfigFileDTO — mirrors agents/{slug}/config.json
 
 struct AgentConfigFileDTO: Codable {
@@ -39,7 +42,7 @@ struct GroupConfigFileDTO: Codable {
     var agents: [String]           // slugs → agents/{slug}/
     var workingDirectory: String?
     var model: String?
-    var mcps: [String]
+    var mcps: [String]?              // slugs; omit or [] when group has no MCPs
     var icon: String?
     var color: String?
     var autoReplyEnabled: Bool?
@@ -56,7 +59,7 @@ struct WorkflowStepFileDTO: Codable {
     var agent: String              // agent slug
     var instruction: String
     var stepLabel: String?
-    var autoAdvance: Bool
+    var autoAdvance: Bool?           // defaults to false when absent
     var condition: String?
     var artifactGate: WorkflowArtifactGateFileDTO?
 }

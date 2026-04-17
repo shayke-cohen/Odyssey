@@ -25,6 +25,9 @@ final class Skill {
     var configSlug: String?
 
     // SkillSource flattened for SwiftData
+    // sourceKind defaults to "custom" for UI-created skills.
+    // ConfigSyncService sets sourceKind="filesystem", configSlug, and sourceValue
+    // when creating/updating skills from disk files.
     var sourceKind: String
     var sourceValue: String?
 
@@ -70,7 +73,7 @@ final class Skill {
         self.catalogId = nil
         self.isEnabled = true
         self.configSlug = nil
-        self.sourceKind = "filesystem"
+        self.sourceKind = "custom"
         self.sourceValue = nil
     }
 }
