@@ -587,7 +587,7 @@ final class AppState: ObservableObject {
     }
 
     func setDelegationMode(for conversation: Conversation, mode: DelegationMode, targetAgentName: String? = nil) {
-        guard let primarySession = conversation.sessions.first else { return }
+        guard let primarySession = conversation.sessions.min(by: { $0.startedAt < $1.startedAt }) else { return }
         conversation.delegationMode = mode
         conversation.delegationTargetAgentName = targetAgentName
         sendToSidecar(.setDelegationMode(
