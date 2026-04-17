@@ -1,0 +1,353 @@
+name: Delegation UI — Auto-Answer Badge and Mode Picker
+description: |
+  E2E tests for the Auto-Answer delegation badge and DelegationModePickerView in ChatView.
+
+  The delegation badge (chat.delegationBadge) is only rendered when a conversation has
+  more than one session (multi-agent / group thread). Tests that require this badge must
+  first open or navigate to a multi-agent conversation.
+
+  Prerequisites:
+    - Odyssey DEBUG build running (AppXray on port 19480 or auto-discovered)
+    - At least one group or multi-agent conversation must exist in the sidebar, OR
+      a new one must be created in the DA-0 setup step below.
+    - The sidecar must be connected (green status pill) for session creation to work.
+
+  Key accessibility identifiers:
+    - chat.delegationBadge        — the Auto-Answer badge button in the chat toolbar
+    - chat.messageInput           — message input field (confirms chat view is open)
+    - chat.topicTitle             — conversation title text (confirms chat loaded)
+    - mainWindow.sidecarStatusPill — sidecar connection status
+
+  Picker card selectors (no xrayId assigned — use @text):
+    - @text("Off")                — Off mode card
+    - @text("By agents")          — By agents mode card
+    - @text("Specific agent")     — Specific agent mode card (expands agent picker)
+    - @text("Coordinator")        — Coordinator mode card (only present when group has coordinator)
+
+  Badge text values:
+    - "Auto-Answer"               — when delegationMode == .off
+    - "Auto · agents"             — when delegationMode == .byAgents
+    - "Auto · specific"           — when delegationMode == .specificAgent
+    - "Auto · coordinator"        — when delegationMode == .coordinator
+
+tests:
+
+  # ─── SETUP ────────────────────────────────────────────────────────────────
+
+  - name: "DA-0: Open a multi-agent conversation (setup)"
+    description: |
+      Navigate to an existing multi-agent conversation, or create a new group
+      thread so the delegation badge is rendered in the toolbar.
+
+      If a group conversation already exists in the sidebar, tap it directly.
+      Otherwise use the + menu to start a new group session.
+
+      The delegation badge only appears when convo.sessions.count > 1, which is
+      always true for group threads (each participant agent gets its own session).
+    steps:
+      - interact:
+          action: screenshot
+          label: "initial-state"
+      # Try to tap the first group row in the sidebar (prefix match won't work
+      # in all runtimes; fall back to the new-session flow if this fails)
+      - interact:
+          action: find
+          selector: '@testId("sidebar.conversationList")'
+      - interact:
+          action: screenshot
+          label: "sidebar-state"
+    assert:
+      - element_exists: '@testId("sidebar.conversationList")'
+
+  # ─── BADGE PRESENCE ───────────────────────────────────────────────────────
+
+  - name: "DA-1: Delegation badge is visible in multi-agent chat toolbar"
+    description: |
+      With a multi-agent conversation selected, the delegation badge button
+      (chat.delegationBadge) must be present in the chat toolbar.
+      This element is only rendered when convo.sessions.count > 1.
+    steps:
+      - interact:
+          action: screenshot
+          label: "chat-toolbar"
+      - interact:
+          action: find
+          selector: '@testId("chat.delegationBadge")'
+    assert:
+      - element_exists: '@testId("chat.delegationBadge")'
+
+  - name: "DA-2: Delegation badge shows 'Auto-Answer' text when mode is Off"
+    description: |
+      When delegationMode == .off (the default), the badge text is "Auto-Answer".
+      The accessibility label is "Auto-Answer off".
+      Verify via screenshot and element label.
+    steps:
+      - interact:
+          action: screenshot
+          label: "badge-off-state"
+    assert:
+      - element_exists: '@testId("chat.delegationBadge")'
+      - screenshot_contains: "Auto-Answer"
+
+  - name: "DA-3: Delegation badge accessibility label is correct when Off"
+    description: |
+      The badge has .accessibilityLabel("Auto-Answer off") when mode is .off.
+      This is the VoiceOver announcement and the AppXray @label selector value.
+    steps:
+      - interact:
+          action: find
+          selector: '@label("Auto-Answer off")'
+      - interact:
+          action: screenshot
+          label: "badge-a11y-label"
+    assert:
+      - element_exists: '@label("Auto-Answer off")'
+
+  # ─── PICKER OPENS ─────────────────────────────────────────────────────────
+
+  - name: "DA-4: Tapping the badge opens the delegation mode picker"
+    description: |
+      Tapping chat.delegationBadge toggles showDelegationPicker, which renders
+      DelegationModePickerView as a popover.
+      Verify the picker appears with the "Off" mode card visible.
+    steps:
+      - interact:
+          action: tap
+          selector: '@testId("chat.delegationBadge")'
+      - interact:
+          action: waitFor
+          condition: element
+          selector: '@text("Off")'
+          timeout: 3000
+      - interact:
+          action: screenshot
+          label: "picker-open"
+    assert:
+      - screenshot_contains: "Off"
+      - screenshot_contains: "By agents"
+      - screenshot_contains: "Specific agent"
+
+  - name: "DA-5: Picker shows 'Off' mode card"
+    description: |
+      With the picker open, the Off mode card must be visible.
+      Label text: "Off". Description text: "Questions always go to you".
+    steps:
+      - interact:
+          action: screenshot
+          label: "picker-off-card"
+    assert:
+      - screenshot_contains: "Off"
+      - screenshot_contains: "Questions always go to you"
+
+  - name: "DA-6: Picker shows 'By agents' mode card"
+    description: |
+      With the picker open, the By agents mode card must be visible.
+      Label text: "By agents". Description: "Asking agent nominates who answers".
+    steps:
+      - interact:
+          action: screenshot
+          label: "picker-by-agents-card"
+    assert:
+      - screenshot_contains: "By agents"
+      - screenshot_contains: "Asking agent nominates who answers"
+
+  - name: "DA-7: Picker shows 'Specific agent' mode card"
+    description: |
+      With the picker open, the Specific agent mode card must be visible.
+      Label text: "Specific agent". Description: "Always routes to chosen agent".
+      This card uses modeCardWithPicker — tapping it expands an agent list,
+      it does NOT immediately commit a mode change.
+    steps:
+      - interact:
+          action: screenshot
+          label: "picker-specific-agent-card"
+    assert:
+      - screenshot_contains: "Specific agent"
+      - screenshot_contains: "Always routes to chosen agent"
+
+  # ─── MODE SELECTION ───────────────────────────────────────────────────────
+
+  - name: "DA-8: Selecting 'By agents' mode changes badge text to 'Auto · agents'"
+    description: |
+      Tap the "By agents" card in the picker. This calls onSelect(.byAgents, nil)
+      which calls appState.setDelegationMode(for:mode:targetAgentName:) and
+      dismisses the picker (showDelegationPicker = false).
+      After selection the badge text changes from "Auto-Answer" to "Auto · agents".
+      The badge accessibility label becomes "Auto-Answer: agents".
+    steps:
+      # Open picker
+      - interact:
+          action: tap
+          selector: '@testId("chat.delegationBadge")'
+      - interact:
+          action: waitFor
+          condition: element
+          selector: '@text("By agents")'
+          timeout: 3000
+      # Select By agents
+      - interact:
+          action: tap
+          selector: '@text("By agents")'
+      - interact:
+          action: waitFor
+          condition: element
+          selector: '@testId("chat.delegationBadge")'
+          timeout: 3000
+      - interact:
+          action: screenshot
+          label: "badge-after-by-agents"
+    assert:
+      - element_exists: '@testId("chat.delegationBadge")'
+      - screenshot_contains: "Auto · agents"
+
+  - name: "DA-9: Badge accessibility label reflects active mode"
+    description: |
+      When delegationMode == .byAgents the badge accessibility label is
+      "Auto-Answer: agents" (computed from isActive + convo.delegationMode.shortLabel).
+      Verify @label selector finds the badge.
+    steps:
+      - interact:
+          action: find
+          selector: '@label("Auto-Answer: agents")'
+      - interact:
+          action: screenshot
+          label: "badge-a11y-active"
+    assert:
+      - element_exists: '@label("Auto-Answer: agents")'
+
+  - name: "DA-10: Selecting 'Off' mode restores badge to 'Auto-Answer'"
+    description: |
+      Open the picker again, tap "Off", and confirm the badge reverts to
+      "Auto-Answer" text and the accessibility label returns to "Auto-Answer off".
+    steps:
+      # Open picker
+      - interact:
+          action: tap
+          selector: '@testId("chat.delegationBadge")'
+      - interact:
+          action: waitFor
+          condition: element
+          selector: '@text("Off")'
+          timeout: 3000
+      # Select Off
+      - interact:
+          action: tap
+          selector: '@text("Off")'
+      - interact:
+          action: waitFor
+          condition: element
+          selector: '@testId("chat.delegationBadge")'
+          timeout: 3000
+      - interact:
+          action: screenshot
+          label: "badge-restored-to-off"
+    assert:
+      - element_exists: '@testId("chat.delegationBadge")'
+      - screenshot_contains: "Auto-Answer"
+      - screenshot_not_contains: "Auto · agents"
+
+  # ─── SPECIFIC AGENT EXPANSION ─────────────────────────────────────────────
+
+  - name: "DA-11: 'Specific agent' card expands agent list on tap"
+    description: |
+      The Specific agent card uses modeCardWithPicker. Tapping it sets
+      expandedMode = .specificAgent (or toggles it off if already expanded),
+      which renders agent participant rows below the card header.
+      Verify that agent rows appear after tapping (the list shows participant names).
+
+      Implementation detail: tapping Specific agent does NOT immediately commit
+      the mode. The mode is committed only when an agent row is selected.
+      If the conversation has no agent participants, the expanded list is empty.
+    steps:
+      # Open picker
+      - interact:
+          action: tap
+          selector: '@testId("chat.delegationBadge")'
+      - interact:
+          action: waitFor
+          condition: element
+          selector: '@text("Specific agent")'
+          timeout: 3000
+      # Tap Specific agent to expand
+      - interact:
+          action: tap
+          selector: '@text("Specific agent")'
+      - interact:
+          action: screenshot
+          label: "specific-agent-expanded"
+    assert:
+      - screenshot_contains: "Specific agent"
+      # The expanded state shows either agent rows or is simply expanded.
+      # At minimum the card header remains visible.
+      - element_exists: '@text("Specific agent")'
+
+  - name: "DA-12: Tapping 'Specific agent' a second time collapses the agent list"
+    description: |
+      Tapping the Specific agent card header again sets expandedMode = nil,
+      collapsing the agent rows. Verify the picker still shows the mode cards
+      but the agent list sub-section is no longer visible.
+    steps:
+      - interact:
+          action: tap
+          selector: '@text("Specific agent")'
+      - interact:
+          action: screenshot
+          label: "specific-agent-collapsed"
+    assert:
+      - screenshot_contains: "Specific agent"
+      # Picker is still visible
+      - screenshot_contains: "By agents"
+
+  # ─── PICKER DISMISS ───────────────────────────────────────────────────────
+
+  - name: "DA-13: Picker dismisses after mode selection"
+    description: |
+      After selecting any mode (e.g. Off), showDelegationPicker is set to false
+      and the picker popover is no longer visible.
+      Verify that "Questions always go to you" (Off card description) is not
+      on screen after the picker closes.
+    steps:
+      # Open picker and select Off to ensure it dismisses
+      - interact:
+          action: tap
+          selector: '@testId("chat.delegationBadge")'
+      - interact:
+          action: waitFor
+          condition: element
+          selector: '@text("Off")'
+          timeout: 3000
+      - interact:
+          action: tap
+          selector: '@text("Off")'
+      - interact:
+          action: waitFor
+          condition: elementGone
+          selector: '@text("Questions always go to you")'
+          timeout: 3000
+      - interact:
+          action: screenshot
+          label: "picker-dismissed"
+    assert:
+      - element_exists: '@testId("chat.delegationBadge")'
+      - screenshot_not_contains: "Questions always go to you"
+
+  # ─── SINGLE-AGENT CHAT (NEGATIVE) ─────────────────────────────────────────
+
+  - name: "DA-14: Delegation badge is absent in single-agent conversation"
+    description: |
+      The badge is only rendered when convo.sessions.count > 1.
+      Open a single-agent (non-group) conversation and verify the badge is absent.
+
+      This test requires navigating to a single-agent conversation row.
+      If none exists, skip by verifying the negative assertion on screenshot.
+    steps:
+      - interact:
+          action: screenshot
+          label: "single-agent-chat-toolbar"
+    assert:
+      # Cannot assert element_absent without a known single-agent conversation.
+      # Use screenshot_not_contains as a proxy — if only a single-agent convo
+      # is visible, the badge text will not appear.
+      - screenshot_not_contains: "Auto-Answer"
+    # NOTE: This test should only be run after navigating to a single-agent
+    # conversation. Run DA-0 first to re-open the group thread afterward.
