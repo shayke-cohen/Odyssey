@@ -408,16 +408,6 @@ struct SidebarView: View {
             .accessibilityLabel("New")
 
             Button {
-                windowState.openLibrary()
-            } label: {
-                Label("Library", systemImage: "books.vertical")
-            }
-            .buttonStyle(.plain)
-            .appXrayTapProxy(id: "sidebar.utility.library") {
-                windowState.openLibrary()
-            }
-
-            Button {
                 addProjectFolder()
             } label: {
                 Label("Add Project", systemImage: "folder.badge.plus")
@@ -476,7 +466,7 @@ struct SidebarView: View {
         HStack(spacing: 0) {
             let catalog = SidebarBottomBarItem.catalog
             Button {
-                windowState.openLibrary(.discover)
+                windowState.openConfiguration(section: .agents)
             } label: {
                 Label(catalog.rawValue, systemImage: catalog.icon)
                     .fixedSize(horizontal: true, vertical: false)
@@ -534,7 +524,7 @@ struct SidebarView: View {
 
             let agents = SidebarBottomBarItem.agents
             Button {
-                windowState.openLibrary(.build, buildSection: .agents)
+                windowState.openConfiguration(section: .agents)
             } label: {
                 Label(agents.rawValue, systemImage: agents.icon)
                     .fixedSize(horizontal: true, vertical: false)
@@ -1074,13 +1064,13 @@ struct SidebarView: View {
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
                 Button {
-                    windowState.openLibrary()
+                    windowState.openConfiguration(section: .agents)
                 } label: {
-                    Label("Open Library", systemImage: "books.vertical")
+                    Label("Open Configuration", systemImage: "gearshape")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .help("Browse reusable tools")
+                .help("Configure agents and groups")
                 .xrayId("sidebar.emptyState.newSessionButton")
             }
             .frame(maxWidth: .infinity)
@@ -1459,7 +1449,7 @@ struct SidebarView: View {
                         .xrayId("sidebar.groupContext.duplicate.\(group.id.uuidString)")
                     Divider()
                     Button("Open in Configuration") {
-                        windowState.openLibrary(.build)
+                        windowState.openConfiguration(section: .groups)
                     }
                     .xrayId("sidebar.groupContext.openConfig.\(group.id.uuidString)")
                     Divider()
@@ -1472,7 +1462,7 @@ struct SidebarView: View {
                 Text("Groups")
                 Spacer()
                 Button {
-                    windowState.openLibrary(.build, buildSection: .groups)
+                    windowState.openConfiguration(section: .groups)
                 } label: {
                     Image(systemName: "plus")
                         .font(.caption)
@@ -1494,7 +1484,7 @@ struct SidebarView: View {
             Text("Agents")
             Spacer()
             Button {
-                windowState.openLibrary(.build, buildSection: .agents)
+                windowState.openConfiguration(section: .agents)
             } label: {
                 Image(systemName: "plus")
                     .font(.caption)
@@ -1586,7 +1576,7 @@ struct SidebarView: View {
             .xrayId("sidebar.agentRow.togglePin.\(agent.id.uuidString)")
             Divider()
             Button("Open in Configuration") {
-                windowState.openLibrary(.build, buildSection: .agents)
+                windowState.openConfiguration(section: .agents)
             }
             .xrayId("sidebar.agentRow.openConfig.\(agent.id.uuidString)")
         }

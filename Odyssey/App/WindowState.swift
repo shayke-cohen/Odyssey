@@ -2,52 +2,6 @@ import SwiftUI
 import SwiftData
 import Foundation
 
-enum LibrarySection: String, CaseIterable, Identifiable {
-    case run
-    case build
-    case discover
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .run: "Run"
-        case .build: "Build"
-        case .discover: "Discover"
-        }
-    }
-}
-
-enum LibraryBuildSection: String, CaseIterable, Identifiable {
-    case agents
-    case groups
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .agents: "Agents"
-        case .groups: "Groups"
-        }
-    }
-}
-
-enum LibraryDiscoverSection: String, CaseIterable, Identifiable {
-    case agentTemplates
-    case skills
-    case integrations
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .agentTemplates: "Agent Templates"
-        case .skills: "Skills"
-        case .integrations: "Integrations"
-        }
-    }
-}
-
 enum WindowInspectorTab: String, CaseIterable, Identifiable {
     case info = "Info"
     case files = "Files"
@@ -302,10 +256,6 @@ final class WindowState {
 
     var showNewSessionSheet = false
     var showNewGroupThreadSheet = false
-    var showLibraryHub = false
-    var selectedLibrarySection: LibrarySection = .run
-    var selectedLibraryBuildSection: LibraryBuildSection = .agents
-    var selectedLibraryDiscoverSection: LibraryDiscoverSection = .agentTemplates
     var showScheduleLibrary = false
     var showPeerNetwork = false
     var showAgentComms = false
@@ -367,21 +317,6 @@ final class WindowState {
         guard let convo = try? ctx.fetch(descriptor).first, convo.isUnread else { return }
         convo.isUnread = false
         try? ctx.save()
-    }
-
-    func openLibrary(
-        _ section: LibrarySection = .run,
-        buildSection: LibraryBuildSection? = nil,
-        discoverSection: LibraryDiscoverSection? = nil
-    ) {
-        selectedLibrarySection = section
-        if let buildSection {
-            selectedLibraryBuildSection = buildSection
-        }
-        if let discoverSection {
-            selectedLibraryDiscoverSection = discoverSection
-        }
-        showLibraryHub = true
     }
 
     func openSettings() {

@@ -229,7 +229,6 @@
 		E4DB4B6053B64D616682841F /* SidecarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE6D5BFEC4719B2DBEFB703 /* SidecarManager.swift */; };
 		E50441A9D862EA7FD74826EB /* iOSAgentListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D667133088DCC6D9B55AC48 /* iOSAgentListView.swift */; };
 		E65A2B757B152673E7A2D0AE /* TemplatePickerRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4EA5448052E9E2C0038E6E5 /* TemplatePickerRow.swift */; };
-		E6A7A06897437405DCFF5484 /* IntentLibraryHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3762EB432A3F5385D5C7063 /* IntentLibraryHubView.swift */; };
 		E7A4B8B80E4B98B4C13F5C79 /* InviteCodeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A437B897AAAAC6266F8966B8 /* InviteCodeGenerator.swift */; };
 		E916F33C7B172423DDB1E510 /* CatalogDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C40CFEF2765642CEA44E445 /* CatalogDetailView.swift */; };
 		E9B673FB093EB98651791A64 /* GroupWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB6305C724016DB5D94EE87 /* GroupWorkflowTests.swift */; };
@@ -431,7 +430,6 @@
 		A0A5CC3B8FB27A5C32C71FEA /* BlackboardSnapshotClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlackboardSnapshotClient.swift; sourceTree = "<group>"; };
 		A12C713B24C25396C17E38C8 /* ChatSendRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSendRoutingTests.swift; sourceTree = "<group>"; };
 		A30424480B105E123B571324 /* NATTraversalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NATTraversalTests.swift; sourceTree = "<group>"; };
-		A3762EB432A3F5385D5C7063 /* IntentLibraryHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentLibraryHubView.swift; sourceTree = "<group>"; };
 		A41E26A91126632EB2EAF8E7 /* Agent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Agent.swift; sourceTree = "<group>"; };
 		A437B897AAAAC6266F8966B8 /* InviteCodeGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteCodeGenerator.swift; sourceTree = "<group>"; };
 		A5A67DAB9C3CDD0DF7FADCE2 /* MCPEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPEditorView.swift; sourceTree = "<group>"; };
@@ -592,7 +590,6 @@
 				3230CC7D10A04D7F16841F79 /* FileExplorerView.swift */,
 				469C8EB1BC85EAD15272406A /* FileTreeView.swift */,
 				DDDDBE5CD946AABBA32DB09C /* InspectorView.swift */,
-				A3762EB432A3F5385D5C7063 /* IntentLibraryHubView.swift */,
 				C0FD67A4B246106B4021B8EA /* MainWindowView.swift */,
 				EBA04E7FA48238BEC1518062 /* NewGroupThreadSheet.swift */,
 				4520B8439A61251FF1E43951 /* NewSessionSheet.swift */,
@@ -1442,7 +1439,6 @@
 				84DEA88B2E3F0B1D2097F49C /* InlineHTMLView.swift in Sources */,
 				FA9F8043E27BDFB32DC4830A /* InspectorView.swift in Sources */,
 				C3013C6A6A591C7F37DFCDA6 /* InstanceConfig.swift in Sources */,
-				E6A7A06897437405DCFF5484 /* IntentLibraryHubView.swift in Sources */,
 				E7A4B8B80E4B98B4C13F5C79 /* InviteCodeGenerator.swift in Sources */,
 				EE907D6938D3AD4C68E8C8DA /* LabsSettingsView.swift in Sources */,
 				9BD78B6E2A75C023FFFAEFF4 /* LaunchIntent.swift in Sources */,

@@ -987,7 +987,7 @@ struct ChatView: View {
             .xrayId("chat.groupAgentIcons")
         } else if let agent = primarySession?.agent {
             Button {
-                windowState.openLibrary(.build, buildSection: .agents)
+                windowState.openConfiguration(section: .agents)
             } label: {
                 Image(systemName: agent.icon)
                     .foregroundStyle(Color.fromAgentColor(agent.color))

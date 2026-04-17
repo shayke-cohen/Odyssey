@@ -178,14 +178,6 @@ struct MainWindowView: View {
         .sheet(isPresented: $ws.showNewGroupThreadSheet) {
             NewSessionSheet(initialStartKind: .groups)
         }
-        .sheet(isPresented: $ws.showLibraryHub) {
-            IntentLibraryHubView(
-                selectedSection: $ws.selectedLibrarySection,
-                selectedBuildSection: $ws.selectedLibraryBuildSection,
-                selectedDiscoverSection: $ws.selectedLibraryDiscoverSection
-            )
-                .frame(minWidth: 760, minHeight: 560)
-        }
         .sheet(isPresented: $ws.showScheduleLibrary) {
             ScheduleLibraryView()
                 .frame(minWidth: 900, minHeight: 560)
