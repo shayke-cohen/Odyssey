@@ -46,6 +46,8 @@ final class AppState: ObservableObject {
     @Published var progressTrackers: [String: ProgressTracker] = [:]
     @Published var pendingSuggestions: [String: [SuggestionItem]] = [:]
     @Published var completedPlans: [String: CompletedPlan] = [:]
+    @Published var idleResults: [String: ConversationIdleResult] = [:]
+    @Published var evaluatingConversations: Set<String> = []
     @Published private(set) var workerStandbySessions: Set<String> = []
     @Published var presenceStore: [String: PresenceStatus] = [:]
     /// Nostr public key hex (x-only, BIP-340) for this instance — used in invite generation.
