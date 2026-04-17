@@ -1765,6 +1765,14 @@ struct SidebarView: View {
             selectedConversationId: windowState.selectedConversationId,
             hasActiveSession: agentHasActiveSession(agent)
         )
+        .overlay(alignment: .topTrailing) {
+            if isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 8))
+                    .foregroundStyle(.tertiary)
+                    .padding(.trailing, 4)
+            }
+        }
         .contextMenu {
             Button("New Session") {
                 startSession(with: agent)
@@ -1772,7 +1780,7 @@ struct SidebarView: View {
             .xrayId("sidebar.agentRow.newSession.\(agent.id.uuidString)")
             Divider()
             Button(isPinned ? "Unpin from Sidebar" : "Pin to Sidebar") {
-                agent.isResident = !isPinned
+                agent.isResident.toggle()
                 try? modelContext.save()
             }
             .xrayId("sidebar.agentRow.togglePin.\(agent.id.uuidString)")
