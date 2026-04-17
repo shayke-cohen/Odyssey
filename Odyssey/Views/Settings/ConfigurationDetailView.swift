@@ -39,7 +39,7 @@ struct ConfigurationDetailView: View {
         .sheet(isPresented: $showingAgentEditor) {
             if case .agent(let agent) = item {
                 AgentEditorView(agent: agent) { updated in
-                    try? modelContext.save()
+                    do { try modelContext.save() } catch { print("ConfigurationDetailView: save failed: \(error)") }
                     showingAgentEditor = false
                 }
             }
@@ -52,7 +52,7 @@ struct ConfigurationDetailView: View {
         .sheet(isPresented: $showingSkillEditor) {
             if case .skill(let skill) = item {
                 SkillEditorView(skill: skill) { updated in
-                    try? modelContext.save()
+                    do { try modelContext.save() } catch { print("ConfigurationDetailView: save failed: \(error)") }
                     showingSkillEditor = false
                 }
             }
@@ -60,7 +60,7 @@ struct ConfigurationDetailView: View {
         .sheet(isPresented: $showingMCPEditor) {
             if case .mcp(let mcp) = item {
                 MCPEditorView(mcp: mcp) { updated in
-                    try? modelContext.save()
+                    do { try modelContext.save() } catch { print("ConfigurationDetailView: save failed: \(error)") }
                     showingMCPEditor = false
                 }
             }
@@ -426,28 +426,3 @@ struct ConfigurationDetailView: View {
     }
 }
 
-// MARK: - Simple flow layout
-
-private struct FlowLayout<Content: View>: View {
-    let spacing: CGFloat
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        // SwiftUI 5.1+ has Layout, but a simple wrapping HStack does the job here
-        _VariadicView.Tree(FlowRoot(spacing: spacing), content: content)
-    }
-
-    private struct FlowRoot: _VariadicView_MultiViewRoot {
-        let spacing: CGFloat
-
-        func body(children: _VariadicView.Children) -> some View {
-            VStack(alignment: .leading, spacing: spacing) {
-                HStack(alignment: .top, spacing: spacing) {
-                    ForEach(children) { child in
-                        child
-                    }
-                }
-            }
-        }
-    }
-}

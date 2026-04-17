@@ -90,7 +90,7 @@ struct ConfigurationSettingsTab: View {
         .sheet(isPresented: $showingNewAgent) {
             AgentEditorView(agent: nil) { newAgent in
                 modelContext.insert(newAgent)
-                try? modelContext.save()
+                do { try modelContext.save() } catch { print("ConfigurationSettingsTab: save failed: \(error)") }
                 selectedItem = .agent(newAgent)
                 showingNewAgent = false
             }
@@ -101,7 +101,7 @@ struct ConfigurationSettingsTab: View {
         .sheet(isPresented: $showingNewSkill) {
             SkillEditorView(skill: nil) { newSkill in
                 modelContext.insert(newSkill)
-                try? modelContext.save()
+                do { try modelContext.save() } catch { print("ConfigurationSettingsTab: save failed: \(error)") }
                 selectedItem = .skill(newSkill)
                 showingNewSkill = false
             }
@@ -109,7 +109,7 @@ struct ConfigurationSettingsTab: View {
         .sheet(isPresented: $showingNewMCP) {
             MCPEditorView(mcp: nil) { newMCP in
                 modelContext.insert(newMCP)
-                try? modelContext.save()
+                do { try modelContext.save() } catch { print("ConfigurationSettingsTab: save failed: \(error)") }
                 selectedItem = .mcp(newMCP)
                 showingNewMCP = false
             }
