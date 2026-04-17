@@ -13,6 +13,7 @@
 		051D4B295377527541A64837 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FD67A4B246106B4021B8EA /* MainWindowView.swift */; };
 		05DC85A4A120D1D2706D08AC /* P2PNetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28E92529E4209BE458AE21E /* P2PNetworkManager.swift */; };
 		05F7C7B2199B733585ABBFC6 /* StableXrayModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 736B9634BE86AA5C59D7F3F3 /* StableXrayModifier.swift */; };
+		0889563F8D9E1A9732F16D0E /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 5820E047DE141BF872462B9B /* Sparkle */; };
 		09051C6758B5793FC83FE211 /* StreamingIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD82750C21589B242699A02E /* StreamingIndicator.swift */; };
 		09A27FA720C1D79DE5E1027C /* BlackboardEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B597F7491414D478622B1344 /* BlackboardEntry.swift */; };
 		09D5183EE00301EE7CF7791D /* MCPLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C78CCB9AC68FC2F620CBEFF2 /* MCPLibraryView.swift */; };
@@ -577,6 +578,7 @@
 				55D093018BEE386169C67C12 /* Highlightr in Frameworks */,
 				CDEF4AD317D07A2EB11AC966 /* OdysseyCore in Frameworks */,
 				F59695EB0264A829AE921C4D /* P256K in Frameworks */,
+				0889563F8D9E1A9732F16D0E /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1186,6 +1188,7 @@
 				C264ADC3D083AD5951272136 /* Highlightr */,
 				00DF31B8DD35DAB899D426E8 /* OdysseyCore */,
 				4EE30580668F91DDC060A85E /* P256K */,
+				5820E047DE141BF872462B9B /* Sparkle */,
 			);
 			productName = Odyssey;
 			productReference = F8575CAE7FCD08CDE2BA7635 /* Odyssey.app */;
@@ -1231,6 +1234,7 @@
 			packageReferences = (
 				FA6BEF515C51EA1446637051 /* XCRemoteSwiftPackageReference "Highlightr" */,
 				21408D625887F5DB815A8769 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				38CF9A9FA9C4E0101BD44572 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				2AD6770F347809905B6D5F5F /* XCRemoteSwiftPackageReference "secp256k1.swift" */,
 				7EE8268CFCBFDBFFAA34EE2B /* XCLocalSwiftPackageReference "Dependencies/appxray/packages/sdk-ios" */,
 				BBC4B72E121871E49436DC24 /* XCLocalSwiftPackageReference "Packages/OdysseyCore" */,
@@ -1979,6 +1983,14 @@
 				minimumVersion = 0.15.0;
 			};
 		};
+		38CF9A9FA9C4E0101BD44572 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.0;
+			};
+		};
 		FA6BEF515C51EA1446637051 /* XCRemoteSwiftPackageReference "Highlightr" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/raspu/Highlightr";
@@ -1998,6 +2010,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2AD6770F347809905B6D5F5F /* XCRemoteSwiftPackageReference "secp256k1.swift" */;
 			productName = P256K;
+		};
+		5820E047DE141BF872462B9B /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 38CF9A9FA9C4E0101BD44572 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 		71C4795AA6D3021C09D3E9B8 /* OdysseyCore */ = {
 			isa = XCSwiftPackageProductDependency;
