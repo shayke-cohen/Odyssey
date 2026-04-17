@@ -160,7 +160,7 @@ describe("createAskAgentTool — delegation override", () => {
     expect(parsed.answer).toBe("PM says: go ahead");
   });
 
-  test("when resolveTarget returns undefined, falls back to to_agent", async () => {
+  test("by_agents mode passes to_agent through unchanged (resolveTarget returns nominated)", async () => {
     // by_agents mode + no targetAgentName → resolveTarget returns the nominated agent
     const delegation = new DelegationStore();
     delegation.set("session-1", { mode: "by_agents" });
@@ -279,6 +279,7 @@ describe("createAskAgentTool — successful delegation", () => {
   });
 
   test("returns fallback answer when spawnSession returns no result", async () => {
+    const events: SidecarEvent[] = [];
     const definitions = new Map<string, AgentConfig>([
       ["Reviewer", { ...BASE_CONFIG, name: "Reviewer" }],
     ]);
@@ -287,7 +288,7 @@ describe("createAskAgentTool — successful delegation", () => {
       result: undefined, // agent produced no output
     });
 
-    const ctx = buildCtx(() => {}, { agentDefinitions: definitions, spawnSession });
+    const ctx = buildCtx((e) => events.push(e), { agentDefinitions: definitions, spawnSession });
     const result = await callAskAgent(ctx, "caller", {
       question: "Hello?",
       to_agent: "Reviewer",
@@ -295,6 +296,9 @@ describe("createAskAgentTool — successful delegation", () => {
 
     const parsed = parseResult(result);
     expect(parsed.answer).toBe("[Agent provided no answer.]");
+
+    const resolvedEvent = events.find(e => e.type === "agent.question.resolved");
+    expect(resolvedEvent?.answer).toBeUndefined();
   });
 });
 

@@ -205,7 +205,7 @@ describe("leastBusyAgent", () => {
     registry.create("agent-b", BASE_CONFIG);
     // Both have 0 messages → sort is stable at 0, first in list wins
     const result = leastBusyAgent(ctx, "caller");
-    expect(["agent-a", "agent-b"]).toContain(result);
+    expect(result).toBe("agent-a");
   });
 
   test("excludes non-active sessions", () => {
