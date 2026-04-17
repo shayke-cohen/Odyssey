@@ -53,7 +53,6 @@ struct NewSessionSheet: View {
     @Query(sort: \Conversation.startedAt, order: .reverse) private var recentConversations: [Conversation]
     @Query(sort: \Skill.name) private var allSkills: [Skill]
     @Query(sort: \MCPServer.name) private var allMCPs: [MCPServer]
-    @Query(sort: [SortDescriptor(\PromptTemplate.sortOrder), SortDescriptor(\PromptTemplate.name)]) private var allPromptTemplates: [PromptTemplate]
 
     @State private var selectedStartKind: CreateThreadStartKind
     @State private var selectedAgentIds: Set<UUID> = []
@@ -152,37 +151,6 @@ struct NewSessionSheet: View {
         guard let selectedGroup else { return false }
         if sessionMode == .interactive { return true }
         return selectedGroup.coordinatorAgentId != nil || selectedGroup.autonomousCapable
-    }
-
-    // MARK: - Prompt templates
-
-    /// Templates available for the current selection. Solo: when exactly one
-    /// agent is picked. Groups: when a group is picked. Anything else hides
-    /// the picker.
-    private var availableTemplates: [PromptTemplate] {
-        switch selectedStartKind {
-        case .agents:
-            guard selectedAgentIds.count == 1, let agentId = selectedAgentIds.first else { return [] }
-            return allPromptTemplates.filter { $0.agent?.id == agentId }
-        case .groups:
-            guard let groupId = selectedGroupId else { return [] }
-            return allPromptTemplates.filter { $0.group?.id == groupId }
-        case .blank:
-            return []
-        }
-    }
-
-    private var templateOwnerLabel: String {
-        switch selectedStartKind {
-        case .agents:
-            guard selectedAgentIds.count == 1, let id = selectedAgentIds.first,
-                  let agent = enabledAgents.first(where: { $0.id == id }) else { return "" }
-            return agent.name
-        case .groups:
-            return selectedGroup?.name ?? ""
-        case .blank:
-            return ""
-        }
     }
 
     private var canStartSession: Bool {
@@ -1364,13 +1332,6 @@ struct NewSessionSheet: View {
                         .foregroundStyle(.secondary)
                         .xrayId("newSession.goalCaption")
                 }
-
-                TemplatePickerRow(
-                    templates: availableTemplates,
-                    mission: $mission,
-                    ownerLabel: templateOwnerLabel,
-                    onManage: { windowState.openSettings() }
-                )
 
                 TextField(goalPlaceholder, text: $mission, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
