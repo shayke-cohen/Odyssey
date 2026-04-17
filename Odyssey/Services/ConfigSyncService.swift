@@ -1007,15 +1007,16 @@ final class ConfigSyncService {
             }
         }
 
-        // Soft-disable MCPs whose new-format files were removed
-        // (The legacy syncMCPs handles the catalog-format disable; here we only disable
-        //  entities that were created by syncMCPFiles and whose file has since gone.)
+        // Soft-disable MCPs whose new-format files were removed.
+        // TODO: Safe soft-disable for file-backed MCPs requires a sourceKind field on MCPServer
+        // (analogous to Skill.sourceKind) to distinguish file-backed vs catalog entities.
+        // Without it, this loop would incorrectly disable catalog MCPs (octocode, argus, etc.)
+        // whose configSlug appears in the existing[] set but not in seenSlugs.
+        // entity.isEnabled = false  — deferred until MCPServer.sourceKind is added.
         for entity in existing {
             guard let slug = entity.configSlug, !seenSlugs.contains(slug) else { continue }
-            // Only disable if the entity was created via the new MCPConfigFileDTO format.
-            // We detect this conservatively: if the legacy catalog already tracks it, it
-            // will soft-disable via syncMCPs(). We skip here to avoid double-disabling.
-            entity.isEnabled = false
+            // Intentionally not disabling here — see TODO above.
+            _ = slug
         }
     }
 
@@ -1072,12 +1073,15 @@ final class ConfigSyncService {
         )
 
         isWritingBack = true
-        defer {
+        do {
+            try ConfigFileManager.writeBack(agentSlug: slug, config: config, prompt: agent.systemPrompt)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
                 self?.isWritingBack = false
             }
+        } catch {
+            isWritingBack = false
+            throw error
         }
-        try ConfigFileManager.writeBack(agentSlug: slug, config: config, prompt: agent.systemPrompt)
     }
 
     /// Write a group back to its file-backed config directory (groups/{slug}/config.json + instruction.md + …).
@@ -1116,7 +1120,7 @@ final class ConfigSyncService {
                 )
             }
             return WorkflowStepFileDTO(
-                id: UUID().uuidString,
+                id: step.id.uuidString,
                 agent: agentSlug,
                 instruction: step.instruction,
                 stepLabel: step.stepLabel,
@@ -1126,6 +1130,8 @@ final class ConfigSyncService {
             )
         }
 
+        // AgentGroup has no workingDirectory, model, or extraMCPServerIds fields,
+        // so those GroupConfigFileDTO fields remain nil.
         let config = GroupConfigFileDTO(
             name: group.name,
             description: group.groupDescription.isEmpty ? nil : group.groupDescription,
@@ -1143,18 +1149,21 @@ final class ConfigSyncService {
         )
 
         isWritingBack = true
-        defer {
+        do {
+            try ConfigFileManager.writeBack(
+                groupSlug: slug,
+                config: config,
+                instruction: group.groupInstruction,
+                mission: group.defaultMission,
+                workflow: workflowSteps
+            )
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
                 self?.isWritingBack = false
             }
+        } catch {
+            isWritingBack = false
+            throw error
         }
-        try ConfigFileManager.writeBack(
-            groupSlug: slug,
-            config: config,
-            instruction: group.groupInstruction,
-            mission: group.defaultMission,
-            workflow: workflowSteps
-        )
     }
 
     /// Write a skill back to its flat file-backed format (skills/{slug}.md).
@@ -1170,12 +1179,15 @@ final class ConfigSyncService {
         )
 
         isWritingBack = true
-        defer {
+        do {
+            try ConfigFileManager.writeBack(skillSlug: slug, dto: dto, content: skill.content)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
                 self?.isWritingBack = false
             }
+        } catch {
+            isWritingBack = false
+            throw error
         }
-        try ConfigFileManager.writeBack(skillSlug: slug, dto: dto, content: skill.content)
     }
 
     /// Write an MCP server back to its flat file-backed format (mcps/{slug}.json).
@@ -1211,12 +1223,15 @@ final class ConfigSyncService {
         }
 
         isWritingBack = true
-        defer {
+        do {
+            try ConfigFileManager.writeBack(mcpSlug: slug, dto: dto)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
                 self?.isWritingBack = false
             }
+        } catch {
+            isWritingBack = false
+            throw error
         }
-        try ConfigFileManager.writeBack(mcpSlug: slug, dto: dto)
     }
 
     // MARK: - Prompt Templates Sync
