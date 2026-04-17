@@ -179,8 +179,111 @@ struct SidebarView: View {
     private var autonomousMissionsEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.autonomousMissionsKey) || (masterFlag && autonomousMissionsFlag) }
 
     var body: some View {
+        sidebarList
+            .sheet(item: $editingGroup) { group in
+                GroupEditorView(group: group)
+            }
+            .sheet(item: $autonomousGroup) { group in
+                AutonomousMissionSheet(group: group)
+                    .environmentObject(appState)
+            }
+            .sheet(isPresented: $showAutoAssemble) {
+                AutoAssembleSheet()
+                    .environmentObject(appState)
+            }
+            .sheet(isPresented: $showTaskCreation) {
+                TaskCreationSheet()
+                    .environmentObject(appState)
+            }
+            .sheet(item: $editingTask) { task in
+                TaskEditSheet(task: task)
+                    .environmentObject(appState)
+            }
+            .alert("Rename Conversation", isPresented: Binding(
+                get: { renamingConversation != nil },
+                set: { if !$0 { renamingConversation = nil } }
+            )) {
+                TextField("Name", text: $renameText)
+                Button("Rename") {
+                    if let convo = renamingConversation, !renameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        convo.topic = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        try? modelContext.save()
+                    }
+                    renamingConversation = nil
+                }
+                Button("Cancel", role: .cancel) { renamingConversation = nil }
+            }
+            .alert("Rename Project", isPresented: Binding(
+                get: { renamingProject != nil },
+                set: { if !$0 { renamingProject = nil } }
+            )) {
+                TextField("Name", text: $projectRenameText)
+                Button("Rename") {
+                    let trimmed = projectRenameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if let project = renamingProject, !trimmed.isEmpty {
+                        project.name = trimmed
+                        try? modelContext.save()
+                        if windowState.selectedProjectId == project.id {
+                            windowState.selectProject(project, preserveSelection: true)
+                        }
+                    }
+                    renamingProject = nil
+                }
+                Button("Cancel", role: .cancel) { renamingProject = nil }
+            }
+            .alert("Delete Conversation?", isPresented: $showDeleteConfirmation) {
+                Button("Delete", role: .destructive) {
+                    if let convo = conversationToDelete {
+                        if windowState.selectedConversationId == convo.id {
+                            windowState.selectedConversationId = nil
+                        }
+                        appState.clearSessionActivity(for: convo.sessions.map(\.id.uuidString))
+                        modelContext.delete(convo)
+                        try? modelContext.save()
+                    }
+                    conversationToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { conversationToDelete = nil }
+            } message: {
+                Text("This conversation and all its messages will be permanently deleted.")
+            }
+            .alert("Archive all threads?", isPresented: Binding(
+                get: { projectToArchiveThreads != nil },
+                set: { if !$0 { projectToArchiveThreads = nil } }
+            )) {
+                Button("Archive", role: .destructive) {
+                    if let project = projectToArchiveThreads {
+                        archiveThreads(in: project)
+                    }
+                    projectToArchiveThreads = nil
+                }
+                Button("Cancel", role: .cancel) { projectToArchiveThreads = nil }
+            } message: {
+                if let project = projectToArchiveThreads {
+                    Text("All threads in \(project.name) will be moved to Archived.")
+                }
+            }
+            .alert("Remove Project?", isPresented: Binding(
+                get: { projectToRemove != nil },
+                set: { if !$0 { projectToRemove = nil } }
+            )) {
+                Button("Remove", role: .destructive) {
+                    if let project = projectToRemove {
+                        removeProject(project)
+                    }
+                    projectToRemove = nil
+                }
+                Button("Cancel", role: .cancel) { projectToRemove = nil }
+            } message: {
+                if let project = projectToRemove {
+                    Text("Remove \(project.name) from the sidebar and delete its local threads, tasks, and schedules. Project files on disk will stay untouched.")
+                }
+            }
+    }
+
+    private var sidebarList: some View {
         @Bindable var ws = windowState
-        List {
+        return List {
             agentsSection
 
             groupsSection
@@ -263,105 +366,6 @@ struct SidebarView: View {
                     .xrayId("sidebar.newMenu")
                     .accessibilityLabel("New")
                 }
-            }
-        }
-        .sheet(item: $editingGroup) { group in
-            GroupEditorView(group: group)
-        }
-        .sheet(item: $autonomousGroup) { group in
-            AutonomousMissionSheet(group: group)
-                .environmentObject(appState)
-        }
-        .sheet(isPresented: $showAutoAssemble) {
-            AutoAssembleSheet()
-                .environmentObject(appState)
-        }
-        .sheet(isPresented: $showTaskCreation) {
-            TaskCreationSheet()
-                .environmentObject(appState)
-        }
-        .sheet(item: $editingTask) { task in
-            TaskEditSheet(task: task)
-                .environmentObject(appState)
-        }
-        .alert("Rename Conversation", isPresented: Binding(
-            get: { renamingConversation != nil },
-            set: { if !$0 { renamingConversation = nil } }
-        )) {
-            TextField("Name", text: $renameText)
-            Button("Rename") {
-                if let convo = renamingConversation, !renameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    convo.topic = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    try? modelContext.save()
-                }
-                renamingConversation = nil
-            }
-            Button("Cancel", role: .cancel) { renamingConversation = nil }
-        }
-        .alert("Rename Project", isPresented: Binding(
-            get: { renamingProject != nil },
-            set: { if !$0 { renamingProject = nil } }
-        )) {
-            TextField("Name", text: $projectRenameText)
-            Button("Rename") {
-                let trimmed = projectRenameText.trimmingCharacters(in: .whitespacesAndNewlines)
-                if let project = renamingProject, !trimmed.isEmpty {
-                    project.name = trimmed
-                    try? modelContext.save()
-                    if windowState.selectedProjectId == project.id {
-                        windowState.selectProject(project, preserveSelection: true)
-                    }
-                }
-                renamingProject = nil
-            }
-            Button("Cancel", role: .cancel) { renamingProject = nil }
-        }
-        .alert("Delete Conversation?", isPresented: $showDeleteConfirmation) {
-            Button("Delete", role: .destructive) {
-                if let convo = conversationToDelete {
-                    if windowState.selectedConversationId == convo.id {
-                        windowState.selectedConversationId = nil
-                    }
-                    appState.clearSessionActivity(for: convo.sessions.map(\.id.uuidString))
-                    modelContext.delete(convo)
-                    try? modelContext.save()
-                }
-                conversationToDelete = nil
-            }
-            Button("Cancel", role: .cancel) { conversationToDelete = nil }
-        } message: {
-            Text("This conversation and all its messages will be permanently deleted.")
-        }
-        .alert("Archive all threads?", isPresented: Binding(
-            get: { projectToArchiveThreads != nil },
-            set: { if !$0 { projectToArchiveThreads = nil } }
-        )) {
-            Button("Archive", role: .destructive) {
-                if let project = projectToArchiveThreads {
-                    archiveThreads(in: project)
-                }
-                projectToArchiveThreads = nil
-            }
-            Button("Cancel", role: .cancel) { projectToArchiveThreads = nil }
-        } message: {
-            if let project = projectToArchiveThreads {
-                Text("All threads in \(project.name) will be moved to Archived.")
-            }
-        }
-        .alert("Remove Project?", isPresented: Binding(
-            get: { projectToRemove != nil },
-            set: { if !$0 { projectToRemove = nil } }
-        )) {
-            Button("Remove", role: .destructive) {
-                if let project = projectToRemove {
-                    removeProject(project)
-                }
-                projectToRemove = nil
-            }
-            Button("Cancel", role: .cancel) { projectToRemove = nil }
-        } message: {
-            if let project = projectToRemove {
-                Text("Remove \(project.name) from the sidebar and delete its local threads, tasks, and schedules. Project files on disk will stay untouched.")
             }
         }
     }
