@@ -5,6 +5,7 @@ import type { ToolContext } from "./tools/tool-context.js";
 import { resolveQuestion } from "./tools/ask-user-tool.js";
 import { logger } from "./logger.js";
 import { probeConnector } from "./connectors/provider-runtime.js";
+import Anthropic from "@anthropic-ai/sdk";
 
 export interface WsServerOptions {
   token?: string;
