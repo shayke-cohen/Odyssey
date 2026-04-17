@@ -43,3 +43,4 @@ Dependencies
 
 # Swift Package Manager local build artifacts
 .swiftpm/
+.worktrees/
