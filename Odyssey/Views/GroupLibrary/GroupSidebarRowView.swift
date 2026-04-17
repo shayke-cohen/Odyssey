@@ -3,7 +3,6 @@ import SwiftData
 
 struct GroupSidebarRowView: View {
     let group: AgentGroup
-    let agentCount: Int
     let conversations: [Conversation]
     let allAgents: [Agent]
     @Binding var isExpanded: Bool
