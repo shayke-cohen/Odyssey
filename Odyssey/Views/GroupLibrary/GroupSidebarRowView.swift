@@ -57,9 +57,18 @@ struct GroupSidebarRowView: View {
                         .background(Color.fromAgentColor(group.color).opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 5))
 
-                    Text(group.name)
-                        .font(.body)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(group.name)
+                            .font(.body)
+                            .lineLimit(1)
+                        let memberNames = allAgents.filter { group.agentIds.contains($0.id) }.map(\.name).joined(separator: " · ")
+                        if !memberNames.isEmpty {
+                            Text(memberNames)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { onSelectGroup?() }
