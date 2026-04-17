@@ -2,8 +2,8 @@
 
 Living specification tracking implemented features, user flows, and requirements.
 
-**Version:** 0.14.1
-**Status:** Phase 14 — Project-first shell plus intent-first library hub (`Run`, `Build`, `Discover`)
+**Version:** 0.15.0
+**Status:** Phase 15 — Conversation idle detection & automatic goal evaluation
 
 ---
 
@@ -688,6 +688,33 @@ Swift-owned recurring automation system for saving missions against an agent, gr
 | FR-27.17: XCTest coverage includes cadence math, prompt rendering, dedupe, stale-run recovery, launch intent execution, and fresh/reuse run coordination | Done |
 | FR-27.18: Schedule accessibility/test identifiers are documented in `TESTING.md` and represented in AppXray UI scenarios | Done |
 
+### FR-28: Conversation Idle Detection & Evaluation
+
+**Status:** Implemented
+
+When all agents in a conversation finish their work, the app automatically detects the idle state, runs a hidden evaluation turn, and surfaces a goal-achievement verdict in the UI.
+
+| Requirement | Status |
+|---|---|
+| FR-28.1: Detect idle state via `ConversationAggregateState.allDone` / `.completedWithErrors` after all sessions reach `.done` or `.error` | Done |
+| FR-28.2: Debounce idle detection by 500 ms to avoid spurious triggers during rapid sequential tool calls | Done |
+| FR-28.3: `Conversation.goal` optional SwiftData field stores an explicit mission goal set at thread creation | Done |
+| FR-28.4: Goal field surfaced in New Session sheet for both single-agent and group threads | Done |
+| FR-28.5: `conversationEvaluate` command carries `conversationId`, optional `goal`, optional `coordinatorSessionId`, and `sessionIds` | Done |
+| FR-28.6: Sidecar emits `conversation.idle` immediately on receiving the command | Done |
+| FR-28.7: If a coordinator session is provided, only that session answers the eval prompt; otherwise all sessions answer | Done |
+| FR-28.8: Sidecar runs a hidden single-turn query asking agents to respond with `STATUS: COMPLETE \| NEEDS_MORE \| FAILED` and a one-sentence reason | Done |
+| FR-28.9: Eval tokens and streaming events are suppressed so the hidden turn does not appear in the chat UI | Done |
+| FR-28.10: Multi-session results use majority vote on status; reasons are joined with ` \| ` | Done |
+| FR-28.11: Sidecar emits `conversation.idleResult` with `conversationId`, `status`, and `reason` | Done |
+| FR-28.12: `AppState.idleResults` (`[String: ConversationIdleResult]`) stores latest result per conversation | Done |
+| FR-28.13: `AppState.evaluatingConversations` (`Set<String>`) tracks in-flight evaluations | Done |
+| FR-28.14: `ConversationIdleResultView` pill renders below the message list: green checkmark for `complete`, yellow exclamation for `needsMore`, red X for `failed`; gray ellipsis while evaluating | Done |
+| FR-28.15: Sidebar conversation row shows a small status icon when an idle result is known | Done |
+| FR-28.16: `ConversationMessage.MessageType.systemEvaluation` stores the hidden eval turn in SwiftData but is never rendered in the chat bubble view | Done |
+| FR-28.17: Idle result and evaluating state are cleared when the user sends a new message to the conversation | Done |
+| FR-28.18: Unit tests (16), integration tests (8), API/WebSocket tests (6), XCTests (17), and AppXray YAML cover the full eval pipeline | Done |
+
 ### Phase 9 — UX principles
 
 - **Workspace truth** — Clone path and repo/branch shown in New Session and Agent Editor before tools run; failures show inline with retry (Validate / update clone).
@@ -972,6 +999,17 @@ Swift-owned recurring automation system for saving missions against an agent, gr
 - [x] Can filter by level, source, category, and free text
 - [x] Logs stream in real-time with auto-scroll
 - [x] Can copy filtered logs to clipboard
+
+### US-24: Know When Agents Are Done and Whether They Succeeded
+**As a** developer, **I want to** see at a glance whether a conversation achieved its goal once all agents finish, **so that** I don't have to read through the full transcript to judge success.
+
+**Acceptance criteria:**
+- [x] After all agents in a chat finish, a status pill appears below the message list
+- [x] Pill shows one of three states: "Goal achieved", "Needs more work", or "Failed", with a one-sentence reason
+- [x] A brief "Evaluating…" indicator is shown while the hidden eval turn runs
+- [x] The sidebar conversation row shows a small color-coded status icon for quick scanning
+- [x] An optional goal field in the New Session sheet lets me describe what success looks like
+- [x] The status clears automatically when I send a new message, so I know evaluation has reset
 
 ---
 
@@ -1336,3 +1374,4 @@ flowchart TD
 | 2026-03-26 | Phase 11: Task Board system. TaskItem SwiftData model, TaskBoardStore in sidecar with persistence, 4 PeerBus tools (task_board_list/create/claim/update), REST API endpoints, TaskCreationSheet and TaskEditSheet in UI, sidebar tasks section, task-board-patterns skill, wire protocol events. group_invite_agent chat tool. | FR-22, FR-26, US-21 |
 | 2026-03-26 | Phase 12: Plan mode and logging. Custom plan mode via system prompt injection (not SDK plan mode). Opus override, interactive planning workflow (ask_user → show_progress → render_content → suggest_actions). Structured JSON logging in sidecar (logger.ts), Swift Log enum with OSLog, UnifiedLogEntry, LogAggregator, DebugLogView. Sidebar bottom bar refactored with SidebarBottomBarItem enum and adaptive layout. | FR-23, FR-24, US-22, US-23 |
 | 2026-03-27 | Phase 13: Scheduled Missions. Added SwiftData models for schedules and run history, schedule engine + run coordinator, prompt templating, launchd sync, schedule launch intents, Schedule Library/detail/editor UI, chat/group scheduling entry points, schedule accessibility IDs, AppXray schedule smoke tests, and execution-path XCTest coverage. Also fixed catalog fallback loading for bundled `github-workflow` skill so catalog integrity and cascading install tests stay green. | FR-27, FR-12, FR-13 |
+| 2026-04-17 | Phase 15: Conversation Idle Detection & Evaluation. After all agents finish, AppState detects idle via `ConversationAggregateState.allDone` (debounced 500 ms) and sends `conversation.evaluate` to the sidecar with optional goal, coordinator session ID, and session IDs. Sidecar (`ConversationEvaluator`) emits `conversation.idle`, runs a hidden single-turn eval query suppressed from the streaming UI, parses `STATUS`/`REASON` lines, applies majority vote for multi-session groups, and broadcasts `conversation.idleResult`. Swift handles the result in `AppState.idleResults`; `ConversationIdleResultView` renders a colour-coded pill (complete/needsMore/failed) below the message list and the sidebar row shows a matching icon. Optional `Conversation.goal` field set in New Session sheet. `ConversationMessage.MessageType.systemEvaluation` persists the hidden turn without rendering it. State clears on next user message. Tests: 16 unit + 8 integration + 6 API/WS + 17 XCTest + AppXray YAML. | FR-28, US-24 |
