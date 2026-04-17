@@ -4,7 +4,8 @@ sortOrder: 5
 ---
 
 Review the following docs for clarity, accuracy, and completeness.
-Suggest concrete edits.
+Flag broken or missing examples, outdated API references, and
+ambiguous steps. Suggest concrete edits.
 
 Docs:
 

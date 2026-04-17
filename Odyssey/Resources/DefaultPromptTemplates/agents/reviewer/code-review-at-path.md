@@ -5,7 +5,7 @@ sortOrder: 1
 
 Review the code at the path below. Flag correctness issues, style
 inconsistencies, and architectural concerns. Group findings by
-severity.
+severity: blocking / should-fix / nitpick.
 
 Path:
 

@@ -3,6 +3,6 @@ name: "API security review"
 sortOrder: 4
 ---
 
-Review the API surface for input validation, auth, rate limiting,
-and data exposure. Rank findings by severity.
+Coder reviews the API surface and produces a findings list → gate: findings reviewed before remediation → Reviewer ranks by severity and proposes fixes.
+Coder covers: input validation, authentication enforcement, authorization checks, rate limiting, data exposure in responses, error message leakage. Reviewer covers: severity ranking, remediation approach, priority order.
 
