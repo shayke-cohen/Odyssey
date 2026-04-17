@@ -365,6 +365,7 @@ export class SessionManager {
       questionsBySession.delete(sessionId);
     }
 
+    this.toolCtx.delegation.delete(sessionId);
     this.registry.update(sessionId, { status: "paused" });
   }
 

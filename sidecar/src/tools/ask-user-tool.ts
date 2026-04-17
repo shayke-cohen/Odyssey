@@ -235,6 +235,9 @@ export function createAskUserTool(ctx: ToolContext, callingSessionId: string, on
             }, effectiveTimeoutMs);
 
             pendingQuestions.set(questionId, { resolve, reject, timer });
+            const sessionSet = questionsBySession.get(callingSessionId) ?? new Set<string>();
+            sessionSet.add(questionId);
+            questionsBySession.set(callingSessionId, sessionSet);
             onQuestionCreated?.(questionId);
 
             const inputConfig = args.input_config ? {

@@ -402,6 +402,7 @@ function handleDeleteSession(id: string, ctx: ApiContext): Response {
     return apiError("session_not_active", "Cannot delete an active session — pause it first", 409);
   }
   ctx.toolCtx.sessions.remove(id);
+  ctx.toolCtx.delegation.delete(id);
   return apiJson({ deleted: true, sessionId: id });
 }
 
