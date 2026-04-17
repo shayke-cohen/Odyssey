@@ -167,11 +167,11 @@ echo "    DMG length: $DMG_LENGTH bytes"
 
 echo "==> Creating GitHub release v$VERSION..."
 gh release create "v${VERSION}" "$DMG_PATH" \
-  --repo shayko-cohen/Odyssey \
+  --repo shayke-cohen/Odyssey \
   --title "Odyssey v${VERSION}" \
   --generate-notes
 
-DMG_URL="https://github.com/shayko-cohen/Odyssey/releases/download/v${VERSION}/${DMG_NAME}"
+DMG_URL="https://github.com/shayke-cohen/Odyssey/releases/download/v${VERSION}/${DMG_NAME}"
 echo "    GitHub release OK: $DMG_URL"
 
 # ── Step 10: Update appcast.xml ─────────────────────────────────────────────
@@ -225,4 +225,4 @@ echo ""
 echo "✅  Release v${VERSION} complete!"
 echo "   DMG URL:     $DMG_URL"
 echo "   Build:       $NEW_BUILD"
-echo "   Appcast:     https://raw.githubusercontent.com/shayko-cohen/Odyssey/main/distribution/appcast.xml"
+echo "   Appcast:     https://raw.githubusercontent.com/shayke-cohen/Odyssey/main/distribution/appcast.xml"
