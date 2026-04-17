@@ -1,7 +1,7 @@
 # Agent Question Delegation — Design Spec
 
 **Date:** 2026-04-17  
-**Status:** Design approved, pending implementation plan
+**Status:** Implemented — 2026-04-18
 
 ---
 
@@ -155,6 +155,58 @@ Coordinator row only shown when a coordinator agent exists in the conversation.
 📋 Reviewer  [fallback answer]           ← amber tag
    Correctness — we can optimise in v2.
 ```
+
+---
+
+## Implementation Notes (actual vs. spec)
+
+### Changes made during implementation
+
+**`agent.question.resolved` carries `answer`** — the wire event gained an `answer?: string` field (not in original spec). The asking agent's session renders a synthetic answer bubble inline using this text, which avoids needing to create a `ConversationMessage` for the ephemeral delegate. Without this, the Reviewer's reply would never appear in the transcript because ephemeral sessions have no `Participant` record.
+
+**`resolveTarget` for coordinator mode** — the spec assumed the sidecar would look up which session is the coordinator. `SessionState` has no `isCoordinator` field, so the Swift side instead writes the coordinator's agent name into `targetAgentName` when calling `setDelegationMode`. The sidecar stays stateless about group roles.
+
+**`leastBusyAgent` fallback is `by_agents`-only** — the fallback chain applies only when `delegationConfig.mode === "by_agents"`. Other auto modes (specific_agent, coordinator) already have an explicit target so least-busy is never consulted.
+
+**`DelegationModePickerView` commit guard** — the "Specific agent" card expands an agent picker inline; `onSelect` is only called when an agent is actually chosen, preventing a nil `targetAgentName` from being committed.
+
+**DelegationStore cleanup** — `DelegationStore.delete(sessionId)` is called in `session-manager.ts` `pauseSession()` and in `api-router.ts` `handleDeleteSession()` to prevent unbounded memory growth. The spec did not specify teardown behaviour.
+
+**`timeout_seconds` validation** — Zod schema uses `.positive()` to reject zero/negative values. The spec said "cannot exceed mode default" but enforcement is via `Math.min(hintMs, modeMs)` clamping rather than rejection.
+
+**`questionsBySession` tracking** — `ask-user-tool.ts` tracks in-flight questions per session (in addition to `pendingQuestions`) so session pause cleanup can cancel them correctly.
+
+### Files created / modified
+
+| Layer | File | Change |
+|---|---|---|
+| Sidecar store | `sidecar/src/stores/delegation-store.ts` | **New** — `DelegationStore` class with `get/set/delete/resolveTarget` |
+| Sidecar tool | `sidecar/src/tools/ask-user-tool.ts` | Add `timeout_seconds`, mode-keyed timeouts, delegation routing on expiry |
+| Sidecar tool | `sidecar/src/tools/ask-agent-tool.ts` | **New** — `ask_agent` implementation |
+| Tool context | `sidecar/src/tools/tool-context.ts` | Add `delegation: DelegationStore` |
+| Sidecar index | `sidecar/src/index.ts` | Instantiate `DelegationStore`, pass to tool context |
+| Peer tools | `sidecar/src/tools/peerbus-server.ts` | Register `ask_agent` tool per calling session |
+| Wire server | `sidecar/src/ws-server.ts` | Handle `conversation.setDelegationMode` command |
+| Session manager | `sidecar/src/session-manager.ts` | `delegation.delete(sessionId)` on pause |
+| API router | `sidecar/src/api-router.ts` | `delegation.delete(id)` on session DELETE |
+| Wire types | `sidecar/src/types.ts` | `DelegationMode` type, new command and events |
+| Swift protocol | `Odyssey/Services/SidecarProtocol.swift` | `DelegationMode` enum, `setDelegationMode` command, routing/resolved events with `answer` |
+| Swift model | `Odyssey/Models/Conversation.swift` | `delegationMode`, `delegationTargetAgentName`, `@Transient` routing state, `ResolvedQuestionInfo` |
+| Swift app state | `Odyssey/App/AppState.swift` | `agentQuestionRouting/Resolved` handlers, `setDelegationMode()` method |
+| Chat UI | `Odyssey/Views/MainWindow/ChatView.swift` | `DelegationModePickerView`, `delegationBadgeButton`, `QuestionRoutingPillView`, synthetic answer bubble |
+| Message bubble | `Odyssey/Views/Components/MessageBubble.swift` | `delegationTag` parameter (unused — synthetic bubble approach used instead) |
+
+### Test coverage
+
+| Layer | File | Count |
+|---|---|---|
+| Unit — DelegationStore | `sidecar/test/unit/delegation-store.test.ts` | 8 |
+| Unit — ask-user helpers | `sidecar/test/unit/ask-user-delegation.test.ts` | 22 |
+| Unit — ask-agent tool | `sidecar/test/unit/ask-agent-tool.test.ts` | 14 |
+| Integration — delegation flows | `sidecar/test/integration/delegation-flow.test.ts` | 20 |
+| API — WS/HTTP delegation | `sidecar/test/api/delegation-api.test.ts` | 14 |
+| E2E — AppXray YAML | `Odyssey/tests/appxray/delegation-ui.yaml` | 14 scenarios |
+| Swift XCTest | `OdysseyTests/DelegationTests.swift` | 25 |
 
 ---
 
