@@ -270,6 +270,26 @@ struct TemplatesSettingsTab: View {
 
             HStack(spacing: 6) {
                 Button {
+                    duplicateTemplate(template)
+                } label: {
+                    Image(systemName: "plus.square.on.square")
+                }
+                .buttonStyle(.borderless)
+                .help("Duplicate template")
+                .xrayId("settings.templates.duplicateButton.\(template.id.uuidString)")
+                .accessibilityLabel("Duplicate template")
+
+                Button {
+                    revealTemplateInFinder(template)
+                } label: {
+                    Image(systemName: "folder")
+                }
+                .buttonStyle(.borderless)
+                .help("Reveal in Finder")
+                .xrayId("settings.templates.revealInFinderButton.\(template.id.uuidString)")
+                .accessibilityLabel("Reveal in Finder")
+
+                Button {
                     openInEditor(template)
                 } label: {
                     Image(systemName: "arrow.up.right.square")
@@ -291,6 +311,15 @@ struct TemplatesSettingsTab: View {
             }
         }
         .padding(.vertical, 6)
+        .contextMenu {
+            Button("Edit") { editingTemplate = template }
+            Button("Duplicate") { duplicateTemplate(template) }
+            Divider()
+            Button("Reveal in Finder") { revealTemplateInFinder(template) }
+            Button("Open in Editor") { openInEditor(template) }
+            Divider()
+            Button("Delete", role: .destructive) { deleteTemplate(template) }
+        }
     }
 
     private var emptySelection: some View {
@@ -368,6 +397,27 @@ struct TemplatesSettingsTab: View {
         appState.configSyncService?.deleteFile(forPromptTemplate: template)
         modelContext.delete(template)
         try? modelContext.save()
+    }
+
+    private func duplicateTemplate(_ template: PromptTemplate) {
+        let copy = PromptTemplate(
+            name: "\(template.name) Copy",
+            prompt: template.prompt,
+            sortOrder: template.sortOrder + 1,
+            agent: template.agent,
+            group: template.group
+        )
+        modelContext.insert(copy)
+        try? modelContext.save()
+        appState.configSyncService?.writeBack(promptTemplate: copy)
+    }
+
+    private func revealTemplateInFinder(_ template: PromptTemplate) {
+        guard let slug = template.configSlug else { return }
+        let fileURL = ConfigFileManager.promptTemplatesDirectory
+            .appendingPathComponent(slug)
+            .appendingPathExtension("md")
+        NSWorkspace.shared.activateFileViewerSelecting([fileURL])
     }
 
     private func moveTemplates(from offsets: IndexSet, to destination: Int) {

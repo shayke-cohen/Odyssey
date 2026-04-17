@@ -209,30 +209,7 @@ struct SidebarView: View {
         }
         .onChange(of: windowState.selectedConversationId) { _, newValue in
             guard let selectedId = newValue else { return }
-            if let selectedConversation = conversations.first(where: { $0.id == selectedId }),
-               let projectId = selectedConversation.projectId {
-                windowState.selectProject(id: projectId, preserveSelection: true)
-                expandedProjectIds.insert(projectId)
-            } else if let selectedConversation = conversations.first(where: { $0.id == selectedId }),
-                      selectedConversation.projectId == nil {
-                // Expand the owning agent or group so the active row is visible
-                if let agent = agents.first(where: { conversationsForAgent($0).contains { $0.id == selectedId } }) {
-                    expandedAgentIds.insert(agent.id)
-                } else if let group = groups.first(where: { conversationsForGroup($0).contains { $0.id == selectedId } }) {
-                    expandedGroupIds.insert(group.id)
-                }
-            } else if let task = taskItems.first(where: { $0.id == selectedId }) {
-                if let convId = task.conversationId {
-                    DispatchQueue.main.async {
-                        windowState.selectedConversationId = convId
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        windowState.selectedConversationId = nil
-                        editingTask = task
-                    }
-                }
-            }
+            handleConversationSelectionChange(selectedId)
         }
         .frame(minWidth: 240)
         .toolbar {
@@ -2176,6 +2153,25 @@ struct SidebarView: View {
             InstanceConfig.userDefaults.set(project.rootPath, forKey: AppSettings.instanceWorkingDirectoryKey)
             expandedProjectIds.insert(project.id)
             windowState.selectProject(project)
+        }
+    }
+
+    private func handleConversationSelectionChange(_ selectedId: UUID) {
+        if let conv = conversations.first(where: { $0.id == selectedId }), let projectId = conv.projectId {
+            windowState.selectProject(id: projectId, preserveSelection: true)
+            expandedProjectIds.insert(projectId)
+        } else if let conv = conversations.first(where: { $0.id == selectedId }), conv.projectId == nil {
+            if let agent = agents.first(where: { conversationsForAgent($0).contains { $0.id == selectedId } }) {
+                expandedAgentIds.insert(agent.id)
+            } else if let group = groups.first(where: { conversationsForGroup($0).contains { $0.id == selectedId } }) {
+                expandedGroupIds.insert(group.id)
+            }
+        } else if let task = taskItems.first(where: { $0.id == selectedId }) {
+            if let convId = task.conversationId {
+                DispatchQueue.main.async { windowState.selectedConversationId = convId }
+            } else {
+                DispatchQueue.main.async { windowState.selectedConversationId = nil; editingTask = task }
+            }
         }
     }
 }

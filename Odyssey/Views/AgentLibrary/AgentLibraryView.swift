@@ -69,6 +69,11 @@ struct AgentLibraryView: View {
                                 Button("Duplicate") { duplicateAgent(agent) }
                                     .xrayId("agentLibrary.card.context.duplicate.\(agent.id.uuidString)")
                                 Divider()
+                                Button("Open in Finder") { revealAgentInFinder(agent) }
+                                    .xrayId("agentLibrary.card.context.openInFinder.\(agent.id.uuidString)")
+                                Button("Open in Editor") { openAgentInEditor(agent) }
+                                    .xrayId("agentLibrary.card.context.openInEditor.\(agent.id.uuidString)")
+                                Divider()
                                 Button("Delete", role: .destructive) { deleteAgent(agent) }
                                     .xrayId("agentLibrary.card.context.delete.\(agent.id.uuidString)")
                             }
@@ -220,6 +225,18 @@ struct AgentLibraryView: View {
     private func deleteAgent(_ agent: Agent) {
         modelContext.delete(agent)
         try? modelContext.save()
+    }
+
+    private func revealAgentInFinder(_ agent: Agent) {
+        let slug = agent.configSlug ?? ConfigFileManager.slugify(agent.name)
+        let dir = ConfigFileManager.agentsDirectory.appendingPathComponent(slug)
+        NSWorkspace.shared.activateFileViewerSelecting([dir])
+    }
+
+    private func openAgentInEditor(_ agent: Agent) {
+        let slug = agent.configSlug ?? ConfigFileManager.slugify(agent.name)
+        let dir = ConfigFileManager.agentsDirectory.appendingPathComponent(slug)
+        NSWorkspace.shared.open(dir)
     }
 
     private func startSession(with agent: Agent) {

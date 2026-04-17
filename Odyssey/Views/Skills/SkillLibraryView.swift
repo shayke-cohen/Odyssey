@@ -53,6 +53,11 @@ struct SkillLibraryView: View {
                                     }
                                     .xrayId("skillLibrary.contextMenu.duplicate.\(skill.id.uuidString)")
                                     Divider()
+                                    Button("Open in Finder") { revealSkillInFinder(skill) }
+                                        .xrayId("skillLibrary.contextMenu.openInFinder.\(skill.id.uuidString)")
+                                    Button("Open in Editor") { openSkillInEditor(skill) }
+                                        .xrayId("skillLibrary.contextMenu.openInEditor.\(skill.id.uuidString)")
+                                    Divider()
                                     Button("Delete", role: .destructive) {
                                         skillToDelete = skill
                                     }
@@ -251,5 +256,17 @@ struct SkillLibraryView: View {
         copy.updatedAt = Date()
         modelContext.insert(copy)
         try? modelContext.save()
+    }
+
+    private func revealSkillInFinder(_ skill: Skill) {
+        let slug = skill.configSlug ?? ConfigFileManager.slugify(skill.name)
+        let file = ConfigFileManager.skillsDirectory.appendingPathComponent("\(slug).md")
+        NSWorkspace.shared.activateFileViewerSelecting([file])
+    }
+
+    private func openSkillInEditor(_ skill: Skill) {
+        let slug = skill.configSlug ?? ConfigFileManager.slugify(skill.name)
+        let file = ConfigFileManager.skillsDirectory.appendingPathComponent("\(slug).md")
+        NSWorkspace.shared.open(file)
     }
 }
