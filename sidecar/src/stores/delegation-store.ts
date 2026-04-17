@@ -6,7 +6,7 @@ export interface DelegationConfig {
 }
 
 export class DelegationStore {
-  private configs = new Map<string, DelegationConfig>();
+  private readonly configs = new Map<string, DelegationConfig>();
 
   get(sessionId: string): DelegationConfig {
     return this.configs.get(sessionId) ?? { mode: "off" };
@@ -14,6 +14,10 @@ export class DelegationStore {
 
   set(sessionId: string, config: DelegationConfig): void {
     this.configs.set(sessionId, config);
+  }
+
+  delete(sessionId: string): void {
+    this.configs.delete(sessionId);
   }
 
   resolveTarget(

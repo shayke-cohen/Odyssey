@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { DelegationStore } from "../src/stores/delegation-store.js";
+import { DelegationStore } from "../../src/stores/delegation-store.js";
 
 describe("DelegationStore", () => {
   let store: DelegationStore;
@@ -38,5 +38,10 @@ describe("DelegationStore", () => {
   test("resolveTarget: coordinator falls back to nominated if no targetAgentName", () => {
     store.set("s1", { mode: "coordinator" });
     expect(store.resolveTarget("s1", "Reviewer")).toBe("Reviewer");
+  });
+
+  test("resolveTarget: unknown session falls back to nominated", () => {
+    // no set() call — session is unknown
+    expect(store.resolveTarget("unknown-session", "Reviewer")).toBe("Reviewer");
   });
 });
