@@ -249,11 +249,14 @@ struct SettingsView: View {
 // MARK: - General
 
 private struct GeneralSettingsTab: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var conversations: [Conversation]
     @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
     @AppStorage(AppSettings.textSizeKey, store: AppSettings.store) private var textSize = AppSettings.defaultTextSize
     @AppStorage(AppSettings.quickActionUsageOrderKey, store: AppSettings.store) private var quickActionUsageOrder = true
     @AppStorage(AppSettings.defaultMaxTurnsKey, store: AppSettings.store) private var defaultMaxTurns = AppSettings.defaultMaxTurns
     @AppStorage(AppSettings.defaultMaxBudgetKey, store: AppSettings.store) private var defaultMaxBudget = AppSettings.defaultMaxBudget
+    @State private var showDeleteHistoryConfirmation = false
 
     private var selectedAppearance: Binding<AppAppearance> {
         Binding(
@@ -315,9 +318,44 @@ private struct GeneralSettingsTab: View {
                         .font(.caption)
                 }
             }
+
+            Section("Data") {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Chat History")
+                        Text("\(conversations.count) thread\(conversations.count == 1 ? "" : "s") across all agents, groups, and projects")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Delete All…", role: .destructive) {
+                        showDeleteHistoryConfirmation = true
+                    }
+                    .xrayId("settings.general.deleteAllHistoryButton")
+                }
+            }
         }
         .formStyle(.grouped)
         .settingsDetailLayout()
+        .confirmationDialog(
+            "Delete all chat history?",
+            isPresented: $showDeleteHistoryConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete All Threads", role: .destructive) {
+                deleteAllHistory()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This permanently deletes all \(conversations.count) thread\(conversations.count == 1 ? "" : "s") and their messages from agents, groups, and projects. This cannot be undone.")
+        }
+    }
+
+    private func deleteAllHistory() {
+        for conversation in conversations {
+            modelContext.delete(conversation)
+        }
+        try? modelContext.save()
     }
 }
 

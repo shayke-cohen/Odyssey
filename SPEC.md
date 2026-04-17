@@ -2,8 +2,8 @@
 
 Living specification tracking implemented features, user flows, and requirements.
 
-**Version:** 0.19.0
-**Status:** Phase 19 — Hybrid creation sheets for agents, skills, and templates
+**Version:** 0.20.0
+**Status:** Phase 20 — Models tab per-provider rows, context menu file actions, and chat history deletion
 
 ---
 
@@ -73,6 +73,7 @@ Users create and manage reusable agent templates.
 | FR-2.16: Agent → Skill → MCP dependency hierarchy (skills declare MCPs, agents select skills) | Done |
 | FR-2.17: Duplicate agent with full config copy | Done |
 | FR-2.18: catalogId tracking for catalog-originating agents | Done |
+| FR-2.19: Agent card context menu — Open in Finder (reveals agent slug directory), Open in Editor (opens directory in default app), in addition to Edit/Duplicate/Delete | Done |
 
 ### FR-3: Session Lifecycle
 
@@ -275,7 +276,10 @@ Configurable application preferences accessible via Cmd+, (standard macOS Settin
 | FR-9.19: `Color.darkened(by:)` helper for HSB-based gradient end-stop computation | Done |
 | FR-9.20: `revealInFinder` targets correct disk paths: agents/groups → `{slug}/` directory, skills → `{slug}.md`, MCPs/permissions → `{slug}.json` | Done |
 | FR-9.21: Advanced tab (merged Connection + Developer) gated behind Labs "Show advanced features" toggle — sidecar status, ports, TURN relay, path overrides, data directory, log level, built-in config policy, reset | Done |
-| FR-9.22: Models tab — Ollama, Codex, Foundation, MLX default picker, Local MLX Setup, and MLX Library collapsed into a "Local & Custom Models" DisclosureGroup; only Default Provider and Default Claude Model visible by default | Done |
+| FR-9.22: Models tab — explicit Default Provider picker at top; per-provider rows (Claude, Codex, Foundation, MLX) each showing colored dot, provider name, "default" badge when active, and a compact `.fixedSize()` model picker; tapping a row or selecting its model sets that provider as default; Ollama, Local MLX Setup, and MLX Library remain below in "Local & Custom Models" section | Done |
+| FR-9.23: General tab — Data section showing live thread count ("N threads across all agents, groups, and projects") with a destructive "Delete All…" button; confirmation dialog states permanent deletion of all threads and messages; cascade-deletes Conversation + Sessions + Messages via SwiftData | Done |
+| FR-9.24: Skill card context menu — Open in Finder (reveals slug .md file), Open in Editor (opens file in default app), in addition to Edit/Duplicate/Delete | Done |
+| FR-9.25: Template rows in Configuration → Templates — per-row Duplicate, Reveal in Finder, and Open in Editor buttons plus full context menu (Edit / Duplicate / Reveal in Finder / Open in Editor / Delete) | Done |
 
 ### FR-10: Multi-Instance Support
 
