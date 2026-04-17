@@ -81,15 +81,12 @@ struct SettingsView: View {
     @StateObject private var modelsState = ModelsSettingsState()
     @AppStorage(FeatureFlags.showAdvancedKey, store: AppSettings.store) private var masterFlag = false
     @AppStorage(FeatureFlags.federationKey, store: AppSettings.store) private var federationFlag = false
-    @AppStorage(FeatureFlags.debugLogsKey, store: AppSettings.store) private var debugLogsFlag = false
-    @AppStorage(FeatureFlags.devModeKey, store: AppSettings.store) private var devModeFlag = false
 
     private let pendingConfigSection: ConfigSection?
     private let pendingConfigSlug: String?
     private let onBackToApp: (() -> Void)?
 
     private var federationEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.federationKey) || (masterFlag && federationFlag) }
-    private var devModeEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.devModeKey) || (masterFlag && devModeFlag) }
 
     private var visibleSections: [SettingsSection] {
         SettingsSection.allCases.filter { section in
@@ -870,7 +867,7 @@ private struct ModelsSettingsTab: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Local providers run fully on this Mac.")
                             .font(.headline)
-                        Text("MLX uses the managed runner plus the models you download below. Developer overrides still live in the Developer tab.")
+                        Text("MLX uses the managed runner plus the models you download below. Path overrides are in Advanced settings.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
