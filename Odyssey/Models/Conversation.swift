@@ -120,8 +120,14 @@ final class Conversation {
     var roomOriginKind: String = "local"
     var roomOriginHomeserver: String? = nil
     var roomOriginMatrixId: String? = nil
+    // Delegation
+    private var delegationModeRaw: String?
+    var delegationTargetAgentName: String?
     var startedAt: Date
     var closedAt: Date?
+
+    @Transient var pendingQuestionRouting: [String: String] = [:]
+    @Transient var resolvedQuestions: [String: ResolvedQuestionInfo] = [:]
 
     @Relationship(deleteRule: .cascade, inverse: \Session.conversations)
     var sessions: [Session] = []
@@ -194,6 +200,11 @@ final class Conversation {
         }
     }
 
+    var delegationMode: DelegationMode {
+        get { delegationModeRaw.flatMap(DelegationMode.init(rawValue:)) ?? .off }
+        set { delegationModeRaw = newValue.rawValue }
+    }
+
     var roomRole: SharedRoomRole? {
         get { roomRoleRaw.flatMap(SharedRoomRole.init(rawValue:)) }
         set { roomRoleRaw = newValue?.rawValue }
@@ -233,4 +244,9 @@ final class Conversation {
         guard let roomId else { return false }
         return !roomId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+}
+
+struct ResolvedQuestionInfo {
+    let answeredBy: String
+    let isFallback: Bool
 }
