@@ -14,6 +14,10 @@ enum CreationMode: String, CaseIterable {
 struct AgentCreationSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+
+    @Query(sort: \Skill.name) private var allSkills: [Skill]
+    @Query(sort: \MCPServer.name) private var allMCPs: [MCPServer]
 
     let onSave: (Agent) -> Void
 
@@ -70,6 +74,16 @@ struct AgentCreationSheet: View {
             footerButtons
         }
         .frame(minWidth: 480, minHeight: 520)
+        .onChange(of: appState.isGeneratingAgent) { _, generating in
+            isGenerating = generating
+        }
+        .onChange(of: appState.generateAgentError) { _, error in
+            generateError = error
+        }
+        .onChange(of: appState.generatedAgentSpec) { _, spec in
+            guard let spec else { return }
+            applyGeneratedSpec(spec)
+        }
     }
 
     // MARK: - Header
@@ -262,13 +276,48 @@ struct AgentCreationSheet: View {
 
     // MARK: - Actions
 
-    /// Stub: AI generation will be implemented in a later task.
+    /// Trigger AI agent generation via the sidecar.
     @MainActor
     private func generate() async {
-        isGenerating = true
+        guard !promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         generateError = nil
-        // TODO: Integrate AI generation in a later task.
-        isGenerating = false
+
+        let skillEntries = allSkills.map { skill in
+            SkillCatalogEntry(
+                id: skill.id.uuidString,
+                name: skill.name,
+                description: skill.skillDescription,
+                category: skill.category
+            )
+        }
+        let mcpEntries = allMCPs.map { mcp in
+            MCPCatalogEntry(
+                id: mcp.id.uuidString,
+                name: mcp.name,
+                description: mcp.serverDescription
+            )
+        }
+
+        appState.requestAgentGeneration(
+            prompt: promptText.trimmingCharacters(in: .whitespacesAndNewlines),
+            skills: skillEntries,
+            mcps: mcpEntries
+        )
+    }
+
+    /// Apply a generated spec to the manual fields and switch to manual mode.
+    @MainActor
+    private func applyGeneratedSpec(_ spec: GeneratedAgentSpec) {
+        name = spec.name
+        agentDescription = spec.description
+        icon = spec.icon
+        color = spec.color
+        model = spec.model
+        systemPrompt = spec.systemPrompt
+        maxTurns = spec.maxTurns.map { String($0) } ?? ""
+        maxBudget = spec.maxBudget.map { String($0) } ?? ""
+        // Switch to manual mode so the user can review and edit the result
+        mode = .manual
     }
 
     /// Save the manually-configured agent.
