@@ -1,0 +1,89 @@
+name: Thread Creation Popover Tests
+description: E2E tests for the redesigned sidebar "+ New" menu with agent picker and group picker popovers
+
+tests:
+  - name: "TC-1: Sidebar menu shows renamed items"
+    steps:
+      - interact:
+          action: screenshot
+      - inspect:
+          target: tree
+          depth: 3
+    assert:
+      screenshot_contains: "New"
+
+  - name: "TC-2: New menu opens agent picker with search field"
+    steps:
+      - interact:
+          action: tap
+          selector: '@label("New")'
+      - interact:
+          action: waitFor
+          condition: elementVisible
+          selector: '@text("Chat with Agent")'
+          timeout: 3000
+      - interact:
+          action: tap
+          selector: '@text("Chat with Agent")'
+      - interact:
+          action: waitFor
+          condition: elementVisible
+          selector: '@text("Search agents")'
+          timeout: 3000
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "Search agents"
+
+  - name: "TC-3: Agent picker contains No specialized agent row"
+    steps:
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "No specialized agent"
+
+  - name: "TC-4: Agent picker footer shows add mission hint"
+    steps:
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "add mission"
+
+  - name: "TC-5: New menu opens group picker with search field"
+    steps:
+      - interact:
+          action: tap
+          selector: '@type("KeyboardShortcut")'
+      - interact:
+          action: keyPress
+          key: Escape
+      - interact:
+          action: tap
+          selector: '@label("New")'
+      - interact:
+          action: waitFor
+          condition: elementVisible
+          selector: '@text("Chat with Group")'
+          timeout: 3000
+      - interact:
+          action: tap
+          selector: '@text("Chat with Group")'
+      - interact:
+          action: waitFor
+          condition: elementVisible
+          selector: '@text("Search groups")'
+          timeout: 3000
+      - interact:
+          action: screenshot
+    assert:
+      screenshot_contains: "Search groups"
+
+  - name: "TC-6: ChatView empty state has template chips region"
+    steps:
+      - interact:
+          action: screenshot
+      - inspect:
+          target: element
+          selector: '@testId("chat.emptyState")'
+    assert:
+      screenshot_contains: "No agent"
