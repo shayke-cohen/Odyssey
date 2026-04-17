@@ -751,6 +751,81 @@ In multi-agent group conversations agents can route clarifying questions to othe
 | FR-29.13: Delegated answer shown as a synthetic bubble using the `answer` field from the resolved event; tagged "answered for you" (direct) or "fallback answer" (timeout) | Done |
 | FR-29.14: 117 tests across 7 layers: DelegationStore unit (8), ask-user helpers (22), ask-agent unit (14), integration flows (20), API/WS (14), AppXray YAML (14), Swift XCTest (25) | Done |
 
+### FR-30: Hybrid Creation Sheets
+
+**Status:** Implemented
+
+Three unified hybrid modals replace the legacy single-purpose editor and from-prompt sheets for agents, skills, and templates. Each sheet offers two modes toggled by a segmented control at the top: **From Prompt** (AI-assisted generation) and **Manual** (direct form entry). File-first save: `ConfigFileManager` writes config files to `~/.odyssey/config/` before updating SwiftData, so the file is always the source of truth.
+
+#### FR-30.1: AgentCreationSheet
+
+| Requirement | Status |
+|---|---|
+| FR-30.1.1: Replaces `AgentEditorView` + `AgentFromPromptSheet` | Done |
+| FR-30.1.2: Mode segmented control — From Prompt / Manual | Done |
+| FR-30.1.3: From Prompt mode calls existing `generate.agent` sidecar command | Done |
+| FR-30.1.4: Manual mode — name, description, icon, color, provider, model, system prompt, max turns, max budget, instance policy | Done |
+| FR-30.1.5: `performAgentSave` free function writes `config/agents/{slug}/config.json` + `prompt.md` then upserts SwiftData | Done |
+| FR-30.1.6: `performAgentSave` is `throws`; file write errors surface as inline error text | Done |
+| FR-30.1.7: Edit mode — pre-fills from `existingAgent`; updates in-place (no duplicate) | Done |
+| FR-30.1.8: `onSave` callback delivers the saved `Agent` to the caller | Done |
+| FR-30.1.9: Accessibility: `agentCreation.title`, `.closeButton`, `.modePicker`, `.nameField`, `.createButton`, `.cancelButton` | Done |
+| FR-30.1.10: XCTest: slugify, file creation, SwiftData insertion, update-existing, system-provider omission, throw on invalid path | Done |
+
+#### FR-30.2: SkillCreationSheet
+
+| Requirement | Status |
+|---|---|
+| FR-30.2.1: Replaces `SkillEditorView` | Done |
+| FR-30.2.2: From Prompt mode calls new `generate.skill` sidecar command | Done |
+| FR-30.2.3: Manual mode — name, description, category, triggers (tag list), required MCPs, markdown content | Done |
+| FR-30.2.4: `performSkillSave` free function writes `config/skills/{slug}.md` (YAML frontmatter + markdown body) then upserts SwiftData | Done |
+| FR-30.2.5: Edit mode — pre-fills from `existingSkill` | Done |
+| FR-30.2.6: Accessibility: `skillCreation.title`, `.closeButton`, `.modePicker`, `.nameField`, `.createButton`, `.cancelButton` | Done |
+| FR-30.2.7: XCTest: file creation with YAML frontmatter, SwiftData insertion | Done |
+
+#### FR-30.3: PromptTemplateCreationSheet
+
+| Requirement | Status |
+|---|---|
+| FR-30.3.1: Replaces `PromptTemplateEditorSheet` | Done |
+| FR-30.3.2: Always owned by an agent or group (`ownerAgent` / `ownerGroup`) | Done |
+| FR-30.3.3: From Prompt mode calls new `generate.template` sidecar command | Done |
+| FR-30.3.4: Manual mode — name + prompt text editor | Done |
+| FR-30.3.5: `performTemplateSave` writes `config/prompt-templates/{owner-kind}/{ownerSlug}/{templateSlug}.md` then upserts SwiftData | Done |
+| FR-30.3.6: Edit mode — pre-fills from `existingTemplate` | Done |
+| FR-30.3.7: `try context.save()` (not `try?`) surfaces persistence errors | Done |
+| FR-30.3.8: Accessibility: `templateCreation.title`, `.closeButton`, `.modePicker`, `.nameField`, `.promptEditor`, `.intentEditor`, `.generateButton`, `.createButton`, `.cancelButton`, `.generatingIndicator` | Done |
+| FR-30.3.9: XCTest: file created under correct owner directory, SwiftData insertion | Done |
+
+#### FR-30.4: New Sidecar Generation Commands
+
+| Requirement | Status |
+|---|---|
+| FR-30.4.1: `generate.skill` command — `{ requestId, prompt, availableCategories, availableMCPs }` | Done |
+| FR-30.4.2: `generate.skill.result` event — `{ requestId, spec: GeneratedSkillSpec }` | Done |
+| FR-30.4.3: `GeneratedSkillSpec` — `{ name, description, category, triggers, matchedMCPIds, content }` | Done |
+| FR-30.4.4: `generate.skill.error` event — `{ requestId, error }` | Done |
+| FR-30.4.5: `generate.template` command — `{ requestId, intent, agentName, agentSystemPrompt }` | Done |
+| FR-30.4.6: `generate.template.result` event — `{ requestId, spec: GeneratedTemplateSpec }` | Done |
+| FR-30.4.7: `GeneratedTemplateSpec` — `{ name, prompt }` | Done |
+| FR-30.4.8: `generate.template.error` event — `{ requestId, error }` | Done |
+| FR-30.4.9: `generate.template` uses `claude-haiku-4-5-20251001` for fast template generation | Done |
+| FR-30.4.10: Types added to `sidecar/src/types.ts` and `Odyssey/Services/SidecarProtocol.swift` | Done |
+
+#### FR-30.5: Test Coverage
+
+| Requirement | Status |
+| --- | --- |
+| FR-30.5.1: `OdysseyTests/Configuration/AgentCreationSheetTests.swift` — 5 XCTests | Done |
+| FR-30.5.2: `OdysseyTests/Configuration/SkillCreationSheetTests.swift` — file + SwiftData | Done |
+| FR-30.5.3: `OdysseyTests/Configuration/PromptTemplateCreationSheetTests.swift` — file under owner dir | Done |
+| FR-30.5.4: `sidecar/test/unit/generation-spec-validation.test.ts` — fence stripping, defaults, required-field validation | Done |
+| FR-30.5.5: `sidecar/test/api/generation-api.test.ts` — HTTP 201/400/500 with mocked Anthropic SDK | Done |
+| FR-30.5.6: `sidecar/test/integration/generation-commands.test.ts` — real WsServer + mocked SDK; result shape, errors, requestId isolation | Done |
+| FR-30.5.7: `sidecar/test/e2e/generation-e2e.test.ts` — real subprocess; HTTP validation + WS error-path + concurrent isolation; live tests behind `ODYSSEY_E2E_LIVE=1` | Done |
+| FR-30.5.8: `sidecar/test/e2e/creation-sheets-appxray.test.ts` — AppXray WS client; auto-skip guard; open/mode/disabled-create/fill-submit flows | Done |
+
 ### Phase 9 — UX principles
 
 - **Workspace truth** — Clone path and repo/branch shown in New Session and Agent Editor before tools run; failures show inline with retry (Validate / update clone).
@@ -1418,3 +1493,4 @@ flowchart TD
 | 2026-04-18 | Multi-model Groups & Agent Variants. 5 new built-in agents with non-Claude providers: Coder (Codex) / codex / gpt-5-codex, Attacker / codex / gpt-5-codex, Coder (Sonnet) / claude / sonnet, Tester (Haiku) / claude / haiku, Coder (Local) / foundation / foundation.system. Removed Code Review Pair (subset of Dev Squad) and Full Ensemble (10-agent fan-out anti-pattern). Added 5 cross-model group presets: Dual Coder Debate (Codex Coder + Claude Coder + Claude Reviewer coordinator — two implementations, best-solution synthesis); Codex Build + Claude Review (Codex builder → Claude reviewer → Claude tester, sequential with artifact gate); Cost-Tiered Squad (Opus orchestrator + Sonnet coder + Haiku tester, autonomous-capable, budget-conscious); Local First (Foundation Coder coordinator + Cloud Reviewer, autoReplyEnabled: false, cloud only on explicit @mention — privacy-preserving); Red Team (Claude Coder + Codex Attacker + Claude Tester — adversarial probing loop). `DefaultsSeeder.agentNamesForSkill` updated so all new agents receive peer-collaboration, blackboard-patterns, artifact-handoff-gate, github-workflow, and agent-identity skills on existing databases. Tests: 17 XCTest (provider normalization, concreteProvider, isModel compatibility, routing plans for all 4 group types) + 11 TS unit (SessionRegistry multi-provider create/get/list/remove) + 7 TS integration (session isolation, blackboard key separation) + 15 TS API (agents list + named lookup with URL-encoded parenthesised names) + 5 TS E2E structural. | FR-4, FR-5 |
 | 2026-04-18 | Slash Command Palette refinements + Advanced Settings tab. Dropdown capped at 220pt with `ScrollViewReader` auto-scroll on keyboard nav. Fixed duplicate `conversationId` in `IncomingWireMessage` that broke Decodable conformance. Merged Connection + Developer settings tabs into single **Advanced** tab (Paths, Data, Logging, Built-In Config overrides, Paths browse buttons). URL-decoded route params in `api-router.ts` `matchRoute`. | FR-5, FR-9 |
 | 2026-04-18 | Configuration UI Hero Detail redesign. Settings › Configuration tab gets a three-pane layout (sub-nav/list/detail). Detail pane: gradient hero header with 44px avatar, agent/group name, description, meta-line (model·skills·MCPs), Reveal in Finder, Edit buttons, Resident badge. List pane: colored avatar rows with name, subtitle, model badge, resident pin dot; section title + "+ New" header; search field. Color.darkened(by:) helper for HSB gradient end-stops. revealInFinder paths corrected (agents/groups → directories, skills → .md, mcps/permissions → .json). Chat empty state: "Try asking" hardcoded suggestions now hidden when PromptTemplates exist — templates are the primary prompt suggestion source, hardcoded starters serve as fallback only. Tests: 31 XCTest (unit/integration/E2E) covering Color.darkened, slugify, reveal URL construction, disk structure, ConfigSelectedItem enum, and MCP subtitle deduplication. | FR-6.23–6.26, FR-9.18–9.20 |
+| 2026-04-17 | Phase 19: Hybrid Creation Sheets. Replaced `AgentEditorView` + `AgentFromPromptSheet` with `AgentCreationSheet`; replaced `SkillEditorView` with `SkillCreationSheet`; replaced `PromptTemplateEditorSheet` with `PromptTemplateCreationSheet`. All three sheets use a From Prompt / Manual mode segmented control. File-first save pattern: `ConfigFileManager` writes config files before SwiftData update; `performAgentSave` / `performSkillSave` / `performTemplateSave` are free functions for testability and are `throws`. Added `generate.skill` and `generate.template` sidecar WS commands with `GeneratedSkillSpec` and `GeneratedTemplateSpec` response types; `generate.template` uses `claude-haiku-4-5-20251001` for speed. Fixed pre-existing bug: missing `import Anthropic` in `ws-server.ts`. New accessibility prefixes: `agentCreation.*`, `skillCreation.*`, `templateCreation.*`. Tests: 5 XCTest (AgentCreationSheet) + SkillCreationSheet + PromptTemplateCreationSheet XCTests + sidecar unit (fence stripping, defaults, validation) + API (HTTP 201/400/500 with mocked SDK) + integration (real WsServer + mocked SDK, requestId isolation) + E2E (real subprocess, error-path coverage, live tests behind ODYSSEY_E2E_LIVE=1) + AppXray E2E (auto-skip guard, creation sheet flows). | FR-30 |

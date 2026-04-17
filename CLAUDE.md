@@ -168,7 +168,7 @@ Dot-separated `viewName.elementName` in camelCase:
 | InspectorView | `inspector.*` |
 | NewSessionSheet | `newSession.*` |
 | AgentLibraryView | `agentLibrary.*` |
-| AgentEditorView | `agentEditor.*` |
+| AgentCreationSheet | `agentCreation.*` |
 | AgentCommsView | `agentComms.*` |
 | PeerNetworkView | `peerNetwork.*` |
 | SettingsView | `settings.{general,connection,developer}.*` |
@@ -190,7 +190,7 @@ Dot-separated `viewName.elementName` in camelCase:
 | MCPEditorView | `mcpEditor.*` |
 | MCPLibraryView | `mcpLibrary.*` |
 | MCPCatalogSheet | `mcpCatalogSheet.*` |
-| SkillEditorView | `skillEditor.*` |
+| SkillCreationSheet | `skillCreation.*` |
 | SkillLibraryView | `skillLibrary.*` |
 | AttachmentThumbnail | `attachmentThumbnail.*` |
 | FileExplorerView | `inspector.fileTree.*` |
@@ -201,6 +201,7 @@ Dot-separated `viewName.elementName` in camelCase:
 | DebugLogView | `debugLog.*` |
 | TaskCreationSheet | `taskCreation.*` |
 | TaskEditSheet | `taskEdit.*` |
+| PromptTemplateCreationSheet | `templateCreation.*` |
 
 When adding new views, pick a unique camelCase prefix and annotate every interactive element.
 
