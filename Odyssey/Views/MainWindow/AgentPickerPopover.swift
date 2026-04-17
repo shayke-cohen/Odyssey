@@ -191,7 +191,7 @@ extension AgentPickerPopover {
                                     agentSelection: agent.model,
                                     provider: agent.provider
                                 )
-                                if let resolvedModel, !resolvedModel.isEmpty {
+                                if !resolvedModel.isEmpty {
                                     Text(resolvedModel)
                                         .font(.system(size: 10))
                                         .foregroundStyle(.quaternary)
@@ -272,6 +272,8 @@ extension AgentPickerPopover {
         agentParticipant.conversation = conversation
         conversation.participants.append(agentParticipant)
 
+        modelContext.insert(userParticipant)
+        modelContext.insert(agentParticipant)
         modelContext.insert(session)
         modelContext.insert(conversation)
         try? modelContext.save()
