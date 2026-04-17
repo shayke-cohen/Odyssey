@@ -502,17 +502,18 @@ struct ConfigurationDetailView: View {
             url = ConfigFileManager.configDirectory
                 .appendingPathComponent("agents")
                 .appendingPathComponent(slug)
+                .appendingPathExtension("json")
         case .group(let g):
             let slug = g.configSlug ?? ConfigFileManager.slugify(g.name)
             url = ConfigFileManager.configDirectory
                 .appendingPathComponent("groups")
                 .appendingPathComponent(slug)
+                .appendingPathExtension("json")
         case .skill(let s):
             let slug = s.configSlug ?? ConfigFileManager.slugify(s.name)
             url = ConfigFileManager.configDirectory
                 .appendingPathComponent("skills")
-                .appendingPathComponent(slug)
-                .appendingPathExtension("md")
+                .appendingPathComponent(slug) // skills/{slug}/ is a directory
         case .mcp(let m):
             let slug = m.configSlug ?? ConfigFileManager.slugify(m.name)
             url = ConfigFileManager.configDirectory
