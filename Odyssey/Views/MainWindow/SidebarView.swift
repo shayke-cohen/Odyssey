@@ -3,7 +3,6 @@ import SwiftData
 import AppKit
 
 enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
-    case catalog = "Discover"
     case workshop = "Workshop"
     case schedules = "Schedules"
     case agents = "Agents"
@@ -14,7 +13,6 @@ enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .catalog: "square.grid.2x2"
         case .workshop: "wrench.and.screwdriver"
         case .schedules: "clock.badge"
         case .agents: "cpu"
@@ -25,7 +23,6 @@ enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
 
     var helpText: String {
         switch self {
-        case .catalog: "Open discover"
         case .workshop: "Entity workshop (⌘⇧W)"
         case .schedules: "Scheduled missions (⌘⇧S)"
         case .agents: "Agent library"
@@ -36,7 +33,6 @@ enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
 
     var xrayId: String {
         switch self {
-        case .catalog: "sidebar.catalogButton"
         case .workshop: "sidebar.workshopButton"
         case .schedules: "sidebar.schedulesButton"
         case .agents: "sidebar.agentsButton"
@@ -49,7 +45,7 @@ enum SidebarBottomBarItem: String, CaseIterable, Identifiable {
     /// Items with text labels participate in the adaptive icon-only collapse via `ViewThatFits`.
     var hasTextLabel: Bool {
         switch self {
-        case .catalog, .workshop, .schedules, .agents: true
+        case .workshop, .schedules, .agents: true
         case .autoAssemble, .newSession: false
         }
     }
@@ -464,25 +460,7 @@ struct SidebarView: View {
 
     private var sidebarBottomBarButtons: some View {
         HStack(spacing: 0) {
-            let catalog = SidebarBottomBarItem.catalog
-            Button {
-                windowState.openConfiguration(section: .agents)
-            } label: {
-                Label(catalog.rawValue, systemImage: catalog.icon)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .font(.caption)
-                    .frame(minHeight: 24)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.plain)
-            .help(catalog.helpText)
-            .xrayId(catalog.xrayId)
-            .accessibilityLabel(catalog.helpText)
-
             if workshopEnabled {
-                Divider()
-                    .frame(height: 16)
-
                 let workshop = SidebarBottomBarItem.workshop
                 Button {
                     windowState.showWorkshop = true
@@ -498,10 +476,10 @@ struct SidebarView: View {
                 .xrayId(workshop.xrayId)
                 .keyboardShortcut("w", modifiers: [.command, .shift])
                 .accessibilityLabel(workshop.helpText)
-            }
 
-            Divider()
-                .frame(height: 16)
+                Divider()
+                    .frame(height: 16)
+            }
 
             let schedules = SidebarBottomBarItem.schedules
             Button {
