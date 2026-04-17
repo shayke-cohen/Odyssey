@@ -564,7 +564,7 @@ enum ConfigFileManager {
 
         var results: [(slug: String, config: AgentConfigFileDTO, prompt: String)] = []
         let decoder = JSONDecoder()
-        for subdir in contents where subdir.hasDirectoryPath {
+        for subdir in contents where (try? subdir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
             let slug = subdir.lastPathComponent
             let configFile = subdir.appendingPathComponent("config.json")
             guard fm.fileExists(atPath: configFile.path) else { continue }
@@ -591,7 +591,7 @@ enum ConfigFileManager {
 
         var results: [(slug: String, config: GroupConfigFileDTO, instruction: String, mission: String?, workflow: [WorkflowStepFileDTO]?)] = []
         let decoder = JSONDecoder()
-        for subdir in contents where subdir.hasDirectoryPath {
+        for subdir in contents where (try? subdir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
             let slug = subdir.lastPathComponent
             let configFile = subdir.appendingPathComponent("config.json")
             guard fm.fileExists(atPath: configFile.path) else { continue }
@@ -617,6 +617,13 @@ enum ConfigFileManager {
     /// Read all file-backed skills from ~/.odyssey/config/skills/{slug}.md.
     /// Returns tuples of (slug, frontmatter DTO, markdown body).
     /// Logs and skips on parse errors.
+    ///
+    /// NOTE: This method uses the flat-file user-config layout ({slug}.md files directly
+    /// inside the skills/ directory). The pre-existing readAllSkills() method uses a
+    /// subdirectory layout ({slug}/SKILL.md). Both read from the same directory
+    /// (~/.odyssey/config/skills/). Any pre-existing {slug}/SKILL.md subdirectory entries
+    /// in that directory will be silently skipped by this method (they lack a .md extension
+    /// at the top level).
     static func readAllSkillFiles() -> [(slug: String, dto: SkillFileDTO, content: String)] {
         let fm = FileManager.default
         guard let contents = try? fm.contentsOfDirectory(
@@ -667,6 +674,9 @@ enum ConfigFileManager {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(config)
+        // NOTE: These writes are not transactional. If a later write fails after
+        // an earlier one succeeds, the folder may be left in a partially-updated state.
+        // ConfigSyncService will re-sync on next file-watch event.
         try data.write(to: dir.appendingPathComponent("config.json"), options: .atomic)
         try prompt.write(to: dir.appendingPathComponent("prompt.md"), atomically: true, encoding: .utf8)
     }
@@ -680,6 +690,9 @@ enum ConfigFileManager {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let configData = try encoder.encode(config)
+        // NOTE: These writes are not transactional. If a later write fails after
+        // an earlier one succeeds, the folder may be left in a partially-updated state.
+        // ConfigSyncService will re-sync on next file-watch event.
         try configData.write(to: dir.appendingPathComponent("config.json"), options: .atomic)
         try instruction.write(to: dir.appendingPathComponent("instruction.md"), atomically: true, encoding: .utf8)
         if let mission {
@@ -715,13 +728,13 @@ enum ConfigFileManager {
     // MARK: - Bundled Catalog Sync
 
     /// Copy bundled Catalog/agents/ to ~/.odyssey/config/agents/ (skip slugs already present).
-    static func syncBundledAgents() throws {
+    static func syncBundledAgents() {
         // No bundled resources in Resources/Catalog/agents/ yet — no-op.
         // When catalog migration adds agent .json + .md pairs here, enumerate and copy.
     }
 
     /// Copy bundled Catalog/groups/ to ~/.odyssey/config/groups/ (skip slugs already present).
-    static func syncBundledGroups() throws {
+    static func syncBundledGroups() {
         // No bundled resources in Resources/Catalog/groups/ yet — no-op.
         // When catalog migration adds group directories here, enumerate and copy.
     }
@@ -768,9 +781,37 @@ enum ConfigFileManager {
     private static func parseSkillFileFrontmatter(_ content: String, fallbackSlug: String) -> (SkillFileDTO, String) {
         var dto = SkillFileDTO(name: fallbackSlug, category: nil, triggers: nil)
         guard content.hasPrefix("---") else { return (dto, content) }
-        let parts = content.components(separatedBy: "---")
-        guard parts.count >= 3 else { return (dto, content) }
-        let yaml = parts[1]
+
+        // Split on first "---" that appears on its own line after the opening "---"
+        let lines = content.components(separatedBy: "\n")
+        var frontmatterLines: [String] = []
+        var bodyLines: [String] = []
+        var inFrontmatter = false
+        var foundClosingDelimiter = false
+
+        for line in lines {
+            if !inFrontmatter && line.trimmingCharacters(in: .whitespaces) == "---" {
+                inFrontmatter = true
+                continue
+            }
+            if inFrontmatter && !foundClosingDelimiter {
+                if line.trimmingCharacters(in: .whitespaces) == "---" {
+                    foundClosingDelimiter = true
+                    continue
+                }
+                frontmatterLines.append(line)
+            } else if foundClosingDelimiter {
+                bodyLines.append(line)
+            }
+        }
+
+        guard foundClosingDelimiter else { return (dto, content) }
+
+        let yaml = frontmatterLines.joined(separator: "\n")
+        var body = bodyLines.joined(separator: "\n")
+        // trim leading/trailing newlines from body
+        body = body.trimmingCharacters(in: .newlines)
+
         var inTriggers = false
 
         for line in yaml.components(separatedBy: .newlines) {
@@ -793,14 +834,11 @@ enum ConfigFileManager {
             }
         }
 
-        var body = parts[2...].joined(separator: "---")
-        while let first = body.first, first.isNewline { body.removeFirst() }
-        while let last = body.last, last.isNewline { body.removeLast() }
         return (dto, body)
     }
 
     /// Serialize a SkillFileDTO + body back to a YAML-frontmatter markdown string.
-    static func serializeSkillFile(_ dto: SkillFileDTO, content: String) -> String {
+    private static func serializeSkillFile(_ dto: SkillFileDTO, content: String) -> String {
         var yaml = "---\n"
         let escapedName = dto.name.replacingOccurrences(of: "\"", with: "\\\"")
         yaml += "name: \"\(escapedName)\"\n"
