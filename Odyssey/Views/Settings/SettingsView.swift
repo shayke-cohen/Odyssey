@@ -4,12 +4,11 @@ import SwiftData
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general
     case models
-    case connection
     case connectors
     case chatDisplay
     case configuration
     case labs
-    case developer
+    case advanced
     case iosPairing
     case federation
     case acceptInvite
@@ -20,12 +19,11 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "General"
         case .models: "Models"
-        case .connection: "Connection"
         case .connectors: "Connectors"
         case .chatDisplay: "Chat Display"
         case .configuration: "Configuration"
         case .labs: "Labs"
-        case .developer: "Developer"
+        case .advanced: "Advanced"
         case .iosPairing: "iOS Pairing"
         case .federation: "Federation"
         case .acceptInvite: "Accept Invite"
@@ -35,13 +33,12 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .general: "Appearance, reading comfort, and quick actions"
-        case .models: "Cloud defaults and local MLX library management"
-        case .connection: "Sidecar lifecycle and local ports"
+        case .models: "Cloud defaults and local model setup"
         case .connectors: "OAuth setup, broker config, and tokens"
         case .chatDisplay: "Rendering and conversation chrome"
         case .configuration: "Manage agents, groups, skills, MCPs, templates, and permissions"
         case .labs: "Experimental and power-user feature flags"
-        case .developer: "Paths, diagnostics, and experimental controls"
+        case .advanced: "Sidecar connection, ports, paths, and diagnostics"
         case .iosPairing: "QR code and device pairing for iOS access"
         case .federation: "Matrix account and cross-user sharing"
         case .acceptInvite: "Pair with another Mac via Nostr relay"
@@ -52,12 +49,11 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .models: "cpu"
-        case .connection: "network"
         case .connectors: "link.badge.plus"
         case .chatDisplay: "bubble.left.and.text.bubble.right"
         case .configuration: "gearshape.2"
         case .labs: "flask"
-        case .developer: "wrench.and.screwdriver"
+        case .advanced: "wrench.and.screwdriver"
         case .iosPairing: "iphone.and.arrow.forward"
         case .federation: "person.2.wave.2"
         case .acceptInvite: "person.badge.plus"
@@ -68,12 +64,11 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "settings.tab.general"
         case .models: "settings.tab.models"
-        case .connection: "settings.tab.connection"
         case .connectors: "settings.tab.connectors"
         case .chatDisplay: "settings.tab.chatDisplay"
         case .configuration: "settings.tab.configuration"
         case .labs: "settings.tab.labs"
-        case .developer: "settings.tab.developer"
+        case .advanced: "settings.tab.advanced"
         case .iosPairing: "settings.tab.iosPairing"
         case .federation: "settings.tab.federation"
         case .acceptInvite: "settings.tab.acceptInvite"
@@ -101,8 +96,8 @@ struct SettingsView: View {
             switch section {
             case .connectors, .iosPairing, .federation, .acceptInvite:
                 return federationEnabled
-            case .developer:
-                return devModeEnabled
+            case .advanced:
+                return masterFlag
             default:
                 return true
             }
@@ -218,8 +213,6 @@ struct SettingsView: View {
                 GeneralSettingsTab()
             case .models:
                 ModelsSettingsTab(state: modelsState)
-            case .connection:
-                ConnectionSettingsTab()
             case .connectors:
                 ConnectorsSettingsTab()
             case .chatDisplay:
@@ -231,8 +224,8 @@ struct SettingsView: View {
                 )
             case .labs:
                 LabsSettingsView()
-            case .developer:
-                DeveloperSettingsTab()
+            case .advanced:
+                AdvancedSettingsTab()
             case .iosPairing:
                 iOSPairingSettingsView()
             case .federation:
@@ -1776,9 +1769,9 @@ private struct ModelsSettingsTab: View {
     }
 }
 
-// MARK: - Connection
+// MARK: - Advanced (Connection + Developer merged)
 
-private struct ConnectionSettingsTab: View {
+private struct AdvancedSettingsTab: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var p2pNetworkManager: P2PNetworkManager
     @AppStorage(AppSettings.autoConnectSidecarKey, store: AppSettings.store) private var autoConnectSidecar = true
@@ -1788,6 +1781,21 @@ private struct ConnectionSettingsTab: View {
     @AppStorage(AppSettings.turnURLKey, store: AppSettings.store) private var turnURL = AppSettings.defaultTurnURL
     @AppStorage(AppSettings.turnUsernameKey, store: AppSettings.store) private var turnUsername = AppSettings.defaultTurnUsername
     @AppStorage(AppSettings.turnCredentialKey, store: AppSettings.store) private var turnCredential = AppSettings.defaultTurnCredential
+    @AppStorage(AppSettings.bunPathOverrideKey, store: AppSettings.store) private var bunPathOverride = ""
+    @AppStorage(AppSettings.sidecarPathKey, store: AppSettings.store) private var sidecarPath = ""
+    @AppStorage(AppSettings.localAgentHostPathOverrideKey, store: AppSettings.store) private var localAgentHostPathOverride = ""
+    @AppStorage(AppSettings.mlxRunnerPathOverrideKey, store: AppSettings.store) private var mlxRunnerPathOverride = ""
+    @AppStorage(AppSettings.dataDirectoryKey, store: AppSettings.store) private var dataDirectory = AppSettings.defaultDataDirectory
+    @AppStorage(AppSettings.logLevelKey, store: AppSettings.store) private var logLevel = AppSettings.defaultLogLevel
+    @AppStorage(AppSettings.builtInConfigOverridePolicyKey, store: AppSettings.store) private var builtInConfigOverridePolicy = AppSettings.defaultBuiltInConfigOverridePolicy
+    @State private var showResetConfirmation = false
+
+    private var selectedLogLevel: Binding<LogLevel> {
+        Binding(
+            get: { LogLevel(rawValue: logLevel) ?? .info },
+            set: { logLevel = $0.rawValue }
+        )
+    }
 
     var body: some View {
         Form {
@@ -1801,18 +1809,18 @@ private struct ConnectionSettingsTab: View {
                             Text("ws://localhost:\(appState.allocatedWsPort)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .xrayId("settings.connection.statusURL")
+                                .xrayId("settings.advanced.statusURL")
                         }
                     }
                     Spacer()
                     statusActions
                 }
-                .xrayId("settings.connection.statusRow")
+                .xrayId("settings.advanced.statusRow")
             }
 
             Section("Preferences") {
                 Toggle("Auto-connect on Launch", isOn: $autoConnectSidecar)
-                    .xrayId("settings.connection.autoConnectToggle")
+                    .xrayId("settings.advanced.autoConnectToggle")
             }
 
             Section("Ports") {
@@ -1823,7 +1831,7 @@ private struct ConnectionSettingsTab: View {
                         .frame(width: 80)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.trailing)
-                        .xrayId("settings.connection.wsPortField")
+                        .xrayId("settings.advanced.wsPortField")
                 }
 
                 HStack {
@@ -1833,7 +1841,7 @@ private struct ConnectionSettingsTab: View {
                         .frame(width: 80)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.trailing)
-                        .xrayId("settings.connection.httpPortField")
+                        .xrayId("settings.advanced.httpPortField")
                 }
 
                 Text("Changes take effect after restarting the sidecar.")
@@ -1843,7 +1851,7 @@ private struct ConnectionSettingsTab: View {
 
             Section {
                 Toggle("Enable TURN relay for internet access", isOn: $turnEnabled)
-                    .xrayId("settings.connection.turnToggle")
+                    .xrayId("settings.advanced.turnToggle")
 
                 if turnEnabled {
                     VStack(alignment: .leading, spacing: 4) {
@@ -1851,7 +1859,7 @@ private struct ConnectionSettingsTab: View {
                             .font(.callout)
                         TextField(AppSettings.defaultTurnURL, text: $turnURL)
                             .textFieldStyle(.roundedBorder)
-                            .xrayId("settings.connection.turnURLField")
+                            .xrayId("settings.advanced.turnURLField")
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -1859,7 +1867,7 @@ private struct ConnectionSettingsTab: View {
                             .font(.callout)
                         TextField(AppSettings.defaultTurnUsername, text: $turnUsername)
                             .textFieldStyle(.roundedBorder)
-                            .xrayId("settings.connection.turnUsernameField")
+                            .xrayId("settings.advanced.turnUsernameField")
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -1867,10 +1875,9 @@ private struct ConnectionSettingsTab: View {
                             .font(.callout)
                         SecureField(AppSettings.defaultTurnCredential, text: $turnCredential)
                             .textFieldStyle(.roundedBorder)
-                            .xrayId("settings.connection.turnCredentialField")
+                            .xrayId("settings.advanced.turnCredentialField")
                     }
 
-                    // Status row
                     turnRelayStatusRow
                 }
             } header: {
@@ -1879,6 +1886,159 @@ private struct ConnectionSettingsTab: View {
                 Text("TURN relay allows iOS to reach this Mac from any network, even through strict NATs. Uses openrelay.metered.ca by default (free, rate-limited). For production use, configure your own TURN server.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Section("Paths") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bun Path Override")
+                    HStack {
+                        TextField("Auto-detect", text: $bunPathOverride)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("settings.advanced.bunPathField")
+                        Button("Browse...") {
+                            browseBunPath()
+                        }
+                        .xrayId("settings.advanced.bunPathBrowseButton")
+                    }
+                    if bunPathOverride.isEmpty {
+                        Text("Will search: /opt/homebrew/bin/bun, /usr/local/bin/bun, ~/.bun/bin/bun")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Project Path")
+                    HStack {
+                        TextField("Auto-detect", text: $sidecarPath)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("settings.advanced.sidecarPathField")
+                        Button("Browse...") {
+                            browseProjectPath()
+                        }
+                        .xrayId("settings.advanced.sidecarPathBrowseButton")
+                    }
+                    Text("Root directory containing the sidecar/ folder.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Local Agent Host Override")
+                    HStack {
+                        TextField("Use bundled host when available", text: $localAgentHostPathOverride)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("settings.advanced.localAgentHostField")
+                        Button("Browse...") {
+                            browseExecutablePath(
+                                message: "Select the Odyssey local-agent host executable"
+                            ) { localAgentHostPathOverride = $0 }
+                        }
+                        .xrayId("settings.advanced.localAgentHostBrowseButton")
+                    }
+                    Text("Normally the app uses the bundled local-agent host automatically.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("MLX Runner Override")
+                    HStack {
+                        TextField("Auto-detect llm-tool", text: $mlxRunnerPathOverride)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("settings.advanced.mlxRunnerField")
+                        Button("Browse...") {
+                            browseExecutablePath(
+                                message: "Select the MLX runner executable"
+                            ) { mlxRunnerPathOverride = $0 }
+                        }
+                        .xrayId("settings.advanced.mlxRunnerBrowseButton")
+                    }
+                    Text("Leave blank to auto-detect `llm-tool` in PATH.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("Data") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Data Directory")
+                    HStack {
+                        TextField("~/.odyssey", text: $dataDirectory)
+                            .textFieldStyle(.roundedBorder)
+                            .xrayId("settings.advanced.dataDirectoryField")
+                        Button("Browse...") {
+                            browseDataDirectory()
+                        }
+                        .xrayId("settings.advanced.dataDirectoryBrowseButton")
+                    }
+                    Text("Stores logs, blackboard data, repos, and sandboxes.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("Logging") {
+                Picker("Log Level", selection: selectedLogLevel) {
+                    ForEach(LogLevel.allCases) { level in
+                        Text(level.label).tag(level)
+                    }
+                }
+                .xrayId("settings.advanced.logLevelPicker")
+                .onChange(of: logLevel) { _, newValue in
+                    guard appState.sidecarStatus == .connected,
+                          let manager = appState.sidecarManager else { return }
+                    Task {
+                        try? await manager.send(.configSetLogLevel(level: newValue))
+                    }
+                }
+            }
+
+            Section("Built-In Config") {
+                Picker("Refresh bundled defaults on launch", selection: $builtInConfigOverridePolicy) {
+                    ForEach(BuiltInConfigOverridePolicy.allCases) { policy in
+                        Text(policy.label).tag(policy.rawValue)
+                    }
+                }
+                .xrayId("settings.advanced.builtInConfigOverridePolicyPicker")
+
+                Text("Controls whether Odyssey updates bundled prompts, skills, MCPs, agents, groups, permissions, and templates in your local config directory when the app ships new built-in versions.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if let selectedPolicy = BuiltInConfigOverridePolicy(rawValue: builtInConfigOverridePolicy) {
+                    Text(selectedPolicy.summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section {
+                HStack {
+                    Button("Open Data Directory in Finder") {
+                        openDataDirectory()
+                    }
+                    .xrayId("settings.advanced.openDataDirectoryButton")
+
+                    Spacer()
+
+                    Button("Reset All Settings", role: .destructive) {
+                        showResetConfirmation = true
+                    }
+                    .xrayId("settings.advanced.resetSettingsButton")
+                    .confirmationDialog(
+                        "Reset all settings to defaults?",
+                        isPresented: $showResetConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Reset", role: .destructive) {
+                            AppSettings.resetAll()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This will revert all preferences to their default values. The sidecar will need to be restarted.")
+                    }
+                }
             }
         }
         .formStyle(.grouped)
@@ -1919,14 +2079,14 @@ private struct ConnectionSettingsTab: View {
                 appState.connectSidecar()
             }
             .controlSize(.small)
-            .xrayId("settings.connection.reconnectButton")
+            .xrayId("settings.advanced.reconnectButton")
 
             Button("Stop") {
                 appState.disconnectSidecar()
             }
             .controlSize(.small)
             .foregroundStyle(.red)
-            .xrayId("settings.connection.stopButton")
+            .xrayId("settings.advanced.stopButton")
 
         case .disconnected, .error:
             Button("Connect") {
@@ -1934,7 +2094,7 @@ private struct ConnectionSettingsTab: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
-            .xrayId("settings.connection.connectButton")
+            .xrayId("settings.advanced.connectButton")
 
         case .connecting:
             EmptyView()
@@ -1952,19 +2112,72 @@ private struct ConnectionSettingsTab: View {
                 Text("Allocating relay…")
                     .foregroundStyle(.secondary)
             }
-            .xrayId("settings.connection.turnStatus")
+            .xrayId("settings.advanced.turnStatus")
         case .allocated(let relay):
             Label("Relay active: \(relay)", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-                .xrayId("settings.connection.turnStatus")
+                .xrayId("settings.advanced.turnStatus")
         case .failed(let msg):
             Label("Relay failed: \(msg)", systemImage: "exclamationmark.triangle")
                 .foregroundStyle(.secondary)
-                .xrayId("settings.connection.turnStatus")
+                .xrayId("settings.advanced.turnStatus")
         }
     }
 
+    private func browseBunPath() {
+        browseExecutablePath(
+            message: "Select the Bun executable",
+            directoryURL: URL(fileURLWithPath: "/opt/homebrew/bin")
+        ) { bunPathOverride = $0 }
+    }
+
+    private func browseExecutablePath(
+        message: String,
+        directoryURL: URL? = nil,
+        assign: (String) -> Void
+    ) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.message = message
+        panel.directoryURL = directoryURL
+        if panel.runModal() == .OK, let url = panel.url {
+            assign(url.path)
+        }
+    }
+
+    private func browseProjectPath() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Select the Odyssey project directory"
+        panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory())
+        if panel.runModal() == .OK, let url = panel.url {
+            sidecarPath = url.path
+        }
+    }
+
+    private func browseDataDirectory() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Select the data directory"
+        let expandedPath = NSString(string: dataDirectory).expandingTildeInPath
+        panel.directoryURL = URL(fileURLWithPath: expandedPath)
+        if panel.runModal() == .OK, let url = panel.url {
+            dataDirectory = url.path
+        }
+    }
+
+    private func openDataDirectory() {
+        let expandedPath = NSString(string: dataDirectory).expandingTildeInPath
+        NSWorkspace.shared.open(URL(fileURLWithPath: expandedPath))
+    }
 }
+
 
 private struct ConnectorsSettingsTab: View {
     @EnvironmentObject private var appState: AppState

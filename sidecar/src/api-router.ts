@@ -65,7 +65,7 @@ function matchRoute(
   const params: Record<string, string> = {};
   for (let i = 0; i < patternParts.length; i++) {
     if (patternParts[i].startsWith(":")) {
-      params[patternParts[i].slice(1)] = pathParts[i];
+      params[patternParts[i].slice(1)] = decodeURIComponent(pathParts[i]);
     } else if (patternParts[i] !== pathParts[i]) {
       return null;
     }
