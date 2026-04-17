@@ -164,6 +164,8 @@ struct SidebarView: View {
     @State private var showDeleteConfirmation = false
     @State private var projectToArchiveThreads: Project?
     @State private var projectToRemove: Project?
+    @State private var showAgentPopover = false
+    @State private var showGroupPopover = false
     @State private var isPinnedExpanded = true
     @State private var isActiveExpanded = true
     @State private var isHistoryExpanded = false
@@ -355,21 +357,21 @@ struct SidebarView: View {
         Section {
             Menu {
                 Button {
-                    windowState.showNewSessionSheet = true
+                    showAgentPopover = true
                 } label: {
-                    Label("New Thread", systemImage: "plus.bubble")
+                    Label("Chat with Agent", systemImage: "cpu")
                 }
                 .keyboardShortcut("n", modifiers: .command)
 
                 Button {
-                    windowState.showNewGroupThreadSheet = true
+                    showGroupPopover = true
                 } label: {
-                    Label("Group Thread", systemImage: "bubble.left.and.bubble.right.fill")
+                    Label("Chat with Group", systemImage: "person.3.fill")
                 }
                 .keyboardShortcut("n", modifiers: [.command, .option])
 
                 Button {
-                    createQuickChatFromSidebar()
+                    showAgentPopover = true
                 } label: {
                     Label("Quick Chat", systemImage: "plus.message")
                 }
@@ -380,13 +382,10 @@ struct SidebarView: View {
                         .font(.system(size: 18, weight: .medium))
                         .frame(width: 18, height: 18)
                         .foregroundStyle(.primary)
-
                     Text("New")
                         .font(.title3.weight(.medium))
                         .foregroundStyle(.primary)
-
                     Spacer(minLength: 8)
-
                     Image(systemName: "chevron.down")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
@@ -399,9 +398,27 @@ struct SidebarView: View {
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
-            .help("Create a new thread, group thread, or quick chat")
+            .help("Start a new chat with an agent or group")
             .xrayId("sidebar.utility.newMenu")
             .accessibilityLabel("New")
+            .popover(isPresented: $showAgentPopover) {
+                AgentPickerPopover(
+                    projectId: windowState.selectedProjectId,
+                    projectDirectory: windowState.projectDirectory,
+                    isPresented: $showAgentPopover
+                )
+                .environmentObject(appState)
+                .environment(windowState)
+            }
+            .popover(isPresented: $showGroupPopover) {
+                GroupPickerPopover(
+                    projectId: windowState.selectedProjectId,
+                    projectDirectory: windowState.projectDirectory,
+                    isPresented: $showGroupPopover
+                )
+                .environmentObject(appState)
+                .environment(windowState)
+            }
 
             Button {
                 addProjectFolder()
@@ -2090,31 +2107,6 @@ struct SidebarView: View {
 
         expandedProjectIds.insert(project.id)
         windowState.selectProject(project, preserveSelection: true)
-        windowState.selectedConversationId = conversation.id
-    }
-
-    private func createQuickChatFromSidebar() {
-        if let selectedProject = sortedProjects.first(where: { $0.id == windowState.selectedProjectId }) {
-            createQuickChat(in: selectedProject)
-            return
-        }
-
-        if let firstProject = sortedProjects.first {
-            createQuickChat(in: firstProject)
-            return
-        }
-
-        let conversation = Conversation(
-            topic: "New Thread",
-            projectId: nil,
-            threadKind: .freeform
-        )
-        let userParticipant = Participant(type: .user, displayName: "You")
-        userParticipant.conversation = conversation
-        conversation.participants.append(userParticipant)
-
-        modelContext.insert(conversation)
-        try? modelContext.save()
         windowState.selectedConversationId = conversation.id
     }
 
