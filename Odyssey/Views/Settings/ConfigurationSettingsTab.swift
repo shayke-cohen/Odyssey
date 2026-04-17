@@ -33,7 +33,7 @@ enum ConfigSection: String, CaseIterable, Identifiable {
 
 // MARK: - Selected item wrapper
 
-enum ConfigSelectedItem: Equatable {
+enum ConfigSelectedItem: Equatable, Hashable {
     case agent(Agent)
     case group(AgentGroup)
     case skill(Skill)
@@ -48,6 +48,16 @@ enum ConfigSelectedItem: Equatable {
         case (.mcp(let a), .mcp(let b)): return a.id == b.id
         case (.permission(let a), .permission(let b)): return a.id == b.id
         default: return false
+        }
+    }
+
+    func hash(into hasher: inout Hasher) {
+        switch self {
+        case .agent(let a): hasher.combine(0); hasher.combine(a.id)
+        case .group(let g): hasher.combine(1); hasher.combine(g.id)
+        case .skill(let s): hasher.combine(2); hasher.combine(s.id)
+        case .mcp(let m): hasher.combine(3); hasher.combine(m.id)
+        case .permission(let p): hasher.combine(4); hasher.combine(p.id)
         }
     }
 }
