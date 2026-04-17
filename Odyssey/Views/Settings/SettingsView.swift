@@ -729,7 +729,7 @@ private struct ModelsSettingsTab: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .frame(minWidth: 180)
+            .fixedSize()
             .accessibilityIdentifier("settings.models.claudeModelRowPicker")
         case .codex:
             Picker("Codex model", selection: codexRowBinding()) {
@@ -739,7 +739,7 @@ private struct ModelsSettingsTab: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .frame(minWidth: 180)
+            .fixedSize()
             .accessibilityIdentifier("settings.models.codexModelRowPicker")
         case .foundation:
             Picker("Foundation model", selection: foundationRowBinding()) {
@@ -749,7 +749,7 @@ private struct ModelsSettingsTab: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .frame(minWidth: 180)
+            .fixedSize()
             .accessibilityIdentifier("settings.models.foundationModelRowPicker")
         case .mlx:
             mlxRowPicker()
@@ -814,7 +814,7 @@ private struct ModelsSettingsTab: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .frame(minWidth: 180)
+            .fixedSize()
             .accessibilityIdentifier("settings.models.mlxModelRowPicker")
         }
     }

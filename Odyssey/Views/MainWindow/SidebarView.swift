@@ -1374,7 +1374,7 @@ struct SidebarView: View {
                         if let convoId = appState.startGroupChat(
                             group: group,
                             projectDirectory: windowState.projectDirectory,
-                            projectId: windowState.selectedProjectId,
+                            projectId: nil,  // group-initiated chats belong to the group, not a project
                             modelContext: modelContext
                         ) {
                             windowState.selectedConversationId = convoId
@@ -1399,7 +1399,7 @@ struct SidebarView: View {
                         if let convoId = appState.startGroupChat(
                             group: group,
                             projectDirectory: windowState.projectDirectory,
-                            projectId: windowState.selectedProjectId,
+                            projectId: nil,  // group-initiated chats belong to the group, not a project
                             modelContext: modelContext
                         ) {
                             windowState.selectedConversationId = convoId
@@ -2028,7 +2028,10 @@ struct SidebarView: View {
     }
 
     private func startSession(with agent: Agent, in project: Project? = nil) {
-        let targetProject = project ?? sortedProjects.first(where: { $0.id == windowState.selectedProjectId })
+        // Only scope to a project when one was explicitly passed in; never inherit
+        // windowState.selectedProjectId for agent-initiated sessions so the conversation
+        // appears in the Agents sidebar section, not a project section.
+        let targetProject = project
         let session = Session(agent: agent, mode: .interactive)
         if session.workingDirectory.isEmpty {
             // Resident agents (defaultWorkingDirectory set) run in their own home folder;
@@ -2045,7 +2048,7 @@ struct SidebarView: View {
         let conversation = Conversation(
             topic: agent.name,
             sessions: [session],
-            projectId: targetProject?.id ?? windowState.selectedProjectId,
+            projectId: targetProject?.id,
             threadKind: .direct
         )
         let userParticipant = Participant(type: .user, displayName: "You")
