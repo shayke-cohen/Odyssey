@@ -4,7 +4,28 @@ import type { ToolContext } from "./tool-context.js";
 import { logger } from "../logger.js";
 import { createTextResult, defineSharedTool } from "./shared-tool.js";
 
-const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_TIMEOUT_MS = {
+  off: 5 * 60 * 1000,       // 5 min
+  by_agents: 30 * 1000,     // 30s
+  specific_agent: 30 * 1000,
+  coordinator: 30 * 1000,
+};
+
+function resolveTimeout(modeMs: number, hintSeconds?: number): number {
+  if (!hintSeconds) return modeMs;
+  return Math.min(hintSeconds * 1000, modeMs);
+}
+
+function leastBusyAgent(ctx: ToolContext, excludeSessionId: string): string | undefined {
+  const active = ctx.sessions.listActive();
+  return active
+    .filter((s) => s.id !== excludeSessionId)
+    .sort((a, b) => {
+      const aCount = ctx.messages.peek(a.id);
+      const bCount = ctx.messages.peek(b.id);
+      return aCount - bCount;
+    })[0]?.id;
+}
 
 export interface PendingQuestion {
   resolve: (answer: { answer: string; selectedOptions?: string[] }) => void;
@@ -36,7 +57,7 @@ export function createQuestion(sessionId: string): { questionId: string; promise
     const set = questionsBySession.get(sessionId);
     if (set) { set.delete(questionId); if (set.size === 0) questionsBySession.delete(sessionId); }
     resolveFn({ answer: "[User did not respond within the timeout period. Proceed with your best judgment.]" });
-  }, DEFAULT_TIMEOUT_MS);
+  }, DEFAULT_TIMEOUT_MS.off);
   pendingQuestions.set(questionId, { resolve: resolveFn, reject: rejectFn, timer });
   // Track by session for cleanup on pause
   const sessionSet = questionsBySession.get(sessionId) ?? new Set();
@@ -120,19 +141,97 @@ export function createAskUserTool(ctx: ToolContext, callingSessionId: string, on
           })
           .optional()
           .describe("Configuration for the selected input_type"),
+        timeout_seconds: z
+          .number()
+          .optional()
+          .describe(
+            "Hint to shorten the auto-routing timeout (seconds). Only effective when Auto-Answer mode is active. Cannot exceed the mode default (30s in auto modes). Ignored when mode is Off.",
+          ),
       },
       async (args) => {
         logger.info("tools", `ask_user invoked for session ${callingSessionId}: "${args.question.substring(0, 80)}"`);
         const questionId = randomUUID();
 
+        const delegationConfig = ctx.delegation.get(callingSessionId);
+        const isAutoMode = delegationConfig.mode !== "off";
+        const effectiveTimeoutMs = resolveTimeout(
+          DEFAULT_TIMEOUT_MS[delegationConfig.mode],
+          args.timeout_seconds,
+        );
+
         const result = await new Promise<{ answer: string; selectedOptions?: string[] }>(
           (resolve, reject) => {
-            const timer = setTimeout(() => {
+            const timer = setTimeout(async () => {
               pendingQuestions.delete(questionId);
-              resolve({
-                answer: "[User did not respond within the timeout period. Proceed with your best judgment.]",
+              // Clean up session tracking
+              const set = questionsBySession.get(callingSessionId);
+              if (set) { set.delete(questionId); if (set.size === 0) questionsBySession.delete(callingSessionId); }
+
+              if (!isAutoMode) {
+                resolve({
+                  answer: "[User did not respond within the timeout period. Proceed with your best judgment.]",
+                });
+                return;
+              }
+
+              // Auto-routing: find the target agent
+              let targetName = ctx.delegation.resolveTarget(callingSessionId, undefined);
+
+              // For by_agents mode where resolveTarget returns undefined, use least-busy agent
+              if (!targetName) {
+                const leastBusySessionId = leastBusyAgent(ctx, callingSessionId);
+                if (leastBusySessionId) {
+                  const sessionState = ctx.sessions.get(leastBusySessionId);
+                  targetName = sessionState?.agentName;
+                }
+              }
+
+              if (!targetName) {
+                resolve({
+                  answer: "[User did not respond within the timeout period. Proceed with your best judgment.]",
+                });
+                return;
+              }
+
+              const targetConfig = ctx.agentDefinitions.get(targetName);
+              if (!targetConfig) {
+                logger.warn("tools", `ask_user delegation: no agent definition found for "${targetName}", falling back`);
+                resolve({
+                  answer: "[User did not respond within the timeout period. Proceed with your best judgment.]",
+                });
+                return;
+              }
+
+              ctx.broadcast({
+                type: "agent.question.routing",
+                sessionId: callingSessionId,
+                questionId,
+                targetAgentName: targetName,
               });
-            }, DEFAULT_TIMEOUT_MS);
+
+              try {
+                const delegateSessionId = randomUUID();
+                const prompt = `Another agent has a question that the user did not answer in time. Please answer concisely.\n\nQuestion: ${args.question}`;
+                const { result: agentAnswer } = await ctx.spawnSession(delegateSessionId, targetConfig, prompt, true);
+
+                ctx.broadcast({
+                  type: "agent.question.resolved",
+                  sessionId: callingSessionId,
+                  questionId,
+                  answeredBy: targetName,
+                  isFallback: true,
+                });
+
+                resolve({
+                  answer: agentAnswer ?? "[Agent did not provide an answer. Proceed with your best judgment.]",
+                });
+              } catch (err) {
+                logger.error("tools", `ask_user delegation spawn failed: ${err}`);
+                resolve({
+                  answer: "[User did not respond within the timeout period. Proceed with your best judgment.]",
+                });
+              }
+            }, effectiveTimeoutMs);
 
             pendingQuestions.set(questionId, { resolve, reject, timer });
             onQuestionCreated?.(questionId);
@@ -157,6 +256,8 @@ export function createAskUserTool(ctx: ToolContext, callingSessionId: string, on
               private: args.private ?? true,
               inputType: args.input_type ?? "options",
               inputConfig,
+              timeoutSeconds: Math.round(effectiveTimeoutMs / 1000),
+              autoRouting: isAutoMode,
             });
           },
         );
