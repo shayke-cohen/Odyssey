@@ -121,7 +121,7 @@ final class AppStateIdleDetectionTests: XCTestCase {
         appState.idleResults[convIdString] = ConversationIdleResult(status: .complete, reason: "done")
         XCTAssertNotNil(appState.idleResults[convIdString])
 
-        let msg = ConversationMessage(type: .text, text: "follow-up question", sender: nil)
+        let msg = ConversationMessage(text: "follow-up question")
         appState.notifyUserMessageAppended(conversationId: convUUID, message: msg)
 
         XCTAssertNil(appState.idleResults[convIdString])
@@ -136,7 +136,7 @@ final class AppStateIdleDetectionTests: XCTestCase {
         appState.evaluatingConversations.insert(convIdString)
         XCTAssertTrue(appState.evaluatingConversations.contains(convIdString))
 
-        let msg = ConversationMessage(type: .text, text: "new message", sender: nil)
+        let msg = ConversationMessage(text: "new message")
         appState.notifyUserMessageAppended(conversationId: convUUID, message: msg)
 
         XCTAssertFalse(appState.evaluatingConversations.contains(convIdString))
