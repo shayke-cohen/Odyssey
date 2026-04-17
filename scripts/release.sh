@@ -5,6 +5,11 @@ set -euo pipefail
 # Example: ./scripts/release.sh 0.2.0
 
 VERSION="${1:?Usage: ./scripts/release.sh <version> (e.g. 0.2.0)}"
+
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "ERROR: Version must be in semver format X.Y.Z (got: $VERSION)" >&2
+  exit 1
+fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DIST_DIR="$REPO_ROOT/distribution"
@@ -37,6 +42,11 @@ fi
 
 echo "    Prerequisites OK."
 
+plutil -lint "$DIST_DIR/ExportOptions.plist" > /dev/null || {
+  echo "ERROR: $DIST_DIR/ExportOptions.plist is invalid" >&2
+  exit 1
+}
+
 # ── Step 2: Bump version ────────────────────────────────────────────────────
 
 echo "==> Bumping version to $VERSION..."
@@ -47,8 +57,12 @@ sed -i '' "s/MARKETING_VERSION: \"[^\"]*\"/MARKETING_VERSION: \"$VERSION\"/" pro
 
 # Auto-increment CURRENT_PROJECT_VERSION (Sparkle uses this for update ordering)
 CURRENT_BUILD=$(grep 'CURRENT_PROJECT_VERSION:' project.yml | head -1 | sed 's/.*CURRENT_PROJECT_VERSION: //' | tr -d ' ')
+if ! [[ "$CURRENT_BUILD" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: Could not parse CURRENT_PROJECT_VERSION from project.yml" >&2
+  exit 1
+fi
 NEW_BUILD=$((CURRENT_BUILD + 1))
-sed -i '' "s/CURRENT_PROJECT_VERSION: ${CURRENT_BUILD}/CURRENT_PROJECT_VERSION: ${NEW_BUILD}/" project.yml
+sed -i '' "s/CURRENT_PROJECT_VERSION: ${CURRENT_BUILD}$/CURRENT_PROJECT_VERSION: ${NEW_BUILD}/" project.yml
 
 echo "    Version: $VERSION  |  Build: $CURRENT_BUILD → $NEW_BUILD"
 
@@ -64,7 +78,7 @@ xcodebuild archive \
   -destination "generic/platform=macOS" \
   CODE_SIGN_STYLE=Automatic \
   DEVELOPMENT_TEAM=U6BSY4N9E3 \
-  2>&1 | grep -E "(error:|warning: 'Odyssey'|ARCHIVE SUCCEEDED|ARCHIVE FAILED)" | tail -10
+  2>&1 | grep -E "(error:|warning: 'Odyssey'|ARCHIVE SUCCEEDED|ARCHIVE FAILED)" | tail -10 || true
 
 if [[ ! -d "$ARCHIVE_PATH" ]]; then
   echo "ERROR: Archive not found at $ARCHIVE_PATH — xcodebuild archive failed." >&2
@@ -79,7 +93,7 @@ xcodebuild -exportArchive \
   -archivePath "$ARCHIVE_PATH" \
   -exportPath "$EXPORT_DIR" \
   -exportOptionsPlist "$DIST_DIR/ExportOptions.plist" \
-  2>&1 | grep -E "(error:|EXPORT SUCCEEDED|EXPORT FAILED)" | tail -5
+  2>&1 | grep -E "(error:|EXPORT SUCCEEDED|EXPORT FAILED)" | tail -5 || true
 
 if [[ ! -d "$APP_PATH" ]]; then
   echo "ERROR: Exported app not found at $APP_PATH" >&2
@@ -93,8 +107,7 @@ echo "==> Notarizing (submitting to Apple — may take a few minutes)..."
 ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
 xcrun notarytool submit "$ZIP_PATH" \
   --keychain-profile odyssey-notarize \
-  --wait \
-  2>&1 | tail -10
+  --wait
 
 echo "    Notarization OK."
 
@@ -128,7 +141,7 @@ fi
 
 create-dmg "${CREATE_DMG_ARGS[@]}" "$DMG_PATH" "$EXPORT_DIR/"
 
-if [[ ! -f "$DMG_PATH" ]]; then
+if [[ ! -f "$DMG_PATH" ]] || [[ ! -s "$DMG_PATH" ]]; then
   echo "ERROR: DMG not created at $DMG_PATH" >&2
   exit 1
 fi
