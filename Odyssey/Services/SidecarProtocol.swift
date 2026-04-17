@@ -408,7 +408,7 @@ struct MCPCatalogEntry: Codable, Sendable {
     let description: String
 }
 
-struct GeneratedAgentSpec: Codable, Sendable {
+struct GeneratedAgentSpec: Codable, Sendable, Equatable {
     let name: String
     let description: String
     let systemPrompt: String
