@@ -4,19 +4,22 @@ import type { ToolContext } from "./tool-context.js";
 import { logger } from "../logger.js";
 import { createTextResult, defineSharedTool } from "./shared-tool.js";
 
-const DEFAULT_TIMEOUT_MS = {
+// @internal export for testing
+export const DEFAULT_TIMEOUT_MS = {
   off: 5 * 60 * 1000,       // 5 min
   by_agents: 30 * 1000,     // 30s
   specific_agent: 30 * 1000,
   coordinator: 30 * 1000,
 };
 
-function resolveTimeout(modeMs: number, hintSeconds?: number): number {
+// @internal export for testing
+export function resolveTimeout(modeMs: number, hintSeconds?: number): number {
   if (!hintSeconds) return modeMs;
   return Math.min(hintSeconds * 1000, modeMs);
 }
 
-function leastBusyAgent(ctx: ToolContext, excludeSessionId: string): string | undefined {
+// @internal export for testing
+export function leastBusyAgent(ctx: ToolContext, excludeSessionId: string): string | undefined {
   const active = ctx.sessions.listActive();
   return active
     .filter((s) => s.id !== excludeSessionId)
