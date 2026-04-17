@@ -474,6 +474,7 @@ final class AppState: ObservableObject {
         conversation.routingMode = .mentionAware
         conversation.sourceGroupId = group.id
         conversation.executionMode = executionMode
+        conversation.goal = missionOverride.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
 
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation
