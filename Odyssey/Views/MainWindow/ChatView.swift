@@ -4,136 +4,6 @@ import UniformTypeIdentifiers
 import AppKit
 import OSLog
 
-// MARK: - Quick Actions
-
-enum QuickAction: String, CaseIterable, Identifiable {
-    case fixIt
-    case continueWork
-    case commitAndPush
-    case runTests
-    case undo
-    case tldr
-    case doubleCheck
-    case openIt
-    case visualOptions
-    case showVisual
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .tldr: return "TL;DR"
-        case .visualOptions: return "Visual Options"
-        case .doubleCheck: return "Double Check"
-        case .showVisual: return "Show Visual"
-        case .openIt: return "Open It"
-        case .commitAndPush: return "Commit & Push"
-        case .fixIt: return "Fix It"
-        case .runTests: return "Run Tests"
-        case .continueWork: return "Continue"
-        case .undo: return "Undo"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .tldr: return "bolt.fill"
-        case .visualOptions: return "paintpalette.fill"
-        case .doubleCheck: return "checkmark.seal.fill"
-        case .showVisual: return "eye.fill"
-        case .openIt: return "link"
-        case .commitAndPush: return "paperplane.fill"
-        case .fixIt: return "wrench.and.screwdriver.fill"
-        case .runTests: return "flask.fill"
-        case .continueWork: return "play.fill"
-        case .undo: return "arrow.uturn.backward"
-        }
-    }
-
-    var prompt: String {
-        switch self {
-        case .tldr: return "Give me a TL;DR summary of what we've done and where we are"
-        case .visualOptions: return "Show me visual options for this — present alternatives I can choose from"
-        case .doubleCheck: return "Double check your last response — verify it's correct and nothing is missing"
-        case .showVisual: return "Show me this in a visual way — diagram, mockup, or illustration"
-        case .openIt: return "Open it — launch, run, or preview what we just built"
-        case .commitAndPush: return "Commit all changes and push to the remote"
-        case .fixIt: return "Fix the error above"
-        case .runTests: return "Run the tests and show me the results"
-        case .continueWork: return "Continue where you left off"
-        case .undo: return "Undo the last changes you made — revert them"
-        }
-    }
-
-    /// Default popularity order (used until 10 total uses accumulated)
-    static let defaultPopularityOrder: [QuickAction] = [
-        .fixIt, .continueWork, .commitAndPush, .runTests, .undo,
-        .tldr, .doubleCheck, .openIt, .visualOptions, .showVisual,
-    ]
-
-    /// Minimum total uses before switching to usage-based ordering
-    static let usageThreshold = 10
-}
-
-// MARK: - Quick Action Usage Tracker
-
-@MainActor
-final class QuickActionUsageTracker: ObservableObject {
-    @Published private(set) var orderedActions: [QuickAction] = QuickAction.defaultPopularityOrder
-    @AppStorage(AppSettings.quickActionUsageOrderKey, store: AppSettings.store) private var usageOrderEnabled = true
-
-    private let defaults = AppSettings.store
-
-    init() {
-        recomputeOrder()
-    }
-
-    var isUsageOrderEnabled: Bool {
-        get { usageOrderEnabled }
-        set {
-            usageOrderEnabled = newValue
-            recomputeOrder()
-        }
-    }
-
-    func recordUsage(_ action: QuickAction) {
-        var counts = loadCounts()
-        counts[action.rawValue, default: 0] += 1
-        defaults.set(counts, forKey: AppSettings.quickActionUsageCountsKey)
-        recomputeOrder()
-    }
-
-    func recomputeOrder() {
-        guard usageOrderEnabled else {
-            orderedActions = QuickAction.defaultPopularityOrder
-            return
-        }
-
-        let counts = loadCounts()
-        let total = counts.values.reduce(0, +)
-
-        guard total >= QuickAction.usageThreshold else {
-            orderedActions = QuickAction.defaultPopularityOrder
-            return
-        }
-
-        // Sort by usage count descending, break ties by default popularity
-        let defaultOrder = QuickAction.defaultPopularityOrder
-        orderedActions = QuickAction.allCases.sorted { a, b in
-            let ca = counts[a.rawValue] ?? 0
-            let cb = counts[b.rawValue] ?? 0
-            if ca != cb { return ca > cb }
-            let ia = defaultOrder.firstIndex(of: a) ?? 0
-            let ib = defaultOrder.firstIndex(of: b) ?? 0
-            return ia < ib
-        }
-    }
-
-    private func loadCounts() -> [String: Int] {
-        (defaults.dictionary(forKey: AppSettings.quickActionUsageCountsKey) as? [String: Int]) ?? [:]
-    }
-}
-
 private struct ChatScrollOffsetPreferenceKey: PreferenceKey {
     static let defaultValue: CGFloat = .greatestFiniteMagnitude
 
@@ -161,14 +31,14 @@ private struct ChatVisibleMessageFramesPreferenceKey: PreferenceKey {
 /// Shows quick action buttons in a single row. Left-side buttons show icon+text labels;
 /// once horizontal space runs out, remaining buttons fold to icon-only with tooltips.
 private struct QuickActionsRow: View {
-    let actions: [QuickAction]
+    let actions: [QuickActionConfig]
     let isProcessing: Bool
-    let onAction: (QuickAction) -> Void
+    let onAction: (QuickActionConfig) -> Void
 
     /// Approximate width of a text-label capsule (icon + text + padding)
-    private func estimatedLabelWidth(for action: QuickAction) -> CGFloat {
+    private func estimatedLabelWidth(for action: QuickActionConfig) -> CGFloat {
         // ~7pt per character + 22pt icon + 22pt horizontal padding
-        CGFloat(action.label.count) * 7 + 44
+        CGFloat(action.name.count) * 7 + 44
     }
 
     /// Width of an icon-only button
@@ -206,7 +76,7 @@ private struct QuickActionsRow: View {
                             onAction(action)
                         } label: {
                             if showText {
-                                Label(action.label, systemImage: action.icon)
+                                Label(action.name, systemImage: action.symbolName)
                                     .font(.caption)
                                     .padding(.horizontal, 11)
                                     .padding(.vertical, 5)
@@ -214,7 +84,7 @@ private struct QuickActionsRow: View {
                                     .foregroundStyle(Color.purple)
                                     .clipShape(Capsule())
                             } else {
-                                Image(systemName: action.icon)
+                                Image(systemName: action.symbolName)
                                     .font(.system(size: 11))
                                     .frame(width: 26, height: 26)
                                     .background(Color.purple.opacity(0.12))
@@ -223,8 +93,8 @@ private struct QuickActionsRow: View {
                             }
                         }
                         .buttonStyle(.plain)
-                        .xrayId("chat.quickAction.\(action.rawValue)")
-                        .accessibilityLabel(action.label)
+                        .xrayId("chat.quickAction.\(action.id.uuidString)")
+                        .accessibilityLabel(action.name)
                         .help(action.prompt)
                         .disabled(isProcessing)
                     }
@@ -299,7 +169,7 @@ struct ChatView: View {
     @Environment(WindowState.self) private var windowState: WindowState
     @AppStorage(FeatureFlags.showAdvancedKey, store: AppSettings.store) private var masterFlag = false
     @AppStorage(FeatureFlags.federationKey, store: AppSettings.store) private var federationFlag = false
-    @StateObject private var quickActionTracker = QuickActionUsageTracker()
+    @ObservedObject private var quickActionStore = QuickActionStore.shared
 
     private var federationEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.federationKey) || (masterFlag && federationFlag) }
     @State private var inputText = ""
@@ -2115,7 +1985,7 @@ struct ChatView: View {
 
             if shouldShowContextualQuickActions {
                 QuickActionsRow(
-                    actions: quickActionTracker.orderedActions,
+                    actions: quickActionStore.orderedConfigs,
                     isProcessing: isProcessing,
                     onAction: { sendQuickAction($0) }
                 )
@@ -3073,8 +2943,8 @@ struct ChatView: View {
 
     // MARK: - Quick Actions
 
-    private func sendQuickAction(_ action: QuickAction) {
-        quickActionTracker.recordUsage(action)
+    private func sendQuickAction(_ action: QuickActionConfig) {
+        quickActionStore.recordUsage(id: action.id)
         inputText = action.prompt
         sendMessage()
     }
