@@ -48,7 +48,7 @@ struct ScheduleLibraryView: View {
                             .padding(.horizontal)
                         Button("Create Your First Schedule") {
                             editingSchedule = nil
-                            editorDraft = ScheduledMissionDraft(projectDirectory: windowState.projectDirectory)
+                            editorDraft = ScheduledMissionDraft()
                             editorDraft.projectId = windowState.selectedProjectId
                             showingEditor = true
                         }
@@ -127,7 +127,7 @@ struct ScheduleLibraryView: View {
                 Spacer()
                 Button {
                     editingSchedule = nil
-                    editorDraft = ScheduledMissionDraft(projectDirectory: windowState.projectDirectory)
+                    editorDraft = ScheduledMissionDraft()
                     editorDraft.projectId = windowState.selectedProjectId
                     showingEditor = true
                 } label: {

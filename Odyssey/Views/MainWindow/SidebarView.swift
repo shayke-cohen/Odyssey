@@ -377,8 +377,18 @@ struct SidebarView: View {
             handleConversationSelectionChange(selectedId)
             Task { @MainActor in handleConversationSelectionChange(selectedId) }
         }
-        .frame(minWidth: 240)
+        .frame(minWidth: 280)
         .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    ws.openSettings()
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .help("Settings")
+                .xrayId("mainWindow.settingsButton")
+                .accessibilityLabel("Settings")
+            }
             ToolbarItem(placement: .automatic) {
                 Button {
                     ws.showScheduleLibrary = true
@@ -1174,7 +1184,7 @@ struct SidebarView: View {
                 groupScheduleDraft = ScheduledMissionDraft(
                     name: "\(group.name) schedule",
                     targetKind: .group,
-                    projectDirectory: windowState.projectDirectory,
+                    projectDirectory: "",
                     promptTemplate: group.defaultMission ?? ""
                 )
                 groupScheduleDraft.targetGroupId = group.id
@@ -1396,7 +1406,7 @@ struct SidebarView: View {
     }
 
     private func createNewGlobalSchedule() {
-        var draft = ScheduledMissionDraft(projectDirectory: windowState.projectDirectory)
+        var draft = ScheduledMissionDraft(projectDirectory: "")
         draft.projectId = windowState.selectedProjectId
         globalScheduleEditRequest = GlobalScheduleEditRequest(schedule: nil, draft: draft)
     }
@@ -1564,7 +1574,7 @@ struct SidebarView: View {
                 agentScheduleDraft = ScheduledMissionDraft(
                     name: "\(agent.name) schedule",
                     targetKind: .agent,
-                    projectDirectory: windowState.projectDirectory,
+                    projectDirectory: "",
                     promptTemplate: ""
                 )
                 agentScheduleDraft.targetAgentId = agent.id
