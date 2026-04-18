@@ -428,7 +428,7 @@ struct ConfigurationDetailView: View {
                         try? modelContext.save()
                     }
                 ))
-                .accessibilityIdentifier("configDetail.showInSidebarToggle")
+                .accessibilityIdentifier("configDetail.agent.showInSidebarToggle.\(agent.id.uuidString)")
             }
         case .group(let group):
             VStack(alignment: .leading, spacing: 8) {
@@ -443,7 +443,7 @@ struct ConfigurationDetailView: View {
                         try? modelContext.save()
                     }
                 ))
-                .accessibilityIdentifier("configDetail.groupShowInSidebarToggle")
+                .accessibilityIdentifier("configDetail.group.showInSidebarToggle.\(group.id.uuidString)")
             }
         case .skill, .mcp, .permission:
             EmptyView()

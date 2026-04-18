@@ -1403,7 +1403,6 @@ struct SidebarView: View {
                         selectOrCreateGroupChat(group)
                     },
                     onEdit: { editingGroup = group },
-                    onDuplicate: { duplicateGroup(group) },
                     selectedConversationId: windowState.selectedConversationId,
                     hasActiveSession: groupHasActiveSession(group),
                     onDeleteConversation: { conv in promptDelete(conv) }
@@ -2003,21 +2002,6 @@ struct SidebarView: View {
     }
 
     // MARK: - Group Actions
-
-    private func duplicateGroup(_ group: AgentGroup) {
-        let copy = AgentGroup(
-            name: "\(group.name) Copy",
-            groupDescription: group.groupDescription,
-            icon: group.icon,
-            color: group.color,
-            groupInstruction: group.groupInstruction,
-            defaultMission: group.defaultMission,
-            agentIds: group.agentIds,
-            sortOrder: groups.count
-        )
-        modelContext.insert(copy)
-        try? modelContext.save()
-    }
 
     private func deleteGroup(_ group: AgentGroup) {
         modelContext.delete(group)

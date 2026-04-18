@@ -11,7 +11,6 @@ struct GroupSidebarRowView: View {
     let onSelectConversation: (Conversation) -> Void
     var onSelectGroup: (() -> Void)?
     var onEdit: (() -> Void)?
-    var onDuplicate: (() -> Void)?
     var selectedConversationId: UUID?
     var hasActiveSession: Bool = false
     var onDeleteConversation: ((Conversation) -> Void)?
@@ -56,7 +55,7 @@ struct GroupSidebarRowView: View {
                 }
                 .buttonStyle(.plain)
                 .stableXrayId("sidebar.groupRow.\(group.id.uuidString).chatRow.\(conv.id.uuidString)")
-                .accessibilityIdentifier("sidebar.agentThreadRow.\(conv.id.uuidString)")
+                .accessibilityIdentifier("sidebar.groupThreadRow.\(conv.id.uuidString)")
                 .contextMenu {
                     Button("Open Thread") {
                         onSelectConversation(conv)
@@ -67,11 +66,11 @@ struct GroupSidebarRowView: View {
                         conv.isPinned = false
                         try? modelContext.save()
                     }
-                    .accessibilityIdentifier("sidebar.agentThreadRow.archive.\(conv.id.uuidString)")
+                    .accessibilityIdentifier("sidebar.groupThreadRow.archive.\(conv.id.uuidString)")
                     Button("Delete\u{2026}", role: .destructive) {
                         onDeleteConversation?(conv)
                     }
-                    .accessibilityIdentifier("sidebar.agentThreadRow.delete.\(conv.id.uuidString)")
+                    .accessibilityIdentifier("sidebar.groupThreadRow.delete.\(conv.id.uuidString)")
                 }
             }
 
