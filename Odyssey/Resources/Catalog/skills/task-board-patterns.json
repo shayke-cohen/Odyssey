@@ -1,0 +1,18 @@
+{
+  "catalogId": "task-board-patterns",
+  "name": "Task Board Patterns",
+  "description": "Create, update, and track tasks on the Odyssey project task board",
+  "category": "Odyssey Collaboration",
+  "icon": "checklist",
+  "requiredMCPs": [],
+  "triggers": [
+    "task board",
+    "create task",
+    "track progress"
+  ],
+  "tags": [
+    "tasks",
+    "workflow",
+    "odyssey"
+  ]
+}

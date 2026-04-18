@@ -91,15 +91,7 @@ enum WorktreeManager {
 
     static func isUsableWorktree(at path: String) -> Bool {
         let gitFile = (path as NSString).appendingPathComponent(".git")
-        guard FileManager.default.fileExists(atPath: gitFile) else { return false }
-
-        let contents = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
-        if contents.contains(where: { $0 != ".git" }) {
-            return true
-        }
-
-        let git = gitExecutablePath()
-        return runGitSync(git: git, arguments: ["-C", path, "rev-parse", "--verify", "HEAD"])
+        return FileManager.default.fileExists(atPath: gitFile)
     }
 
     /// Removes the worktree for a conversation (on archive/delete).
