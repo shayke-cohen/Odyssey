@@ -2090,15 +2090,16 @@ struct SidebarView: View {
         let targetProject = project
         let session = Session(agent: agent, mode: .interactive)
         if session.workingDirectory.isEmpty {
-            // Resident agents (defaultWorkingDirectory set) run in their own home folder;
-            // everyone else runs in the project root.
-            let fallback = targetProject?.rootPath ?? windowState.projectDirectory
-            if let residentDir = agent.defaultWorkingDirectory, !residentDir.isEmpty {
+            if let project = targetProject {
+                // Project context wins — agent works in the project root, not its home dir
+                session.workingDirectory = (project.rootPath as NSString).expandingTildeInPath
+            } else if let residentDir = agent.defaultWorkingDirectory, !residentDir.isEmpty {
+                // No project — agent's home dir is its project root
                 let expanded = (residentDir as NSString).expandingTildeInPath
                 session.workingDirectory = expanded
                 ResidentAgentSupport.prepareVaultForSession(in: expanded, agentName: agent.name)
-            } else if !fallback.isEmpty {
-                session.workingDirectory = fallback
+            } else if !windowState.projectDirectory.isEmpty {
+                session.workingDirectory = windowState.projectDirectory
             }
         }
         let conversation = Conversation(
