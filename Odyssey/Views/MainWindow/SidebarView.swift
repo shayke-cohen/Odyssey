@@ -325,6 +325,7 @@ struct SidebarView: View {
         .onChange(of: windowState.selectedConversationId) { _, newValue in
             guard let selectedId = newValue else { return }
             handleConversationSelectionChange(selectedId)
+            Task { @MainActor in handleConversationSelectionChange(selectedId) }
         }
         .frame(minWidth: 240)
         .toolbar {
