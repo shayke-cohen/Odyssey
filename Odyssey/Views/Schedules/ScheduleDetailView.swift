@@ -203,7 +203,8 @@ struct ScheduleDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .sheet(isPresented: $showingAllRuns) {
                     ScheduleRunListSheet(runs: scheduleRuns) { convoId in
-                        windowState.selectedConversationId = convoId
+                        let convo = conversations.first { $0.id == convoId }
+                        windowState.navigateToConversation(convoId, projectId: convo?.projectId)
                         showingAllRuns = false
                     }
                 }
@@ -244,7 +245,8 @@ struct ScheduleDetailView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             if let convoId = run.conversationId {
-                windowState.selectedConversationId = convoId
+                let convo = conversations.first { $0.id == convoId }
+                windowState.navigateToConversation(convoId, projectId: convo?.projectId)
             }
         }
         .help(isClickable ? "Open this run's conversation" : "")
@@ -426,12 +428,8 @@ struct ScheduleHistorySheet: View {
 
     var body: some View {
         ScheduleRunListSheet(runs: runs) { convoId in
-            if let convo = conversations.first(where: { $0.id == convoId }) {
-                if let projectId = convo.projectId {
-                    windowState.selectProject(id: projectId, preserveSelection: true)
-                }
-                windowState.selectedConversationId = convoId
-            }
+            let convo = conversations.first { $0.id == convoId }
+            windowState.navigateToConversation(convoId, projectId: convo?.projectId)
             dismiss()
         }
     }
