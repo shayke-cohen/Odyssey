@@ -1532,7 +1532,8 @@ struct SidebarView: View {
                 selectOrCreateAgentChat(agent)
             },
             selectedConversationId: windowState.selectedConversationId,
-            hasActiveSession: agentHasActiveSession(agent)
+            hasActiveSession: agentHasActiveSession(agent),
+            onDeleteConversation: { conv in promptDelete(conv) }
         )
         .overlay(alignment: .topTrailing) {
             if isPinned {

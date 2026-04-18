@@ -10,6 +10,10 @@ struct AgentSidebarRowView: View {
     var onSelectAgent: (() -> Void)?
     var selectedConversationId: UUID?
     var hasActiveSession: Bool = false
+    var onDeleteConversation: ((Conversation) -> Void)?
+
+    @Environment(\.modelContext) private var modelContext
+    @State private var showAllConversations = false
 
     private var isSelected: Bool {
         guard let selected = selectedConversationId else { return false }
@@ -18,7 +22,8 @@ struct AgentSidebarRowView: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            ForEach(conversations.prefix(10)) { conv in
+            let displayed = showAllConversations ? conversations : Array(conversations.prefix(10))
+            ForEach(displayed) { conv in
                 let isConvSelected = selectedConversationId == conv.id
                 Button {
                     onSelectConversation(conv)
@@ -48,7 +53,35 @@ struct AgentSidebarRowView: View {
                 }
                 .buttonStyle(.plain)
                 .stableXrayId("sidebar.agentRow.\(agent.id.uuidString).chatRow.\(conv.id.uuidString)")
+                .accessibilityIdentifier("sidebar.agentThreadRow.\(conv.id.uuidString)")
                 .accessibilityLabel("Open chat \(conv.topic ?? "Untitled")")
+                .contextMenu {
+                    Button("Open Thread") {
+                        onSelectConversation(conv)
+                    }
+                    Divider()
+                    Button("Archive") {
+                        conv.isArchived = true
+                        conv.isPinned = false
+                        try? modelContext.save()
+                    }
+                    .accessibilityIdentifier("sidebar.agentThreadRow.archive.\(conv.id.uuidString)")
+                    Button("Delete\u{2026}", role: .destructive) {
+                        onDeleteConversation?(conv)
+                    }
+                    .accessibilityIdentifier("sidebar.agentThreadRow.delete.\(conv.id.uuidString)")
+                }
+            }
+
+            if !showAllConversations && conversations.count > 10 {
+                Button("Show all \(conversations.count) threads →") {
+                    showAllConversations = true
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
+                .padding(.leading, 6)
+                .accessibilityIdentifier("sidebar.agentShowAllThreads.\(agent.id.uuidString)")
             }
 
         } label: {
