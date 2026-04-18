@@ -1314,16 +1314,9 @@ struct SidebarView: View {
             },
             selectedConversationId: windowState.selectedConversationId,
             hasActiveSession: agentHasActiveSession(agent),
-            onDeleteConversation: { conv in promptDelete(conv) }
+            onDeleteConversation: { conv in promptDelete(conv) },
+            isPinned: isPinned
         )
-        .overlay(alignment: .topTrailing) {
-            if isPinned {
-                Image(systemName: "pin.fill")
-                    .font(.system(size: 8))
-                    .foregroundStyle(.tertiary)
-                    .padding(.trailing, 4)
-            }
-        }
         .contextMenu {
             Button("New Session") {
                 startSession(with: agent)
@@ -1845,7 +1838,7 @@ struct SidebarView: View {
             }
         }
         let conversation = Conversation(
-            topic: agent.name,
+            topic: nil,
             sessions: [session],
             projectId: targetProject?.id,
             threadKind: .direct
@@ -1863,6 +1856,7 @@ struct SidebarView: View {
         modelContext.insert(session)
         modelContext.insert(conversation)
         try? modelContext.save()
+        expandedAgentIds.insert(agent.id)
         windowState.selectedConversationId = conversation.id
     }
 
