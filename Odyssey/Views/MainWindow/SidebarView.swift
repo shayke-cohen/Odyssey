@@ -372,7 +372,17 @@ struct SidebarView: View {
         }
         .frame(minWidth: 240)
         .toolbar {
-            ToolbarItem(placement: .automatic) {
+            ToolbarItemGroup(placement: .automatic) {
+                Button {
+                    ws.showScheduleLibrary = true
+                } label: {
+                    Label("Schedules", systemImage: "clock")
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+                .help("Schedules (⌘⇧S)")
+                .xrayId("sidebar.schedulesButton")
+                .accessibilityLabel("Schedules")
+
                 ZStack {
                     Button("") { }
                         .frame(width: 0, height: 0).opacity(0)

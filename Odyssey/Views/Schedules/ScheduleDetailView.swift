@@ -415,7 +415,10 @@ struct ScheduleHistorySheet: View {
 
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @Query(sort: \ScheduledMissionRun.startedAt, order: .reverse) private var allRuns: [ScheduledMissionRun]
+    @Query(sort: \Conversation.startedAt, order: .reverse) private var conversations: [Conversation]
 
     private var runs: [ScheduledMissionRun] {
         allRuns.filter { $0.scheduleId == schedule.id }
@@ -423,7 +426,13 @@ struct ScheduleHistorySheet: View {
 
     var body: some View {
         ScheduleRunListSheet(runs: runs) { convoId in
-            windowState.selectedConversationId = convoId
+            if let convo = conversations.first(where: { $0.id == convoId }) {
+                if let projectId = convo.projectId {
+                    windowState.selectProject(id: projectId, preserveSelection: true)
+                }
+                windowState.selectedConversationId = convoId
+            }
+            dismiss()
         }
     }
 }

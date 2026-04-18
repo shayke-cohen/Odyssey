@@ -104,20 +104,6 @@ struct MainWindowView: View {
 
             if ws.activeRoute != .settings {
                 ToolbarItem(placement: .automatic) {
-                    Button {
-                        windowState.showScheduleLibrary = true
-                    } label: {
-                        Label("Schedules", systemImage: "clock")
-                    }
-                    .keyboardShortcut("s", modifiers: [.command, .shift])
-                    .help("Schedules (⌘⇧S)")
-                    .xrayId("mainWindow.schedulesButton")
-                    .accessibilityLabel("Schedules")
-                }
-            }
-
-            if ws.activeRoute != .settings {
-                ToolbarItem(placement: .automatic) {
                     Menu {
                         if showFederation {
                             Button {
