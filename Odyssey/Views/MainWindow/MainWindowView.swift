@@ -54,7 +54,7 @@ struct MainWindowView: View {
                     ws.pendingConfigSlug = nil
                     ws.closeSettings()
                 }
-                .environmentObject(appState)
+                .environment(appState)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .xrayId("mainWindow.settingsScreen")
             } else {
@@ -83,7 +83,7 @@ struct MainWindowView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 600)
-        .background(WindowTitleSetter(projectName: windowState.projectName))
+        .background(WindowTitleSetter(projectName: windowState.projectName, chatTitle: windowState.chatTitle))
         .toolbar {
             if ws.activeRoute != .settings {
                 ToolbarItem(placement: .status) {
@@ -167,11 +167,11 @@ struct MainWindowView: View {
         }
         .sheet(isPresented: $ws.showAllSchedules) {
             GlobalSchedulesView()
-                .environmentObject(appState)
+                .environment(appState)
         }
         .sheet(isPresented: $ws.showAgentComms) {
             AgentCommsView()
-                .environmentObject(appState)
+                .environment(appState)
                 .frame(minWidth: 600, minHeight: 400)
         }
         .sheet(isPresented: $ws.showSharedRoomInbox) {
@@ -191,7 +191,7 @@ struct MainWindowView: View {
         }
         .sheet(isPresented: $ws.showWorkshop) {
             WorkshopView()
-                .environmentObject(appState)
+                .environment(appState)
                 .frame(minWidth: 960, minHeight: 640)
         }
         .onAppear {
@@ -487,27 +487,40 @@ private struct SplitViewConfigurator: NSViewRepresentable {
 /// Uses NSWindow.didBecomeKeyNotification so it fires after SwiftUI finishes layout.
 private struct WindowTitleSetter: NSViewRepresentable {
     let projectName: String
+    let chatTitle: String?
 
-    func makeNSView(context: Context) -> NSView {
-        let view = TitleSettingView(projectName: projectName)
-        return view
+    private var computedTitle: String {
+        guard let name = chatTitle, !name.isEmpty else { return projectName }
+        let isDefaultProject = projectName == "Playground" || projectName == "No Project"
+        return isDefaultProject ? name : "\(projectName) / \(name)"
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func makeNSView(context: Context) -> NSView {
+        TitleSettingView(title: computedTitle)
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? TitleSettingView)?.setTitle(computedTitle)
+    }
 
     private final class TitleSettingView: NSView {
-        let projectName: String
+        private var title: String
 
-        init(projectName: String) {
-            self.projectName = projectName
+        init(title: String) {
+            self.title = title
             super.init(frame: .zero)
         }
 
         required init?(coder: NSCoder) { fatalError() }
 
+        func setTitle(_ newTitle: String) {
+            title = newTitle
+            window?.title = newTitle
+        }
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            window?.title = "Odyssey — \(projectName)"
+            window?.title = title
         }
     }
 }
