@@ -243,7 +243,7 @@ struct AgentLibraryView: View {
         let session = Session(agent: agent, mode: .interactive)
         if !windowState.projectDirectory.isEmpty {
             // Project context wins
-            session.workingDirectory = windowState.projectDirectory
+            session.workingDirectory = NSString(string: windowState.projectDirectory).expandingTildeInPath
         } else if let agentDir = agent.defaultWorkingDirectory, !agentDir.isEmpty {
             // No project — agent's home dir is its root
             session.workingDirectory = NSString(string: agentDir).expandingTildeInPath
