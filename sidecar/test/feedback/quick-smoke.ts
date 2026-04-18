@@ -61,14 +61,17 @@ async function main(): Promise<void> {
       agents: [
         {
           name: "smoke-test-agent",
-          systemPrompt: "You are a test agent. Reply very briefly.",
-          provider: USE_REAL_CLAUDE ? "claude" : "mock",
-          model: "claude-haiku-4-5-20251001",
-          allowedTools: [],
-          mcpServers: [],
-          skills: [],
-          workingDirectory: "/tmp",
-          maxTurns: 1,
+          config: {
+            name: "smoke-test-agent",
+            systemPrompt: "You are a test agent. Reply very briefly.",
+            provider: USE_REAL_CLAUDE ? "claude" : "mock",
+            model: "claude-haiku-4-5-20251001",
+            allowedTools: [],
+            mcpServers: [],
+            skills: [],
+            workingDirectory: "/tmp",
+            maxTurns: 1,
+          },
         },
       ],
     });
