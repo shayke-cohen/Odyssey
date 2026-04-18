@@ -143,7 +143,9 @@ final class QuickActionStore: ObservableObject {
             eventMask: .write,
             queue: .main
         )
-        source.setEventHandler { [weak self] in self?.scheduleFileReload() }
+        source.setEventHandler { [weak self] in
+            Task { @MainActor [weak self] in self?.scheduleFileReload() }
+        }
         source.setCancelHandler { close(fd) }
         source.resume()
 

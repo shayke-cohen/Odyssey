@@ -8,15 +8,51 @@ struct QuickActionsSettingsView: View {
     @State private var showResetConfirmation = false
 
     var body: some View {
-        Form {
+        List {
             Section {
-                chipList
+                ForEach(store.configs) { config in
+                    HStack(spacing: 10) {
+                        Image(systemName: "line.3.horizontal")
+                            .frame(width: 16)
+                            .foregroundStyle(.tertiary)
+                            .accessibilityLabel("Drag to reorder \(config.name)")
+                            .accessibilityIdentifier("settings.quickActions.dragHandle.\(config.id.uuidString)")
+
+                        Image(systemName: config.symbolName)
+                            .frame(width: 20)
+                            .foregroundStyle(.secondary)
+
+                        Text(config.name)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Button("Edit") { editingConfig = config }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Color.accentColor)
+                            .accessibilityIdentifier("settings.quickActions.editButton.\(config.id.uuidString)")
+
+                        Button {
+                            store.delete(id: config.id)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Delete \(config.name)")
+                        .accessibilityIdentifier("settings.quickActions.deleteButton.\(config.id.uuidString)")
+                    }
+                    .accessibilityIdentifier("settings.quickActions.row.\(config.id.uuidString)")
+                }
+                .onMove { from, to in
+                    store.move(fromOffsets: from, toOffset: to)
+                }
+
                 Button {
                     showAddSheet = true
                 } label: {
                     Label("Add chip", systemImage: "plus.circle.fill")
                 }
                 .accessibilityIdentifier("settings.quickActions.addButton")
+
             } header: {
                 HStack {
                     Text("Chips")
@@ -41,7 +77,7 @@ struct QuickActionsSettingsView: View {
                 .accessibilityIdentifier("settings.quickActions.usageOrderToggle")
             }
         }
-        .formStyle(.grouped)
+        .listStyle(.inset)
         .sheet(item: $editingConfig) { config in
             QuickActionEditSheet(mode: .edit, existing: config) { updated in
                 store.update(updated)
@@ -57,44 +93,5 @@ struct QuickActionsSettingsView: View {
             Button("Cancel", role: .cancel) {}
         }
         .navigationTitle("Quick Actions")
-    }
-
-    // List lives outside the Form so macOS's native drag machinery works.
-    private var chipList: some View {
-        List {
-            ForEach(store.configs) { config in
-                HStack(spacing: 10) {
-                    Image(systemName: config.symbolName)
-                        .frame(width: 20)
-                        .foregroundStyle(.secondary)
-
-                    Text(config.name)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Button("Edit") { editingConfig = config }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(Color.accentColor)
-                        .accessibilityIdentifier("settings.quickActions.editButton.\(config.id.uuidString)")
-
-                    Button {
-                        store.delete(id: config.id)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Delete \(config.name)")
-                    .accessibilityIdentifier("settings.quickActions.deleteButton.\(config.id.uuidString)")
-                }
-                .accessibilityIdentifier("settings.quickActions.row.\(config.id.uuidString)")
-            }
-            .onMove { from, to in
-                store.move(fromOffsets: from, toOffset: to)
-            }
-        }
-        .listStyle(.plain)
-        .frame(height: CGFloat(store.configs.count) * 32 + 2)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(nsColor: .separatorColor), lineWidth: 0.5))
     }
 }
