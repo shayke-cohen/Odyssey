@@ -161,6 +161,13 @@ struct SidebarView: View {
         promptTemplate: ""
     )
     @State private var editingGroup: AgentGroup?
+    @State private var showingGroupScheduleEditor = false
+    @State private var groupScheduleDraft = ScheduledMissionDraft(
+        name: "",
+        targetKind: .group,
+        projectDirectory: "",
+        promptTemplate: ""
+    )
     @State private var autonomousGroup: AgentGroup?
     @State private var showAutoAssemble = false
     @State private var renamingConversation: Conversation?
@@ -208,6 +215,11 @@ struct SidebarView: View {
             }
             .sheet(isPresented: $showingAgentScheduleEditor) {
                 ScheduleEditorView(schedule: nil, draft: agentScheduleDraft)
+                    .environmentObject(appState)
+                    .environment(\.modelContext, modelContext)
+            }
+            .sheet(isPresented: $showingGroupScheduleEditor) {
+                ScheduleEditorView(schedule: nil, draft: groupScheduleDraft)
                     .environmentObject(appState)
                     .environment(\.modelContext, modelContext)
             }
@@ -1398,28 +1410,60 @@ struct SidebarView: View {
                 )
                 .contextMenu {
                     Button("Start Chat") {
-                        if let convoId = appState.startGroupChat(
-                            group: group,
-                            projectDirectory: windowState.projectDirectory,
-                            projectId: nil,  // group-initiated chats belong to the group, not a project
-                            modelContext: modelContext
-                        ) {
-                            windowState.selectedConversationId = convoId
+                        selectOrCreateGroupChat(group)
+                    }
+                    .accessibilityIdentifier("sidebar.groupContext.startChat.\(group.id.uuidString)")
+
+                    Menu("New Thread in Project\u{2026}") {
+                        ForEach(projects) { project in
+                            Button(project.name) {
+                                selectOrCreateGroupChat(group, in: project)
+                            }
+                        }
+                        if projects.isEmpty {
+                            Text("No projects")
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .xrayId("sidebar.groupContext.startChat.\(group.id.uuidString)")
-                    Button("Edit") { editingGroup = group }
-                        .xrayId("sidebar.groupContext.edit.\(group.id.uuidString)")
-                    Button("Duplicate") { duplicateGroup(group) }
-                        .xrayId("sidebar.groupContext.duplicate.\(group.id.uuidString)")
+                    .accessibilityIdentifier("sidebar.groupContext.newThreadInProject.\(group.id.uuidString)")
+
                     Divider()
-                    Button("Open in Configuration") {
-                        windowState.openConfiguration(section: .groups)
+
+                    Button("View Session History") {
+                        if expandedGroupIds.contains(group.id) {
+                            expandedGroupIds.remove(group.id)
+                        } else {
+                            expandedGroupIds.insert(group.id)
+                        }
                     }
-                    .xrayId("sidebar.groupContext.openConfig.\(group.id.uuidString)")
+                    .accessibilityIdentifier("sidebar.groupContext.viewHistory.\(group.id.uuidString)")
+
                     Divider()
-                    Button("Delete", role: .destructive) { deleteGroup(group) }
-                        .xrayId("sidebar.groupContext.delete.\(group.id.uuidString)")
+
+                    Button("Hide from Sidebar") {
+                        group.showInSidebar = false
+                        try? modelContext.save()
+                    }
+                    .accessibilityIdentifier("sidebar.groupContext.hideSidebar.\(group.id.uuidString)")
+
+                    Divider()
+
+                    Button("Schedule Mission\u{2026}") {
+                        groupScheduleDraft = ScheduledMissionDraft(
+                            name: "\(group.name) schedule",
+                            targetKind: .group,
+                            projectDirectory: windowState.projectDirectory,
+                            promptTemplate: group.defaultMission ?? ""
+                        )
+                        groupScheduleDraft.targetGroupId = group.id
+                        showingGroupScheduleEditor = true
+                    }
+                    .accessibilityIdentifier("sidebar.groupContext.schedule.\(group.id.uuidString)")
+
+                    Divider()
+
+                    Button("Edit") { editingGroup = group }
+                        .accessibilityIdentifier("sidebar.groupContext.edit.\(group.id.uuidString)")
                 }
             }
 
