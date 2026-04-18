@@ -327,7 +327,7 @@ async function handleGenerateAgent(req: Request, ctx: ApiContext): Promise<Respo
   const validColors = ["blue", "red", "green", "purple", "orange", "teal", "pink", "indigo", "gray"];
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 4096,
     system: `You are an agent designer. Given a user's description of an AI agent, generate a complete agent definition as JSON.\n\nReturn ONLY valid JSON with: name, description, systemPrompt, model ("sonnet"|"opus"|"haiku"), icon (SF Symbol from ${JSON.stringify(validIcons)}), color (from ${JSON.stringify(validColors)}), matchedSkillIds (empty array), matchedMCPIds (empty array).`,
     messages: [{ role: "user", content: body.prompt }],

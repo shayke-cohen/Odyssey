@@ -13,7 +13,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.71",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.92",
     "@anthropic-ai/sdk": "^0.78.0",
     "nostr-tools": "^2.23.3"
   }

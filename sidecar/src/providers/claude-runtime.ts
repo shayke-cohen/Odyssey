@@ -244,7 +244,7 @@ export class ClaudeRuntime implements ProviderRuntime {
 
   private static readonly MODEL_ALIASES: Record<string, string> = {
     sonnet: "claude-sonnet-4-6",
-    opus: "claude-opus-4-6",
+    opus: "claude-opus-4-7",
     haiku: "claude-haiku-4-5-20251001",
   };
 
