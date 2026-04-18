@@ -2585,7 +2585,11 @@ struct ChatView: View {
     @ViewBuilder
     private func groupEmptyStateHeader(_ group: AgentGroup) -> some View {
         VStack(spacing: 8) {
-            GroupIconView(size: 64)
+            Text(group.icon)
+                .font(.system(size: 40))
+                .frame(width: 64, height: 64)
+                .background(Color.fromAgentColor(group.color).opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
 
             Text(group.name)
                 .font(title3Font)

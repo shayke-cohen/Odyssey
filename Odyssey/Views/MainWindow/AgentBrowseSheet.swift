@@ -308,7 +308,11 @@ private struct GroupBrowseCard: View {
         VStack(alignment: .leading, spacing: 10) {
             // Header: icon + name + badges + Start Chat
             HStack(spacing: 10) {
-                GroupIconView(size: 40)
+                Text(group.icon)
+                    .font(.title2)
+                    .frame(width: 40, height: 40)
+                    .background(Color.fromAgentColor(group.color).opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 9))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(group.name)
                         .font(.headline)

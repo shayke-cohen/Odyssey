@@ -177,7 +177,18 @@ struct GroupSidebarRowView: View {
             let tint = Color.fromAgentColor(group.color)
             HStack(spacing: 8) {
                 HStack(spacing: 8) {
-                    GroupIconView(size: 28)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(LinearGradient(
+                                colors: [tint.opacity(isSelected ? 0.22 : 0.18), tint.opacity(isSelected ? 0.10 : 0.08)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            ))
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .stroke(tint.opacity(isSelected ? 0.28 : 0.16), lineWidth: 1)
+                        Text(group.icon)
+                            .font(.system(size: 16))
+                    }
+                    .frame(width: 28, height: 28)
 
                     VStack(alignment: .leading, spacing: 1) {
                         Text(group.name)
@@ -346,7 +357,21 @@ struct GroupSidebarRowView: View {
                     .fill(Color.blue)
                     .frame(width: 8, height: 8)
             }
-            GroupIconView(size: 24)
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [tint.opacity(0.18), tint.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(tint.opacity(0.14), lineWidth: 1)
+                Text(group.icon)
+                    .font(.system(size: 13))
+            }
+            .frame(width: 24, height: 24)
 
             HStack(spacing: 4) {
                 Text(conv.topic ?? "Untitled")

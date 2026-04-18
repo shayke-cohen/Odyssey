@@ -261,7 +261,8 @@ struct WelcomeView: View {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    GroupIconView(size: 24)
+                    Text(group.icon)
+                        .font(.title3)
                     Text(group.name)
                         .font(.callout)
                         .fontWeight(.medium)
