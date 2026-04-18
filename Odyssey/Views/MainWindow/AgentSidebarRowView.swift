@@ -61,10 +61,25 @@ struct AgentSidebarRowView: View {
                     }
                     .tint(.indigo)
                 }
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    Button {
+                        conv.isPinned.toggle()
+                        try? modelContext.save()
+                    } label: {
+                        Label(conv.isPinned ? "Unpin" : "Pin", systemImage: conv.isPinned ? "pin.slash" : "pin")
+                    }
+                    .tint(.yellow)
+                }
                 .contextMenu {
                     Button("Open Thread") { onSelectConversation(conv) }
                     Divider()
                     Button("Rename\u{2026}") { onRename?(conv) }
+                    Button {
+                        conv.isPinned.toggle()
+                        try? modelContext.save()
+                    } label: {
+                        Label(conv.isPinned ? "Unpin" : "Pin", systemImage: conv.isPinned ? "pin.slash" : "pin")
+                    }
                     Button {
                         conv.isUnread.toggle()
                         try? modelContext.save()
@@ -125,6 +140,20 @@ struct AgentSidebarRowView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("sidebar.agentArchivedThreadRow.\(conv.id.uuidString)")
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button {
+                                conv.isArchived = false
+                                try? modelContext.save()
+                            } label: {
+                                Label("Unarchive", systemImage: "tray.and.arrow.up")
+                            }
+                            .tint(.blue)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) { onDeleteConversation?(conv) } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                         .contextMenu {
                             Button("Open Thread") { onSelectConversation(conv) }
                             Divider()
@@ -270,11 +299,19 @@ struct AgentSidebarRowView: View {
             if conv.isUnread {
                 Circle()
                     .fill(Color.blue)
-                    .frame(width: 6, height: 6)
+                    .frame(width: 8, height: 8)
             }
             ZStack {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(tint.opacity(0.12))
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [tint.opacity(0.18), tint.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(tint.opacity(0.14), lineWidth: 1)
                 Image(systemName: agent.icon)
                     .font(.system(size: 11))
                     .foregroundStyle(tint)
@@ -318,14 +355,14 @@ struct AgentSidebarRowView: View {
 
             SidebarActivityIndicator(summary: activity, conversationStatus: conv.status)
         }
-        .padding(.vertical, 5)
-        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(isConvSelected ? Color.accentColor.opacity(0.14) : Color.primary.opacity(0.04))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(isConvSelected ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.05), lineWidth: 1)
         )
     }
