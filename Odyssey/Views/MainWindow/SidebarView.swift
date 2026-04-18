@@ -2099,14 +2099,14 @@ struct SidebarView: View {
             } else if !windowState.projectDirectory.isEmpty {
                 session.workingDirectory = (windowState.projectDirectory as NSString).expandingTildeInPath
             }
-            // Vault prep is independent of which directory won — a resident agent always
-            // gets its memory vault initialised wherever it works.
-            if let residentDir = agent.defaultWorkingDirectory, !residentDir.isEmpty {
-                ResidentAgentSupport.prepareVaultForSession(
-                    in: (residentDir as NSString).expandingTildeInPath,
-                    agentName: agent.name
-                )
-            }
+        }
+        // Vault prep is independent of which directory won — a resident agent always
+        // gets its memory vault initialised wherever it works.
+        if let residentDir = agent.defaultWorkingDirectory, !residentDir.isEmpty {
+            ResidentAgentSupport.prepareVaultForSession(
+                in: (residentDir as NSString).expandingTildeInPath,
+                agentName: agent.name
+            )
         }
         let conversation = Conversation(
             topic: nil,
