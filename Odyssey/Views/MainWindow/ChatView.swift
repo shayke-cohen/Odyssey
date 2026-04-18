@@ -959,6 +959,105 @@ struct ChatView: View {
     }
 
     @ViewBuilder
+    private var headerAvatarView: some View {
+        if let convo = conversation, convo.sessions.count > 1 {
+            HStack(spacing: -6) {
+                ForEach(convo.sessions.prefix(3), id: \.id) { s in
+                    if let ag = s.agent {
+                        Image(systemName: ag.icon)
+                            .foregroundStyle(Color.fromAgentColor(ag.color))
+                            .font(.caption)
+                            .padding(5)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                }
+            }
+            .xrayId("chat.groupAvatarStack")
+        } else if let agent = primarySession?.agent {
+            Image(systemName: agent.icon)
+                .foregroundStyle(Color.fromAgentColor(agent.color))
+                .font(.title3)
+                .frame(width: 32, height: 32)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                .xrayId("chat.agentAvatar")
+        } else {
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .foregroundStyle(.blue)
+                .font(.title3)
+                .xrayId("chat.chatIcon")
+        }
+    }
+
+    @ViewBuilder
+    private var headerIdentityInfo: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            // Name row with type badge
+            HStack(spacing: 6) {
+                if let group = sourceGroup {
+                    Text(group.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .xrayId("chat.identityName")
+                    Text("GROUP")
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.indigo.opacity(0.18), in: RoundedRectangle(cornerRadius: 4))
+                        .foregroundStyle(.indigo)
+                        .xrayId("chat.identityTypeBadge")
+                } else if let agent = primarySession?.agent {
+                    Text(agent.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .xrayId("chat.identityName")
+                    Text("AGENT")
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.18), in: RoundedRectangle(cornerRadius: 4))
+                        .foregroundStyle(.blue)
+                        .xrayId("chat.identityTypeBadge")
+                } else {
+                    Text("Chat")
+                        .font(.headline)
+                        .xrayId("chat.identityName")
+                }
+            }
+
+            // Member status dots (group) or agent status (1:1)
+            if let convo = conversation, convo.sessions.count > 1 {
+                HStack(spacing: 8) {
+                    ForEach(convo.sessions, id: \.id) { session in
+                        if let ag = session.agent {
+                            HStack(spacing: 3) {
+                                let isActive = appState.sessionActivity[session.id.uuidString]?.isActive == true
+                                Circle()
+                                    .fill(isActive ? Color.green : Color.secondary.opacity(0.35))
+                                    .frame(width: 5, height: 5)
+                                Text(ag.name)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .xrayId("chat.memberStatus.\(session.id.uuidString)")
+                        }
+                    }
+                }
+            } else if let session = primarySession {
+                HStack(spacing: 3) {
+                    let isActive = appState.sessionActivity[session.id.uuidString]?.isActive == true
+                    Circle()
+                        .fill(isActive ? Color.green : Color.secondary.opacity(0.35))
+                        .frame(width: 5, height: 5)
+                    Text(isActive ? "Running" : "Idle")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .xrayId("chat.agentStatus")
+            }
+        }
+    }
+
+    @ViewBuilder
     private var agentIconButton: some View {
         if let convo = conversation, convo.sessions.count > 1 {
             HStack(spacing: -6) {
@@ -1077,11 +1176,10 @@ struct ChatView: View {
         }
     }
 
-    @ViewBuilder
     private var simplifiedChatHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 10) {
-                agentIconButton
+                headerAvatarView
 
                 if isEditingTopic {
                     TextField("Conversation name", text: $editedTopic)
@@ -1093,20 +1191,7 @@ struct ChatView: View {
                         .onExitCommand { cancelRename() }
                         .xrayId("chat.topicField")
                 } else {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(conversation?.topic ?? "Chat")
-                            .font(.headline)
-                            .lineLimit(1)
-                            .xrayId("chat.topicTitle")
-
-                        if let subtitle = sendingToSubtitle {
-                            Text(subtitle)
-                                .font(caption2Font)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .xrayId("chat.sendingToHint")
-                        }
-                    }
+                    headerIdentityInfo
                 }
 
                 Spacer()
@@ -1117,8 +1202,6 @@ struct ChatView: View {
                     simplifiedSessionMenu(convo)
                 }
             }
-
-            headerChips
 
             simplifiedMissionSection
 
