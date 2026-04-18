@@ -384,19 +384,17 @@ struct MainWindowView: View {
 
     private func startSessionWithAgent(_ agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
-        let rawDir: String
-        if !windowState.projectDirectory.isEmpty {
-            rawDir = windowState.projectDirectory
-        } else {
-            rawDir = agent.defaultWorkingDirectory ?? ""
-        }
+        // Agent home always wins when set; project dir is fallback for non-resident agents
+        let rawDir = agent.defaultWorkingDirectory?.isEmpty == false
+            ? agent.defaultWorkingDirectory!
+            : windowState.projectDirectory
         if !rawDir.isEmpty {
             session.workingDirectory = NSString(string: rawDir).expandingTildeInPath
         }
         let conversation = Conversation(
             topic: agent.name,
             sessions: [session],
-            projectId: windowState.selectedProjectId,
+            projectId: nil,
             threadKind: .direct
         )
         let userParticipant = Participant(type: .user, displayName: "You")
@@ -418,8 +416,8 @@ struct MainWindowView: View {
     private func startGroupChat(_ group: AgentGroup) {
         if let convoId = appState.startGroupChat(
             group: group,
-            projectDirectory: windowState.projectDirectory,
-            projectId: windowState.selectedProjectId,
+            projectDirectory: "",
+            projectId: nil,
             modelContext: modelContext
         ) {
             windowState.selectedConversationId = convoId

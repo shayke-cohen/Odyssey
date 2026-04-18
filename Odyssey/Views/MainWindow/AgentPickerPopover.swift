@@ -256,10 +256,13 @@ extension AgentPickerPopover {
         userParticipant.conversation = conversation
         conversation.participants.append(userParticipant)
 
+        let agentHome = agent?.defaultWorkingDirectory.flatMap { $0.isEmpty ? nil : $0 }
+        let effectiveWD = agentHome.map { NSString(string: $0).expandingTildeInPath as String }
+            ?? (projectDirectory.isEmpty ? "" : projectDirectory)
         let session = Session(
             agent: agent,
             mission: mission.isEmpty ? nil : mission,
-            workingDirectory: projectDirectory
+            workingDirectory: effectiveWD
         )
         session.conversations = [conversation]
         conversation.sessions.append(session)

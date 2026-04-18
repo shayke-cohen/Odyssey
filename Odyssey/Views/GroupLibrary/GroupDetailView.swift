@@ -119,8 +119,8 @@ struct GroupDetailView: View {
                     Button {
                         if let convoId = appState.startGroupChat(
                             group: group,
-                            projectDirectory: windowState.projectDirectory,
-                            projectId: windowState.selectedProjectId,
+                            projectDirectory: "",
+                            projectId: nil,
                             modelContext: modelContext
                         ) {
                             windowState.selectedConversationId = convoId

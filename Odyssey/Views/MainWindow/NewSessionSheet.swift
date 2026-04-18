@@ -1717,7 +1717,7 @@ struct NewSessionSheet: View {
 
         let conversation = Conversation(
             topic: topic,
-            projectId: windowState.selectedProjectId,
+            projectId: nil,
             threadKind: selectedList.count > 1 ? .group : .direct
         )
         conversation.executionMode = executionMode
@@ -1731,11 +1731,15 @@ struct NewSessionSheet: View {
         conversation.participants.append(userParticipant)
 
         for agent in selectedList {
+            // Agent home always wins when set; fall back to project dir for non-resident agents
+            let agentWD = agent.defaultWorkingDirectory.flatMap { $0.isEmpty ? nil : $0 }
+            let effectiveWD = agentWD.map { NSString(string: $0).expandingTildeInPath as String }
+                ?? (projectDir.isEmpty ? "" : projectDir)
             let session = Session(
                 agent: agent,
                 mission: missionText.isEmpty ? nil : missionText,
                 mode: sessionMode,
-                workingDirectory: projectDir
+                workingDirectory: effectiveWD
             )
 
             session.provider = resolvedProviderForSession(agent: agent)
@@ -1772,8 +1776,8 @@ struct NewSessionSheet: View {
         let missionText = mission.trimmingCharacters(in: .whitespacesAndNewlines)
         if let conversationId = appState.startGroupChat(
             group: selectedGroup,
-            projectDirectory: windowState.projectDirectory,
-            projectId: windowState.selectedProjectId,
+            projectDirectory: "",
+            projectId: nil,
             modelContext: modelContext,
             missionOverride: missionText,
             executionMode: mappedExecutionMode

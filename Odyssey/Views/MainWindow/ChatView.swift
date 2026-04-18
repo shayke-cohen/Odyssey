@@ -216,6 +216,9 @@ struct ChatView: View {
     @State private var shouldAutoScroll = true
     @State private var didPerformInitialScrollRestore = false
     @State private var isRestoringScrollPosition = true
+    @State private var cachedSortedMessages: [ConversationMessage] = []
+    @State private var cachedParticipantAppearanceMap: [UUID: AgentAppearance]? = nil
+    @State private var lastAutoScrollTime: Date = .distantPast
     private var planModeEnabled: Bool {
         conversation?.planModeEnabled ?? false
     }
@@ -287,9 +290,7 @@ struct ChatView: View {
         }
     }
 
-    private var sortedMessages: [ConversationMessage] {
-        (conversation?.messages ?? []).sorted { $0.timestamp < $1.timestamp }
-    }
+    private var sortedMessages: [ConversationMessage] { cachedSortedMessages }
 
     private var displayMessages: [ConversationMessage] {
         let allEnabled = enabledPeerCategories.count == PeerChannelCategory.allCases.count
@@ -456,21 +457,7 @@ struct ChatView: View {
     }
 
     /// Maps participantId → AgentAppearance for multi-agent conversations. `nil` for single-agent.
-    private var participantAppearanceMap: [UUID: AgentAppearance]? {
-        guard let convo = conversation, convo.sessions.count > 1 else { return nil }
-        var map: [UUID: AgentAppearance] = [:]
-        for participant in convo.participants {
-            if let sessionId = participant.typeSessionId,
-               let session = convo.sessions.first(where: { $0.id == sessionId }),
-               let agent = session.agent {
-                map[participant.id] = AgentAppearance(
-                    color: Color.fromAgentColor(agent.color),
-                    icon: agent.icon
-                )
-            }
-        }
-        return map.isEmpty ? nil : map
-    }
+    private var participantAppearanceMap: [UUID: AgentAppearance]? { cachedParticipantAppearanceMap }
 
     private func streamingDisplayName(for sidecarKey: String) -> String {
         if let name = activeStreamingDisplayNames[sidecarKey] {
@@ -796,6 +783,16 @@ struct ChatView: View {
             if let conversation, conversation.isSharedRoom {
                 try? await sharedRoomService.refreshConversation(conversation)
             }
+        }
+        .onChange(of: conversation?.messages.count) { _, _ in
+            cachedSortedMessages = (conversation?.messages ?? []).sorted { $0.timestamp < $1.timestamp }
+        }
+        .onChange(of: conversation?.sessions.count) { _, _ in
+            rebuildParticipantAppearanceMap()
+        }
+        .onAppear {
+            cachedSortedMessages = (conversation?.messages ?? []).sorted { $0.timestamp < $1.timestamp }
+            rebuildParticipantAppearanceMap()
         }
         .sheet(isPresented: $showingScheduleEditor) {
             ScheduleEditorView(schedule: nil, draft: scheduleDraft)
@@ -1619,10 +1616,11 @@ struct ChatView: View {
                                 chatEmptyState
                             }
 
+                            let participants = conversation?.participants ?? []
                             ForEach(displayMessages) { message in
                                 MessageBubble(
                                     message: message,
-                                    participants: conversation?.participants ?? [],
+                                    participants: participants,
                                     agentAppearances: participantAppearanceMap,
                                     onTapAttachment: { attachment in
                                         handleAttachmentTap(attachment)
@@ -1801,6 +1799,9 @@ struct ChatView: View {
                     }
                     .onChange(of: streamingContentVersion) { _, _ in
                         guard isProcessing, shouldAutoScroll else { return }
+                        let now = Date()
+                        guard now.timeIntervalSince(lastAutoScrollTime) >= 0.08 else { return }
+                        lastAutoScrollTime = now
                         scrollToBottom(proxy, animated: false)
                     }
                     .onChange(of: isProcessing) { _, processing in
@@ -2760,6 +2761,25 @@ struct ChatView: View {
                 scrollAction()
             }
         }
+    }
+
+    private func rebuildParticipantAppearanceMap() {
+        guard let convo = conversation, convo.sessions.count > 1 else {
+            cachedParticipantAppearanceMap = nil
+            return
+        }
+        var map: [UUID: AgentAppearance] = [:]
+        for participant in convo.participants {
+            if let sessionId = participant.typeSessionId,
+               let session = convo.sessions.first(where: { $0.id == sessionId }),
+               let agent = session.agent {
+                map[participant.id] = AgentAppearance(
+                    color: Color.fromAgentColor(agent.color),
+                    icon: agent.icon
+                )
+            }
+        }
+        cachedParticipantAppearanceMap = map.isEmpty ? nil : map
     }
 
     private func performInitialScrollRestoreIfNeeded(_ proxy: ScrollViewProxy) {

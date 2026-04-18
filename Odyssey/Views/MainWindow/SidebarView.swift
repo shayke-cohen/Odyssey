@@ -193,6 +193,9 @@ struct SidebarView: View {
     @AppStorage("sidebar.projectsExpanded") private var isProjectsSectionExpanded: Bool = true
     @AppStorage("sidebar.allSchedulesExpanded") private var isAllSchedulesExpanded: Bool = false
     @State private var globalScheduleEditRequest: GlobalScheduleEditRequest?
+    @State private var cachedSortedProjects: [Project] = []
+    @State private var cachedResidentAgents: [Agent] = []
+    @State private var cachedNonResidentAgents: [Agent] = []
 
     private var workshopEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.workshopKey) || (masterFlag && workshopFlag) }
     private var autoAssembleEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.autoAssembleKey) || (masterFlag && autoAssembleFlag) }
@@ -368,7 +371,11 @@ struct SidebarView: View {
             if let selectedProjectId = windowState.selectedProjectId {
                 expandedProjectIds.insert(selectedProjectId)
             }
+            rebuildProjectCache()
+            rebuildAgentCaches()
         }
+        .onChange(of: projects.count) { _, _ in rebuildProjectCache() }
+        .onChange(of: agents.count) { _, _ in rebuildAgentCaches() }
         .onChange(of: windowState.selectedConversationId) { _, newValue in
             guard let selectedId = newValue else { return }
             handleConversationSelectionChange(selectedId)
@@ -403,8 +410,8 @@ struct SidebarView: View {
                         .frame(width: 0, height: 0).opacity(0)
                         .popover(isPresented: $ws.showAgentPicker, arrowEdge: .bottom) {
                             AgentPickerPopover(
-                                projectId: windowState.selectedProjectId,
-                                projectDirectory: windowState.projectDirectory,
+                                projectId: nil,
+                                projectDirectory: "",
                                 isPresented: $ws.showAgentPicker
                             )
                             .environmentObject(appState)
@@ -414,8 +421,8 @@ struct SidebarView: View {
                         .frame(width: 0, height: 0).opacity(0)
                         .popover(isPresented: $ws.showGroupPicker, arrowEdge: .bottom) {
                             GroupPickerPopover(
-                                projectId: windowState.selectedProjectId,
-                                projectDirectory: windowState.projectDirectory,
+                                projectId: nil,
+                                projectDirectory: "",
                                 isPresented: $ws.showGroupPicker
                             )
                             .environmentObject(appState)
@@ -452,23 +459,20 @@ struct SidebarView: View {
     }
 
 
-    private var sortedProjects: [Project] {
-        projects.sorted { lhs, rhs in
-            if lhs.isPinned != rhs.isPinned {
-                return lhs.isPinned && !rhs.isPinned
-            }
+    private var sortedProjects: [Project] { cachedSortedProjects }
+    private var residentAgents: [Agent] { cachedResidentAgents }
+    private var nonResidentAgents: [Agent] { cachedNonResidentAgents }
+
+    private func rebuildProjectCache() {
+        cachedSortedProjects = projects.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned { return lhs.isPinned && !rhs.isPinned }
             return lhs.createdAt > rhs.createdAt
         }
     }
 
-    private var residentAgents: [Agent] {
-        agents.filter { $0.isEnabled && $0.isResident }
-            .sorted { $0.name < $1.name }
-    }
-
-    private var nonResidentAgents: [Agent] {
-        agents.filter { $0.isEnabled && !$0.isResident && $0.showInSidebar }
-            .sorted { $0.name < $1.name }
+    private func rebuildAgentCaches() {
+        cachedResidentAgents = agents.filter { $0.isEnabled && $0.isResident }.sorted { $0.name < $1.name }
+        cachedNonResidentAgents = agents.filter { $0.isEnabled && !$0.isResident && $0.showInSidebar }.sorted { $0.name < $1.name }
     }
 
     private var projectsHeader: some View {
@@ -1898,8 +1902,7 @@ struct SidebarView: View {
 
     private func conversationsForAgent(_ agent: Agent, in project: Project? = nil) -> [Conversation] {
         var seen = Set<UUID>()
-        return allSessions
-            .filter { $0.agent?.id == agent.id }
+        return agent.sessions
             .compactMap { $0.conversations.first }
             .filter { $0.sourceGroupId == nil && !$0.isArchived && inGlobalScope($0, project: project) }
             .filter { seen.insert($0.id).inserted }
@@ -1907,8 +1910,7 @@ struct SidebarView: View {
 
     private func archivedConversationsForAgent(_ agent: Agent, in project: Project? = nil) -> [Conversation] {
         var seen = Set<UUID>()
-        return allSessions
-            .filter { $0.agent?.id == agent.id }
+        return agent.sessions
             .compactMap { $0.conversations.first }
             .filter { $0.sourceGroupId == nil && $0.isArchived && inGlobalScope($0, project: project) }
             .filter { seen.insert($0.id).inserted }

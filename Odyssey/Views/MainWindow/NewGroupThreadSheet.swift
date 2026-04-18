@@ -493,8 +493,8 @@ struct NewGroupThreadSheet: View {
         guard let selectedGroup else { return }
         if let conversationId = appState.startGroupChat(
             group: selectedGroup,
-            projectDirectory: windowState.projectDirectory,
-            projectId: windowState.selectedProjectId,
+            projectDirectory: "",
+            projectId: nil,
             modelContext: modelContext,
             missionOverride: mission,
             executionMode: executionMode
