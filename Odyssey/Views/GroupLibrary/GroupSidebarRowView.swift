@@ -64,6 +64,7 @@ struct GroupSidebarRowView: View {
                     }
                     Divider()
                     Button("Rename\u{2026}") { onRename?(conv) }
+                        .accessibilityIdentifier("sidebar.groupRow.\(group.id.uuidString).chatRow.\(conv.id.uuidString).rename")
                     Button("Archive") {
                         conv.isArchived = true
                         conv.isPinned = false

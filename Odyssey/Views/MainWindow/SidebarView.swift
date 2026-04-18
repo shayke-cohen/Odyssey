@@ -1106,6 +1106,7 @@ struct SidebarView: View {
                         selectOrCreateGroupChat(group)
                     },
                     onEdit: { editingGroup = group },
+                    onDuplicate: { duplicateGroup(group) },
                     onRename: { conv in
                         renameText = conv.topic ?? ""
                         renamingConversation = conv
