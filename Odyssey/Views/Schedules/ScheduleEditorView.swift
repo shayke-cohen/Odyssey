@@ -624,7 +624,13 @@ struct ScheduleEditorView: View {
             panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory())
         }
 
-        if panel.runModal() == .OK, let url = panel.url {
+        if let window = NSApp.keyWindow {
+            panel.beginSheetModal(for: window) { response in
+                if response == .OK, let url = panel.url {
+                    draft.projectDirectory = url.path
+                }
+            }
+        } else if panel.runModal() == .OK, let url = panel.url {
             draft.projectDirectory = url.path
         }
     }
