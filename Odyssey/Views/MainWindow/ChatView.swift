@@ -1129,6 +1129,9 @@ struct ChatView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.bar)
+        .task(id: resolvedChatTitle) {
+            windowState.chatTitle = resolvedChatTitle
+        }
     }
 
     @ViewBuilder
@@ -2289,6 +2292,12 @@ struct ChatView: View {
     private var sourceGroup: AgentGroup? {
         guard let gid = conversation?.sourceGroupId else { return nil }
         return allGroups.first { $0.id == gid }
+    }
+
+    private var resolvedChatTitle: String? {
+        if let group = sourceGroup { return group.name }
+        if let agent = primarySession?.agent { return agent.name }
+        return nil
     }
 
     private var emptyStateSuggestions: AgentSuggestions.SuggestionSet {
