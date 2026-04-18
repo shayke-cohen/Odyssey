@@ -8,10 +8,33 @@ struct QuickActionsSettingsView: View {
     @State private var showResetConfirmation = false
 
     var body: some View {
-        List {
+        Form {
             Section {
-                ForEach(store.configs) { config in
+                ForEach(Array(store.configs.enumerated()), id: \.element.id) { index, config in
                     HStack(spacing: 10) {
+                        VStack(spacing: 0) {
+                            Button {
+                                store.move(fromOffsets: IndexSet(integer: index), toOffset: index - 1)
+                            } label: {
+                                Image(systemName: "chevron.up").font(.system(size: 10))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(index == 0)
+                            .accessibilityLabel("Move \(config.name) up")
+                            .accessibilityIdentifier("settings.quickActions.moveUp.\(config.id.uuidString)")
+
+                            Button {
+                                store.move(fromOffsets: IndexSet(integer: index), toOffset: index + 2)
+                            } label: {
+                                Image(systemName: "chevron.down").font(.system(size: 10))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(index == store.configs.count - 1)
+                            .accessibilityLabel("Move \(config.name) down")
+                            .accessibilityIdentifier("settings.quickActions.moveDown.\(config.id.uuidString)")
+                        }
+                        .foregroundStyle(.tertiary)
+
                         Image(systemName: config.symbolName)
                             .frame(width: 20)
                             .foregroundStyle(.secondary)
@@ -36,7 +59,6 @@ struct QuickActionsSettingsView: View {
                     }
                     .accessibilityIdentifier("settings.quickActions.row.\(config.id.uuidString)")
                 }
-                .onMove { store.move(fromOffsets: $0, toOffset: $1) }
 
                 Button {
                     showAddSheet = true
@@ -55,7 +77,7 @@ struct QuickActionsSettingsView: View {
                         .accessibilityIdentifier("settings.quickActions.resetButton")
                 }
             } footer: {
-                Text("Drag to reorder. Changes appear immediately in the chat bar.")
+                Text("Use ▲▼ to reorder. Changes appear immediately in the chat bar.")
                     .foregroundStyle(.secondary)
             }
 
@@ -68,7 +90,7 @@ struct QuickActionsSettingsView: View {
                 .accessibilityIdentifier("settings.quickActions.usageOrderToggle")
             }
         }
-        .listStyle(.inset(alternatesRowBackgrounds: false))
+        .formStyle(.grouped)
         .sheet(item: $editingConfig) { config in
             QuickActionEditSheet(mode: .edit, existing: config) { updated in
                 store.update(updated)
