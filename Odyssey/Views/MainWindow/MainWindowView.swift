@@ -40,6 +40,7 @@ struct MainWindowView: View {
     private var showDebugLogs: Bool { FeatureFlags.isEnabled(FeatureFlags.debugLogsKey) || (masterFlag && debugLogsFlag) }
     private var showFederation: Bool { FeatureFlags.isEnabled(FeatureFlags.federationKey) || (masterFlag && federationFlag) }
     private var showAgentComms: Bool { FeatureFlags.isEnabled(FeatureFlags.agentCommsKey) || (masterFlag && agentCommsFlag) }
+    private var showWorkspaceMenu: Bool { showFederation || showAgentComms || showPeerNetwork || showDebugLogs }
 
     var body: some View {
         @Bindable var ws = windowState
@@ -90,7 +91,7 @@ struct MainWindowView: View {
                 }
             }
 
-            if ws.activeRoute != .settings {
+            if ws.activeRoute != .settings, showWorkspaceMenu {
                 ToolbarItem(placement: .automatic) {
                     Menu {
                         if showFederation {
