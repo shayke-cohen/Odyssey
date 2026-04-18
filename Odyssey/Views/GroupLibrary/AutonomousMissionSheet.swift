@@ -25,7 +25,7 @@ struct AutonomousMissionSheet: View {
             Form {
                 Section("Group") {
                     HStack {
-                        Text(group.icon)
+                        GroupIconView(size: 20)
                         Text(group.name)
                             .font(.headline)
                         Spacer()

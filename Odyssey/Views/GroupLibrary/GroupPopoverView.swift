@@ -34,11 +34,7 @@ struct GroupPopoverView: View {
 
     private var headerSection: some View {
         HStack(alignment: .top, spacing: 10) {
-            Text(group.icon)
-                .font(.title3)
-                .frame(width: 40, height: 40)
-                .background(Color.fromAgentColor(group.color).opacity(0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+            GroupIconView(size: 40)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(group.name)

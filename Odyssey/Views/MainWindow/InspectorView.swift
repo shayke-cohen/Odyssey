@@ -656,11 +656,7 @@ struct InspectorView: View {
             VStack(alignment: .leading, spacing: 16) {
                 // Header
                 VStack(spacing: 8) {
-                    Text(group.icon)
-                        .font(.title)
-                        .frame(width: 48, height: 48)
-                        .background(Color.fromAgentColor(group.color).opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    GroupIconView(size: 48)
 
                     Text(group.name)
                         .font(.headline)

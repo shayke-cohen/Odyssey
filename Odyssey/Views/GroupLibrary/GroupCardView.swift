@@ -10,11 +10,7 @@ struct GroupCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(group.icon)
-                    .font(.title2)
-                    .frame(width: 36, height: 36)
-                    .background(Color.fromAgentColor(group.color).opacity(0.15))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                GroupIconView(size: 36)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(group.name)

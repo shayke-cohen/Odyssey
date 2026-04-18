@@ -69,7 +69,7 @@ struct AddAgentsToChatSheet: View {
                             )) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack(spacing: 8) {
-                                        Text(group.icon)
+                                        GroupIconView(size: 20)
                                         Text(group.name)
                                     }
                                     Text(group.agentIds.compactMap { id in

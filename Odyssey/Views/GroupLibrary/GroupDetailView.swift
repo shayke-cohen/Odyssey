@@ -75,11 +75,7 @@ struct GroupDetailView: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 16) {
-                    Text(group.icon)
-                        .font(.system(size: 40))
-                        .frame(width: 64, height: 64)
-                        .background(Color.fromAgentColor(group.color).opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    GroupIconView(size: 64)
                         .xrayId("groupDetail.icon")
 
                     VStack(alignment: .leading, spacing: 4) {
