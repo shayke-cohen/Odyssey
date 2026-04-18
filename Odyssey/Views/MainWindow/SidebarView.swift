@@ -300,6 +300,7 @@ struct SidebarView: View {
                     Text("\"\(schedule.name)\" will be permanently deleted.")
                 }
             }
+            .focusedSceneValue(\.addProjectAction, AddProjectAction { addProjectFolder() })
     }
 
     private var sidebarWithSheets: some View {
@@ -1072,14 +1073,14 @@ struct SidebarView: View {
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
                 Button {
-                    windowState.openConfiguration(section: .agents)
+                    addProjectFolder()
                 } label: {
-                    Label("Open Configuration", systemImage: "gearshape")
+                    Label("Add Project", systemImage: "folder.badge.plus")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .help("Configure agents and groups")
-                .xrayId("sidebar.emptyState.newSessionButton")
+                .help("Add a project folder")
+                .xrayId("sidebar.emptyState.addProjectButton")
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)

@@ -13,10 +13,24 @@ private struct OpenProjectSettingsActionKey: FocusedValueKey {
     typealias Value = OpenProjectSettingsAction
 }
 
+struct AddProjectAction {
+    let handler: () -> Void
+    func callAsFunction() { handler() }
+}
+
+private struct AddProjectActionKey: FocusedValueKey {
+    typealias Value = AddProjectAction
+}
+
 extension FocusedValues {
     var openProjectSettingsAction: OpenProjectSettingsAction? {
         get { self[OpenProjectSettingsActionKey.self] }
         set { self[OpenProjectSettingsActionKey.self] = newValue }
+    }
+
+    var addProjectAction: AddProjectAction? {
+        get { self[AddProjectActionKey.self] }
+        set { self[AddProjectActionKey.self] = newValue }
     }
 }
 

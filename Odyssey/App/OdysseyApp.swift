@@ -17,6 +17,7 @@ struct OdysseyApp: App {
     @AppStorage(AppSettings.textSizeKey, store: AppSettings.store) private var textSize = AppSettings.defaultTextSize
     @AppStorage(AppSettings.autoConnectSidecarKey, store: AppSettings.store) private var autoConnectSidecar = true
     @FocusedValue(\.openProjectSettingsAction) private var openProjectSettingsAction
+    @FocusedValue(\.addProjectAction) private var addProjectAction
 
     @Environment(\.openWindow) private var openWindow
 
@@ -131,6 +132,12 @@ struct OdysseyApp: App {
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(after: .newItem) {
+                Button("Add Project\u{2026}") {
+                    addProjectAction?()
+                }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
+                .disabled(addProjectAction == nil)
+
                 Button("Open Project\u{2026}") {
                     // Open a new window with no project — shows the project picker
                     openWindow(value: "" as String)
