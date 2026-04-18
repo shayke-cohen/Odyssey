@@ -1490,13 +1490,20 @@ final class AppState: ObservableObject {
             return
         }
 
-        // Provision a new session for the invited agent
+        // Provision a new session for the invited agent.
+        // Resolve WD: project root > invited agent's own default. Never inherit from requesting session.
         let provisioner = AgentProvisioner(modelContext: ctx)
-        let primaryWd = requestingSession.workingDirectory
+        let inviteWorkingDirOverride: String?
+        if let projectId = conversation.projectId {
+            let projectDescriptor = FetchDescriptor<Project>(predicate: #Predicate { p in p.id == projectId })
+            inviteWorkingDirOverride = (try? ctx.fetch(projectDescriptor).first)?.rootPath
+        } else {
+            inviteWorkingDirOverride = agent.defaultWorkingDirectory
+        }
         let (config, newSession) = provisioner.provision(
             agent: agent,
             mission: requestingSession.mission,
-            workingDirOverride: primaryWd.isEmpty ? nil : primaryWd
+            workingDirOverride: inviteWorkingDirOverride
         )
 
         newSession.conversations = [conversation]
