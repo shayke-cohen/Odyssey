@@ -45,7 +45,8 @@
       "Bash(open /Users/shayco/Library/Developer/Xcode/DerivedData/ClaudeStudio-aacesxntcduwzqbazhfjqhybjfau/Build/Products/Debug/ClaudeStudio.app)"
     ],
     "additionalDirectories": [
-      "/Users/shayco/.claudestudio/instances/default/data"
+      "/Users/shayco/.claudestudio/instances/default/data",
+      "/Users/shayco/Odyssey/.claude"
     ]
   }
 }

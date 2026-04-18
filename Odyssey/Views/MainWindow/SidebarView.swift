@@ -1091,6 +1091,7 @@ struct SidebarView: View {
                             projectId: nil,  // group-initiated chats belong to the group, not a project
                             modelContext: modelContext
                         ) {
+                            expandedGroupIds.insert(group.id)
                             windowState.selectedConversationId = convoId
                         }
                     },
@@ -1110,6 +1111,7 @@ struct SidebarView: View {
                 )
                 .contextMenu {
                     Button("Start Chat") {
+                        expandedGroupIds.insert(group.id)
                         selectOrCreateGroupChat(group)
                     }
                     .accessibilityIdentifier("sidebar.groupContext.startChat.\(group.id.uuidString)")
@@ -1814,6 +1816,7 @@ struct SidebarView: View {
                 projectId: targetProject?.id ?? windowState.selectedProjectId,
                 modelContext: modelContext
             ) {
+                expandedGroupIds.insert(group.id)
                 windowState.selectedConversationId = convoId
             }
         }
