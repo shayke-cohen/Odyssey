@@ -181,6 +181,10 @@ struct SidebarView: View {
     @State private var expandedProjectIds: Set<UUID> = []
     @AppStorage("sidebar.nonResidentAgentsExpanded") private var isNonResidentAgentsExpanded: Bool = false
     @AppStorage("sidebar.projectsExpanded") private var isProjectsSectionExpanded: Bool = true
+    @AppStorage("sidebar.allSchedulesExpanded") private var isAllSchedulesExpanded: Bool = false
+    @State private var editingGlobalSchedule: ScheduledMission?
+    @State private var showingGlobalScheduleEditor = false
+    @State private var globalScheduleEditorDraft = ScheduledMissionDraft()
 
     private var workshopEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.workshopKey) || (masterFlag && workshopFlag) }
     private var autoAssembleEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.autoAssembleKey) || (masterFlag && autoAssembleFlag) }
@@ -206,6 +210,11 @@ struct SidebarView: View {
             }
             .sheet(isPresented: $showingGroupScheduleEditor) {
                 ScheduleEditorView(schedule: nil, draft: groupScheduleDraft)
+                    .environmentObject(appState)
+                    .environment(\.modelContext, modelContext)
+            }
+            .sheet(isPresented: $showingGlobalScheduleEditor) {
+                ScheduleEditorView(schedule: editingGlobalSchedule, draft: globalScheduleEditorDraft)
                     .environmentObject(appState)
                     .environment(\.modelContext, modelContext)
             }
@@ -1236,12 +1245,18 @@ struct SidebarView: View {
 
     @ViewBuilder
     private var globalUtilitiesSection: some View {
-        @Bindable var ws = windowState
         Section {
+            // ── Header row (toggle expand / open full list) ──
             Button {
-                ws.showAllSchedules = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isAllSchedulesExpanded.toggle()
+                }
             } label: {
-                HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: isAllSchedulesExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12)
                     Label("All Schedules", systemImage: "clock.badge")
                     Spacer()
                     if !schedules.isEmpty {
@@ -1254,8 +1269,55 @@ struct SidebarView: View {
             }
             .buttonStyle(.plain)
             .stableXrayId("sidebar.allSchedulesRow")
+            .contextMenu {
+                Button("Open Schedule Library") {
+                    windowState.showScheduleLibrary = true
+                }
+            }
+
+            // ── Expanded schedule rows ──
+            if isAllSchedulesExpanded {
+                ForEach(schedules) { schedule in
+                    globalScheduleRow(schedule)
+                }
+            }
         }
         .stableXrayId("sidebar.globalUtilitiesSection")
+    }
+
+    @ViewBuilder
+    private func globalScheduleRow(_ schedule: ScheduledMission) -> some View {
+        Button {
+            editingGlobalSchedule = schedule
+            globalScheduleEditorDraft = ScheduledMissionDraft(schedule: schedule)
+            showingGlobalScheduleEditor = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "clock")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 14)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(schedule.name)
+                        .font(.callout)
+                        .lineLimit(1)
+                    Text(schedule.isEnabled
+                         ? (schedule.nextRunAt?.formatted(date: .omitted, time: .shortened) ?? "Not scheduled")
+                         : "Disabled")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                Spacer(minLength: 4)
+                if schedule.isEnabled {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .padding(.leading, 18)
+        }
+        .buttonStyle(.plain)
+        .stableXrayId("sidebar.globalScheduleRow.\(schedule.id.uuidString)")
     }
 
     @ViewBuilder
@@ -1694,6 +1756,7 @@ struct SidebarView: View {
         return allSessions
             .filter { $0.agent?.id == agent.id }
             .compactMap { $0.conversations.first }
+            .filter { $0.sourceGroupId == nil }  // group chats belong to the group only
             .filter {
                 if let project {
                     $0.projectId == project.id
