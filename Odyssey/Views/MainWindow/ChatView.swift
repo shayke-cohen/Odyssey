@@ -1198,7 +1198,10 @@ struct ChatView: View {
 
                 simplifiedHeaderStatusPills
 
+                executionModeSegmented
+
                 if let convo = conversation {
+                    delegationBadgeButton(convo)
                     simplifiedSessionMenu(convo)
                 }
             }
@@ -1272,11 +1275,6 @@ struct ChatView: View {
                 }
             }
 
-            executionModeToggleButton
-
-            if let convo = conversation, convo.sessions.count > 1 {
-                delegationBadgeButton(convo)
-            }
         }
     }
 
@@ -1638,6 +1636,28 @@ struct ChatView: View {
             .help(isAutonomousModeEnabled ? "Switch this thread back to interactive mode" : "Switch this thread to autonomous mode")
             .xrayId("chat.executionModeToggle")
             .accessibilityLabel(isAutonomousModeEnabled ? "Switch thread to interactive mode" : "Switch thread to autonomous mode")
+        }
+    }
+
+    @ViewBuilder
+    private var executionModeSegmented: some View {
+        if supportsExecutionModeToggle {
+            Picker(
+                "Mode",
+                selection: Binding(
+                    get: { isAutonomousModeEnabled },
+                    set: { _ in handleExecutionModeToggle() }
+                )
+            ) {
+                Text("Interactive").tag(false)
+                Text("Auto").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .controlSize(.small)
+            .frame(width: 130)
+            .xrayId("chat.executionModeSegmented")
+            .accessibilityLabel("Execution mode")
         }
     }
 
