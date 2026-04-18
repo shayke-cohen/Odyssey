@@ -179,6 +179,7 @@ struct SidebarView: View {
     @State private var projectToArchiveThreads: Project?
     @State private var projectToRemove: Project?
     @State private var scheduleToDelete: ScheduledMission?
+    @State private var scheduleForHistory: ScheduledMission?
     @State private var isPinnedExpanded = true
     @State private var isActiveExpanded = true
     @State private var isHistoryExpanded = false
@@ -199,33 +200,7 @@ struct SidebarView: View {
     private var autonomousMissionsEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.autonomousMissionsKey) || (masterFlag && autonomousMissionsFlag) }
 
     var body: some View {
-        sidebarList
-            .sheet(item: $editingGroup) { group in
-                GroupEditorView(group: group)
-            }
-            .sheet(item: $autonomousGroup) { group in
-                AutonomousMissionSheet(group: group)
-                    .environmentObject(appState)
-            }
-            .sheet(isPresented: $showAutoAssemble) {
-                AutoAssembleSheet()
-                    .environmentObject(appState)
-            }
-            .sheet(isPresented: $showingAgentScheduleEditor) {
-                ScheduleEditorView(schedule: nil, draft: agentScheduleDraft)
-                    .environmentObject(appState)
-                    .environment(\.modelContext, modelContext)
-            }
-            .sheet(isPresented: $showingGroupScheduleEditor) {
-                ScheduleEditorView(schedule: nil, draft: groupScheduleDraft)
-                    .environmentObject(appState)
-                    .environment(\.modelContext, modelContext)
-            }
-            .sheet(item: $globalScheduleEditRequest) { req in
-                ScheduleEditorView(schedule: req.schedule, draft: req.draft)
-                    .environmentObject(appState)
-                    .environment(\.modelContext, modelContext)
-            }
+        sidebarWithSheets
             .alert("Rename Conversation", isPresented: Binding(
                 get: { renamingConversation != nil },
                 set: { if !$0 { renamingConversation = nil } }
@@ -321,6 +296,41 @@ struct SidebarView: View {
                 if let schedule = scheduleToDelete {
                     Text("\"\(schedule.name)\" will be permanently deleted.")
                 }
+            }
+    }
+
+    private var sidebarWithSheets: some View {
+        sidebarList
+            .sheet(item: $editingGroup) { group in
+                GroupEditorView(group: group)
+            }
+            .sheet(item: $autonomousGroup) { group in
+                AutonomousMissionSheet(group: group)
+                    .environmentObject(appState)
+            }
+            .sheet(isPresented: $showAutoAssemble) {
+                AutoAssembleSheet()
+                    .environmentObject(appState)
+            }
+            .sheet(isPresented: $showingAgentScheduleEditor) {
+                ScheduleEditorView(schedule: nil, draft: agentScheduleDraft)
+                    .environmentObject(appState)
+                    .environment(\.modelContext, modelContext)
+            }
+            .sheet(isPresented: $showingGroupScheduleEditor) {
+                ScheduleEditorView(schedule: nil, draft: groupScheduleDraft)
+                    .environmentObject(appState)
+                    .environment(\.modelContext, modelContext)
+            }
+            .sheet(item: $globalScheduleEditRequest) { req in
+                ScheduleEditorView(schedule: req.schedule, draft: req.draft)
+                    .environmentObject(appState)
+                    .environment(\.modelContext, modelContext)
+            }
+            .sheet(item: $scheduleForHistory) { schedule in
+                ScheduleHistorySheet(schedule: schedule)
+                    .environmentObject(appState)
+                    .environment(windowState)
             }
     }
 
@@ -1337,6 +1347,9 @@ struct SidebarView: View {
                     Label("Go to Last Session", systemImage: "bubble.left")
                 }
             }
+            Button { scheduleForHistory = schedule } label: {
+                Label("View History", systemImage: "clock.arrow.circlepath")
+            }
             Divider()
             Button { toggleGlobalSchedule(schedule) } label: {
                 Label(schedule.isEnabled ? "Disable" : "Enable",
@@ -1827,20 +1840,18 @@ struct SidebarView: View {
 
     // MARK: - Agent Chat History
 
+    private func inGlobalScope(_ convo: Conversation, project: Project?) -> Bool {
+        if convo.threadKind == .scheduled { return project == nil }
+        guard let p = project else { return convo.projectId == nil }
+        return convo.projectId == p.id
+    }
+
     private func conversationsForGroup(_ group: AgentGroup, in project: Project? = nil) -> [Conversation] {
-        conversations.filter {
-            $0.sourceGroupId == group.id
-                && !$0.isArchived
-                && (project == nil ? $0.projectId == nil : $0.projectId == project?.id)
-        }
+        conversations.filter { $0.sourceGroupId == group.id && !$0.isArchived && inGlobalScope($0, project: project) }
     }
 
     private func archivedConversationsForGroup(_ group: AgentGroup, in project: Project? = nil) -> [Conversation] {
-        conversations.filter {
-            $0.sourceGroupId == group.id
-                && $0.isArchived
-                && (project == nil ? $0.projectId == nil : $0.projectId == project?.id)
-        }
+        conversations.filter { $0.sourceGroupId == group.id && $0.isArchived && inGlobalScope($0, project: project) }
     }
 
     private func conversationsForAgent(_ agent: Agent, in project: Project? = nil) -> [Conversation] {
@@ -1848,15 +1859,7 @@ struct SidebarView: View {
         return allSessions
             .filter { $0.agent?.id == agent.id }
             .compactMap { $0.conversations.first }
-            .filter { $0.sourceGroupId == nil }
-            .filter { !$0.isArchived }
-            .filter {
-                if let project {
-                    $0.projectId == project.id
-                } else {
-                    $0.projectId == nil
-                }
-            }
+            .filter { $0.sourceGroupId == nil && !$0.isArchived && inGlobalScope($0, project: project) }
             .filter { seen.insert($0.id).inserted }
     }
 
@@ -1865,15 +1868,7 @@ struct SidebarView: View {
         return allSessions
             .filter { $0.agent?.id == agent.id }
             .compactMap { $0.conversations.first }
-            .filter { $0.sourceGroupId == nil }
-            .filter { $0.isArchived }
-            .filter {
-                if let project {
-                    $0.projectId == project.id
-                } else {
-                    $0.projectId == nil
-                }
-            }
+            .filter { $0.sourceGroupId == nil && $0.isArchived && inGlobalScope($0, project: project) }
             .filter { seen.insert($0.id).inserted }
     }
 

@@ -409,3 +409,21 @@ struct ScheduleRunListSheet: View {
             .clipShape(Capsule())
     }
 }
+
+struct ScheduleHistorySheet: View {
+    let schedule: ScheduledMission
+
+    @EnvironmentObject private var appState: AppState
+    @Environment(WindowState.self) private var windowState: WindowState
+    @Query(sort: \ScheduledMissionRun.startedAt, order: .reverse) private var allRuns: [ScheduledMissionRun]
+
+    private var runs: [ScheduledMissionRun] {
+        allRuns.filter { $0.scheduleId == schedule.id }
+    }
+
+    var body: some View {
+        ScheduleRunListSheet(runs: runs) { convoId in
+            windowState.selectedConversationId = convoId
+        }
+    }
+}

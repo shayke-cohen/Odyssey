@@ -316,6 +316,9 @@ final class ScheduleRunCoordinator {
         conversation.threadKind = .scheduled
         run.conversationId = conversation.id
         if let windowState {
+            if let projectId = conversation.projectId {
+                windowState.selectProject(id: projectId, preserveSelection: true)
+            }
             windowState.selectedConversationId = conversation.id
         }
 

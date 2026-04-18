@@ -104,15 +104,21 @@ struct MainWindowView: View {
 
             if ws.activeRoute != .settings {
                 ToolbarItem(placement: .automatic) {
-                    Menu {
-                        Button {
-                            windowState.showScheduleLibrary = true
-                        } label: {
-                            Label("Schedules", systemImage: "clock.badge")
-                        }
-                        .keyboardShortcut("s", modifiers: [.command, .shift])
-                        .xrayId("mainWindow.workspaceMenu.schedulesButton")
+                    Button {
+                        windowState.showScheduleLibrary = true
+                    } label: {
+                        Label("Schedules", systemImage: "clock")
+                    }
+                    .keyboardShortcut("s", modifiers: [.command, .shift])
+                    .help("Schedules (⌘⇧S)")
+                    .xrayId("mainWindow.schedulesButton")
+                    .accessibilityLabel("Schedules")
+                }
+            }
 
+            if ws.activeRoute != .settings {
+                ToolbarItem(placement: .automatic) {
+                    Menu {
                         if showFederation {
                             Button {
                                 ws.showSharedRoomInbox = true
@@ -155,7 +161,7 @@ struct MainWindowView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .help("Open schedules, invites, agent comms, peer network, or debug tools")
+                    .help("Open invites, agent comms, peer network, or debug tools")
                     .xrayId("mainWindow.workspaceMenu")
                     .accessibilityLabel("Workspace")
                 }
