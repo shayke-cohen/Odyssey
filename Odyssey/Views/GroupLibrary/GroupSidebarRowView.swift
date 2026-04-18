@@ -11,11 +11,15 @@ struct GroupSidebarRowView: View {
     let onSelectConversation: (Conversation) -> Void
     var onSelectGroup: (() -> Void)?
     var onEdit: (() -> Void)?
-    var onDuplicate: (() -> Void)?
     var onRename: ((Conversation) -> Void)?
     var selectedConversationId: UUID?
     var hasActiveSession: Bool = false
     var onDeleteConversation: ((Conversation) -> Void)?
+    var projects: [Project] = []
+    var onNewSessionInProject: ((Project) -> Void)?
+    var onHideFromSidebar: (() -> Void)?
+    var onScheduleMission: (() -> Void)?
+    var onViewSessionHistory: (() -> Void)?
 
     @Environment(\.modelContext) private var modelContext
     @State private var showAllConversations = false
@@ -160,6 +164,40 @@ struct GroupSidebarRowView: View {
             .padding(.horizontal, 4)
             .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 6))
+            .contextMenu {
+                Button("Start Chat") { onNewChat() }
+                    .accessibilityIdentifier("sidebar.groupContext.startChat.\(group.id.uuidString)")
+
+                Menu("New Thread in Project\u{2026}") {
+                    ForEach(projects) { project in
+                        Button(project.name) { onNewSessionInProject?(project) }
+                    }
+                    if projects.isEmpty {
+                        Text("No projects").foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityIdentifier("sidebar.groupContext.newThreadInProject.\(group.id.uuidString)")
+
+                Divider()
+
+                Button("View Session History") { onViewSessionHistory?() }
+                    .accessibilityIdentifier("sidebar.groupContext.viewHistory.\(group.id.uuidString)")
+
+                Divider()
+
+                Button("Hide from Sidebar") { onHideFromSidebar?() }
+                    .accessibilityIdentifier("sidebar.groupContext.hideSidebar.\(group.id.uuidString)")
+
+                Divider()
+
+                Button("Schedule Mission\u{2026}") { onScheduleMission?() }
+                    .accessibilityIdentifier("sidebar.groupContext.schedule.\(group.id.uuidString)")
+
+                Divider()
+
+                Button("Edit") { onEdit?() }
+                    .accessibilityIdentifier("sidebar.groupContext.edit.\(group.id.uuidString)")
+            }
         }
     }
 }

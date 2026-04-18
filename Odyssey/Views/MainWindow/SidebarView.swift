@@ -128,6 +128,12 @@ enum SidebarConversationMetadata {
     }
 }
 
+private struct GlobalScheduleEditRequest: Identifiable {
+    let id = UUID()
+    let schedule: ScheduledMission?
+    let draft: ScheduledMissionDraft
+}
+
 struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(WindowState.self) private var windowState: WindowState
@@ -180,11 +186,12 @@ struct SidebarView: View {
     @State private var hoveredConversationId: UUID?
     @State private var expandedProjectIds: Set<UUID> = []
     @AppStorage("sidebar.nonResidentAgentsExpanded") private var isNonResidentAgentsExpanded: Bool = false
+    @AppStorage("sidebar.agentsExpanded") private var isAgentsSectionExpanded: Bool = true
+    @AppStorage("sidebar.groupsExpanded") private var isGroupsSectionExpanded: Bool = true
+    @AppStorage("sidebar.schedulesExpanded") private var isSchedulesSectionExpanded: Bool = true
     @AppStorage("sidebar.projectsExpanded") private var isProjectsSectionExpanded: Bool = true
     @AppStorage("sidebar.allSchedulesExpanded") private var isAllSchedulesExpanded: Bool = false
-    @State private var editingGlobalSchedule: ScheduledMission?
-    @State private var showingGlobalScheduleEditor = false
-    @State private var globalScheduleEditorDraft = ScheduledMissionDraft()
+    @State private var globalScheduleEditRequest: GlobalScheduleEditRequest?
 
     private var workshopEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.workshopKey) || (masterFlag && workshopFlag) }
     private var autoAssembleEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.autoAssembleKey) || (masterFlag && autoAssembleFlag) }
@@ -213,8 +220,8 @@ struct SidebarView: View {
                     .environmentObject(appState)
                     .environment(\.modelContext, modelContext)
             }
-            .sheet(isPresented: $showingGlobalScheduleEditor) {
-                ScheduleEditorView(schedule: editingGlobalSchedule, draft: globalScheduleEditorDraft)
+            .sheet(item: $globalScheduleEditRequest) { req in
+                ScheduleEditorView(schedule: req.schedule, draft: req.draft)
                     .environmentObject(appState)
                     .environment(\.modelContext, modelContext)
             }
@@ -1082,137 +1089,108 @@ struct SidebarView: View {
     @ViewBuilder
     private var groupsSection: some View {
         Section {
-            ForEach(groups.filter { $0.isEnabled && $0.showInSidebar }) { group in
-                GroupSidebarRowView(
-                    group: group,
-                    conversations: conversationsForGroup(group),
-                    allAgents: agents,
-                    isExpanded: Binding(
-                        get: { expandedGroupIds.contains(group.id) },
-                        set: { expanded in
-                            if expanded { expandedGroupIds.insert(group.id) }
-                            else { expandedGroupIds.remove(group.id) }
-                        }
-                    ),
-                    onNewChat: {
-                        if let convoId = appState.startGroupChat(
-                            group: group,
-                            projectDirectory: windowState.projectDirectory,
-                            projectId: nil,  // group-initiated chats belong to the group, not a project
-                            modelContext: modelContext
-                        ) {
-                            expandedGroupIds.insert(group.id)
-                            windowState.selectedConversationId = convoId
-                        }
-                    },
-                    onNewAutonomousChat: (autonomousMissionsEnabled && group.autonomousCapable) ? {
-                        autonomousGroup = group
-                    } : nil,
-                    onSelectConversation: { conv in
-                        windowState.selectedConversationId = conv.id
-                    },
-                    onSelectGroup: {
-                        selectOrCreateGroupChat(group)
-                    },
-                    onEdit: { editingGroup = group },
-                    onDuplicate: { duplicateGroup(group) },
-                    onRename: { conv in
-                        renameText = conv.topic ?? ""
-                        renamingConversation = conv
-                    },
-                    selectedConversationId: windowState.selectedConversationId,
-                    hasActiveSession: groupHasActiveSession(group),
-                    onDeleteConversation: { conv in promptDelete(conv) }
-                )
-                .contextMenu {
-                    Button("Start Chat") {
-                        if let convoId = appState.startGroupChat(
-                            group: group,
-                            projectDirectory: windowState.projectDirectory,
-                            projectId: nil,
-                            modelContext: modelContext
-                        ) {
-                            expandedGroupIds.insert(group.id)
-                            windowState.selectedConversationId = convoId
-                        }
-                    }
-                    .accessibilityIdentifier("sidebar.groupContext.startChat.\(group.id.uuidString)")
-
-                    Menu("New Thread in Project\u{2026}") {
-                        ForEach(projects) { project in
-                            Button(project.name) {
-                                selectOrCreateGroupChat(group, in: project)
+            if isGroupsSectionExpanded {
+                ForEach(groups.filter { $0.isEnabled && $0.showInSidebar }) { group in
+                    GroupSidebarRowView(
+                        group: group,
+                        conversations: conversationsForGroup(group),
+                        allAgents: agents,
+                        isExpanded: Binding(
+                            get: { expandedGroupIds.contains(group.id) },
+                            set: { expanded in
+                                if expanded { expandedGroupIds.insert(group.id) }
+                                else { expandedGroupIds.remove(group.id) }
+                            }
+                        ),
+                        onNewChat: {
+                            if let convoId = appState.startGroupChat(
+                                group: group,
+                                projectDirectory: windowState.projectDirectory,
+                                projectId: nil,
+                                modelContext: modelContext
+                            ) {
+                                expandedGroupIds.insert(group.id)
+                                windowState.selectedConversationId = convoId
+                            }
+                        },
+                        onNewAutonomousChat: (autonomousMissionsEnabled && group.autonomousCapable) ? {
+                            autonomousGroup = group
+                        } : nil,
+                        onSelectConversation: { conv in
+                            windowState.selectedConversationId = conv.id
+                        },
+                        onSelectGroup: {
+                            selectOrCreateGroupChat(group)
+                        },
+                        onEdit: { editingGroup = group },
+                        onRename: { conv in
+                            renameText = conv.topic ?? ""
+                            renamingConversation = conv
+                        },
+                        selectedConversationId: windowState.selectedConversationId,
+                        hasActiveSession: groupHasActiveSession(group),
+                        onDeleteConversation: { conv in promptDelete(conv) },
+                        projects: projects,
+                        onNewSessionInProject: { project in selectOrCreateGroupChat(group, in: project) },
+                        onHideFromSidebar: {
+                            group.showInSidebar = false
+                            try? modelContext.save()
+                        },
+                        onScheduleMission: {
+                            groupScheduleDraft = ScheduledMissionDraft(
+                                name: "\(group.name) schedule",
+                                targetKind: .group,
+                                projectDirectory: windowState.projectDirectory,
+                                promptTemplate: group.defaultMission ?? ""
+                            )
+                            groupScheduleDraft.targetGroupId = group.id
+                            showingGroupScheduleEditor = true
+                        },
+                        onViewSessionHistory: {
+                            if expandedGroupIds.contains(group.id) {
+                                expandedGroupIds.remove(group.id)
+                            } else {
+                                expandedGroupIds.insert(group.id)
                             }
                         }
-                        if projects.isEmpty {
-                            Text("No projects")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .accessibilityIdentifier("sidebar.groupContext.newThreadInProject.\(group.id.uuidString)")
-
-                    Divider()
-
-                    Button("View Session History") {
-                        if expandedGroupIds.contains(group.id) {
-                            expandedGroupIds.remove(group.id)
-                        } else {
-                            expandedGroupIds.insert(group.id)
-                        }
-                    }
-                    .accessibilityIdentifier("sidebar.groupContext.viewHistory.\(group.id.uuidString)")
-
-                    Divider()
-
-                    Button("Hide from Sidebar") {
-                        group.showInSidebar = false
-                        try? modelContext.save()
-                    }
-                    .accessibilityIdentifier("sidebar.groupContext.hideSidebar.\(group.id.uuidString)")
-
-                    Divider()
-
-                    Button("Schedule Mission\u{2026}") {
-                        groupScheduleDraft = ScheduledMissionDraft(
-                            name: "\(group.name) schedule",
-                            targetKind: .group,
-                            projectDirectory: windowState.projectDirectory,
-                            promptTemplate: group.defaultMission ?? ""
-                        )
-                        groupScheduleDraft.targetGroupId = group.id
-                        showingGroupScheduleEditor = true
-                    }
-                    .accessibilityIdentifier("sidebar.groupContext.schedule.\(group.id.uuidString)")
-
-                    Divider()
-
-                    Button("Edit") { editingGroup = group }
-                        .accessibilityIdentifier("sidebar.groupContext.edit.\(group.id.uuidString)")
+                    )
                 }
-            }
 
-            let hiddenGroupCount = groups.filter { $0.isEnabled && !$0.showInSidebar }.count
-            if hiddenGroupCount > 0 {
-                Button {
-                    windowState.openConfiguration(section: .groups)
-                } label: {
-                    Text("\(hiddenGroupCount) hidden · manage →")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                let hiddenGroupCount = groups.filter { $0.isEnabled && !$0.showInSidebar }.count
+                if hiddenGroupCount > 0 {
+                    Button {
+                        windowState.openConfiguration(section: .groups)
+                    } label: {
+                        Text("\(hiddenGroupCount) hidden · manage →")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("sidebar.groupsHiddenHint")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar.groupsHiddenHint")
             }
         } header: {
             HStack {
-                Text("Groups")
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isGroupsSectionExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: isGroupsSectionExpanded ? "chevron.down" : "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text("Groups")
+                            .font(.headline.weight(.semibold))
+                    }
+                }
+                .buttonStyle(.plain)
                 Spacer()
                 Button {
                     windowState.openConfiguration(section: .groups)
                 } label: {
                     Image(systemName: "plus")
-                        .font(.caption)
-                        .frame(width: 20, height: 20)
+                        .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.plain)
                 .xrayId("sidebar.groupsAddButton")
@@ -1227,14 +1205,26 @@ struct SidebarView: View {
 
     private var agentsSectionHeader: some View {
         HStack {
-            Text("Agents")
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isAgentsSectionExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: isAgentsSectionExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text("Agents")
+                        .font(.headline.weight(.semibold))
+                }
+            }
+            .buttonStyle(.plain)
             Spacer()
             Button {
                 windowState.openConfiguration(section: .agents)
             } label: {
                 Image(systemName: "plus")
-                    .font(.caption)
-                    .frame(width: 20, height: 20)
+                    .font(.caption.weight(.semibold))
             }
             .buttonStyle(.plain)
             .xrayId("sidebar.agentsSection.addButton")
@@ -1246,40 +1236,46 @@ struct SidebarView: View {
     @ViewBuilder
     private var globalUtilitiesSection: some View {
         Section {
-            // ── Header row (toggle expand / open full list) ──
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isAllSchedulesExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: isAllSchedulesExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 12)
-                    Label("All Schedules", systemImage: "clock.badge")
-                    Spacer()
-                    if !schedules.isEmpty {
-                        Text("\(schedules.count)")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-            .stableXrayId("sidebar.allSchedulesRow")
-            .contextMenu {
-                Button("Open Schedule Library") {
-                    windowState.showScheduleLibrary = true
-                }
-            }
-
-            // ── Expanded schedule rows ──
-            if isAllSchedulesExpanded {
+            if isSchedulesSectionExpanded {
                 ForEach(schedules) { schedule in
                     globalScheduleRow(schedule)
                 }
+            }
+        } header: {
+            HStack {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isSchedulesSectionExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: isSchedulesSectionExpanded ? "chevron.down" : "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text("Schedules")
+                            .font(.headline.weight(.semibold))
+                    }
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button { createNewGlobalSchedule() } label: {
+                        Label("New Schedule", systemImage: "plus")
+                    }
+                    Divider()
+                    Button { windowState.showScheduleLibrary = true } label: {
+                        Label("Open Schedule Library", systemImage: "clock.badge")
+                    }
+                }
+                Spacer()
+                Button {
+                    createNewGlobalSchedule()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("New schedule")
+                .help("New schedule")
             }
         }
         .stableXrayId("sidebar.globalUtilitiesSection")
@@ -1288,9 +1284,7 @@ struct SidebarView: View {
     @ViewBuilder
     private func globalScheduleRow(_ schedule: ScheduledMission) -> some View {
         Button {
-            editingGlobalSchedule = schedule
-            globalScheduleEditorDraft = ScheduledMissionDraft(schedule: schedule)
-            showingGlobalScheduleEditor = true
+            openGlobalScheduleEditor(schedule)
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "clock")
@@ -1318,51 +1312,159 @@ struct SidebarView: View {
         }
         .buttonStyle(.plain)
         .stableXrayId("sidebar.globalScheduleRow.\(schedule.id.uuidString)")
+        .contextMenu {
+            Button { openGlobalScheduleEditor(schedule) } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            Button { appState.runScheduledMissionNow(schedule.id, windowState: windowState) } label: {
+                Label("Run Now", systemImage: "play.fill")
+            }
+            if let convId = schedule.targetConversationId,
+               conversations.contains(where: { $0.id == convId }) {
+                Button {
+                    windowState.selectedConversationId = convId
+                } label: {
+                    Label("Go to Last Session", systemImage: "bubble.left")
+                }
+            }
+            Divider()
+            Button { toggleGlobalSchedule(schedule) } label: {
+                Label(schedule.isEnabled ? "Disable" : "Enable",
+                      systemImage: schedule.isEnabled ? "pause.circle" : "play.circle")
+            }
+            Button { duplicateGlobalSchedule(schedule) } label: {
+                Label("Duplicate", systemImage: "doc.on.doc")
+            }
+            Button { duplicateAndEditGlobalSchedule(schedule) } label: {
+                Label("Duplicate & Edit", systemImage: "doc.on.doc.fill")
+            }
+            Divider()
+            Button(role: .destructive) { deleteGlobalSchedule(schedule) } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+
+    private func createNewGlobalSchedule() {
+        var draft = ScheduledMissionDraft(projectDirectory: windowState.projectDirectory)
+        draft.projectId = windowState.selectedProjectId
+        globalScheduleEditRequest = GlobalScheduleEditRequest(schedule: nil, draft: draft)
+    }
+
+    private func openGlobalScheduleEditor(_ schedule: ScheduledMission) {
+        globalScheduleEditRequest = GlobalScheduleEditRequest(
+            schedule: schedule,
+            draft: ScheduledMissionDraft(schedule: schedule)
+        )
+    }
+
+    private func toggleGlobalSchedule(_ schedule: ScheduledMission) {
+        schedule.isEnabled.toggle()
+        appState.syncScheduledMission(schedule)
+    }
+
+    private func duplicateGlobalSchedule(_ schedule: ScheduledMission) {
+        let copy = ScheduledMission(
+            name: "\(schedule.name) Copy",
+            targetKind: schedule.targetKind,
+            projectDirectory: schedule.projectDirectory,
+            promptTemplate: schedule.promptTemplate
+        )
+        copy.projectId = schedule.projectId
+        copy.isEnabled = false
+        copy.targetAgentId = schedule.targetAgentId
+        copy.targetGroupId = schedule.targetGroupId
+        copy.targetProjectId = schedule.targetProjectId
+        copy.runMode = schedule.runMode
+        copy.cadenceKind = schedule.cadenceKind
+        copy.intervalHours = schedule.intervalHours
+        copy.localHour = schedule.localHour
+        copy.localMinute = schedule.localMinute
+        copy.daysOfWeek = schedule.daysOfWeek
+        copy.runWhenAppClosed = schedule.runWhenAppClosed
+        copy.usesAutonomousMode = schedule.usesAutonomousMode
+        modelContext.insert(copy)
+        try? modelContext.save()
+        appState.syncScheduledMission(copy)
+    }
+
+    private func duplicateAndEditGlobalSchedule(_ schedule: ScheduledMission) {
+        let copy = ScheduledMission(
+            name: "\(schedule.name) Copy",
+            targetKind: schedule.targetKind,
+            projectDirectory: schedule.projectDirectory,
+            promptTemplate: schedule.promptTemplate
+        )
+        copy.projectId = schedule.projectId
+        copy.isEnabled = false
+        copy.targetAgentId = schedule.targetAgentId
+        copy.targetGroupId = schedule.targetGroupId
+        copy.targetProjectId = schedule.targetProjectId
+        copy.runMode = schedule.runMode
+        copy.cadenceKind = schedule.cadenceKind
+        copy.intervalHours = schedule.intervalHours
+        copy.localHour = schedule.localHour
+        copy.localMinute = schedule.localMinute
+        copy.daysOfWeek = schedule.daysOfWeek
+        copy.runWhenAppClosed = schedule.runWhenAppClosed
+        copy.usesAutonomousMode = schedule.usesAutonomousMode
+        modelContext.insert(copy)
+        try? modelContext.save()
+        appState.syncScheduledMission(copy)
+        openGlobalScheduleEditor(copy)
+    }
+
+    private func deleteGlobalSchedule(_ schedule: ScheduledMission) {
+        appState.removeScheduledMission(schedule)
+        modelContext.delete(schedule)
+        try? modelContext.save()
     }
 
     @ViewBuilder
     private var agentsSection: some View {
         Section {
-            // 1. Resident (pinned) agents — always shown
-            ForEach(residentAgents) { agent in
-                agentSidebarRow(agent, isPinned: true)
-            }
+            if isAgentsSectionExpanded {
+                // 1. Resident (pinned) agents — always shown
+                ForEach(residentAgents) { agent in
+                    agentSidebarRow(agent, isPinned: true)
+                }
 
-            // 2. Non-resident agents — collapsed under "N more agents..."
-            if !nonResidentAgents.isEmpty {
-                if isNonResidentAgentsExpanded {
-                    ForEach(nonResidentAgents) { agent in
-                        agentSidebarRow(agent, isPinned: false)
+                // 2. Non-resident agents — collapsed under "N more agents..."
+                if !nonResidentAgents.isEmpty {
+                    if isNonResidentAgentsExpanded {
+                        ForEach(nonResidentAgents) { agent in
+                            agentSidebarRow(agent, isPinned: false)
+                        }
                     }
+                    Button {
+                        isNonResidentAgentsExpanded.toggle()
+                    } label: {
+                        Label(
+                            isNonResidentAgentsExpanded
+                                ? "Show fewer"
+                                : "\(nonResidentAgents.count) more agent\(nonResidentAgents.count == 1 ? "" : "s")\u{2026}",
+                            systemImage: isNonResidentAgentsExpanded ? "chevron.up" : "chevron.down"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .xrayId("sidebar.agents.showMore")
                 }
-                Button {
-                    isNonResidentAgentsExpanded.toggle()
-                } label: {
-                    Label(
-                        isNonResidentAgentsExpanded
-                            ? "Show fewer"
-                            : "\(nonResidentAgents.count) more agent\(nonResidentAgents.count == 1 ? "" : "s")\u{2026}",
-                        systemImage: isNonResidentAgentsExpanded ? "chevron.up" : "chevron.down"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .xrayId("sidebar.agents.showMore")
-            }
 
-            // 3. Hidden agents hint
-            let hiddenAgentCount = agents.filter { $0.isEnabled && !$0.isResident && !$0.showInSidebar }.count
-            if hiddenAgentCount > 0 {
-                Button {
-                    windowState.openConfiguration(section: .agents)
-                } label: {
-                    Text("\(hiddenAgentCount) hidden · manage →")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                // 3. Hidden agents hint
+                let hiddenAgentCount = agents.filter { $0.isEnabled && !$0.isResident && !$0.showInSidebar }.count
+                if hiddenAgentCount > 0 {
+                    Button {
+                        windowState.openConfiguration(section: .agents)
+                    } label: {
+                        Text("\(hiddenAgentCount) hidden · manage →")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("sidebar.agentsHiddenHint")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar.agentsHiddenHint")
             }
         } header: {
             agentsSectionHeader
@@ -1396,55 +1498,18 @@ struct SidebarView: View {
             selectedConversationId: windowState.selectedConversationId,
             hasActiveSession: agentHasActiveSession(agent),
             onDeleteConversation: { conv in promptDelete(conv) },
-            isPinned: isPinned
-        )
-        .contextMenu {
-            Button("New Session") {
-                startSession(with: agent)
-            }
-            .accessibilityIdentifier("sidebar.agentRow.newSession.\(agent.id.uuidString)")
-
-            Menu("New Thread in Project\u{2026}") {
-                ForEach(projects) { project in
-                    Button(project.name) {
-                        startSession(with: agent, in: project)
-                    }
-                }
-                if projects.isEmpty {
-                    Text("No projects")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .accessibilityIdentifier("sidebar.agentRow.newThreadInProject.\(agent.id.uuidString)")
-
-            Divider()
-
-            Button("View Session History") {
-                if expandedAgentIds.contains(agent.id) {
-                    expandedAgentIds.remove(agent.id)
-                } else {
-                    expandedAgentIds.insert(agent.id)
-                }
-            }
-            .accessibilityIdentifier("sidebar.agentRow.viewHistory.\(agent.id.uuidString)")
-
-            Divider()
-
-            Button(isPinned ? "Unpin from Sidebar" : "Pin to Sidebar") {
+            isPinned: isPinned,
+            projects: projects,
+            onNewSessionInProject: { project in startSession(with: agent, in: project) },
+            onTogglePin: {
                 agent.isResident.toggle()
                 try? modelContext.save()
-            }
-            .accessibilityIdentifier("sidebar.agentRow.togglePin.\(agent.id.uuidString)")
-
-            Button("Hide from Sidebar") {
+            },
+            onHideFromSidebar: {
                 agent.showInSidebar = false
                 try? modelContext.save()
-            }
-            .accessibilityIdentifier("sidebar.agentRow.hideSidebar.\(agent.id.uuidString)")
-
-            Divider()
-
-            Button("Schedule Mission\u{2026}") {
+            },
+            onScheduleMission: {
                 agentScheduleDraft = ScheduledMissionDraft(
                     name: "\(agent.name) schedule",
                     targetKind: .agent,
@@ -1453,9 +1518,15 @@ struct SidebarView: View {
                 )
                 agentScheduleDraft.targetAgentId = agent.id
                 showingAgentScheduleEditor = true
+            },
+            onViewSessionHistory: {
+                if expandedAgentIds.contains(agent.id) {
+                    expandedAgentIds.remove(agent.id)
+                } else {
+                    expandedAgentIds.insert(agent.id)
+                }
             }
-            .accessibilityIdentifier("sidebar.agentRow.schedule.\(agent.id.uuidString)")
-        }
+        )
     }
 
     // MARK: - Conversation Row

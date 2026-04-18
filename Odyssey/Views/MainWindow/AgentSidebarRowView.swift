@@ -13,6 +13,13 @@ struct AgentSidebarRowView: View {
     var hasActiveSession: Bool = false
     var onDeleteConversation: ((Conversation) -> Void)?
     var isPinned: Bool = false
+    // Agent-level context menu actions (applied to label only)
+    var projects: [Project] = []
+    var onNewSessionInProject: ((Project) -> Void)?
+    var onTogglePin: (() -> Void)?
+    var onHideFromSidebar: (() -> Void)?
+    var onScheduleMission: (() -> Void)?
+    var onViewSessionHistory: (() -> Void)?
 
     @Environment(\.modelContext) private var modelContext
     @State private var showAllConversations = false
@@ -58,23 +65,16 @@ struct AgentSidebarRowView: View {
                 .accessibilityIdentifier("sidebar.agentThreadRow.\(conv.id.uuidString)")
                 .accessibilityLabel("Open chat \(conv.topic ?? "Untitled")")
                 .contextMenu {
-                    Button("Open Thread") {
-                        onSelectConversation(conv)
-                    }
+                    Button("Open Thread") { onSelectConversation(conv) }
                     Divider()
-                    Button("Rename\u{2026}") {
-                        onRename?(conv)
-                    }
-                    .accessibilityIdentifier("sidebar.agentRow.\(agent.id.uuidString).chatRow.\(conv.id.uuidString).rename")
+                    Button("Rename\u{2026}") { onRename?(conv) }
                     Button("Archive") {
                         conv.isArchived = true
                         conv.isPinned = false
                         try? modelContext.save()
                     }
                     .accessibilityIdentifier("sidebar.agentThreadRow.archive.\(conv.id.uuidString)")
-                    Button("Delete\u{2026}", role: .destructive) {
-                        onDeleteConversation?(conv)
-                    }
+                    Button("Delete\u{2026}", role: .destructive) { onDeleteConversation?(conv) }
                     .accessibilityIdentifier("sidebar.agentThreadRow.delete.\(conv.id.uuidString)")
                 }
             }
@@ -142,6 +142,38 @@ struct AgentSidebarRowView: View {
             .padding(.horizontal, 4)
             .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 6))
+            .contextMenu {
+                Button("New Session") { onNewChat() }
+                    .accessibilityIdentifier("sidebar.agentRow.newSession.\(agent.id.uuidString)")
+
+                Menu("New Thread in Project\u{2026}") {
+                    ForEach(projects) { project in
+                        Button(project.name) { onNewSessionInProject?(project) }
+                    }
+                    if projects.isEmpty {
+                        Text("No projects").foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityIdentifier("sidebar.agentRow.newThreadInProject.\(agent.id.uuidString)")
+
+                Divider()
+
+                Button("View Session History") { onViewSessionHistory?() }
+                    .accessibilityIdentifier("sidebar.agentRow.viewHistory.\(agent.id.uuidString)")
+
+                Divider()
+
+                Button(isPinned ? "Unpin from Sidebar" : "Pin to Sidebar") { onTogglePin?() }
+                    .accessibilityIdentifier("sidebar.agentRow.togglePin.\(agent.id.uuidString)")
+
+                Button("Hide from Sidebar") { onHideFromSidebar?() }
+                    .accessibilityIdentifier("sidebar.agentRow.hideSidebar.\(agent.id.uuidString)")
+
+                Divider()
+
+                Button("Schedule Mission\u{2026}") { onScheduleMission?() }
+                    .accessibilityIdentifier("sidebar.agentRow.schedule.\(agent.id.uuidString)")
+            }
         }
     }
 }
