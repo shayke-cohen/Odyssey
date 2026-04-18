@@ -8,16 +8,10 @@ struct QuickActionsSettingsView: View {
     @State private var showResetConfirmation = false
 
     var body: some View {
-        Form {
+        List {
             Section {
                 ForEach(store.configs) { config in
                     HStack(spacing: 10) {
-                        Image(systemName: "line.3.horizontal")
-                            .frame(width: 16)
-                            .foregroundStyle(.tertiary)
-                            .accessibilityLabel("Drag to reorder \(config.name)")
-                            .accessibilityIdentifier("settings.quickActions.dragHandle.\(config.id.uuidString)")
-
                         Image(systemName: config.symbolName)
                             .frame(width: 20)
                             .foregroundStyle(.secondary)
@@ -41,21 +35,8 @@ struct QuickActionsSettingsView: View {
                         .accessibilityIdentifier("settings.quickActions.deleteButton.\(config.id.uuidString)")
                     }
                     .accessibilityIdentifier("settings.quickActions.row.\(config.id.uuidString)")
-                    .draggable(config.id.uuidString)
-                    .dropDestination(for: String.self) { items, _ in
-                        guard let draggedIdString = items.first,
-                              let draggedId = UUID(uuidString: draggedIdString),
-                              draggedId != config.id,
-                              let fromIndex = store.configs.firstIndex(where: { $0.id == draggedId }),
-                              let toIndex = store.configs.firstIndex(where: { $0.id == config.id })
-                        else { return false }
-                        store.move(
-                            fromOffsets: IndexSet(integer: fromIndex),
-                            toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
-                        )
-                        return true
-                    }
                 }
+                .onMove { store.move(fromOffsets: $0, toOffset: $1) }
 
                 Button {
                     showAddSheet = true
@@ -87,7 +68,7 @@ struct QuickActionsSettingsView: View {
                 .accessibilityIdentifier("settings.quickActions.usageOrderToggle")
             }
         }
-        .formStyle(.grouped)
+        .listStyle(.inset(alternatesRowBackgrounds: false))
         .sheet(item: $editingConfig) { config in
             QuickActionEditSheet(mode: .edit, existing: config) { updated in
                 store.update(updated)
