@@ -1201,7 +1201,9 @@ struct ChatView: View {
                 executionModeSegmented
 
                 if let convo = conversation {
-                    delegationBadgeButton(convo)
+                    if convo.sessions.count > 1 {
+                        delegationBadgeButton(convo)
+                    }
                     simplifiedSessionMenu(convo)
                 }
             }
@@ -1369,7 +1371,7 @@ struct ChatView: View {
 
                         Spacer()
 
-                        Button(isMissionExpanded ? "Collapse" : "Expand") {
+                        Button(isMissionExpanded ? "Less" : "More") {
                             withAnimation(.easeInOut(duration: 0.18)) {
                                 isMissionExpanded.toggle()
                             }
@@ -1382,14 +1384,6 @@ struct ChatView: View {
                             .buttonStyle(.borderless)
                             .font(caption2Font)
                             .xrayId("chat.missionEditButton")
-
-                        Button("Schedule") {
-                            scheduleDraft = makeScheduleDraft(from: latestUserChatMessage)
-                            showingScheduleEditor = true
-                        }
-                        .buttonStyle(.borderless)
-                        .font(caption2Font)
-                        .xrayId("chat.missionScheduleButton")
                     }
 
                     Text(mission)
@@ -1400,36 +1394,28 @@ struct ChatView: View {
                         .xrayId("chat.missionPreview")
                 }
                 .padding(12)
-                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color.green.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+                        .stroke(Color.green.opacity(0.20), lineWidth: 1)
                 )
                 .xrayId("chat.missionCard")
             } else {
-                HStack(spacing: 10) {
-                    Label("No mission yet", systemImage: "scope")
-                        .font(captionFont.weight(.medium))
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    Button("Add mission") { beginMissionEdit() }
-                        .buttonStyle(.borderless)
-                        .font(caption2Font)
-                        .xrayId("chat.missionAddButton")
-
-                    Button("Schedule") {
-                        scheduleDraft = makeScheduleDraft(from: latestUserChatMessage)
-                        showingScheduleEditor = true
-                    }
-                    .buttonStyle(.borderless)
-                    .font(caption2Font)
-                    .xrayId("chat.missionScheduleButton")
+                Button { beginMissionEdit() } label: {
+                    Label("Add mission", systemImage: "plus.circle")
+                        .font(captionFont)
                 }
-                .padding(12)
-                .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
-                .xrayId("chat.missionCard")
+                .buttonStyle(.borderless)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        .foregroundStyle(.quaternary)
+                )
+                .xrayId("chat.missionAddLink")
             }
         }
     }
