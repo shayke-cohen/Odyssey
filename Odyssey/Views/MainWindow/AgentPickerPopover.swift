@@ -117,7 +117,7 @@ extension AgentPickerPopover {
                         .foregroundStyle(.quaternary)
                 }
                 .frame(width: 20, height: 20)
-                Text("No specialized agent")
+                Text("Basic Agent")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                 Spacer()
