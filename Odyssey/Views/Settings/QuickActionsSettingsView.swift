@@ -12,6 +12,10 @@ struct QuickActionsSettingsView: View {
             Section {
                 ForEach(store.configs) { config in
                     HStack(spacing: 10) {
+                        Image(systemName: "line.3.horizontal")
+                            .frame(width: 16)
+                            .foregroundStyle(.tertiary)
+
                         Image(systemName: config.symbolName)
                             .frame(width: 20)
                             .foregroundStyle(.secondary)
@@ -35,8 +39,21 @@ struct QuickActionsSettingsView: View {
                         .accessibilityIdentifier("settings.quickActions.deleteButton.\(config.id.uuidString)")
                     }
                     .accessibilityIdentifier("settings.quickActions.row.\(config.id.uuidString)")
+                    .draggable(config.id.uuidString)
+                    .dropDestination(for: String.self) { items, _ in
+                        guard let draggedIdString = items.first,
+                              let draggedId = UUID(uuidString: draggedIdString),
+                              draggedId != config.id,
+                              let fromIndex = store.configs.firstIndex(where: { $0.id == draggedId }),
+                              let toIndex = store.configs.firstIndex(where: { $0.id == config.id })
+                        else { return false }
+                        store.move(
+                            fromOffsets: IndexSet(integer: fromIndex),
+                            toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
+                        )
+                        return true
+                    }
                 }
-                .onMove { from, to in store.move(fromOffsets: from, toOffset: to) }
 
                 Button {
                     showAddSheet = true
