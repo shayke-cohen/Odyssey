@@ -21,12 +21,11 @@ struct ScheduleLibraryView: View {
 
     private var filteredSchedules: [ScheduledMission] {
         schedules.filter { schedule in
-            let matchesProject = schedule.projectId == windowState.selectedProjectId
             let matchesSearch = searchText.isEmpty
                 || schedule.name.localizedCaseInsensitiveContains(searchText)
                 || schedule.promptTemplate.localizedCaseInsensitiveContains(searchText)
             let matchesFilter = !filterEnabledOnly || schedule.isEnabled
-            return matchesProject && matchesSearch && matchesFilter
+            return matchesSearch && matchesFilter
         }
     }
 
@@ -40,7 +39,7 @@ struct ScheduleLibraryView: View {
                         Image(systemName: "clock.badge")
                             .font(.system(size: 48))
                             .foregroundStyle(.secondary)
-                        Text("No schedules for this project")
+                        Text("No schedules yet")
                             .font(.headline)
                         Text("Schedule recurring agent missions — daily standups, weekly cleanups, hourly inbox checks.")
                             .font(.subheadline)
