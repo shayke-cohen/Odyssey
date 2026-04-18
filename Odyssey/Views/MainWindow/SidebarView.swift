@@ -1106,6 +1106,10 @@ struct SidebarView: View {
                         selectOrCreateGroupChat(group)
                     },
                     onEdit: { editingGroup = group },
+                    onRename: { conv in
+                        renameText = conv.topic ?? ""
+                        renamingConversation = conv
+                    },
                     selectedConversationId: windowState.selectedConversationId,
                     hasActiveSession: groupHasActiveSession(group),
                     onDeleteConversation: { conv in promptDelete(conv) }
@@ -1321,6 +1325,10 @@ struct SidebarView: View {
             },
             onSelectAgent: {
                 selectOrCreateAgentChat(agent)
+            },
+            onRename: { conv in
+                renameText = conv.topic ?? ""
+                renamingConversation = conv
             },
             selectedConversationId: windowState.selectedConversationId,
             hasActiveSession: agentHasActiveSession(agent),
