@@ -1796,10 +1796,6 @@ struct SidebarView: View {
             }
             .xrayId("sidebar.conversationContext.close.\(convo.id.uuidString)")
         }
-        Button { duplicateConversation(convo) } label: {
-            Label("Duplicate", systemImage: "doc.on.doc")
-        }
-        .xrayId("sidebar.conversationContext.duplicate.\(convo.id.uuidString)")
         if convo.isArchived {
             Button { unarchiveConversation(convo) } label: {
                 Label("Unarchive", systemImage: "tray.and.arrow.up")
