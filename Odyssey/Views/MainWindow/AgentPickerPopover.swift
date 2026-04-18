@@ -244,11 +244,10 @@ extension AgentPickerPopover {
 
     private func openThread(agent: Agent?) {
         let mission = missionText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let topic = agent?.name ?? "Thread"
         let kind: ThreadKind = agent != nil ? .direct : .freeform
 
         let conversation = Conversation(
-            topic: topic,
+            topic: nil,
             projectId: projectId,
             threadKind: kind
         )
