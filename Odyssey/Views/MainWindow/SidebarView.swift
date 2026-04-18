@@ -1802,6 +1802,26 @@ struct SidebarView: View {
         windowState.selectedConversationId = newConvo.id
     }
 
+    private func duplicateGroup(_ group: AgentGroup) {
+        let copy = AgentGroup(
+            name: group.name + " (copy)",
+            groupDescription: group.groupDescription,
+            icon: group.icon,
+            color: group.color,
+            groupInstruction: group.groupInstruction,
+            defaultMission: group.defaultMission,
+            agentIds: group.agentIds,
+            sortOrder: group.sortOrder + 1
+        )
+        copy.autonomousCapable = group.autonomousCapable
+        copy.autoReplyEnabled = group.autoReplyEnabled
+        copy.coordinatorAgentId = group.coordinatorAgentId
+        copy.agentRolesJSON = group.agentRolesJSON
+        copy.workflowJSON = group.workflowJSON
+        modelContext.insert(copy)
+        try? modelContext.save()
+    }
+
     private func selectConversation(_ convo: Conversation) {
         if let projectId = convo.projectId {
             windowState.selectProject(id: projectId, preserveSelection: true)

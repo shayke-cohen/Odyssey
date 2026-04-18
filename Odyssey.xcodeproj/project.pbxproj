@@ -237,6 +237,7 @@
 		DB83A2142A011F0A770A4208 /* UserInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDEC0BB543D3FAA525D63B4E /* UserInviteSheet.swift */; };
 		DCA903D710A4DE73732D7651 /* GroupRole.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61B9B11C3E686060A4ABC25 /* GroupRole.swift */; };
 		DE332450801B32FB2AC8C109 /* ConversationListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3F86C7EFB32EDA912C906EA /* ConversationListView.swift */; };
+		DE7B944CF0F7F2B28A2CC27E /* AgentSidebarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 574C54B33D6054811200930A /* AgentSidebarTests.swift */; };
 		DEA34317D9EE0FD913DDEE54 /* MatrixClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4D275D926FA0A8CCDDF578E /* MatrixClient.swift */; };
 		DFB9C92E84E2AC850A55748C /* MultiModelGroupsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D0C567417516A60FC55FDF /* MultiModelGroupsTests.swift */; };
 		E0E1CE97BF52E86DCA6178AC /* GroupLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61853A394FC65FC3597F096 /* GroupLibraryView.swift */; };
@@ -391,6 +392,7 @@
 		558615E63E7CD517950BA9C3 /* GroupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailView.swift; sourceTree = "<group>"; };
 		55A5CCDEF8324B36924D8363 /* ConfigSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigSyncService.swift; sourceTree = "<group>"; };
 		5707ABC7E58B374D9A0915E9 /* WorktreeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeManager.swift; sourceTree = "<group>"; };
+		574C54B33D6054811200930A /* AgentSidebarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSidebarTests.swift; sourceTree = "<group>"; };
 		58B71FF07BC56B7505F0D1BF /* SlashCommandDropdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandDropdown.swift; sourceTree = "<group>"; };
 		591274642A5865F01227951C /* SidebarSectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSectionTests.swift; sourceTree = "<group>"; };
 		5934F4DE08F615C09AB5CEF7 /* AgentDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDefaults.swift; sourceTree = "<group>"; };
@@ -1055,6 +1057,7 @@
 			children = (
 				5E93CEB5CBA69F7F880A4E8E /* AgentDefaultsTests.swift */,
 				DC2B79A68879850C3C9E9AA1 /* AgentProvisionerTests.swift */,
+				574C54B33D6054811200930A /* AgentSidebarTests.swift */,
 				C1FF3D26D4AC987D059BFFFA /* AppStateEventTests.swift */,
 				10259A67B64D5CC275791AD4 /* AppStateIdleDetectionTests.swift */,
 				18F5CC463F6A47A29CA12710 /* AppStateRecoveryTests.swift */,
@@ -1361,7 +1364,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/bin/zsh\nset -euo pipefail\n\nif [[ -z \"${SRCROOT:-}\" || -z \"${TARGET_BUILD_DIR:-}\" || -z \"${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}\" ]]; then\n  echo \"build-sidecar-binary.sh requires Xcode build environment variables\" >&2\n  exit 1\nfi\n\nSIDECAR_SRC=\"$SRCROOT/sidecar\"\nOUTPUT_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nOUTPUT_JS=\"$OUTPUT_DIR/odyssey-sidecar.js\"\nOUTPUT_BUN=\"$OUTPUT_DIR/odyssey-bun\"\n\n# Find bun in common install locations\nBUN_PATH=\"\"\nfor candidate in /opt/homebrew/bin/bun /usr/local/bin/bun \"$HOME/.bun/bin/bun\"; do\n  if [[ -x \"$candidate\" ]]; then\n    BUN_PATH=\"$candidate\"\n    break\n  fi\ndone\n\nif [[ -z \"$BUN_PATH\" ]]; then\n  echo \"build-sidecar-binary.sh: bun not found; skipping sidecar bundle\" >&2\n  exit 0\nfi\n\nmkdir -p \"$OUTPUT_DIR\"\n\n# Build a single bundled JS file (no compiled runtime — bun binary is bundled separately)\n\"$BUN_PATH\" build --target=bun \\\n  \"$SIDECAR_SRC/src/index.ts\" \\\n  --outfile \"$OUTPUT_JS\"\n\necho \"build-sidecar-binary.sh: built JS bundle → $OUTPUT_JS\"\n\n# Copy Claude Code CLI alongside the bundle (claude-agent-sdk spawns it as a subprocess).\n# Without this, @anthropic-ai/claude-agent-sdk/embed can't resolve its embedded cli.js\n# in a non-compiled Bun bundle and every query() immediately exits with code 1.\nCLAUDE_CLI_SRC=\"$SIDECAR_SRC/node_modules/@anthropic-ai/claude-agent-sdk/cli.js\"\nif [[ -f \"$CLAUDE_CLI_SRC\" ]]; then\n  cp \"$CLAUDE_CLI_SRC\" \"$OUTPUT_DIR/claude-code-cli.js\"\n  chmod +x \"$OUTPUT_DIR/claude-code-cli.js\"\n  echo \"build-sidecar-binary.sh: bundled Claude Code CLI → $OUTPUT_DIR/claude-code-cli.js\"\nelse\n  echo \"build-sidecar-binary.sh: WARNING: $CLAUDE_CLI_SRC not found; agent sessions will fail\" >&2\nfi\n\n# Bundle the bun runtime binary (already signed with Hardened Runtime by Oven)\nBUN_REAL=$(readlink -f \"$BUN_PATH\")\ncp \"$BUN_REAL\" \"$OUTPUT_BUN\"\nchmod +x \"$OUTPUT_BUN\"\necho \"build-sidecar-binary.sh: bundled bun runtime → $OUTPUT_BUN\"\n";
+			shellScript = "#!/bin/zsh\nset -euo pipefail\n\nif [[ -z \"${SRCROOT:-}\" || -z \"${TARGET_BUILD_DIR:-}\" || -z \"${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}\" ]]; then\n  echo \"build-sidecar-binary.sh requires Xcode build environment variables\" >&2\n  exit 1\nfi\n\nSIDECAR_SRC=\"$SRCROOT/sidecar\"\nOUTPUT_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nOUTPUT_JS=\"$OUTPUT_DIR/odyssey-sidecar.js\"\nOUTPUT_BUN=\"$OUTPUT_DIR/odyssey-bun\"\n\n# Find bun in common install locations\nBUN_PATH=\"\"\nfor candidate in /opt/homebrew/bin/bun /usr/local/bin/bun \"$HOME/.bun/bin/bun\"; do\n  if [[ -x \"$candidate\" ]]; then\n    BUN_PATH=\"$candidate\"\n    break\n  fi\ndone\n\nif [[ -z \"$BUN_PATH\" ]]; then\n  echo \"build-sidecar-binary.sh: bun not found; skipping sidecar bundle\" >&2\n  exit 0\nfi\n\nmkdir -p \"$OUTPUT_DIR\"\n\n# Build a single bundled JS file (no compiled runtime — bun binary is bundled separately)\n\"$BUN_PATH\" build --target=bun \\\n  \"$SIDECAR_SRC/src/index.ts\" \\\n  --outfile \"$OUTPUT_JS\"\n\necho \"build-sidecar-binary.sh: built JS bundle → $OUTPUT_JS\"\n\n# Copy Claude Code CLI alongside the bundle (claude-agent-sdk spawns it as a subprocess).\n# Without this, @anthropic-ai/claude-agent-sdk/embed can't resolve its embedded cli.js\n# in a non-compiled Bun bundle and every query() immediately exits with code 1.\nCLAUDE_CLI_SRC=\"$SIDECAR_SRC/node_modules/@anthropic-ai/claude-agent-sdk/cli.js\"\nif [[ -f \"$CLAUDE_CLI_SRC\" ]]; then\n  cp \"$CLAUDE_CLI_SRC\" \"$OUTPUT_DIR/claude-code-cli.js\"\n  chmod +x \"$OUTPUT_DIR/claude-code-cli.js\"\n  echo \"build-sidecar-binary.sh: bundled Claude Code CLI → $OUTPUT_DIR/claude-code-cli.js\"\nelse\n  echo \"build-sidecar-binary.sh: WARNING: $CLAUDE_CLI_SRC not found; agent sessions will fail\" >&2\nfi\n\n# Bundle the bun runtime binary (already signed with Hardened Runtime by Oven)\nBUN_REAL=$(readlink -f \"$BUN_PATH\")\nrm -f \"$OUTPUT_BUN\"\ncp \"$BUN_REAL\" \"$OUTPUT_BUN\"\nchmod +x \"$OUTPUT_BUN\"\necho \"build-sidecar-binary.sh: bundled bun runtime → $OUTPUT_BUN\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -1373,6 +1376,7 @@
 				D9C7D20C06E3ADBAE1696AC5 /* AgentCreationSheetTests.swift in Sources */,
 				D409143ACC195A5A8214D679 /* AgentDefaultsTests.swift in Sources */,
 				9E431E795FADF9969DC53648 /* AgentProvisionerTests.swift in Sources */,
+				DE7B944CF0F7F2B28A2CC27E /* AgentSidebarTests.swift in Sources */,
 				0C585689669EE1F714F14325 /* AppStateEventTests.swift in Sources */,
 				D842A91FD6EC5A266DC2B5AD /* AppStateIdleDetectionTests.swift in Sources */,
 				6938E028035691A681103B2E /* AppStateRecoveryTests.swift in Sources */,

@@ -8,7 +8,8 @@ echo "→ Building Odyssey..."
 if OUTPUT=$(xcodebuild build \
   -project Odyssey.xcodeproj \
   -scheme Odyssey \
-  -destination 'platform=macOS' \
+  -destination 'platform=macOS,arch=arm64' \
+  -skipPackagePluginValidation \
   -quiet 2>&1); then
   echo "✓ Build succeeded"
 else

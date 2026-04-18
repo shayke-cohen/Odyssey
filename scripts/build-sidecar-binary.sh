@@ -48,6 +48,7 @@ fi
 
 # Bundle the bun runtime binary (already signed with Hardened Runtime by Oven)
 BUN_REAL=$(readlink -f "$BUN_PATH")
+rm -f "$OUTPUT_BUN"
 cp "$BUN_REAL" "$OUTPUT_BUN"
 chmod +x "$OUTPUT_BUN"
 echo "build-sidecar-binary.sh: bundled bun runtime → $OUTPUT_BUN"
