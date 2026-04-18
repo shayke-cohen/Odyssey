@@ -1487,21 +1487,27 @@ struct ChatView: View {
             }
             .xrayId("chat.moreOptions.rename")
 
-            Button {
-                beginMissionEdit()
-            } label: {
-                Label("Edit Mission", systemImage: "scope")
-            }
-            .xrayId("chat.sessionMenu.editMission")
+            Section("Mission") {
+                Button {
+                    beginMissionEdit()
+                } label: {
+                    Label(
+                        currentMissionText == nil ? "Set Mission…" : "Edit Mission…",
+                        systemImage: "scope"
+                    )
+                }
+                .xrayId("chat.sessionMenu.mission")
 
-            Button {
-                scheduleDraft = makeScheduleDraft(from: latestUserChatMessage)
-                showingScheduleEditor = true
-            } label: {
-                Label("Schedule This Mission", systemImage: "clock.badge")
+                if currentMissionText != nil {
+                    Button {
+                        scheduleDraft = makeScheduleDraft(from: latestUserChatMessage)
+                        showingScheduleEditor = true
+                    } label: {
+                        Label("Schedule…", systemImage: "calendar.badge.clock")
+                    }
+                    .xrayId("chat.sessionMenu.schedule")
+                }
             }
-            .xrayId("chat.moreOptions.scheduleMission")
-            .accessibilityLabel("Schedule This Mission")
 
             Button { duplicateConversation(convo) } label: {
                 Label("Duplicate", systemImage: "doc.on.doc")
