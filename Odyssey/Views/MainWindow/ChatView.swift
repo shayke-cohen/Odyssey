@@ -1604,172 +1604,210 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ZStack(alignment: .bottomTrailing) {
                 GeometryReader { scrollGeometry in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 12) {
-                            if !hasUserChatMessages && !isProcessing {
-                                chatEmptyState
-                            }
-
-                            let participants = conversation?.participants ?? []
-                            ForEach(displayMessages) { message in
-                                MessageBubble(
-                                    message: message,
-                                    participants: participants,
-                                    agentAppearances: participantAppearanceMap,
-                                    onTapAttachment: { attachment in
-                                        handleAttachmentTap(attachment)
-                                    },
-                                    onOpenLocalReference: { reference in
-                                        openLocalFileReference(reference)
-                                    },
-                                    onForkFromHere: {
-                                        forkFromMessage(message)
-                                    },
-                                    onScheduleFromMessage: {
-                                        scheduleDraft = makeScheduleDraft(from: message)
-                                        showingScheduleEditor = true
-                                    }
-                                )
-                                .id(message.id)
-                                .background(
-                                    GeometryReader { messageGeometry in
-                                        let frame = messageGeometry.frame(in: .named("chat.messageScrollView"))
-                                        Color.clear.preference(
-                                            key: ChatVisibleMessageFramesPreferenceKey.self,
-                                            value: [ChatVisibleMessageFrame(
-                                                id: message.id,
-                                                minY: frame.minY,
-                                                maxY: frame.maxY
-                                            )]
-                                        )
-                                    }
-                                )
-
-                                if message.id == lastPlanResponseMessageId, !isProcessing {
-                                    planActionBar
-                                }
-                            }
-
-                            if let convo = conversation, convo.sessions.count > 1 {
-                                AgentActivityBar(
-                                    sessions: convo.sessions,
-                                    sessionActivity: appState.sessionActivity,
-                                    participants: convo.participants
-                                )
-                                .id("agentActivityBar")
-                            }
-
-                            if isProcessing {
-                                streamingBubble
-                                    .id("streaming")
-                            }
-
-                            ForEach(pendingQuestionsForCurrentConversation) { question in
-                                AgentQuestionBubble(
-                                    question: question,
-                                    agentName: agentNameForQuestion(question),
-                                    agentColor: agentColorForQuestion(question)
-                                ) { answer, selectedOptions in
-                                    appState.answerQuestion(
-                                        sessionId: question.sessionId,
-                                        questionId: question.id,
-                                        answer: answer,
-                                        selectedOptions: selectedOptions
-                                    )
-                                }
-                                .id("agentQuestion-\(question.id)")
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-
-                                // Routing pill: green while in-flight, amber if fallback-resolved
-                                if let convo = conversation {
-                                    if let targetAgent = convo.pendingQuestionRouting[question.id] {
-                                        QuestionRoutingPillView(targetAgentName: targetAgent, isFallback: false)
-                                            .padding(.leading, 32)
-                                            .transition(.opacity)
-                                    } else if let resolved = convo.resolvedQuestions[question.id] {
-                                        QuestionRoutingPillView(targetAgentName: resolved.answeredBy, isFallback: resolved.isFallback)
-                                            .padding(.leading, 32)
-                                            .transition(.opacity)
-                                        // Synthetic delegated-answer bubble
-                                        if let answerText = resolved.answer {
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                HStack(spacing: 4) {
-                                                    Text(resolved.answeredBy)
-                                                        .font(.system(size: 10, weight: .semibold))
-                                                        .foregroundColor(.secondary)
-                                                    Text(resolved.isFallback ? "fallback answer" : "answered for you")
-                                                        .font(.system(size: 9, weight: .medium))
-                                                        .padding(.horizontal, 5).padding(.vertical, 1)
-                                                        .background(resolved.isFallback ? Color.orange.opacity(0.12) : Color.accentColor.opacity(0.12))
-                                                        .foregroundColor(resolved.isFallback ? .orange : .accentColor)
-                                                        .overlay(RoundedRectangle(cornerRadius: 3).stroke(resolved.isFallback ? Color.orange.opacity(0.3) : Color.accentColor.opacity(0.3)))
-                                                        .cornerRadius(3)
-                                                }
-                                                Text(answerText)
-                                                    .font(.system(size: 12))
-                                                    .foregroundColor(.primary)
-                                                    .padding(.horizontal, 11).padding(.vertical, 7)
-                                                    .background(Color(nsColor: .controlBackgroundColor).opacity(0.8))
-                                                    .cornerRadius(10)
-                                            }
-                                            .padding(.leading, 32)
-                                        }
-                                    }
-                                }
-                            }
-
-                            ForEach(pendingConfirmationsForCurrentConversation) { confirmation in
-                                AgentConfirmationBubble(
-                                    confirmation: confirmation,
-                                    agentName: agentNameForConfirmation(confirmation),
-                                    agentColor: agentColorForConfirmation(confirmation)
-                                ) { approved in
-                                    appState.answerConfirmation(
-                                        sessionId: confirmation.sessionId,
-                                        confirmationId: confirmation.id,
-                                        approved: approved
-                                    )
-                                }
-                                .id("agentConfirmation-\(confirmation.id)")
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                            }
-
-                            if showAllDoneBanner {
-                                SessionSummaryCard(
-                                    sessions: sessionsForSummary,
-                                    toolCalls: toolCallsForSummary,
-                                    duration: summaryDuration,
-                                    workspaceRoot: inspectorWorkspaceRoot,
-                                    onOpenFile: { path in
-                                        openLocalFileReference(path)
-                                    }
-                                )
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                                .id("allDoneBanner")
-                            }
-
-                            if let convo = conversation,
-                               appState.idleResults[convo.id.uuidString] != nil ||
-                               appState.evaluatingConversations.contains(convo.id.uuidString) {
-                                ConversationIdleResultView(conversationId: convo.id.uuidString)
-                                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                                    .id("idleResultView")
-                            }
-
-                            Color.clear
-                                .frame(height: 1)
-                                .id(bottomScrollAnchor)
-                                .background(
-                                    GeometryReader { marker in
-                                        Color.clear.preference(
-                                            key: ChatScrollOffsetPreferenceKey.self,
-                                            value: marker.frame(in: .named("chat.messageScrollView")).maxY - scrollGeometry.size.height
-                                        )
-                                    }
-                                )
+                    List {
+                        if !hasUserChatMessages && !isProcessing {
+                            chatEmptyState
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 0, trailing: 16))
                         }
-                        .padding()
+
+                        let participants = conversation?.participants ?? []
+                        ForEach(displayMessages) { message in
+                            MessageBubble(
+                                message: message,
+                                participants: participants,
+                                agentAppearances: participantAppearanceMap,
+                                onTapAttachment: { attachment in
+                                    handleAttachmentTap(attachment)
+                                },
+                                onOpenLocalReference: { reference in
+                                    openLocalFileReference(reference)
+                                },
+                                onForkFromHere: {
+                                    forkFromMessage(message)
+                                },
+                                onScheduleFromMessage: {
+                                    scheduleDraft = makeScheduleDraft(from: message)
+                                    showingScheduleEditor = true
+                                }
+                            )
+                            .id(message.id)
+                            .background(
+                                GeometryReader { messageGeometry in
+                                    let frame = messageGeometry.frame(in: .named("chat.messageScrollView"))
+                                    Color.clear.preference(
+                                        key: ChatVisibleMessageFramesPreferenceKey.self,
+                                        value: [ChatVisibleMessageFrame(
+                                            id: message.id,
+                                            minY: frame.minY,
+                                            maxY: frame.maxY
+                                        )]
+                                    )
+                                }
+                            )
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+
+                            if message.id == lastPlanResponseMessageId, !isProcessing {
+                                planActionBar
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 6, trailing: 16))
+                            }
+                        }
+
+                        if let convo = conversation, convo.sessions.count > 1 {
+                            AgentActivityBar(
+                                sessions: convo.sessions,
+                                sessionActivity: appState.sessionActivity,
+                                participants: convo.participants
+                            )
+                            .id("agentActivityBar")
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        }
+
+                        if isProcessing {
+                            streamingBubble
+                                .id("streaming")
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                        }
+
+                        ForEach(pendingQuestionsForCurrentConversation) { question in
+                            AgentQuestionBubble(
+                                question: question,
+                                agentName: agentNameForQuestion(question),
+                                agentColor: agentColorForQuestion(question)
+                            ) { answer, selectedOptions in
+                                appState.answerQuestion(
+                                    sessionId: question.sessionId,
+                                    questionId: question.id,
+                                    answer: answer,
+                                    selectedOptions: selectedOptions
+                                )
+                            }
+                            .id("agentQuestion-\(question.id)")
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+
+                            // Routing pill: green while in-flight, amber if fallback-resolved
+                            if let convo = conversation {
+                                if let targetAgent = convo.pendingQuestionRouting[question.id] {
+                                    QuestionRoutingPillView(targetAgentName: targetAgent, isFallback: false)
+                                        .padding(.leading, 32)
+                                        .transition(.opacity)
+                                        .listRowSeparator(.hidden)
+                                        .listRowBackground(Color.clear)
+                                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                } else if let resolved = convo.resolvedQuestions[question.id] {
+                                    QuestionRoutingPillView(targetAgentName: resolved.answeredBy, isFallback: resolved.isFallback)
+                                        .padding(.leading, 32)
+                                        .transition(.opacity)
+                                        .listRowSeparator(.hidden)
+                                        .listRowBackground(Color.clear)
+                                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                    // Synthetic delegated-answer bubble
+                                    if let answerText = resolved.answer {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            HStack(spacing: 4) {
+                                                Text(resolved.answeredBy)
+                                                    .font(.system(size: 10, weight: .semibold))
+                                                    .foregroundColor(.secondary)
+                                                Text(resolved.isFallback ? "fallback answer" : "answered for you")
+                                                    .font(.system(size: 9, weight: .medium))
+                                                    .padding(.horizontal, 5).padding(.vertical, 1)
+                                                    .background(resolved.isFallback ? Color.orange.opacity(0.12) : Color.accentColor.opacity(0.12))
+                                                    .foregroundColor(resolved.isFallback ? .orange : .accentColor)
+                                                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(resolved.isFallback ? Color.orange.opacity(0.3) : Color.accentColor.opacity(0.3)))
+                                                    .cornerRadius(3)
+                                            }
+                                            Text(answerText)
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.primary)
+                                                .padding(.horizontal, 11).padding(.vertical, 7)
+                                                .background(Color(nsColor: .controlBackgroundColor).opacity(0.8))
+                                                .cornerRadius(10)
+                                        }
+                                        .padding(.leading, 32)
+                                        .listRowSeparator(.hidden)
+                                        .listRowBackground(Color.clear)
+                                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 6, trailing: 16))
+                                    }
+                                }
+                            }
+                        }
+
+                        ForEach(pendingConfirmationsForCurrentConversation) { confirmation in
+                            AgentConfirmationBubble(
+                                confirmation: confirmation,
+                                agentName: agentNameForConfirmation(confirmation),
+                                agentColor: agentColorForConfirmation(confirmation)
+                            ) { approved in
+                                appState.answerConfirmation(
+                                    sessionId: confirmation.sessionId,
+                                    confirmationId: confirmation.id,
+                                    approved: approved
+                                )
+                            }
+                            .id("agentConfirmation-\(confirmation.id)")
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                        }
+
+                        if showAllDoneBanner {
+                            SessionSummaryCard(
+                                sessions: sessionsForSummary,
+                                toolCalls: toolCallsForSummary,
+                                duration: summaryDuration,
+                                workspaceRoot: inspectorWorkspaceRoot,
+                                onOpenFile: { path in
+                                    openLocalFileReference(path)
+                                }
+                            )
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .id("allDoneBanner")
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                        }
+
+                        if let convo = conversation,
+                           appState.idleResults[convo.id.uuidString] != nil ||
+                           appState.evaluatingConversations.contains(convo.id.uuidString) {
+                            ConversationIdleResultView(conversationId: convo.id.uuidString)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                                .id("idleResultView")
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                        }
+
+                        Color.clear
+                            .frame(height: 1)
+                            .id(bottomScrollAnchor)
+                            .background(
+                                GeometryReader { marker in
+                                    Color.clear.preference(
+                                        key: ChatScrollOffsetPreferenceKey.self,
+                                        value: marker.frame(in: .named("chat.messageScrollView")).maxY - scrollGeometry.size.height
+                                    )
+                                }
+                            )
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                     .coordinateSpace(name: "chat.messageScrollView")
                     .xrayId("chat.messageScrollView")
                     .onAppear {
