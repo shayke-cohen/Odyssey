@@ -11,6 +11,7 @@ struct AgentSidebarRowView: View {
     var selectedConversationId: UUID?
     var hasActiveSession: Bool = false
     var onDeleteConversation: ((Conversation) -> Void)?
+    var isPinned: Bool = false
 
     @Environment(\.modelContext) private var modelContext
     @State private var showAllConversations = false
@@ -114,6 +115,11 @@ struct AgentSidebarRowView: View {
                         .padding(.vertical, 1)
                         .background(.quaternary)
                         .clipShape(Capsule())
+                }
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 8))
+                        .foregroundStyle(.tertiary)
                 }
                 Button {
                     onNewChat()
