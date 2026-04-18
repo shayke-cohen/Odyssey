@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 
 @MainActor
 final class QuickActionStore: ObservableObject {
@@ -8,6 +7,7 @@ final class QuickActionStore: ObservableObject {
 
     @Published private(set) var configs: [QuickActionConfig] = []
     @Published var usageOrderEnabled: Bool
+    @Published private var usageVersion: Int = 0
 
     private let defaults: UserDefaults
 
@@ -74,7 +74,7 @@ final class QuickActionStore: ObservableObject {
         var counts = loadUsageCounts()
         counts[id.uuidString, default: 0] += 1
         defaults.set(counts, forKey: AppSettings.quickActionUsageCountsKey)
-        objectWillChange.send()
+        usageVersion += 1
     }
 
     // MARK: - Persistence

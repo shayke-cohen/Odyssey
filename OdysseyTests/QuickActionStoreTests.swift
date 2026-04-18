@@ -14,7 +14,7 @@ final class QuickActionStoreTests: XCTestCase {
     }
 
     override func tearDown() async throws {
-        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        testDefaults.removeSuite(named: suiteName)
         store = nil
         testDefaults = nil
     }
