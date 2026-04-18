@@ -186,28 +186,28 @@ struct ConfigurationSettingsTab: View {
 
     private var itemListPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header: section title + "+ New" button
-            HStack(alignment: .center) {
-                Text(selectedSection.title)
-                    .font(.system(size: 13, weight: .bold))
-                Spacer()
-                if selectedSection != .templates && selectedSection != .permissions {
-                    Button { handleNewItem() } label: {
-                        Text("+ New")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color.accentColor)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("settings.configuration.listNewButton")
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 11)
-            .padding(.bottom, 7)
-
-            Divider()
-
             configItemList
+
+            if selectedSection != .templates && selectedSection != .permissions {
+                Divider()
+                Button { handleNewItem() } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "plus.circle")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Text("New \(String(selectedSection.title.dropLast()))")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.configuration.listNewButton")
+                .accessibilityLabel("New \(String(selectedSection.title.dropLast()))")
+            }
         }
         .frame(maxHeight: .infinity)
     }
