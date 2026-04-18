@@ -11,9 +11,12 @@ struct GroupSidebarRowView: View {
     let onSelectConversation: (Conversation) -> Void
     var onSelectGroup: (() -> Void)?
     var onEdit: (() -> Void)?
-    var onDuplicate: (() -> Void)?
     var selectedConversationId: UUID?
     var hasActiveSession: Bool = false
+    var onDeleteConversation: ((Conversation) -> Void)?
+
+    @Environment(\.modelContext) private var modelContext
+    @State private var showAllConversations = false
 
     private var isSelected: Bool {
         guard let selected = selectedConversationId else { return false }
@@ -22,7 +25,8 @@ struct GroupSidebarRowView: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            ForEach(conversations.prefix(10)) { conv in
+            let displayed = showAllConversations ? conversations : Array(conversations.prefix(10))
+            ForEach(displayed) { conv in
                 let isConvSelected = selectedConversationId == conv.id
                 Button {
                     onSelectConversation(conv)
@@ -51,6 +55,34 @@ struct GroupSidebarRowView: View {
                 }
                 .buttonStyle(.plain)
                 .stableXrayId("sidebar.groupRow.\(group.id.uuidString).chatRow.\(conv.id.uuidString)")
+                .accessibilityIdentifier("sidebar.groupThreadRow.\(conv.id.uuidString)")
+                .contextMenu {
+                    Button("Open Thread") {
+                        onSelectConversation(conv)
+                    }
+                    Divider()
+                    Button("Archive") {
+                        conv.isArchived = true
+                        conv.isPinned = false
+                        try? modelContext.save()
+                    }
+                    .accessibilityIdentifier("sidebar.groupThreadRow.archive.\(conv.id.uuidString)")
+                    Button("Delete\u{2026}", role: .destructive) {
+                        onDeleteConversation?(conv)
+                    }
+                    .accessibilityIdentifier("sidebar.groupThreadRow.delete.\(conv.id.uuidString)")
+                }
+            }
+
+            if !showAllConversations && conversations.count > 10 {
+                Button("Show all \(conversations.count) threads →") {
+                    showAllConversations = true
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
+                .padding(.leading, 6)
+                .accessibilityIdentifier("sidebar.agentShowAllThreads.\(group.id.uuidString)")
             }
         } label: {
             HStack(spacing: 8) {

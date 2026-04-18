@@ -153,7 +153,21 @@ struct SidebarView: View {
     @State private var editingTask: TaskItem?
     @State private var expandedAgentIds: Set<UUID> = []
     @State private var expandedGroupIds: Set<UUID> = []
+    @State private var showingAgentScheduleEditor = false
+    @State private var agentScheduleDraft = ScheduledMissionDraft(
+        name: "",
+        targetKind: .agent,
+        projectDirectory: "",
+        promptTemplate: ""
+    )
     @State private var editingGroup: AgentGroup?
+    @State private var showingGroupScheduleEditor = false
+    @State private var groupScheduleDraft = ScheduledMissionDraft(
+        name: "",
+        targetKind: .group,
+        projectDirectory: "",
+        promptTemplate: ""
+    )
     @State private var autonomousGroup: AgentGroup?
     @State private var showAutoAssemble = false
     @State private var renamingConversation: Conversation?
@@ -198,6 +212,16 @@ struct SidebarView: View {
             .sheet(item: $editingTask) { task in
                 TaskEditSheet(task: task)
                     .environmentObject(appState)
+            }
+            .sheet(isPresented: $showingAgentScheduleEditor) {
+                ScheduleEditorView(schedule: nil, draft: agentScheduleDraft)
+                    .environmentObject(appState)
+                    .environment(\.modelContext, modelContext)
+            }
+            .sheet(isPresented: $showingGroupScheduleEditor) {
+                ScheduleEditorView(schedule: nil, draft: groupScheduleDraft)
+                    .environmentObject(appState)
+                    .environment(\.modelContext, modelContext)
             }
             .alert("Rename Conversation", isPresented: Binding(
                 get: { renamingConversation != nil },
@@ -385,7 +409,7 @@ struct SidebarView: View {
     }
 
     private var nonResidentAgents: [Agent] {
-        agents.filter { $0.isEnabled && !$0.isResident }
+        agents.filter { $0.isEnabled && !$0.isResident && $0.showInSidebar }
             .sorted { $0.name < $1.name }
     }
 
@@ -1347,7 +1371,7 @@ struct SidebarView: View {
     @ViewBuilder
     private var groupsSection: some View {
         Section {
-            ForEach(groups.filter { $0.isEnabled }) { group in
+            ForEach(groups.filter { $0.isEnabled && $0.showInSidebar }) { group in
                 GroupSidebarRowView(
                     group: group,
                     conversations: conversationsForGroup(group),
@@ -1379,35 +1403,80 @@ struct SidebarView: View {
                         selectOrCreateGroupChat(group)
                     },
                     onEdit: { editingGroup = group },
-                    onDuplicate: { duplicateGroup(group) },
                     selectedConversationId: windowState.selectedConversationId,
-                    hasActiveSession: groupHasActiveSession(group)
+                    hasActiveSession: groupHasActiveSession(group),
+                    onDeleteConversation: { conv in promptDelete(conv) }
                 )
                 .contextMenu {
                     Button("Start Chat") {
-                        if let convoId = appState.startGroupChat(
-                            group: group,
-                            projectDirectory: windowState.projectDirectory,
-                            projectId: nil,  // group-initiated chats belong to the group, not a project
-                            modelContext: modelContext
-                        ) {
-                            windowState.selectedConversationId = convoId
+                        selectOrCreateGroupChat(group)
+                    }
+                    .accessibilityIdentifier("sidebar.groupContext.startChat.\(group.id.uuidString)")
+
+                    Menu("New Thread in Project\u{2026}") {
+                        ForEach(projects) { project in
+                            Button(project.name) {
+                                selectOrCreateGroupChat(group, in: project)
+                            }
+                        }
+                        if projects.isEmpty {
+                            Text("No projects")
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .xrayId("sidebar.groupContext.startChat.\(group.id.uuidString)")
-                    Button("Edit") { editingGroup = group }
-                        .xrayId("sidebar.groupContext.edit.\(group.id.uuidString)")
-                    Button("Duplicate") { duplicateGroup(group) }
-                        .xrayId("sidebar.groupContext.duplicate.\(group.id.uuidString)")
+                    .accessibilityIdentifier("sidebar.groupContext.newThreadInProject.\(group.id.uuidString)")
+
                     Divider()
-                    Button("Open in Configuration") {
-                        windowState.openConfiguration(section: .groups)
+
+                    Button("View Session History") {
+                        if expandedGroupIds.contains(group.id) {
+                            expandedGroupIds.remove(group.id)
+                        } else {
+                            expandedGroupIds.insert(group.id)
+                        }
                     }
-                    .xrayId("sidebar.groupContext.openConfig.\(group.id.uuidString)")
+                    .accessibilityIdentifier("sidebar.groupContext.viewHistory.\(group.id.uuidString)")
+
                     Divider()
-                    Button("Delete", role: .destructive) { deleteGroup(group) }
-                        .xrayId("sidebar.groupContext.delete.\(group.id.uuidString)")
+
+                    Button("Hide from Sidebar") {
+                        group.showInSidebar = false
+                        try? modelContext.save()
+                    }
+                    .accessibilityIdentifier("sidebar.groupContext.hideSidebar.\(group.id.uuidString)")
+
+                    Divider()
+
+                    Button("Schedule Mission\u{2026}") {
+                        groupScheduleDraft = ScheduledMissionDraft(
+                            name: "\(group.name) schedule",
+                            targetKind: .group,
+                            projectDirectory: windowState.projectDirectory,
+                            promptTemplate: group.defaultMission ?? ""
+                        )
+                        groupScheduleDraft.targetGroupId = group.id
+                        showingGroupScheduleEditor = true
+                    }
+                    .accessibilityIdentifier("sidebar.groupContext.schedule.\(group.id.uuidString)")
+
+                    Divider()
+
+                    Button("Edit") { editingGroup = group }
+                        .accessibilityIdentifier("sidebar.groupContext.edit.\(group.id.uuidString)")
                 }
+            }
+
+            let hiddenGroupCount = groups.filter { $0.isEnabled && !$0.showInSidebar }.count
+            if hiddenGroupCount > 0 {
+                Button {
+                    windowState.openConfiguration(section: .groups)
+                } label: {
+                    Text("\(hiddenGroupCount) hidden · manage →")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sidebar.groupsHiddenHint")
             }
         } header: {
             HStack {
@@ -1479,6 +1548,20 @@ struct SidebarView: View {
                 .buttonStyle(.plain)
                 .xrayId("sidebar.agents.showMore")
             }
+
+            // 3. Hidden agents hint
+            let hiddenAgentCount = agents.filter { $0.isEnabled && !$0.isResident && !$0.showInSidebar }.count
+            if hiddenAgentCount > 0 {
+                Button {
+                    windowState.openConfiguration(section: .agents)
+                } label: {
+                    Text("\(hiddenAgentCount) hidden · manage →")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sidebar.agentsHiddenHint")
+            }
         } header: {
             agentsSectionHeader
         }
@@ -1505,7 +1588,8 @@ struct SidebarView: View {
                 selectOrCreateAgentChat(agent)
             },
             selectedConversationId: windowState.selectedConversationId,
-            hasActiveSession: agentHasActiveSession(agent)
+            hasActiveSession: agentHasActiveSession(agent),
+            onDeleteConversation: { conv in promptDelete(conv) }
         )
         .overlay(alignment: .topTrailing) {
             if isPinned {
@@ -1519,18 +1603,59 @@ struct SidebarView: View {
             Button("New Session") {
                 startSession(with: agent)
             }
-            .xrayId("sidebar.agentRow.newSession.\(agent.id.uuidString)")
+            .accessibilityIdentifier("sidebar.agentRow.newSession.\(agent.id.uuidString)")
+
+            Menu("New Thread in Project\u{2026}") {
+                ForEach(projects) { project in
+                    Button(project.name) {
+                        startSession(with: agent, in: project)
+                    }
+                }
+                if projects.isEmpty {
+                    Text("No projects")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityIdentifier("sidebar.agentRow.newThreadInProject.\(agent.id.uuidString)")
+
             Divider()
+
+            Button("View Session History") {
+                if expandedAgentIds.contains(agent.id) {
+                    expandedAgentIds.remove(agent.id)
+                } else {
+                    expandedAgentIds.insert(agent.id)
+                }
+            }
+            .accessibilityIdentifier("sidebar.agentRow.viewHistory.\(agent.id.uuidString)")
+
+            Divider()
+
             Button(isPinned ? "Unpin from Sidebar" : "Pin to Sidebar") {
                 agent.isResident.toggle()
                 try? modelContext.save()
             }
-            .xrayId("sidebar.agentRow.togglePin.\(agent.id.uuidString)")
-            Divider()
-            Button("Open in Configuration") {
-                windowState.openConfiguration(section: .agents)
+            .accessibilityIdentifier("sidebar.agentRow.togglePin.\(agent.id.uuidString)")
+
+            Button("Hide from Sidebar") {
+                agent.showInSidebar = false
+                try? modelContext.save()
             }
-            .xrayId("sidebar.agentRow.openConfig.\(agent.id.uuidString)")
+            .accessibilityIdentifier("sidebar.agentRow.hideSidebar.\(agent.id.uuidString)")
+
+            Divider()
+
+            Button("Schedule Mission\u{2026}") {
+                agentScheduleDraft = ScheduledMissionDraft(
+                    name: "\(agent.name) schedule",
+                    targetKind: .agent,
+                    projectDirectory: windowState.projectDirectory,
+                    promptTemplate: ""
+                )
+                agentScheduleDraft.targetAgentId = agent.id
+                showingAgentScheduleEditor = true
+            }
+            .accessibilityIdentifier("sidebar.agentRow.schedule.\(agent.id.uuidString)")
         }
     }
 
@@ -1670,10 +1795,6 @@ struct SidebarView: View {
             }
             .xrayId("sidebar.conversationContext.close.\(convo.id.uuidString)")
         }
-        Button { duplicateConversation(convo) } label: {
-            Label("Duplicate", systemImage: "doc.on.doc")
-        }
-        .xrayId("sidebar.conversationContext.duplicate.\(convo.id.uuidString)")
         if convo.isArchived {
             Button { unarchiveConversation(convo) } label: {
                 Label("Unarchive", systemImage: "tray.and.arrow.up")
@@ -1881,21 +2002,6 @@ struct SidebarView: View {
     }
 
     // MARK: - Group Actions
-
-    private func duplicateGroup(_ group: AgentGroup) {
-        let copy = AgentGroup(
-            name: "\(group.name) Copy",
-            groupDescription: group.groupDescription,
-            icon: group.icon,
-            color: group.color,
-            groupInstruction: group.groupInstruction,
-            defaultMission: group.defaultMission,
-            agentIds: group.agentIds,
-            sortOrder: groups.count
-        )
-        modelContext.insert(copy)
-        try? modelContext.save()
-    }
 
     private func deleteGroup(_ group: AgentGroup) {
         modelContext.delete(group)
