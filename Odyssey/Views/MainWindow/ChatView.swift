@@ -3619,9 +3619,25 @@ struct ChatView: View {
         manager: SidecarManager,
         planMode: Bool = false
     ) async {
+        // Derive the base dir for worktree creation. Priority:
+        // 1. Group's own defaultWorkingDirectory (authoritative even for old sessions with stale WDs)
+        // 2. Conversation's linked project rootPath
+        // 3. Window state project directory (last resort)
+        let projectDirForWorktree: String
+        if let groupId = convo.sourceGroupId,
+           let group = (try? modelContext.fetch(FetchDescriptor<AgentGroup>(predicate: #Predicate { $0.id == groupId })))?.first,
+           let groupHome = group.defaultWorkingDirectory, !groupHome.isEmpty {
+            projectDirForWorktree = (groupHome as NSString).expandingTildeInPath
+        } else if !windowState.projectDirectory.isEmpty {
+            projectDirForWorktree = windowState.projectDirectory
+        } else {
+            let sessionWorkDir = targetSessions.first?.workingDirectory ?? ""
+            let isWorktreePath = sessionWorkDir.contains("/.odyssey/worktrees/")
+            projectDirForWorktree = (!sessionWorkDir.isEmpty && !isWorktreePath) ? sessionWorkDir : ""
+        }
         let worktreePath = await WorktreeManager.ensureWorktree(
             for: convo,
-            projectDirectory: windowState.projectDirectory,
+            projectDirectory: projectDirForWorktree,
             modelContext: modelContext
         )
         for session in targetSessions where session.workingDirectory != worktreePath {

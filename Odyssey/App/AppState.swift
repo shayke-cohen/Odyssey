@@ -25,6 +25,7 @@ final class AppState: ObservableObject {
     /// Conversation IDs currently visible in any window — used for notification/unread gating.
     @Published var visibleConversationIds: Set<UUID> = []
     @Published var streamingText: [String: String] = [:]
+    private var streamingTokens: [String: [String]] = [:]
     @Published var thinkingText: [String: String] = [:]
     @Published var streamingImages: [String: [(data: String, mediaType: String)]] = [:]
     @Published var streamingFileCards: [String: [(path: String, type: String, name: String)]] = [:]
@@ -506,7 +507,13 @@ final class AppState: ObservableObject {
         let mission = (trimmedMissionOverride?.isEmpty == false ? trimmedMissionOverride : nil) ?? group.defaultMission
 
         for agent in resolvedAgents {
-            let groupDir = projectDirectory.isEmpty ? (group.defaultWorkingDirectory ?? "") : projectDirectory
+            // Group's own home always wins when set; explicit project dir is the fallback
+            let groupDir: String
+            if let groupHome = group.defaultWorkingDirectory, !groupHome.isEmpty {
+                groupDir = (groupHome as NSString).expandingTildeInPath
+            } else {
+                groupDir = projectDirectory
+            }
             let (_, session) = provisioner.provision(
                 agent: agent,
                 mission: mission,
@@ -1088,14 +1095,16 @@ final class AppState: ObservableObject {
     private func handleEvent(_ event: SidecarEvent) {
         switch event {
         case .streamToken(let sessionId, let text):
-            let current = streamingText[sessionId] ?? ""
-            streamingText[sessionId] = current + text
+            streamingTokens[sessionId, default: []].append(text)
+            streamingText[sessionId] = streamingTokens[sessionId]!.joined()
             if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
                 activeSessions[uuid]?.isStreaming = true
                 // Rough estimate: ~4 chars per output token, refined on completion
                 activeSessions[uuid]?.tokenCount += max(1, text.count / 4)
             }
-            sessionActivity[sessionId] = .streaming
+            if sessionActivity[sessionId] != .streaming {
+                sessionActivity[sessionId] = .streaming
+            }
 
         case .streamThinking(let sessionId, let text):
             let current = thinkingText[sessionId] ?? ""
@@ -1103,7 +1112,9 @@ final class AppState: ObservableObject {
             if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
                 activeSessions[uuid]?.isStreaming = true
             }
-            sessionActivity[sessionId] = .thinking
+            if sessionActivity[sessionId] != .thinking {
+                sessionActivity[sessionId] = .thinking
+            }
 
         case .streamToolCall(let sessionId, let tool, let input):
             var calls = toolCalls[sessionId] ?? []

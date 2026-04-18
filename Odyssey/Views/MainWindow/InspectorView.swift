@@ -106,13 +106,14 @@ struct InspectorView: View {
     }
 
     private var hasWorkingDirectory: Bool {
-        !windowState.projectDirectory.isEmpty || agentWorkspaceDirectory != nil
+        if isAgentOnlyContext { return agentWorkspaceDirectory != nil }
+        return !windowState.projectDirectory.isEmpty
     }
 
     private var workspaceDirectoryPath: String {
-        if isAgentOnlyContext, let agentDir = agentWorkspaceDirectory {
-            return agentDir
-        }
+        // Group/agent home always wins when set — it IS the project root
+        if let agentDir = agentWorkspaceDirectory { return agentDir }
+        if isAgentOnlyContext { return "" }
         return conversation.worktreePath ?? windowState.projectDirectory
     }
 
@@ -121,9 +122,8 @@ struct InspectorView: View {
            WorktreeManager.isUsableWorktree(at: worktreePath) {
             return worktreePath
         }
-        if isAgentOnlyContext, let agentDir = agentWorkspaceDirectory {
-            return agentDir
-        }
+        if let agentDir = agentWorkspaceDirectory { return agentDir }
+        if isAgentOnlyContext { return "" }
         return windowState.projectDirectory
     }
 
@@ -175,7 +175,7 @@ struct InspectorView: View {
                 }
             }
         }
-        .frame(minWidth: 240, idealWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 320, idealWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
         .onReceive(durationTimer) { _ in
             now = Date()
         }
@@ -441,7 +441,8 @@ struct InspectorView: View {
                     .lineLimit(3)
             }
 
-            if !isAgentOnlyContext, let agentDir = agentWorkspaceDirectory {
+            if !isAgentOnlyContext, let agentDir = agentWorkspaceDirectory,
+               agentDir != workspaceDirectoryPath {
                 InfoRow(label: "Agent Home", value: abbreviatePath(agentDir))
                     .xrayId("inspector.agentHomeRow")
             }
@@ -964,7 +965,7 @@ struct InspectorView: View {
 
         _ = await WorktreeManager.ensureWorktree(
             for: conversation,
-            projectDirectory: windowState.projectDirectory,
+            projectDirectory: workspaceDirectoryPath.isEmpty ? windowState.projectDirectory : workspaceDirectoryPath,
             modelContext: modelContext
         )
         appState.fileTreeRefreshTrigger += 1

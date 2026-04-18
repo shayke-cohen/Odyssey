@@ -86,17 +86,16 @@ enum SidebarConversationMetadata {
 
     static func lastMessagePreview(_ convo: Conversation) -> (text: String, attachmentIcon: String?)? {
         let latestMessage = convo.messages
-            .sorted { $0.timestamp < $1.timestamp }
-            .last
+            .max(by: { $0.timestamp < $1.timestamp })
         guard let latestMessage else { return nil }
 
         let attachments = latestMessage.attachments
         let text = latestMessage.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasImages = !attachments.isEmpty && attachments.contains { $0.isImage }
+        let hasDocs = !attachments.isEmpty && attachments.contains { $0.isDocument }
 
         let icon: String? = {
             guard !attachments.isEmpty else { return nil }
-            let hasImages = attachments.contains { $0.isImage }
-            let hasDocs = attachments.contains { $0.isDocument }
             if hasImages && hasDocs { return "paperclip" }
             if hasDocs { return "doc.text" }
             return "photo"
@@ -104,8 +103,6 @@ enum SidebarConversationMetadata {
 
         if text.isEmpty && !attachments.isEmpty {
             let count = attachments.count
-            let hasImages = attachments.contains { $0.isImage }
-            let hasDocs = attachments.contains { $0.isDocument }
             let label: String
             if hasImages && !hasDocs {
                 label = count == 1 ? "Image" : "\(count) Images"

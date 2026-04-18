@@ -52,23 +52,26 @@ final class AgentProvisioner {
         return buildConfig(agent: agent, session: session, workingDirectory: wd)
     }
 
-    /// Returns the working directory to use for a session, honoring agent home dirs
-    /// over any project dir stored on the session, but preserving explicit worktree paths.
+    /// Returns the working directory to use for a session.
+    /// Worktrees always win. Otherwise the session's stored WD is authoritative
+    /// (it was set correctly at provision time). Only falls back to agent's own
+    /// home dir when the session WD is empty.
     private func effectiveWorkingDirectory(agent: Agent, session: Session) -> String {
         let worktreesBase = NSString(string: "~/.odyssey/worktrees").expandingTildeInPath
-        let groupsBase = NSString(string: "~/.odyssey/groups").expandingTildeInPath
         let isWorktree = session.workingDirectory.hasPrefix(worktreesBase + "/")
-        let isGroupDir = session.workingDirectory.hasPrefix(groupsBase + "/")
-        if isGroupDir {
+        if isWorktree { return session.workingDirectory }
+        if !session.workingDirectory.isEmpty {
             ensureOdysseyHomeDir(session.workingDirectory)
+            GitService.initIfNeeded(at: URL(fileURLWithPath: session.workingDirectory))
             return session.workingDirectory
         }
-        if !isWorktree, let agentDir = agent.defaultWorkingDirectory, !agentDir.isEmpty {
+        if let agentDir = agent.defaultWorkingDirectory, !agentDir.isEmpty {
             let path = NSString(string: agentDir).expandingTildeInPath
             ensureOdysseyHomeDir(path)
+            GitService.initIfNeeded(at: URL(fileURLWithPath: path))
             return path
         }
-        return session.workingDirectory
+        return NSHomeDirectory()
     }
 
     private func buildConfig(agent: Agent, session: Session, workingDirectory: String? = nil) -> AgentConfig {

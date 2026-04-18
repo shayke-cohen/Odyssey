@@ -68,7 +68,7 @@ struct MainWindowView: View {
                                     .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
                                     .layoutPriority(1)
                                 inspectorPane
-                                    .frame(minWidth: 220, idealWidth: 380, maxWidth: 720, maxHeight: .infinity)
+                                    .frame(minWidth: 320, idealWidth: 380, maxWidth: 720, maxHeight: .infinity)
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(SplitViewConfigurator(autosaveName: "odyssey.chatInspectorSplit"))
