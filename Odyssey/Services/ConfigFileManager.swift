@@ -468,7 +468,7 @@ enum ConfigFileManager {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(configs)
         try FileManager.default.createDirectory(at: configDirectory, withIntermediateDirectories: true)
-        try data.write(to: quickActionsFile)
+        try data.write(to: quickActionsFile, options: .atomic)
     }
 
     // MARK: - Factory Defaults
