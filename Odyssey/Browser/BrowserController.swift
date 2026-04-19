@@ -17,7 +17,6 @@ struct ConsoleEntry: Codable {
 struct NetworkEntry {
     let url: String
     let statusCode: Int?
-    let method: String
 }
 
 enum ScrollDirection {

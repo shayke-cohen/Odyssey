@@ -48,6 +48,10 @@ final class WKWebViewBrowserController: NSObject, BrowserController {
         pendingNavigationContinuation?.resume(throwing: CancellationError())
         pendingNavigationContinuation = nil
 
+        // Cancel any in-flight submit continuation
+        pendingSubmitContinuation?.resume(throwing: CancellationError())
+        pendingSubmitContinuation = nil
+
         return try await withCheckedThrowingContinuation { continuation in
             self.pendingNavigationContinuation = continuation
             self.webView.load(URLRequest(url: url))
@@ -100,7 +104,8 @@ final class WKWebViewBrowserController: NSObject, BrowserController {
           return false;
         })()
         """
-        try await webView.evaluateJavaScript(clickJS)
+        let clicked = try await webView.evaluateJavaScript(clickJS) as? Bool ?? false
+        if !clicked { throw BrowserError.selectorNotFound(selector) }
     }
 
     func type(selector: String, text: String) async throws {
@@ -177,6 +182,9 @@ final class WKWebViewBrowserController: NSObject, BrowserController {
 
     func renderHTML(_ html: String, title: String?) async throws -> String {
         pendingSubmitContinuation?.resume(throwing: CancellationError())
+        pendingSubmitContinuation = nil
+        pendingNavigationContinuation?.resume(throwing: CancellationError())
+        pendingNavigationContinuation = nil
         webView.loadHTMLString(html, baseURL: nil)
         return try await withCheckedThrowingContinuation { continuation in
             self.pendingSubmitContinuation = continuation
@@ -191,12 +199,11 @@ final class WKWebViewBrowserController: NSObject, BrowserController {
     // MARK: - Helpers
 
     private func jsonString(_ s: String) -> String {
-        let escaped = s
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
-            .replacingOccurrences(of: "\r", with: "\\r")
-        return "\"\(escaped)\""
+        if let data = try? JSONSerialization.data(withJSONObject: s),
+           let result = String(data: data, encoding: .utf8) {
+            return result // already includes surrounding quotes
+        }
+        return "null"
     }
 }
 
@@ -221,9 +228,16 @@ extension WKWebViewBrowserController: WKNavigationDelegate {
         }
     }
 
+    nonisolated func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        Task { @MainActor in
+            self.pendingNavigationContinuation?.resume(throwing: error)
+            self.pendingNavigationContinuation = nil
+        }
+    }
+
     nonisolated func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
         if let httpResponse = navigationResponse.response as? HTTPURLResponse {
-            let entry = NetworkEntry(url: httpResponse.url?.absoluteString ?? "", statusCode: httpResponse.statusCode, method: "")
+            let entry = NetworkEntry(url: httpResponse.url?.absoluteString ?? "", statusCode: httpResponse.statusCode)
             Task { @MainActor in
                 self.networkLog.append(entry)
                 if self.networkLog.count > 200 { self.networkLog.removeFirst() }
