@@ -148,6 +148,7 @@
 		86F3EA0D9EA3076ED5F0A908 /* DefaultSkills in Resources */ = {isa = PBXBuildFile; fileRef = F25E68993F1578F447F078C1 /* DefaultSkills */; };
 		8837504C0988F54F3AE831CA /* SidecarProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36601B02576E1AAA2B2A323D /* SidecarProtocol.swift */; };
 		89090E1E2C16E1CEA8EB8CF5 /* FileExplorerIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1606A9DE299AD411269B1157 /* FileExplorerIntegrationTests.swift */; };
+		8BB29F9835EBE7BBC9B5D27B /* BrowserController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13634A3877553CCA8C5CAD5A /* BrowserController.swift */; };
 		8C369FDBA4E672DF31150F03 /* WorktreeCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6F214B3DA3B4C401EBC4CE /* WorktreeCleanup.swift */; };
 		8CB469F7740C1773FB0E165A /* Agent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41E26A91126632EB2EAF8E7 /* Agent.swift */; };
 		8CD0BA90DD9D9BEFBD7EC392 /* ImagePreviewOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E4CCB76BF694A1ABA074D5D /* ImagePreviewOverlay.swift */; };
@@ -155,6 +156,7 @@
 		8DC5F65DB3F35D3D5BCDF4CF /* ScheduleSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D63B2D984AA99142081F65 /* ScheduleSupport.swift */; };
 		8F8BFED0ECFA0728C6ED1854 /* CatalogModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9D08315587E2BFE101FAAB /* CatalogModelTests.swift */; };
 		8FB19E2659F7283E3A2E7C4E /* LocalProviderSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D163AC9F9E014E2707DCEF3 /* LocalProviderSupport.swift */; };
+		8FCF0C44A4BA6305328FCD65 /* WKWebViewBrowserController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB3C00DB70530613EE74D1F /* WKWebViewBrowserController.swift */; };
 		9014F66ECF8028220D72BBBA /* UPnPPortMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02EBB5B173B2756983D668C1 /* UPnPPortMapper.swift */; };
 		920CA70BA819DCC9F0102FF9 /* AppXray in Frameworks */ = {isa = PBXBuildFile; productRef = F472AA3C0069B43CB2B3D9F8 /* AppXray */; };
 		928101183C5248CD6252F534 /* Peer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D226D7279D998140E54DD3B3 /* Peer.swift */; };
@@ -333,6 +335,7 @@
 		10259A67B64D5CC275791AD4 /* AppStateIdleDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateIdleDetectionTests.swift; sourceTree = "<group>"; };
 		10E66DBCD1DC9CCFE067172E /* ScheduleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleDetailView.swift; sourceTree = "<group>"; };
 		122B3655F0302ACD752D5C72 /* FileContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileContentView.swift; sourceTree = "<group>"; };
+		13634A3877553CCA8C5CAD5A /* BrowserController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserController.swift; sourceTree = "<group>"; };
 		14598FD9E45F3EEC224C6998 /* ConnectorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorService.swift; sourceTree = "<group>"; };
 		15AB75D93E7D75212FA5FD16 /* HighlightedCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightedCodeView.swift; sourceTree = "<group>"; };
 		15D3408DC8586DFF18B6EAE0 /* ChatTranscriptExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTranscriptExportTests.swift; sourceTree = "<group>"; };
@@ -505,6 +508,7 @@
 		BB3329B9007D93114D6F50FA /* SlashCommandRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandRegistry.swift; sourceTree = "<group>"; };
 		BC9DCC77E362953C9BA85724 /* MatrixClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatrixClientTests.swift; sourceTree = "<group>"; };
 		BD82750C21589B242699A02E /* StreamingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingIndicator.swift; sourceTree = "<group>"; };
+		BDB3C00DB70530613EE74D1F /* WKWebViewBrowserController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WKWebViewBrowserController.swift; sourceTree = "<group>"; };
 		BE2E60A29D216D4EC39AD5DD /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		BF50A910B05D937FF4A593D2 /* MatrixKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatrixKeychainStore.swift; sourceTree = "<group>"; };
 		BFD19B50DA0A5BB9D7845A11 /* MessageAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageAttachment.swift; sourceTree = "<group>"; };
@@ -646,6 +650,8 @@
 		05BC5B348892B05D30840F78 /* Browser */ = {
 			isa = PBXGroup;
 			children = (
+				13634A3877553CCA8C5CAD5A /* BrowserController.swift */,
+				BDB3C00DB70530613EE74D1F /* WKWebViewBrowserController.swift */,
 				6E4B57F980B2FCB833372F53 /* Resources */,
 			);
 			path = Browser;
@@ -1542,6 +1548,7 @@
 				FCE5FBA2F75C2ED878702352 /* AutonomousMissionSheet.swift in Sources */,
 				09A27FA720C1D79DE5E1027C /* BlackboardEntry.swift in Sources */,
 				D44BB61DBF73A94785AB7B9B /* BlackboardSnapshotClient.swift in Sources */,
+				8BB29F9835EBE7BBC9B5D27B /* BrowserController.swift in Sources */,
 				F89560F8F27F69F9C4A5D9E6 /* CatalogBrowserView.swift in Sources */,
 				E916F33C7B172423DDB1E510 /* CatalogDetailView.swift in Sources */,
 				0D5CDDC9E3BDD37CA2C9EC4C /* CatalogService.swift in Sources */,
@@ -1691,6 +1698,7 @@
 				1C65270709A2A7F89B0A122D /* UnifiedLogEntry.swift in Sources */,
 				0BA8A404E682AF5BEF8D2C62 /* UserIdentity.swift in Sources */,
 				DB83A2142A011F0A770A4208 /* UserInviteSheet.swift in Sources */,
+				8FCF0C44A4BA6305328FCD65 /* WKWebViewBrowserController.swift in Sources */,
 				B92233E3D31EC1E45A0A6200 /* WelcomeView.swift in Sources */,
 				4CDE0E9F3B4D1982E5A1B9B0 /* WindowState.swift in Sources */,
 				EA6468569461BDDDFFA8122E /* WorkflowEditorView.swift in Sources */,
