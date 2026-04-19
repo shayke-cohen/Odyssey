@@ -70,53 +70,57 @@ struct InlineBrowserCard: View {
     // MARK: - Toolbar
 
     private var toolbar: some View {
-        HStack(spacing: 6) {
-            stateIndicator
+        VStack(spacing: 0) {
+            // Row 1: state dot + URL
+            HStack(spacing: 6) {
+                stateIndicator
+                Text(displayURL.isEmpty ? "about:blank" : displayURL)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.top, 7)
+            .padding(.bottom, 5)
 
-            Text(displayURL.isEmpty ? "about:blank" : displayURL)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Divider()
 
-            Button {
-                if let urlStr = controller?.currentURL?.absoluteString ?? (displayURL.isEmpty ? nil : displayURL),
-                   let url = URL(string: urlStr) {
-                    NSWorkspace.shared.open(url)
+            // Row 2: action buttons
+            HStack(spacing: 8) {
+                Button {
+                    if let urlStr = controller?.currentURL?.absoluteString ?? (displayURL.isEmpty ? nil : displayURL),
+                       let url = URL(string: urlStr) {
+                        NSWorkspace.shared.open(url)
+                    }
+                } label: {
+                    Label("Open in Safari", systemImage: "safari")
+                        .font(.caption)
+                        .fontWeight(.medium)
                 }
-            } label: {
-                Text("Safari")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(Color(.quaternarySystemFill))
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .accessibilityIdentifier("inlineBrowser.safariButton")
-            .accessibilityLabel("Open in Safari")
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("inlineBrowser.safariButton")
 
-            Button {
-                appState.activeBrowserPanelVisible = true
-            } label: {
-                Text("Panel")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(appState.activeBrowserPanelVisible ? Color.blue.opacity(0.15) : Color(.quaternarySystemFill))
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                Divider().frame(height: 12)
+
+                Button {
+                    appState.activeBrowserPanelVisible = true
+                } label: {
+                    Label("Open in Panel", systemImage: "sidebar.right")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(appState.activeBrowserPanelVisible ? .blue : .secondary)
+                .accessibilityIdentifier("inlineBrowser.expandButton")
+
+                Spacer()
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(appState.activeBrowserPanelVisible ? .blue : .secondary)
-            .accessibilityIdentifier("inlineBrowser.expandButton")
-            .accessibilityLabel("Open in panel")
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
         .background(Color(.windowBackgroundColor))
     }
 
