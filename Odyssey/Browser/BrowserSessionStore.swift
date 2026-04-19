@@ -36,7 +36,8 @@ final class BrowserSessionStore {
 
     /// Clears all stores (e.g., on sign-out).
     func clearAll() async {
-        for key in stores.keys {
+        let keys = Array(stores.keys)
+        for key in keys {
             await clearStore(for: key)
         }
     }
