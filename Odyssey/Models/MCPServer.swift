@@ -4,6 +4,7 @@ import SwiftData
 enum MCPTransport: Sendable, Hashable {
     case stdio(command: String, args: [String], env: [String: String])
     case http(url: String, headers: [String: String])
+    case builtin  // marker for in-process built-in servers (no external process or URL)
 }
 
 enum MCPStatus: String, Codable, Sendable {
@@ -41,6 +42,8 @@ final class MCPServer {
                 let args = decodeJSON([String].self, from: transportArgsJSON) ?? []
                 let env = decodeJSON([String: String].self, from: transportEnvJSON) ?? [:]
                 return .stdio(command: transportCommand ?? "", args: args, env: env)
+            case "builtin":
+                return .builtin
             default:
                 let headers = decodeJSON([String: String].self, from: transportHeadersJSON) ?? [:]
                 return .http(url: transportUrl ?? "", headers: headers)
@@ -62,6 +65,13 @@ final class MCPServer {
                 transportArgsJSON = nil
                 transportEnvJSON = nil
                 transportHeadersJSON = encodeJSON(headers)
+            case .builtin:
+                transportKind = "builtin"
+                transportCommand = nil
+                transportUrl = nil
+                transportArgsJSON = nil
+                transportEnvJSON = nil
+                transportHeadersJSON = nil
             }
         }
     }

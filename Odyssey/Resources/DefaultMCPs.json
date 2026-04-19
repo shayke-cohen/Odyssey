@@ -1,5 +1,10 @@
 [
   {
+    "name": "browser",
+    "serverDescription": "Built-in web browser. Agents can navigate to URLs, click, type, take screenshots, read the DOM, capture console logs, and render interactive HTML pages. Session data is project-scoped by default.",
+    "transportKind": "builtin"
+  },
+  {
     "name": "Argus",
     "serverDescription": "UI testing, screenshots, browser automation, and mobile simulator control. Supports web, iOS, Android, macOS, and terminal platforms.",
     "transportKind": "stdio",

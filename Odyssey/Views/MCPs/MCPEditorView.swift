@@ -46,7 +46,7 @@ struct MCPEditorView: View {
             _envPairs = State(initialValue: [])
             _httpUrl = State(initialValue: url)
             _headerPairs = State(initialValue: headers.map { KeyValuePair(key: $0.key, value: $0.value) }.sorted { $0.key < $1.key })
-        case .none:
+        case .builtin, .none:
             _command = State(initialValue: "")
             _argsText = State(initialValue: "")
             _envPairs = State(initialValue: [])

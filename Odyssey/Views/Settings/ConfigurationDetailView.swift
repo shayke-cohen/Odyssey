@@ -407,6 +407,8 @@ struct ConfigurationDetailView: View {
                 }
             }
             return lines.joined(separator: "\n")
+        case .builtin:
+            return "built-in"
         }
     }
 

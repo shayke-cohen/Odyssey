@@ -108,6 +108,12 @@ final class AgentProvisioner {
                     return AgentConfig.MCPServerConfig(
                         name: mcp.name, command: nil, args: nil, env: nil, url: url
                     )
+                case .builtin:
+                    // Builtin servers are sentinel markers: name only, no command or url.
+                    // The sidecar detects these and wires up the in-process implementation.
+                    return AgentConfig.MCPServerConfig(
+                        name: mcp.name, command: nil, args: nil, env: nil, url: nil
+                    )
                 }
             },
             provider: session.provider,

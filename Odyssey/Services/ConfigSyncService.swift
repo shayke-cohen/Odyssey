@@ -1235,6 +1235,9 @@ final class ConfigSyncService {
                 url: url,
                 headers: headers.isEmpty ? nil : headers
             )
+        case .builtin:
+            // Built-in servers (e.g. browser) are not written to external config files.
+            return
         }
 
         isWritingBack = true
@@ -1532,6 +1535,9 @@ final class ConfigSyncService {
                 transportKind: "http", transportCommand: nil, transportArgs: nil,
                 transportEnv: nil, transportUrl: url, transportHeaders: headers
             )
+        case .builtin:
+            // Built-in servers are not written to config files.
+            return
         }
 
         isWritingBack = true
