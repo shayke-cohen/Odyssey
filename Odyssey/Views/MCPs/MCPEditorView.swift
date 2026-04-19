@@ -32,6 +32,7 @@ struct MCPEditorView: View {
 
         let kind = mcp?.transportKind ?? "stdio"
         _transportType = State(initialValue: kind == "stdio" ? 0 : 1)
+        // builtin MCPs are read-only — the save() guard below prevents corruption
 
         switch mcp?.transport {
         case .stdio(let cmd, let args, let env):
@@ -173,6 +174,7 @@ struct MCPEditorView: View {
     }
 
     private func save() {
+        if mcp?.transportKind == "builtin" { return }
         let transport: MCPTransport
         if transportType == 0 {
             let args = argsText

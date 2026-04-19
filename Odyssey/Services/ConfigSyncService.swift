@@ -1760,6 +1760,8 @@ final class ConfigSyncService {
                 args: dto.transportArgs ?? [],
                 env: dto.transportEnv ?? [:]
             )
+        } else if dto.transportKind == "builtin" {
+            entity.transport = .builtin
         } else {
             entity.transport = .http(
                 url: dto.transportUrl ?? "",
@@ -1771,6 +1773,8 @@ final class ConfigSyncService {
     private func makeTransport(from dto: MCPConfigDTO) -> MCPTransport {
         if dto.transportKind == "stdio" {
             return .stdio(command: dto.transportCommand ?? "", args: dto.transportArgs ?? [], env: dto.transportEnv ?? [:])
+        } else if dto.transportKind == "builtin" {
+            return .builtin
         } else {
             return .http(url: dto.transportUrl ?? "", headers: dto.transportHeaders ?? [:])
         }

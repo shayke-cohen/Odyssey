@@ -176,7 +176,7 @@ struct MCPLibraryView: View {
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 6) {
-                Text(mcp.transportKind == "stdio" ? "stdio" : "http")
+                Text(mcp.transportKind == "builtin" ? "built-in" : mcp.transportKind == "stdio" ? "stdio" : "http")
                     .font(.caption)
                     .fontWeight(.medium)
                     .padding(.horizontal, 8)
