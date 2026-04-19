@@ -54,7 +54,7 @@ struct InlineBrowserCard: View {
                             .font(.caption)
                             .fontWeight(.medium)
                     }
-                    .foregroundStyle(isPanelOpen ? .blue : .blue)
+                    .foregroundStyle(isPanelOpen ? .blue : .secondary)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("inlineBrowser.expandButton")
