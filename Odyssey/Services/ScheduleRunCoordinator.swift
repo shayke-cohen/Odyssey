@@ -110,17 +110,9 @@ final class ScheduleRunCoordinator {
             return
         }
 
-        // Resolve project directory at run time for worktree creation (same rule as session WD)
-        let worktreeBaseDirectory: String
-        if let projectId = schedule.projectId {
-            let descriptor = FetchDescriptor<Project>(predicate: #Predicate { p in p.id == projectId })
-            worktreeBaseDirectory = (try? modelContext.fetch(descriptor).first)?.rootPath ?? ""
-        } else {
-            worktreeBaseDirectory = ""
-        }
         let worktreePath = await dependencies.ensureWorktree(
             conversation,
-            worktreeBaseDirectory,
+            schedule.projectDirectory,
             modelContext
         )
 
@@ -270,6 +262,7 @@ final class ScheduleRunCoordinator {
                 guard let agent = try? modelContext.fetch(descriptor).first else { return nil }
                 conversation = createAgentConversation(
                     agent: agent,
+                    projectDirectory: schedule.projectDirectory,
                     projectId: schedule.projectId
                 )
 
@@ -277,28 +270,19 @@ final class ScheduleRunCoordinator {
                 guard let targetGroupId = schedule.targetGroupId else { return nil }
                 let descriptor = FetchDescriptor<AgentGroup>(predicate: #Predicate { $0.id == targetGroupId })
                 guard let group = try? modelContext.fetch(descriptor).first else { return nil }
-                // Resolve project directory at run time from the linked project (if any);
-                // passing "" lets startGroupChat fall back to group.defaultWorkingDirectory
-                let resolvedProjectDirectory: String
-                if let projectId = schedule.projectId {
-                    let descriptor = FetchDescriptor<Project>(predicate: #Predicate { p in p.id == projectId })
-                    resolvedProjectDirectory = (try? modelContext.fetch(descriptor).first)?.rootPath ?? ""
-                } else {
-                    resolvedProjectDirectory = ""
-                }
                 let conversationId: UUID?
                 if schedule.usesAutonomousMode {
                     conversationId = appState.startAutonomousGroupChat(
                         group: group,
                         mission: prompt,
-                        projectDirectory: resolvedProjectDirectory,
+                        projectDirectory: schedule.projectDirectory,
                         projectId: schedule.projectId,
                         modelContext: modelContext
                     )
                 } else {
                     conversationId = appState.startGroupChat(
                         group: group,
-                        projectDirectory: resolvedProjectDirectory,
+                        projectDirectory: schedule.projectDirectory,
                         projectId: schedule.projectId,
                         modelContext: modelContext
                     )
@@ -314,6 +298,7 @@ final class ScheduleRunCoordinator {
 
             case .conversation:
                 return nil
+
             case .project:
                 return nil
             }
@@ -332,9 +317,6 @@ final class ScheduleRunCoordinator {
         conversation.threadKind = .scheduled
         run.conversationId = conversation.id
         if let windowState {
-            if let projectId = conversation.projectId {
-                windowState.selectProject(id: projectId, preserveSelection: true)
-            }
             windowState.selectedConversationId = conversation.id
         }
 
@@ -376,20 +358,12 @@ final class ScheduleRunCoordinator {
         return conversation
     }
 
-    private func createAgentConversation(agent: Agent, projectId: UUID? = nil) -> Conversation {
+    private func createAgentConversation(agent: Agent, projectDirectory: String, projectId: UUID? = nil) -> Conversation {
         let provisioner = AgentProvisioner(modelContext: modelContext)
-        // Resolve WD at run time: project root > agent's own default (never use stale baked-in path)
-        let workingDirOverride: String?
-        if let projectId {
-            let descriptor = FetchDescriptor<Project>(predicate: #Predicate { p in p.id == projectId })
-            workingDirOverride = (try? modelContext.fetch(descriptor).first)?.rootPath
-        } else {
-            workingDirOverride = agent.defaultWorkingDirectory
-        }
         let (_, session) = provisioner.provision(
             agent: agent,
             mission: nil,
-            workingDirOverride: workingDirOverride
+            workingDirOverride: projectDirectory
         )
 
         let conversation = Conversation(
