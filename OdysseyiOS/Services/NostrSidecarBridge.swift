@@ -178,21 +178,21 @@ private enum NIP44iOS {
 
     private static func hkdfExtract(ikm: Data, salt: Data) -> Data {
         var key = SymmetricKey(data: salt)
-        return Data(HMAC<SHA256>.authenticationCode(for: ikm, using: key))
+        return Data(HMAC<CryptoKit.SHA256>.authenticationCode(for: ikm, using: key))
     }
 
     private static func hkdfExpand(prk: Data, info: Data, len: Int) -> Data {
         var okm = Data(); var t = Data(); var ctr: UInt8 = 1
         while okm.count < len {
             var input = t + info; input.append(ctr)
-            t = Data(HMAC<SHA256>.authenticationCode(for: input, using: SymmetricKey(data: prk)))
+            t = Data(HMAC<CryptoKit.SHA256>.authenticationCode(for: input, using: SymmetricKey(data: prk)))
             okm.append(t); ctr += 1
         }
         return okm.prefix(len)
     }
 
     private static func hmacSHA256(key: Data, data: Data) -> Data {
-        Data(HMAC<SHA256>.authenticationCode(for: data, using: SymmetricKey(data: key)))
+        Data(HMAC<CryptoKit.SHA256>.authenticationCode(for: data, using: SymmetricKey(data: key)))
     }
 
     private static func chacha20(key: Data, nonce: Data, data: Data) -> Data {

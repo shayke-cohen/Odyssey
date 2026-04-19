@@ -164,7 +164,8 @@ struct iOSPairingView: View {
                 turnConfig: payload.hints.turn,
                 pairedAt: Date(),
                 lastConnectedAt: nil,
-                claudeSessionIds: [:]
+                claudeSessionIds: [:],
+                macNostrPubkeyHex: payload.nostrPubkey
             )
 
             let store = PeerCredentialStore()

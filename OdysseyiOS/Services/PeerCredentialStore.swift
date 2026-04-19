@@ -19,6 +19,8 @@ public struct PeerCredentials: Codable, Identifiable {
     public var lastConnectedAt: Date?
     /// Maps conversationId → claudeSessionId for resume support.
     public var claudeSessionIds: [String: String]
+    /// Mac's Nostr secp256k1 pubkey hex — used for E2EE relay when LAN/WAN unavailable.
+    public var macNostrPubkeyHex: String?
 
     public init(
         id: UUID,
@@ -33,7 +35,8 @@ public struct PeerCredentials: Codable, Identifiable {
         turnConfig: TURNConfig?,
         pairedAt: Date,
         lastConnectedAt: Date?,
-        claudeSessionIds: [String: String]
+        claudeSessionIds: [String: String],
+        macNostrPubkeyHex: String? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -48,6 +51,7 @@ public struct PeerCredentials: Codable, Identifiable {
         self.pairedAt = pairedAt
         self.lastConnectedAt = lastConnectedAt
         self.claudeSessionIds = claudeSessionIds
+        self.macNostrPubkeyHex = macNostrPubkeyHex
     }
 }
 

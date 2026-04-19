@@ -19,6 +19,7 @@ final class iOSAppState {
 
     let sidecarManager = RemoteSidecarManager()
     private let credentialStore = PeerCredentialStore()
+    private(set) var nostrBridge: NostrSidecarBridge?
     private var eventTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
@@ -46,7 +47,8 @@ final class iOSAppState {
                 turnConfig: nil,
                 pairedAt: creds.pairedAt,
                 lastConnectedAt: creds.lastConnectedAt,
-                claudeSessionIds: creds.claudeSessionIds
+                claudeSessionIds: creds.claudeSessionIds,
+                macNostrPubkeyHex: creds.macNostrPubkeyHex
             )
         }
         // Cancel any in-flight reconnect loop and force-disconnect so connect() guard passes.
@@ -64,6 +66,40 @@ final class iOSAppState {
         }
         // If connect() failed, RemoteSidecarManager yields .disconnected which
         // handleEvent(.disconnected) picks up and starts the reconnect retry task.
+
+        // Start Nostr relay bridge as an always-on fallback transport when Mac npub is known.
+        if let macNpub = creds.macNostrPubkeyHex {
+            connectNostrBridge(macPubkeyHex: macNpub)
+        }
+    }
+
+    // MARK: - Nostr bridge
+
+    private func connectNostrBridge(macPubkeyHex: String) {
+        nostrBridge?.disconnect()
+        nostrBridge = nil
+        guard let keypair = iOSNostrKeychain.loadOrGenerateKeypair() else { return }
+        let r1 = UserDefaults.standard.string(forKey: "odyssey.nostrRelay1") ?? "wss://relay.damus.io"
+        let r2 = UserDefaults.standard.string(forKey: "odyssey.nostrRelay2") ?? "wss://relay.nostr.band"
+        let relays = [r1, r2].filter { !$0.isEmpty }
+        let bridge = NostrSidecarBridge(
+            macPubkeyHex: macPubkeyHex,
+            privkeyHex: keypair.privkeyHex,
+            pubkeyHex: keypair.pubkeyHex,
+            relayURLs: relays,
+            onEvent: { [weak self] event in
+                Task { @MainActor [weak self] in
+                    self?.handleEvent(event)
+                }
+            }
+        )
+        nostrBridge = bridge
+        bridge.connect()
+    }
+
+    /// Send via Nostr when the WebSocket sidecar connection is unavailable.
+    func sendViaNostr(_ command: SidecarCommand) {
+        nostrBridge?.send(command)
     }
 
     // MARK: - REST loaders
