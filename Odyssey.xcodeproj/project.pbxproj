@@ -71,6 +71,7 @@
 		3E2D846CC011B6213728F6C9 /* AgentEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA60957465F3216223543AE6 /* AgentEditorView.swift */; };
 		40A4A7B48EEBD25B89037CE8 /* WorkshopViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCD859B7B5CDE79F6F2E65E9 /* WorkshopViewTests.swift */; };
 		412D757C20DE63E01BE32AAA /* iOSAppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE4CEEFD2941DE2FE13AEAD4 /* iOSAppState.swift */; };
+		4198D83D1C95290EBEBEAAFC /* QuickActionConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC8F961FF4889CDD708737E /* QuickActionConfig.swift */; };
 		438A8185A2A921F2F912027A /* OdysseyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6A58F5009F43029D2A1318 /* OdysseyApp.swift */; };
 		441DED46E219D362BB21B6CE /* ConfigFileDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7177E0BD3EB888C0261198A9 /* ConfigFileDTOs.swift */; };
 		4646DB93520533DB213104D9 /* GitHubIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF369C5D3AF50A92FAA9A7CB /* GitHubIntegration.swift */; };
@@ -159,6 +160,7 @@
 		9D179DEC41B409E69C1E09E3 /* PeerCatalogServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6181E164D6F6C72DAE58A922 /* PeerCatalogServer.swift */; };
 		9E431E795FADF9969DC53648 /* AgentProvisionerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC2B79A68879850C3C9E9AA1 /* AgentProvisionerTests.swift */; };
 		9ED4FD197D1E511B44B87EAD /* TemplatesSettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F6D5388AB006681697BFF1 /* TemplatesSettingsTab.swift */; };
+		9EF67BDA256154A9C3CE7BCD /* ConversationIdleResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16845A6F2C21E7E5E3F959C /* ConversationIdleResult.swift */; };
 		A284BB4C3D93501475943CB2 /* SharedRoomLocalBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CBE6D508B750D68D5F8FF29 /* SharedRoomLocalBackendTests.swift */; };
 		A2E7312CBAC8C902F0FBB060 /* FileNodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D2993EDAC99A2B593B03B0B /* FileNodeTests.swift */; };
 		A39A64018334B881F5A3A405 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E5FF320955B1EDBB5A577E /* SidebarView.swift */; };
@@ -366,6 +368,7 @@
 		48879CAFF9615BCCAC4A12CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4A31730BE399E3FCD082DB76 /* AgentQuestionBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentQuestionBubble.swift; sourceTree = "<group>"; };
 		4B19E5A92A4FEDB14B1B6872 /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
+		4BC8F961FF4889CDD708737E /* QuickActionConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionConfig.swift; sourceTree = "<group>"; };
 		4C40CFEF2765642CEA44E445 /* CatalogDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogDetailView.swift; sourceTree = "<group>"; };
 		4D135ADEF5D0F6923E77C6AD /* AgentGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentGroup.swift; sourceTree = "<group>"; };
 		50198DDC4B27324DB2E54C9C /* AgentLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentLibraryView.swift; sourceTree = "<group>"; };
@@ -516,6 +519,7 @@
 		E04AC27818C2793F47C0E84C /* SystemPromptTemplates */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SystemPromptTemplates; path = Odyssey/Resources/SystemPromptTemplates; sourceTree = SOURCE_ROOT; };
 		E125C63AA89C59764C82D839 /* DebugLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogView.swift; sourceTree = "<group>"; };
 		E15F552443C4E04203F2E4E0 /* Catalog */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Catalog; path = Odyssey/Resources/Catalog; sourceTree = SOURCE_ROOT; };
+		E16845A6F2C21E7E5E3F959C /* ConversationIdleResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationIdleResult.swift; sourceTree = "<group>"; };
 		E1CD9576CD43CDC2384E3BE8 /* ChatSessionWatchdog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSessionWatchdog.swift; sourceTree = "<group>"; };
 		E27B6AA4F0B12F10296CAA5B /* sdk-ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "sdk-ios"; path = "Dependencies/appxray/packages/sdk-ios"; sourceTree = SOURCE_ROOT; };
 		E4EA5448052E9E2C0038E6E5 /* TemplatePickerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatePickerRow.swift; sourceTree = "<group>"; };
@@ -897,6 +901,7 @@
 				B597F7491414D478622B1344 /* BlackboardEntry.swift */,
 				A73567CAE2AAED2382C0A41B /* Connection.swift */,
 				4B19E5A92A4FEDB14B1B6872 /* Conversation.swift */,
+				E16845A6F2C21E7E5E3F959C /* ConversationIdleResult.swift */,
 				F4EB72AF160414D388FB1B8A /* ConversationMessage.swift */,
 				D64BB4F93A4CFD95DDD3A4F5 /* FileNode.swift */,
 				C61B9B11C3E686060A4ABC25 /* GroupRole.swift */,
@@ -907,6 +912,7 @@
 				D226D7279D998140E54DD3B3 /* Peer.swift */,
 				EFE61F38DD7B9E57DF10B0B5 /* PermissionSet.swift */,
 				31D54F17BE4D8447127FBA81 /* PromptTemplate.swift */,
+				4BC8F961FF4889CDD708737E /* QuickActionConfig.swift */,
 				9AF738A4F1E23CAE25A34EA2 /* ScheduledMission.swift */,
 				FF255538B3F627624F6BE5B8 /* ScheduledMissionDraft.swift */,
 				EBE135214E24F6248D5EA9CF /* ScheduledMissionRun.swift */,
@@ -1442,6 +1448,7 @@
 				3CF6997B5C173AEFD687350A /* ConnectorCatalog.swift in Sources */,
 				5831FAA710B8E0777A04AADE /* ConnectorService.swift in Sources */,
 				4BA289DE86A43AFB7D29405D /* Conversation.swift in Sources */,
+				9EF67BDA256154A9C3CE7BCD /* ConversationIdleResult.swift in Sources */,
 				D7D3F04C53A2105D7CAFF259 /* ConversationMessage.swift in Sources */,
 				48A021D17DD1120E32A39193 /* ConversationTreeNode.swift in Sources */,
 				17A35F4B23F27194E5B6F2F4 /* DebugLogView.swift in Sources */,
@@ -1516,6 +1523,7 @@
 				DB4CBB0970FF15A4782A984A /* PermissionSet.swift in Sources */,
 				4A9EF5119AE6FB66324C3D03 /* PromptTemplate.swift in Sources */,
 				7BF0DBA4953DC785545FE378 /* PromptTemplateEditorSheet.swift in Sources */,
+				4198D83D1C95290EBEBEAAFC /* QuickActionConfig.swift in Sources */,
 				D727B0495A0CA51047853613 /* RecentDirectories.swift in Sources */,
 				4AF9054731A78C6D7D9014C8 /* ResidentAgentSupport.swift in Sources */,
 				00E2394C0D8E3B3B624E0A37 /* ScheduleDetailView.swift in Sources */,
@@ -1822,7 +1830,7 @@
 				CODE_SIGN_ENTITLEMENTS = Odyssey/Resources/Odyssey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = U6BSY4N9E3;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1834,7 +1842,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.5.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.shaycohen.odyssey;
 				PRODUCT_NAME = Odyssey;
 				SDKROOT = macosx;
@@ -1889,7 +1897,7 @@
 				CODE_SIGN_ENTITLEMENTS = Odyssey/Resources/Odyssey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = U6BSY4N9E3;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1901,7 +1909,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.5.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.shaycohen.odyssey;
 				PRODUCT_NAME = Odyssey;
 				SDKROOT = macosx;

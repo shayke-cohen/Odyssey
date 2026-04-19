@@ -279,6 +279,9 @@ struct ScheduleEditorView: View {
                         title: "Conversation",
                         detail: "The prompt will be appended to this existing thread whenever the schedule runs."
                     )
+
+                case .project:
+                    EmptyView()
                 }
             }
         }

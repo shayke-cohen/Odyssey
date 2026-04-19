@@ -298,6 +298,9 @@ final class ScheduleRunCoordinator {
 
             case .conversation:
                 return nil
+
+            case .project:
+                return nil
             }
         }
 

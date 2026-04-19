@@ -185,18 +185,6 @@ struct SidebarView: View {
         List {
             utilitySection
 
-            // Hidden global buttons — register ⌘N, ⌘⌥N, and ⌘⇧N shortcuts at all times
-            Button("") { showAgentPopover = true }
-                .keyboardShortcut("n", modifiers: .command)
-                .hidden()
-            Button("") { showGroupPopover = true }
-                .keyboardShortcut("n", modifiers: [.command, .option])
-                .hidden()
-            Button("") { showAgentPopover = true }
-                .keyboardShortcut("n", modifiers: [.command, .shift])
-                .opacity(0)
-                .frame(width: 0, height: 0)
-
             agentsSection
 
             groupsSection
@@ -392,6 +380,20 @@ struct SidebarView: View {
                         .environmentObject(appState)
                         .environment(windowState)
                     }
+
+                // Hidden shortcut buttons — live here so they don't create extra List rows
+                Button("") { showAgentPopover = true }
+                    .keyboardShortcut("n", modifiers: .command)
+                    .frame(width: 0, height: 0)
+                    .hidden()
+                Button("") { showGroupPopover = true }
+                    .keyboardShortcut("n", modifiers: [.command, .option])
+                    .frame(width: 0, height: 0)
+                    .hidden()
+                Button("") { showAgentPopover = true }
+                    .keyboardShortcut("n", modifiers: [.command, .shift])
+                    .frame(width: 0, height: 0)
+                    .hidden()
 
                 // The actual Menu button (no popover modifiers on it)
                 Menu {

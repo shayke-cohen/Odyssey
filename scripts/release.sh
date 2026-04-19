@@ -106,9 +106,19 @@ echo "    Export OK: $APP_PATH"
 
 echo "==> Notarizing (submitting to Apple — may take a few minutes)..."
 ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
-xcrun notarytool submit "$ZIP_PATH" \
-  --keychain-profile odyssey-notarize \
-  --wait
+
+# Prefer explicit env-var credentials (reliable in background/CI); fall back to keychain profile.
+if [[ -n "${NOTARIZE_APPLE_ID:-}" && -n "${NOTARIZE_TEAM_ID:-}" && -n "${NOTARIZE_PASSWORD:-}" ]]; then
+  xcrun notarytool submit "$ZIP_PATH" \
+    --apple-id "$NOTARIZE_APPLE_ID" \
+    --team-id "$NOTARIZE_TEAM_ID" \
+    --password "$NOTARIZE_PASSWORD" \
+    --wait
+else
+  xcrun notarytool submit "$ZIP_PATH" \
+    --keychain-profile odyssey-notarize \
+    --wait
+fi
 
 echo "    Notarization OK."
 
