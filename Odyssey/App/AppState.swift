@@ -1465,20 +1465,19 @@ final class AppState {
         // ─── Browser event handlers ───────────────────────────────────────────
 
         case .browserNavigate(let sessionId, let url):
+            activeBrowserSessionId = sessionId
+            activeBrowserPanelVisible = true
             Task {
                 let controller = browserController(for: sessionId)
-                activeBrowserSessionId = sessionId
-                activeBrowserPanelVisible = true
                 browserCoordinators[sessionId]?.logAction("Navigate: \(url)")
                 do {
+                    struct NavigatePayload: Codable {
+                        let title: String
+                        let finalUrl: String
+                    }
                     let result = try await controller.navigate(to: URL(string: url) ?? URL(string: "about:blank")!)
-                    let encodedTitle = result.title
-                        .replacingOccurrences(of: "\\", with: "\\\\")
-                        .replacingOccurrences(of: "\"", with: "\\\"")
-                    let encodedUrl = result.finalURL.absoluteString
-                        .replacingOccurrences(of: "\\", with: "\\\\")
-                        .replacingOccurrences(of: "\"", with: "\\\"")
-                    let payload = "{\"title\":\"\(encodedTitle)\",\"finalUrl\":\"\(encodedUrl)\"}"
+                    let payloadData = try JSONEncoder().encode(NavigatePayload(title: result.title, finalUrl: result.finalURL.absoluteString))
+                    let payload = String(data: payloadData, encoding: .utf8) ?? "{}"
                     sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.navigate", payload: payload))
                 } catch {
                     sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.navigate", error: error.localizedDescription))
@@ -1528,7 +1527,7 @@ final class AppState {
                 do {
                     let data = try await controller.screenshot()
                     let b64 = data.base64EncodedString()
-                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.screenshot", payload: "\"\(b64)\""))
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.screenshot", payload: b64))
                 } catch {
                     sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.screenshot", error: error.localizedDescription))
                 }
@@ -1592,8 +1591,12 @@ final class AppState {
                 let controller = browserController(for: sessionId)
                 let coordinator = browserCoordinators[sessionId]
                 coordinator?.agentYielded(message: message, controller: controller)
-                try? await controller.yieldToUser(message: message)
-                sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.yieldToUser", payload: "\"User resumed\""))
+                do {
+                    try await controller.yieldToUser(message: message)
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.yieldToUser", payload: "\"User resumed\""))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.yieldToUser", error: error.localizedDescription))
+                }
             }
 
         case .browserRenderHtml(let sessionId, let html, _):
@@ -1615,6 +1618,8 @@ final class AppState {
         case .browserResume(let sessionId):
             if let controller = browserControllers[sessionId] {
                 _ = browserCoordinators[sessionId]?.userResumed(controller: controller)
+            } else {
+                logger.warning("AppState: browserResume: no controller for sessionId \(sessionId)")
             }
             sendToSidecar(.browserStateChange(sessionId: sessionId, state: "agentDriving"))
         }
