@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import WebKit
 
 import OSLog
 import OdysseyCore
@@ -80,6 +81,12 @@ final class AppState {
     /// Session IDs for shared-room sessions created via the test API (no ChatView to persist responses).
     /// AppState auto-persists agent messages for sessions in this set on `sessionResult`.
     var sharedRoomAutoFinalizeSessionIds: Set<String> = []
+
+    // MARK: - Browser state (keyed by sessionId)
+    var browserControllers: [String: WKWebViewBrowserController] = [:]
+    var browserCoordinators: [String: BrowserOverlayCoordinator] = [:]
+    var activeBrowserSessionId: String? = nil
+    var activeBrowserPanelVisible: Bool = false
 
     struct AgentQuestion: Identifiable {
         let id: String  // questionId
@@ -1091,6 +1098,37 @@ final class AppState {
         }
     }
 
+    // MARK: - Browser helpers
+
+    @MainActor
+    func browserController(for sessionId: String) -> WKWebViewBrowserController {
+        if let existing = browserControllers[sessionId] { return existing }
+
+        // Determine session mode from project settings via the session's conversation
+        var mode: BrowserSessionStore.SessionMode = .project
+        var storeKey: String = sessionId
+        if let convo = conversationForSession(sessionId: sessionId),
+           let projectId = convo.projectId,
+           let ctx = modelContext {
+            let descriptor = FetchDescriptor<Project>(predicate: #Predicate { p in p.id == projectId })
+            if let project = try? ctx.fetch(descriptor).first {
+                mode = BrowserSessionStore.SessionMode(rawValue: project.browserSessionMode) ?? .project
+                switch mode {
+                case .project:
+                    storeKey = projectId.uuidString
+                case .thread:
+                    storeKey = sessionId
+                }
+            }
+        }
+
+        let store = BrowserSessionStore.shared.store(for: storeKey)
+        let controller = WKWebViewBrowserController(dataStore: store)
+        browserControllers[sessionId] = controller
+        browserCoordinators[sessionId] = BrowserOverlayCoordinator()
+        return controller
+    }
+
     private func handleEvent(_ event: SidecarEvent) {
         switch event {
         case .streamToken(let sessionId, let text):
@@ -1424,20 +1462,161 @@ final class AppState {
             pendingConfirmations.removeAll()
             startDisconnectTimer()
 
-        // ─── Browser command stubs (Step 1: wire types only) ─────────────────
-        case .browserNavigate:      break
-        case .browserClick:         break
-        case .browserType:          break
-        case .browserScroll:        break
-        case .browserScreenshot:    break
-        case .browserReadDom:       break
-        case .browserGetConsoleLogs: break
-        case .browserGetNetworkLogs: break
-        case .browserWaitFor:       break
-        case .browserYieldToUser:   break
-        case .browserRenderHtml:    break
-        case .browserTakeControl:   break
-        case .browserResume:        break
+        // ─── Browser event handlers ───────────────────────────────────────────
+
+        case .browserNavigate(let sessionId, let url):
+            Task {
+                let controller = browserController(for: sessionId)
+                activeBrowserSessionId = sessionId
+                activeBrowserPanelVisible = true
+                browserCoordinators[sessionId]?.logAction("Navigate: \(url)")
+                do {
+                    let result = try await controller.navigate(to: URL(string: url) ?? URL(string: "about:blank")!)
+                    let encodedTitle = result.title
+                        .replacingOccurrences(of: "\\", with: "\\\\")
+                        .replacingOccurrences(of: "\"", with: "\\\"")
+                    let encodedUrl = result.finalURL.absoluteString
+                        .replacingOccurrences(of: "\\", with: "\\\\")
+                        .replacingOccurrences(of: "\"", with: "\\\"")
+                    let payload = "{\"title\":\"\(encodedTitle)\",\"finalUrl\":\"\(encodedUrl)\"}"
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.navigate", payload: payload))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.navigate", error: error.localizedDescription))
+                }
+            }
+
+        case .browserClick(let sessionId, let selector):
+            Task {
+                let controller = browserController(for: sessionId)
+                browserCoordinators[sessionId]?.logAction("Click: \(selector)")
+                do {
+                    try await controller.click(selector: selector)
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.click", payload: "{}"))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.click", error: error.localizedDescription))
+                }
+            }
+
+        case .browserType(let sessionId, let selector, let text):
+            Task {
+                let controller = browserController(for: sessionId)
+                browserCoordinators[sessionId]?.logAction("Type into: \(selector)")
+                do {
+                    try await controller.type(selector: selector, text: text)
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.type", payload: "{}"))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.type", error: error.localizedDescription))
+                }
+            }
+
+        case .browserScroll(let sessionId, let direction, let px):
+            Task {
+                let controller = browserController(for: sessionId)
+                let dir: ScrollDirection = direction == "up" ? .up : .down
+                browserCoordinators[sessionId]?.logAction("Scroll \(direction) \(px)px")
+                do {
+                    try await controller.scroll(direction: dir, px: px)
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.scroll", payload: "{}"))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.scroll", error: error.localizedDescription))
+                }
+            }
+
+        case .browserScreenshot(let sessionId):
+            Task {
+                let controller = browserController(for: sessionId)
+                do {
+                    let data = try await controller.screenshot()
+                    let b64 = data.base64EncodedString()
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.screenshot", payload: "\"\(b64)\""))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.screenshot", error: error.localizedDescription))
+                }
+            }
+
+        case .browserReadDom(let sessionId):
+            Task {
+                let controller = browserController(for: sessionId)
+                do {
+                    let dom = try await controller.readDOM()
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.readDom", payload: dom))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.readDom", error: error.localizedDescription))
+                }
+            }
+
+        case .browserGetConsoleLogs(let sessionId):
+            Task {
+                let controller = browserController(for: sessionId)
+                do {
+                    let logs = try await controller.getConsoleLogs()
+                    let data = try JSONEncoder().encode(logs)
+                    let str = String(data: data, encoding: .utf8) ?? "[]"
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.getConsoleLogs", payload: str))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.getConsoleLogs", error: error.localizedDescription))
+                }
+            }
+
+        case .browserGetNetworkLogs(let sessionId):
+            Task {
+                let controller = browserController(for: sessionId)
+                do {
+                    let logs = try await controller.getNetworkLogs()
+                    struct NetworkEntryEncodable: Codable {
+                        let url: String
+                        let statusCode: Int?
+                    }
+                    let encodable = logs.map { NetworkEntryEncodable(url: $0.url, statusCode: $0.statusCode) }
+                    let data = try JSONEncoder().encode(encodable)
+                    let str = String(data: data, encoding: .utf8) ?? "[]"
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.getNetworkLogs", payload: str))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.getNetworkLogs", error: error.localizedDescription))
+                }
+            }
+
+        case .browserWaitFor(let sessionId, let selector, let timeoutMs):
+            Task {
+                let controller = browserController(for: sessionId)
+                do {
+                    try await controller.waitFor(selector: selector, timeoutMs: timeoutMs)
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.waitFor", payload: "{}"))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.waitFor", error: error.localizedDescription))
+                }
+            }
+
+        case .browserYieldToUser(let sessionId, let message):
+            Task {
+                let controller = browserController(for: sessionId)
+                let coordinator = browserCoordinators[sessionId]
+                coordinator?.agentYielded(message: message, controller: controller)
+                try? await controller.yieldToUser(message: message)
+                sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.yieldToUser", payload: "\"User resumed\""))
+            }
+
+        case .browserRenderHtml(let sessionId, let html, _):
+            Task {
+                let controller = browserController(for: sessionId)
+                browserCoordinators[sessionId]?.logAction("Render HTML")
+                do {
+                    let result = try await controller.renderHTML(html, title: nil)
+                    sendToSidecar(.browserResult(sessionId: sessionId, commandType: "browser.renderHtml", payload: result))
+                } catch {
+                    sendToSidecar(.browserError(sessionId: sessionId, commandType: "browser.renderHtml", error: error.localizedDescription))
+                }
+            }
+
+        case .browserTakeControl(let sessionId):
+            _ = browserCoordinators[sessionId]?.userTookOver()
+            sendToSidecar(.browserStateChange(sessionId: sessionId, state: "userDriving"))
+
+        case .browserResume(let sessionId):
+            if let controller = browserControllers[sessionId] {
+                _ = browserCoordinators[sessionId]?.userResumed(controller: controller)
+            }
+            sendToSidecar(.browserStateChange(sessionId: sessionId, state: "agentDriving"))
         }
     }
 
