@@ -563,7 +563,7 @@ enum DefaultsSeeder {
             return ["Product Manager"]
         case "github-workflow":
             return ["Coder", "Coder (Codex)", "Coder (Sonnet)", "Reviewer", "DevOps", "Product Manager", "Orchestrator", "Release Manager", "Tester", "Tester (Haiku)"]
-        case "peer-collaboration", "blackboard-patterns", "agent-identity":
+        case "peer-collaboration", "blackboard-patterns", "agent-identity", "browser-control":
             return ["Coder", "Coder (Codex)", "Coder (Sonnet)", "Attacker", "Reviewer", "DevOps", "Product Manager", "Orchestrator", "Tester", "Tester (Haiku)", "Researcher", "Writer", "Designer", "Analyst"]
         default:
             return []
