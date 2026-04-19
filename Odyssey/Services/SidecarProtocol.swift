@@ -549,6 +549,7 @@ struct AgentConfig: Codable, Sendable {
 
     struct SkillContent: Codable, Sendable {
         let name: String
+        let description: String?
         let content: String
     }
 }

@@ -119,7 +119,7 @@ final class AgentProvisioner {
             maxBudget: agent.maxBudget,
             maxThinkingTokens: agent.maxThinkingTokens,
             workingDirectory: resolvedWD,
-            skills: skills.map { AgentConfig.SkillContent(name: $0.name, content: $0.content) },
+            skills: skills.map { AgentConfig.SkillContent(name: $0.name, description: $0.skillDescription.isEmpty ? nil : $0.skillDescription, content: $0.content) },
             interactive: runtimeSettings.interactive ? true : nil,
             instancePolicy: runtimeSettings.instancePolicy,
             instancePolicyPoolMax: runtimeSettings.instancePolicyPoolMax

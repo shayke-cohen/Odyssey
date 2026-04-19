@@ -120,6 +120,7 @@ export interface SessionMCPServerState {
 
 export interface SkillContent {
   name: string;
+  description?: string;
   content: string;
 }
 
