@@ -14,19 +14,19 @@ enum MCPStatus: String, Codable, Sendable {
 
 @Model
 final class MCPServer {
-    var id: UUID
-    var name: String
-    var serverDescription: String
+    var id: UUID = UUID()
+    var name: String = ""
+    var serverDescription: String = ""
     var toolSchemas: String?
     var resourceSchemas: String?
-    var status: MCPStatus
-    var createdAt: Date
+    var status: MCPStatus = MCPStatus.available
+    var createdAt: Date = Date()
     var catalogId: String?
     var isEnabled: Bool = true
     var configSlug: String?
 
     // MCPTransport flattened for SwiftData
-    var transportKind: String
+    var transportKind: String = "stdio"
     var transportCommand: String?
     var transportUrl: String?
     var transportArgsJSON: String?

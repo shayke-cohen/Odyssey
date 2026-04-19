@@ -80,35 +80,35 @@ enum ScheduledMissionWeekday: Int, CaseIterable, Codable, Sendable, Identifiable
 
 @Model
 final class ScheduledMission {
-    var id: UUID
+    var id: UUID = UUID()
     var projectId: UUID?
-    var name: String
-    var isEnabled: Bool
-    var createdAt: Date
-    var updatedAt: Date
+    var name: String = ""
+    var isEnabled: Bool = true
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
 
-    var targetKind: ScheduledMissionTargetKind
+    var targetKind: ScheduledMissionTargetKind = ScheduledMissionTargetKind.agent
     var targetAgentId: UUID?
     var targetGroupId: UUID?
     var targetConversationId: UUID?
     var targetProjectId: UUID?
 
-    var projectDirectory: String
-    var promptTemplate: String
+    var projectDirectory: String = ""
+    var promptTemplate: String = ""
     var sourceConversationId: UUID?
     var sourceMessageId: UUID?
 
-    var runMode: ScheduledMissionRunMode
-    var cadenceKind: ScheduledMissionCadenceKind
+    var runMode: ScheduledMissionRunMode = ScheduledMissionRunMode.freshConversation
+    var cadenceKind: ScheduledMissionCadenceKind = ScheduledMissionCadenceKind.hourlyInterval
     var intervalHours: Int?
     var localHour: Int?
     var localMinute: Int?
     var daysOfWeekJSON: String?
-    var runWhenAppClosed: Bool
-    var usesAutonomousMode: Bool
+    var runWhenAppClosed: Bool = false
+    var usesAutonomousMode: Bool = false
 
-    var overlapPolicy: ScheduledMissionOverlapPolicy
-    var missedRunPolicy: ScheduledMissionMissedRunPolicy
+    var overlapPolicy: ScheduledMissionOverlapPolicy = ScheduledMissionOverlapPolicy.skip
+    var missedRunPolicy: ScheduledMissionMissedRunPolicy = ScheduledMissionMissedRunPolicy.catchUpLatest
     var nextRunAt: Date?
     var lastEvaluatedAt: Date?
     var lastScheduledOccurrenceAt: Date?

@@ -56,6 +56,7 @@ struct OdysseyApp: App {
 
         do {
             let storeURL = InstanceConfig.dataDirectory.appendingPathComponent("Odyssey.store")
+            let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
             let config = ModelConfiguration(url: storeURL)
             let schema = Schema([
                 Project.self,

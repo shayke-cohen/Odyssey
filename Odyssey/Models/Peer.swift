@@ -9,15 +9,15 @@ enum PeerStatus: String, Codable, Sendable {
 
 @Model
 final class Peer {
-    var id: UUID
-    var displayName: String
-    var hostName: String
-    var port: Int
-    var lastSeen: Date
-    var sharedAgentCount: Int
-    var sharedSkillCount: Int
-    var status: PeerStatus
-    var createdAt: Date
+    var id: UUID = UUID()
+    var displayName: String = ""
+    var hostName: String = ""
+    var port: Int = 0
+    var lastSeen: Date = Date()
+    var sharedAgentCount: Int = 0
+    var sharedSkillCount: Int = 0
+    var status: PeerStatus = PeerStatus.discovered
+    var createdAt: Date = Date()
 
     init(displayName: String, hostName: String, port: Int = 0) {
         self.id = UUID()

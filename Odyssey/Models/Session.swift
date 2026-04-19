@@ -17,29 +17,29 @@ enum SessionMode: String, Codable, Sendable {
 
 @Model
 final class Session {
-    var id: UUID
+    var id: UUID = UUID()
     var claudeSessionId: String?
     var provider: String = AppSettings.defaultProvider
     var model: String?
     var agent: Agent?
     var mission: String?
-    var status: SessionStatus
-    var mode: SessionMode
-    var workingDirectory: String
+    var status: SessionStatus = SessionStatus.active
+    var mode: SessionMode = SessionMode.interactive
+    var workingDirectory: String = ""
     var parentSessionId: UUID?
     var pid: Int?
-    var startedAt: Date
-    var lastActiveAt: Date
-    var tokenCount: Int
-    var totalCost: Double
-    var toolCallCount: Int
+    var startedAt: Date = Date()
+    var lastActiveAt: Date = Date()
+    var tokenCount: Int = 0
+    var totalCost: Double = 0
+    var toolCallCount: Int = 0
 
     /// Watermark for group transcript injection: last `ConversationMessage.id` included in a prompt to this session.
     var lastInjectedMessageId: UUID?
 
     /// Inverse is declared on `Conversation.sessions`; omitting `inverse` here avoids a SwiftData macro cycle (SDK 26).
     @Relationship(deleteRule: .nullify)
-    var conversations: [Conversation] = []
+    var conversations: [Conversation]? = nil
 
     init(
         agent: Agent?,

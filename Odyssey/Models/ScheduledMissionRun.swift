@@ -20,13 +20,13 @@ enum ScheduledMissionRunTriggerSource: String, Codable, Sendable {
 
 @Model
 final class ScheduledMissionRun {
-    var id: UUID
-    var scheduleId: UUID
-    var occurrenceKey: String
-    var status: ScheduledMissionRunStatus
-    var triggerSource: ScheduledMissionRunTriggerSource
-    var scheduledFor: Date
-    var startedAt: Date
+    var id: UUID = UUID()
+    var scheduleId: UUID = UUID()
+    var occurrenceKey: String = ""
+    var status: ScheduledMissionRunStatus = ScheduledMissionRunStatus.running
+    var triggerSource: ScheduledMissionRunTriggerSource = ScheduledMissionRunTriggerSource.manual
+    var scheduledFor: Date = Date()
+    var startedAt: Date = Date()
     var completedAt: Date?
     var conversationId: UUID?
     var summary: String?

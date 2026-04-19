@@ -16,9 +16,9 @@ enum ParticipantRole: String, Codable, Sendable {
 
 @Model
 final class Participant {
-    var id: UUID
-    var displayName: String
-    var role: ParticipantRole
+    var id: UUID = UUID()
+    var displayName: String = ""
+    var role: ParticipantRole = ParticipantRole.active
     var conversation: Conversation?
 
     // ParticipantType flattened for SwiftData

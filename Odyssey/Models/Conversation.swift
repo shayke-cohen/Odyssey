@@ -51,17 +51,17 @@ enum ConversationExecutionMode: String, Codable, CaseIterable, Sendable {
 
 @Model
 final class Project {
-    var id: UUID
-    var name: String
-    var rootPath: String
-    var canonicalRootPath: String
-    var createdAt: Date
-    var lastOpenedAt: Date
+    var id: UUID = UUID()
+    var name: String = ""
+    var rootPath: String = ""
+    var canonicalRootPath: String = ""
+    var createdAt: Date = Date()
+    var lastOpenedAt: Date = Date()
     var isPinned: Bool = false
-    var icon: String
-    var color: String
-    var pinnedAgentIds: [UUID]
-    var pinnedGroupIds: [UUID]
+    var icon: String = "folder"
+    var color: String = "blue"
+    var pinnedAgentIds: [UUID] = []
+    var pinnedGroupIds: [UUID] = []
 
     init(
         name: String,
@@ -86,12 +86,12 @@ final class Project {
 
 @Model
 final class Conversation {
-    var id: UUID
+    var id: UUID = UUID()
     var topic: String?
     var projectId: UUID?
     private var threadKindRaw: String?
     var parentConversationId: UUID?
-    var status: ConversationStatus
+    var status: ConversationStatus = ConversationStatus.active
     var summary: String?
     var isPinned: Bool = false
     var isArchived: Bool = false
@@ -124,20 +124,20 @@ final class Conversation {
     private var delegationModeRaw: String?
     var delegationTargetAgentName: String?
     var goal: String?
-    var startedAt: Date
+    var startedAt: Date = Date()
     var closedAt: Date?
 
     @Transient var pendingQuestionRouting: [String: String] = [:]
     @Transient var resolvedQuestions: [String: ResolvedQuestionInfo] = [:]
 
     @Relationship(deleteRule: .nullify, inverse: \Session.conversations)
-    var sessions: [Session] = []
+    var sessions: [Session]? = nil
 
     @Relationship(deleteRule: .nullify, inverse: \Participant.conversation)
-    var participants: [Participant] = []
+    var participants: [Participant]? = nil
 
     @Relationship(deleteRule: .nullify, inverse: \ConversationMessage.conversation)
-    var messages: [ConversationMessage] = []
+    var messages: [ConversationMessage]? = nil
 
     init(
         topic: String? = nil,

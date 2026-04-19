@@ -61,17 +61,17 @@ enum PeerChannelCategory: String, CaseIterable, Sendable {
 
 @Model
 final class ConversationMessage {
-    var id: UUID
+    var id: UUID = UUID()
     var senderParticipantId: UUID?
-    var text: String
-    var timestamp: Date
-    var type: MessageType
+    var text: String = ""
+    var timestamp: Date = Date()
+    var type: MessageType = MessageType.chat
     var toolName: String?
     var toolInput: String?
     var toolOutput: String?
     var thinkingText: String?
     var workflowStepIndex: Int?
-    var isStreaming: Bool
+    var isStreaming: Bool = false
     var roomMessageId: String?
     var roomRootMessageId: String?
     var roomParentMessageId: String?
@@ -82,7 +82,7 @@ final class ConversationMessage {
     var conversation: Conversation?
 
     @Relationship(deleteRule: .nullify, inverse: \MessageAttachment.message)
-    var attachments: [MessageAttachment] = []
+    var attachments: [MessageAttachment]? = nil
 
     init(
         senderParticipantId: UUID? = nil,
