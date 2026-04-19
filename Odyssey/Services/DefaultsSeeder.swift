@@ -485,7 +485,8 @@ enum DefaultsSeeder {
             "artifact-handoff-gate",
             "product-artifact-gate",
             "config-editing",
-            "github-workflow"
+            "github-workflow",
+            "browser-control"
         ]
 
         let missingNames = allSkillNames.filter { !existingNames.contains($0) }
@@ -583,7 +584,8 @@ enum DefaultsSeeder {
             "config-editing",
             "github-workflow",
             "task-board-patterns",
-            "personal-context"
+            "personal-context",
+            "browser-control"
         ]
 
         var map: [String: Skill] = [:]
