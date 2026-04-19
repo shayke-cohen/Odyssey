@@ -49,7 +49,7 @@ final class AppStateRecoveryTests: XCTestCase {
 
         let conversation = Conversation(topic: topic)
         session.conversations = [conversation]
-        conversation.sessions.append(session)
+        conversation.sessions = (conversation.sessions ?? []) + [session]
 
         context.insert(session)
         context.insert(conversation)
@@ -165,7 +165,7 @@ final class AppStateRecoveryTests: XCTestCase {
         agent.instancePolicy = .pool
         agent.instancePolicyPoolMax = 3
         let session = makeSession(agent: agent, status: .completed, claudeSessionId: "claude-mode")
-        guard let conversation = session.conversations.first else {
+        guard let conversation = (session.conversations ?? []).first else {
             return XCTFail("Expected conversation")
         }
 
@@ -195,7 +195,7 @@ final class AppStateRecoveryTests: XCTestCase {
         agent.instancePolicyPoolMax = 2
         let session = makeSession(agent: agent, status: .completed, claudeSessionId: "claude-interactive")
         session.mode = .autonomous
-        guard let conversation = session.conversations.first else {
+        guard let conversation = (session.conversations ?? []).first else {
             return XCTFail("Expected conversation")
         }
         conversation.executionMode = .autonomous

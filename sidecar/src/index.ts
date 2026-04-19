@@ -53,6 +53,9 @@ const webhookManager = new WebhookManager();
 
 let broadcastFn: (event: SidecarEvent) => void = () => {};
 
+const pendingBrowserResults = new Map<string, (payload: string) => void>();
+const pendingBrowserBlocking = new Map<string, (data: string) => void>();
+
 const toolContext: ToolContext = {
   blackboard,
   sessions,
@@ -69,6 +72,8 @@ const toolContext: ToolContext = {
   taskBoard,
   broadcast: (event) => broadcastFn(event),
   agentDefinitions,
+  pendingBrowserResults,
+  pendingBrowserBlocking,
   spawnSession: async (sessionId, config, initialPrompt, waitForResult) => {
     return sessionManager.spawnAutonomous(sessionId, config, initialPrompt, waitForResult);
   },

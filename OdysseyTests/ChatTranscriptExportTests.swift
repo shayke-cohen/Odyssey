@@ -73,7 +73,7 @@ final class ChatTranscriptExportTests: XCTestCase {
         let mUser = ConversationMessage(senderParticipantId: user.id, text: "Hello ```world```", type: .chat, conversation: convo)
         mUser.timestamp = t1
         let att = MessageAttachment(mediaType: "image/png", fileName: "shot.png", fileSize: 100, message: mUser)
-        mUser.attachments.append(att)
+        mUser.attachments = (mUser.attachments ?? []) + [att]
 
         let mTool = ConversationMessage(senderParticipantId: agentPart.id, text: "", type: .toolCall, conversation: convo)
         mTool.timestamp = t2
@@ -95,11 +95,11 @@ final class ChatTranscriptExportTests: XCTestCase {
         ctx.insert(mSys)
         ctx.insert(att)
 
-        let ordered = convo.messages.sorted { $0.timestamp < $1.timestamp }
+        let ordered = (convo.messages ?? []).sorted { $0.timestamp < $1.timestamp }
         let snap = ChatTranscriptExport.snapshot(
             conversation: convo,
             messages: ordered,
-            participants: convo.participants,
+            participants: convo.participants ?? [],
             streamingAppendix: nil
         )
         let md = ChatTranscriptExport.markdown(snap)

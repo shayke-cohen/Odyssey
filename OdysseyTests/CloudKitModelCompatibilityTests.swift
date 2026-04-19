@@ -151,7 +151,7 @@ final class CloudKitModelCompatibilityTests: XCTestCase {
             fileName: "test.txt",
             fileSize: 5
         )
-        msg.attachments.append(attachment)
+        msg.attachments = (msg.attachments ?? []) + [attachment]
         context.insert(attachment)
         try context.save()
 

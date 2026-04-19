@@ -1,34 +1,39 @@
 /**
  * Integration tests for WS commands generate.skill and generate.template.
  *
- * Boots a real WsServer on a random port with a mocked Anthropic SDK.
+ * Boots a real WsServer on a random port with a mocked Claude Agent SDK.
  * No real LLM calls are made — the mock returns deterministic JSON.
  *
  * IMPORTANT: mock.module must be called before any import that pulls in
- * ws-server.ts (which top-level imports @anthropic-ai/sdk).
+ * ws-server.ts (which top-level imports @anthropic-ai/claude-agent-sdk).
  */
 import { mock, describe, test, expect, beforeAll, afterAll } from "bun:test";
 
-// ─── Mock @anthropic-ai/sdk before ws-server is imported ─────────────────────
+// ─── Mock @anthropic-ai/claude-agent-sdk before ws-server is imported ────────
 
-type MockCreateFn = (opts: any) => Promise<any>;
-
-// Default returns valid GeneratedSkillSpec. Individual tests can swap this out.
-let mockCreateFn: MockCreateFn = async () => ({
-  content: [{ type: "text", text: JSON.stringify({
-    name: "Security Audit",
-    description: "Helps identify security vulnerabilities in code.",
-    category: "Security",
-    triggers: ["security", "audit", "vulnerability"],
-    matchedMCPIds: [],
-    content: "# Security Audit\n\nCheck for vulnerabilities.",
-  }) }],
+// Default returns valid GeneratedSkillSpec JSON text. Individual tests can swap this out.
+let mockResponseText: string = JSON.stringify({
+  name: "Security Audit",
+  description: "Helps identify security vulnerabilities in code.",
+  category: "Security",
+  triggers: ["security", "audit", "vulnerability"],
+  matchedMCPIds: [],
+  content: "# Security Audit\n\nCheck for vulnerabilities.",
 });
 
-mock.module("@anthropic-ai/sdk", () => ({
-  default: class MockAnthropic {
-    messages = {
-      create: async (opts: any) => mockCreateFn(opts),
+// Whether the mock should throw an error instead of returning text
+let mockShouldThrow: boolean = false;
+
+mock.module("@anthropic-ai/claude-agent-sdk", () => ({
+  query: async function* (_opts: any) {
+    if (mockShouldThrow) {
+      throw new Error("Mock LLM error: authentication required");
+    }
+    yield {
+      type: "assistant",
+      message: {
+        content: [{ type: "text", text: mockResponseText }],
+      },
     };
   },
 }));
@@ -41,12 +46,12 @@ import { BlackboardStore } from "../../src/stores/blackboard-store.js";
 import { MessageStore } from "../../src/stores/message-store.js";
 import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
-import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
 import { ConnectorStore } from "../../src/stores/connector-store.js";
 import { ConversationStore } from "../../src/stores/conversation-store.js";
 import { ProjectStore } from "../../src/stores/project-store.js";
 import { NostrTransport } from "../../src/relay/nostr-transport.js";
+import { DelegationStore } from "../../src/stores/delegation-store.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import type { AgentConfig } from "../../src/types.js";
 import { wsConnectDirect } from "../helpers.js";
@@ -69,7 +74,6 @@ const mockSessionManager = {
 function buildCtx(): ToolContext {
   return {
     blackboard: new BlackboardStore(`gen-int-${Date.now()}-${Math.random()}`),
-    taskBoard: new TaskBoardStore(`gen-int-${Date.now()}-${Math.random()}`),
     sessions: new SessionRegistry(),
     messages: new MessageStore(),
     channels: new ChatChannelStore(),
@@ -85,6 +89,9 @@ function buildCtx(): ToolContext {
       sendCommand: async () => ({}),
     } as any,
     broadcast: () => {},
+    delegation: new DelegationStore(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     spawnSession: async (sid: string) => ({ sessionId: sid }),
     agentDefinitions: new Map<string, AgentConfig>(),
   };
@@ -103,15 +110,14 @@ afterAll(() => {
 
 describe("generate.skill WS command", () => {
   test("valid prompt returns generate.skill.result with expected fields", async () => {
-    mockCreateFn = async () => ({
-      content: [{ type: "text", text: JSON.stringify({
-        name: "Security Audit",
-        description: "Identifies security vulnerabilities in code.",
-        category: "Security",
-        triggers: ["security", "audit", "vulnerability"],
-        matchedMCPIds: [],
-        content: "# Security Audit\n\nCheck for vulnerabilities.",
-      }) }],
+    mockShouldThrow = false;
+    mockResponseText = JSON.stringify({
+      name: "Security Audit",
+      description: "Identifies security vulnerabilities in code.",
+      category: "Security",
+      triggers: ["security", "audit", "vulnerability"],
+      matchedMCPIds: [],
+      content: "# Security Audit\n\nCheck for vulnerabilities.",
     });
 
     const ws = await wsConnectDirect(WS_PORT);
@@ -140,15 +146,14 @@ describe("generate.skill WS command", () => {
   });
 
   test("returns spec with correct values from mock", async () => {
-    mockCreateFn = async () => ({
-      content: [{ type: "text", text: JSON.stringify({
-        name: "Security Audit",
-        description: "Identifies security vulnerabilities.",
-        category: "Security",
-        triggers: ["security", "audit"],
-        matchedMCPIds: [],
-        content: "# Security Audit\n\nCheck for vulnerabilities.",
-      }) }],
+    mockShouldThrow = false;
+    mockResponseText = JSON.stringify({
+      name: "Security Audit",
+      description: "Identifies security vulnerabilities.",
+      category: "Security",
+      triggers: ["security", "audit"],
+      matchedMCPIds: [],
+      content: "# Security Audit\n\nCheck for vulnerabilities.",
     });
 
     const ws = await wsConnectDirect(WS_PORT);
@@ -173,16 +178,15 @@ describe("generate.skill WS command", () => {
   });
 
   test("returns generate.skill.error when Claude returns missing required fields", async () => {
-    mockCreateFn = async () => ({
-      // Missing 'content' field — handler throws "missing required fields"
-      content: [{ type: "text", text: JSON.stringify({
-        name: "Incomplete Skill",
-        description: "Missing content.",
-        category: "General",
-        triggers: [],
-        matchedMCPIds: [],
-        // content intentionally absent
-      }) }],
+    mockShouldThrow = false;
+    // Missing 'content' field — handler throws "missing required fields"
+    mockResponseText = JSON.stringify({
+      name: "Incomplete Skill",
+      description: "Missing content.",
+      category: "General",
+      triggers: [],
+      matchedMCPIds: [],
+      // content intentionally absent
     });
 
     const ws = await wsConnectDirect(WS_PORT);
@@ -207,9 +211,8 @@ describe("generate.skill WS command", () => {
   });
 
   test("returns generate.skill.error when Claude returns non-JSON", async () => {
-    mockCreateFn = async () => ({
-      content: [{ type: "text", text: "I cannot create that skill right now." }],
-    });
+    mockShouldThrow = false;
+    mockResponseText = "I cannot create that skill right now.";
 
     const ws = await wsConnectDirect(WS_PORT);
     try {
@@ -236,11 +239,10 @@ describe("generate.skill WS command", () => {
 
 describe("generate.template WS command", () => {
   test("valid intent returns generate.template.result with name and prompt fields", async () => {
-    mockCreateFn = async () => ({
-      content: [{ type: "text", text: JSON.stringify({
-        name: "Review PR",
-        prompt: "Review this PR for security issues and code quality.",
-      }) }],
+    mockShouldThrow = false;
+    mockResponseText = JSON.stringify({
+      name: "Review PR",
+      prompt: "Review this PR for security issues and code quality.",
     });
 
     const ws = await wsConnectDirect(WS_PORT);
@@ -266,11 +268,10 @@ describe("generate.template WS command", () => {
   });
 
   test("returns spec with correct values from mock", async () => {
-    mockCreateFn = async () => ({
-      content: [{ type: "text", text: JSON.stringify({
-        name: "Review PR",
-        prompt: "Review this PR for security issues and code quality.",
-      }) }],
+    mockShouldThrow = false;
+    mockResponseText = JSON.stringify({
+      name: "Review PR",
+      prompt: "Review this PR for security issues and code quality.",
     });
 
     const ws = await wsConnectDirect(WS_PORT);
@@ -294,9 +295,8 @@ describe("generate.template WS command", () => {
   });
 
   test("returns generate.template.error when Claude returns invalid JSON", async () => {
-    mockCreateFn = async () => ({
-      content: [{ type: "text", text: "Sorry, I cannot generate a template for that." }],
-    });
+    mockShouldThrow = false;
+    mockResponseText = "Sorry, I cannot generate a template for that.";
 
     const ws = await wsConnectDirect(WS_PORT);
     try {
@@ -319,10 +319,9 @@ describe("generate.template WS command", () => {
   });
 
   test("returns generate.template.error when spec is missing required fields", async () => {
-    mockCreateFn = async () => ({
-      // Missing 'prompt' field
-      content: [{ type: "text", text: JSON.stringify({ name: "Incomplete Template" }) }],
-    });
+    mockShouldThrow = false;
+    // Missing 'prompt' field
+    mockResponseText = JSON.stringify({ name: "Incomplete Template" });
 
     const ws = await wsConnectDirect(WS_PORT);
     try {
@@ -345,11 +344,10 @@ describe("generate.template WS command", () => {
   });
 
   test("each test is independent — concurrent requestIds are matched correctly", async () => {
-    mockCreateFn = async () => ({
-      content: [{ type: "text", text: JSON.stringify({
-        name: "Debug Session",
-        prompt: "Help me debug {{issue}} in {{component}}.",
-      }) }],
+    mockShouldThrow = false;
+    mockResponseText = JSON.stringify({
+      name: "Debug Session",
+      prompt: "Help me debug {{issue}} in {{component}}.",
     });
 
     const ws = await wsConnectDirect(WS_PORT);

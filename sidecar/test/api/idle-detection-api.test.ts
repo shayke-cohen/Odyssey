@@ -15,12 +15,12 @@ import { BlackboardStore } from "../../src/stores/blackboard-store.js";
 import { MessageStore } from "../../src/stores/message-store.js";
 import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
-import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
 import { ConnectorStore } from "../../src/stores/connector-store.js";
 import { ConversationStore } from "../../src/stores/conversation-store.js";
 import { ProjectStore } from "../../src/stores/project-store.js";
 import { NostrTransport } from "../../src/relay/nostr-transport.js";
+import { DelegationStore } from "../../src/stores/delegation-store.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import type { AgentConfig } from "../../src/types.js";
 import { wsConnectDirect } from "../helpers.js";
@@ -49,7 +49,6 @@ const mockSessionManager = {
 beforeAll(() => {
   const ctx: ToolContext = {
     blackboard: new BlackboardStore(`idle-api-test-${Date.now()}`),
-    taskBoard: new TaskBoardStore(`idle-api-test-${Date.now()}`),
     sessions: new SessionRegistry(),
     messages: new MessageStore(),
     channels: new ChatChannelStore(),
@@ -65,6 +64,9 @@ beforeAll(() => {
       sendCommand: async () => ({}),
     } as any,
     broadcast: () => {},
+    delegation: new DelegationStore(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     spawnSession: async (sid) => ({ sessionId: sid }),
     agentDefinitions: new Map<string, AgentConfig>(),
   };

@@ -16,7 +16,6 @@ import { BlackboardStore } from "../../src/stores/blackboard-store.js";
 import { MessageStore } from "../../src/stores/message-store.js";
 import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
-import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
 import { ConnectorStore } from "../../src/stores/connector-store.js";
 import { ConversationStore } from "../../src/stores/conversation-store.js";
@@ -46,7 +45,6 @@ function makeContext() {
 
   const toolCtx: ToolContext = {
     blackboard: new BlackboardStore(`delegation-api-${Date.now()}`),
-    taskBoard: new TaskBoardStore(`delegation-api-${Date.now()}`),
     sessions,
     messages: new MessageStore(),
     channels: new ChatChannelStore(),
@@ -62,6 +60,8 @@ function makeContext() {
       sendCommand: async () => ({}),
     } as any,
     delegation,
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     broadcast: (event: SidecarEvent) => {
       broadcastEvents.push(event);
       sseManager.broadcast(event);
@@ -307,7 +307,6 @@ describe("conversation.setDelegationMode WS command", () => {
 
     const toolCtx: ToolContext = {
       blackboard: new BlackboardStore(`ws-deleg-${Date.now()}`),
-      taskBoard: new TaskBoardStore(`ws-deleg-${Date.now()}`),
       sessions,
       messages: new MessageStore(),
       channels: new ChatChannelStore(),
@@ -323,6 +322,8 @@ describe("conversation.setDelegationMode WS command", () => {
         sendCommand: async () => ({}),
       } as any,
       delegation,
+      pendingBrowserBlocking: new Map(),
+      pendingBrowserResults: new Map(),
       broadcast: (event: SidecarEvent) => { broadcastedEvents.push(event); },
       agentDefinitions: new Map(),
       spawnSession: async (sessionId) => ({ sessionId }),
@@ -372,7 +373,6 @@ describe("conversation.setDelegationMode WS command", () => {
 
     const toolCtx: ToolContext = {
       blackboard: new BlackboardStore(`ws-deleg2-${Date.now()}`),
-      taskBoard: new TaskBoardStore(`ws-deleg2-${Date.now()}`),
       sessions: new SessionRegistry(),
       messages: new MessageStore(),
       channels: new ChatChannelStore(),
@@ -384,6 +384,8 @@ describe("conversation.setDelegationMode WS command", () => {
       nostrTransport: new NostrTransport(() => {}),
       relayClient: { isConnected: () => false, connect: async () => {}, sendCommand: async () => ({}) } as any,
       delegation,
+      pendingBrowserBlocking: new Map(),
+      pendingBrowserResults: new Map(),
       broadcast: () => {},
       agentDefinitions: new Map(),
       spawnSession: async (sessionId) => ({ sessionId }),
@@ -430,7 +432,6 @@ describe("conversation.setDelegationMode WS command", () => {
 
     const toolCtx: ToolContext = {
       blackboard: new BlackboardStore(`ws-deleg3-${Date.now()}`),
-      taskBoard: new TaskBoardStore(`ws-deleg3-${Date.now()}`),
       sessions: new SessionRegistry(),
       messages: new MessageStore(),
       channels: new ChatChannelStore(),
@@ -442,6 +443,8 @@ describe("conversation.setDelegationMode WS command", () => {
       nostrTransport: new NostrTransport(() => {}),
       relayClient: { isConnected: () => false, connect: async () => {}, sendCommand: async () => ({}) } as any,
       delegation,
+      pendingBrowserBlocking: new Map(),
+      pendingBrowserResults: new Map(),
       broadcast: () => {},
       agentDefinitions: new Map(),
       spawnSession: async (sessionId) => ({ sessionId }),

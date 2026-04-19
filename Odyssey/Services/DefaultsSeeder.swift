@@ -451,6 +451,8 @@ enum DefaultsSeeder {
                     args: dto.transportArgs ?? [],
                     env: dto.transportEnv ?? [:]
                 )
+            } else if dto.transportKind == "builtin" {
+                transport = .builtin
             } else {
                 transport = .http(
                     url: dto.transportUrl ?? "",

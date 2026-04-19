@@ -8,9 +8,9 @@ import { BlackboardStore } from "../../src/stores/blackboard-store.js";
 import { MessageStore } from "../../src/stores/message-store.js";
 import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
-import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
 import { ConnectorStore } from "../../src/stores/connector-store.js";
+import { DelegationStore } from "../../src/stores/delegation-store.js";
 import type { SidecarEvent } from "../../src/types.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import { makeAgentConfig } from "../helpers.js";
@@ -43,7 +43,6 @@ afterEach(async () => {
 function makeToolContext(sessions: SessionRegistry, emit: (event: SidecarEvent) => void): ToolContext {
   return {
     blackboard: new BlackboardStore(`local-agent-runtime-${Date.now()}`),
-    taskBoard: new TaskBoardStore(`local-agent-runtime-${Date.now()}`),
     sessions,
     messages: new MessageStore(),
     channels: new ChatChannelStore(),
@@ -56,6 +55,9 @@ function makeToolContext(sessions: SessionRegistry, emit: (event: SidecarEvent) 
       sendCommand: async () => ({}),
     } as any,
     broadcast: emit,
+    delegation: new DelegationStore(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     agentDefinitions: new Map(),
     spawnSession: async (sessionId) => ({ sessionId }),
   };

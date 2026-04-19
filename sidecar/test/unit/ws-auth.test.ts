@@ -14,7 +14,6 @@ import * as fs from "node:fs";
 import { SessionManager } from "../../src/session-manager.js";
 import { SessionRegistry } from "../../src/stores/session-registry.js";
 import { BlackboardStore } from "../../src/stores/blackboard-store.js";
-import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import { MessageStore } from "../../src/stores/message-store.js";
 import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
@@ -39,7 +38,6 @@ function makeToolContext(): ToolContext {
   const sessions = new SessionRegistry();
   return {
     blackboard: new BlackboardStore(tag),
-    taskBoard: new TaskBoardStore(tag),
     sessions,
     messages: new MessageStore(),
     channels: new ChatChannelStore(),
@@ -56,6 +54,8 @@ function makeToolContext(): ToolContext {
       sendCommand: async () => ({}),
     } as any,
     broadcast: (_event: SidecarEvent) => {},
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     agentDefinitions: new Map(),
     spawnSession: async (_sessionId, _config, _prompt, _wait) => ({ sessionId: _sessionId }),
   };

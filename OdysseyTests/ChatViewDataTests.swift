@@ -54,7 +54,7 @@ final class ChatViewDataTests: XCTestCase {
         addMessage(to: conv, text: "second", timestampOffset: 100)
         try context.save()
 
-        let sorted = (conv.messages).sorted { $0.timestamp < $1.timestamp }
+        let sorted = (conv.messages ?? []).sorted { $0.timestamp < $1.timestamp }
 
         XCTAssertEqual(sorted.count, 3)
         XCTAssertEqual(sorted[0].text, "first")
@@ -66,7 +66,7 @@ final class ChatViewDataTests: XCTestCase {
         let conv = makeConversation()
         try context.save()
 
-        let sorted = (conv.messages).sorted { $0.timestamp < $1.timestamp }
+        let sorted = (conv.messages ?? []).sorted { $0.timestamp < $1.timestamp }
         XCTAssertTrue(sorted.isEmpty)
     }
 
@@ -75,7 +75,7 @@ final class ChatViewDataTests: XCTestCase {
         let msg = addMessage(to: conv, text: "only", timestampOffset: 0)
         try context.save()
 
-        let sorted = (conv.messages).sorted { $0.timestamp < $1.timestamp }
+        let sorted = (conv.messages ?? []).sorted { $0.timestamp < $1.timestamp }
         XCTAssertEqual(sorted.count, 1)
         XCTAssertEqual(sorted.first?.id, msg.id)
     }
@@ -88,14 +88,14 @@ final class ChatViewDataTests: XCTestCase {
 
         let conv = makeConversation()
         let session = Session(agent: agent)
-        conv.sessions.append(session)
+        conv.sessions = (conv.sessions ?? []) + [session]
         context.insert(session)
         try context.save()
 
         // Single-session conversation → map should be nil (no visual distinction needed)
-        XCTAssertEqual(conv.sessions.count, 1)
+        XCTAssertEqual((conv.sessions ?? []).count, 1)
         // The map-building condition: `convo.sessions.count > 1` → returns nil for single session
-        let shouldBuildMap = conv.sessions.count > 1
+        let shouldBuildMap = (conv.sessions ?? []).count > 1
         XCTAssertFalse(shouldBuildMap)
     }
 
@@ -110,24 +110,24 @@ final class ChatViewDataTests: XCTestCase {
         let conv = makeConversation()
         let session1 = Session(agent: agent1)
         let session2 = Session(agent: agent2)
-        conv.sessions.append(session1)
-        conv.sessions.append(session2)
+        conv.sessions = (conv.sessions ?? []) + [session1]
+        conv.sessions = (conv.sessions ?? []) + [session2]
         context.insert(session1)
         context.insert(session2)
 
         let participant1 = Participant(type: .agentSession(sessionId: session1.id), displayName: "Alpha")
         let participant2 = Participant(type: .agentSession(sessionId: session2.id), displayName: "Beta")
-        conv.participants.append(participant1)
-        conv.participants.append(participant2)
+        conv.participants = (conv.participants ?? []) + [participant1]
+        conv.participants = (conv.participants ?? []) + [participant2]
         context.insert(participant1)
         context.insert(participant2)
         try context.save()
 
         // Build the map (mirrors the logic in rebuildParticipantAppearanceMap)
         var map: [UUID: AgentAppearance] = [:]
-        for participant in conv.participants {
+        for participant in (conv.participants ?? []) {
             if let sessionId = participant.typeSessionId,
-               let session = conv.sessions.first(where: { $0.id == sessionId }),
+               let session = (conv.sessions ?? []).first(where: { $0.id == sessionId }),
                let agent = session.agent {
                 map[participant.id] = AgentAppearance(
                     color: Color.fromAgentColor(agent.color),
@@ -145,17 +145,17 @@ final class ChatViewDataTests: XCTestCase {
         let conv = makeConversation()
         let session1 = Session(agent: nil)
         let session2 = Session(agent: nil)
-        conv.sessions.append(session1)
-        conv.sessions.append(session2)
+        conv.sessions = (conv.sessions ?? []) + [session1]
+        conv.sessions = (conv.sessions ?? []) + [session2]
         context.insert(session1)
         context.insert(session2)
         try context.save()
 
         // No participants → map is empty → should return nil
         var map: [UUID: AgentAppearance] = [:]
-        for participant in conv.participants {
+        for participant in (conv.participants ?? []) {
             if let sessionId = participant.typeSessionId,
-               let session = conv.sessions.first(where: { $0.id == sessionId }),
+               let session = (conv.sessions ?? []).first(where: { $0.id == sessionId }),
                let agent = session.agent {
                 map[participant.id] = AgentAppearance(
                     color: Color.fromAgentColor(agent.color),

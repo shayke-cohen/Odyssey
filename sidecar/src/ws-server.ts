@@ -101,6 +101,22 @@ export class WsServer {
         close: (ws) => {
           this.clients.delete(ws);
           logger.info("ws", `Swift client disconnected (total: ${this.clients.size})`);
+
+          // Sweep all pending browser operations — they can never resolve now.
+          if (this.ctx.pendingBrowserBlocking.size > 0) {
+            logger.warn("ws", `Sweeping ${this.ctx.pendingBrowserBlocking.size} pending browser blocking calls after disconnect`);
+            for (const resolver of this.ctx.pendingBrowserBlocking.values()) {
+              resolver("[Browser disconnected]");
+            }
+            this.ctx.pendingBrowserBlocking.clear();
+          }
+          if (this.ctx.pendingBrowserResults.size > 0) {
+            logger.warn("ws", `Sweeping ${this.ctx.pendingBrowserResults.size} pending browser results after disconnect`);
+            for (const resolver of this.ctx.pendingBrowserResults.values()) {
+              resolver("[Browser disconnected]");
+            }
+            this.ctx.pendingBrowserResults.clear();
+          }
         },
       },
     });
@@ -396,6 +412,60 @@ export class WsServer {
         await this.conversationEvaluator.evaluate(command, this.broadcast.bind(this));
         break;
       }
+
+      // ─── Browser event handlers ──────────────────────────────────────────────
+      case "browser.result": {
+        const key = `${command.sessionId}:${command.commandType}`;
+        const resolver = this.ctx.pendingBrowserResults.get(key);
+        if (resolver) {
+          this.ctx.pendingBrowserResults.delete(key);
+          resolver(command.payload);
+          logger.debug("browser", `browser.result resolved: session=${command.sessionId} commandType=${command.commandType}`);
+        } else {
+          logger.warn("browser", `browser.result: no pending resolver for key="${key}"`);
+        }
+        break;
+      }
+      case "browser.error": {
+        const key = `${command.sessionId}:${command.commandType}`;
+        const resolver = this.ctx.pendingBrowserResults.get(key);
+        if (resolver) {
+          this.ctx.pendingBrowserResults.delete(key);
+          resolver(`Error: ${command.error}`);
+          logger.warn("browser", `browser.error resolved with error: session=${command.sessionId} commandType=${command.commandType} error=${command.error}`);
+        } else {
+          logger.warn("browser", `browser.error: no pending resolver for key="${key}"`);
+        }
+        break;
+      }
+      case "browser.pageLoaded":
+        logger.info("browser", `browser.pageLoaded: session=${command.sessionId} url=${command.url} title="${command.title}"`);
+        break;
+      case "browser.userSubmit": {
+        const blockingResolver = this.ctx.pendingBrowserBlocking.get(command.sessionId);
+        if (blockingResolver) {
+          this.ctx.pendingBrowserBlocking.delete(command.sessionId);
+          blockingResolver(command.data);
+          logger.debug("browser", `browser.userSubmit resolved blocking call: session=${command.sessionId}`);
+        } else {
+          logger.warn("browser", `browser.userSubmit: no pending blocking resolver for session=${command.sessionId}`);
+        }
+        break;
+      }
+      case "browser.resume": {
+        const blockingResolver = this.ctx.pendingBrowserBlocking.get(command.sessionId);
+        if (blockingResolver) {
+          this.ctx.pendingBrowserBlocking.delete(command.sessionId);
+          blockingResolver("");
+          logger.debug("browser", `browser.resume resolved blocking call: session=${command.sessionId}`);
+        } else {
+          logger.warn("browser", `browser.resume: no pending blocking resolver for session=${command.sessionId}`);
+        }
+        break;
+      }
+      case "browser.stateChange":
+        logger.info("browser", `browser.stateChange: session=${command.sessionId} state=${command.state}`);
+        break;
     }
   }
 

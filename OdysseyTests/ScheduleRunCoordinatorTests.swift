@@ -127,9 +127,9 @@ final class ScheduleRunCoordinatorTests: XCTestCase {
         let conversation = try XCTUnwrap(
             context.fetch(FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == conversationId })).first
         )
-        XCTAssertEqual(conversation.sessions.count, 1)
-        XCTAssertEqual(conversation.messages.filter { $0.type == .chat }.count, 2)
-        XCTAssertEqual(conversation.messages.last?.text, "Scheduled response")
+        XCTAssertEqual((conversation.sessions ?? []).count, 1)
+        XCTAssertEqual((conversation.messages ?? []).filter { $0.type == .chat }.count, 2)
+        XCTAssertEqual((conversation.messages ?? []).last?.text, "Scheduled response")
         XCTAssertEqual(run.summary, "Scheduled response")
     }
 
@@ -174,8 +174,8 @@ final class ScheduleRunCoordinatorTests: XCTestCase {
         )
         XCTAssertEqual(conversation.sourceGroupId, group.id)
         XCTAssertEqual(conversation.routingMode, .mentionAware)
-        XCTAssertEqual(conversation.sessions.count, 2)
-        let chatMessages = conversation.messages.filter { $0.type == .chat }
+        XCTAssertEqual((conversation.sessions ?? []).count, 2)
+        let chatMessages = (conversation.messages ?? []).filter { $0.type == .chat }
         XCTAssertEqual(chatMessages.count, 3)
         XCTAssertEqual(recorder.commands.count, 4)
     }
@@ -259,7 +259,7 @@ final class ScheduleRunCoordinatorTests: XCTestCase {
         let conversation = try XCTUnwrap(
             context.fetch(FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == conversationId })).first
         )
-        let chatMessages = conversation.messages.filter { $0.type == .chat }
+        let chatMessages = (conversation.messages ?? []).filter { $0.type == .chat }
         XCTAssertEqual(chatMessages.count, 2)
         XCTAssertEqual(chatMessages.last?.text, "Coder reply")
     }
@@ -267,7 +267,7 @@ final class ScheduleRunCoordinatorTests: XCTestCase {
     func testExecuteReuseConversationAppendsBoundaryAndPrompt() async throws {
         let agent = makeAgent()
         let conversation = makeConversation(for: agent)
-        let sessionId = try XCTUnwrap(conversation.sessions.first?.id.uuidString)
+        let sessionId = try XCTUnwrap((conversation.sessions ?? []).first?.id.uuidString)
         appState.createdSessions.insert(sessionId)
 
         let schedule = ScheduledMission(
@@ -293,8 +293,8 @@ final class ScheduleRunCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(run.status, .succeeded)
         XCTAssertEqual(recorder.commands.count, 1)
-        XCTAssertTrue(conversation.messages.contains { $0.type == .system && $0.text.contains("Scheduled run started") })
-        XCTAssertEqual(conversation.messages.filter { $0.type == .chat }.count, 2)
+        XCTAssertTrue((conversation.messages ?? []).contains { $0.type == .system && $0.text.contains("Scheduled run started") })
+        XCTAssertEqual((conversation.messages ?? []).filter { $0.type == .chat }.count, 2)
     }
 
     func testExecuteFailsWhenTargetCannotBeResolved() async throws {

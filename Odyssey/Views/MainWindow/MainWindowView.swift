@@ -47,6 +47,7 @@ struct MainWindowView: View {
     @AppStorage(FeatureFlags.federationKey, store: AppSettings.store) private var federationFlag = false
     @AppStorage(FeatureFlags.agentCommsKey, store: AppSettings.store) private var agentCommsFlag = false
     @AppStorage(AppSettings.fteShownKey, store: AppSettings.store) private var fteShown = false
+    @AppStorage(AppSettings.defaultProviderKey, store: AppSettings.store) private var defaultProvider = AppSettings.defaultProvider
     @Query private var conversations: [Conversation]
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     @State private var showStatusPopover = false
@@ -77,17 +78,25 @@ struct MainWindowView: View {
                     SidebarView()
                 } detail: {
                     Group {
-                        if ws.inspectorVisible && windowState.selectedConversationId != nil {
+                        let showInspector = ws.inspectorVisible && windowState.selectedConversationId != nil
+                        let showBrowser = appState.activeBrowserPanelVisible && appState.activeBrowserSessionId != nil
+                        if showInspector || showBrowser {
                             HSplitView {
                                 mainDetailPane
                                     .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
                                     .layoutPriority(1)
-                                inspectorPane
-                                    .frame(minWidth: 320, idealWidth: 380, maxWidth: 720, maxHeight: .infinity)
+                                if showInspector {
+                                    inspectorPane
+                                        .frame(minWidth: 280, idealWidth: 340, maxWidth: 600, maxHeight: .infinity)
+                                }
+                                if showBrowser, let sessionId = appState.activeBrowserSessionId {
+                                    browserPanelPane(sessionId: sessionId)
+                                        .frame(minWidth: 400, idealWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
+                                }
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(SplitViewConfigurator(autosaveName: "odyssey.chatInspectorSplit"))
-                            .xrayId("mainWindow.chatInspectorSplit")
+                            .background(SplitViewConfigurator(autosaveName: "odyssey.chatBrowserSplit"))
+                            .xrayId("mainWindow.chatBrowserSplit")
                         } else {
                             mainDetailPane
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -103,6 +112,9 @@ struct MainWindowView: View {
             if ws.activeRoute != .settings {
                 ToolbarItem(placement: .status) {
                     sidecarStatusPill
+                }
+                ToolbarItem(placement: .status) {
+                    providerToggle
                 }
             }
 
@@ -269,6 +281,34 @@ struct MainWindowView: View {
         }
     }
 
+    @ViewBuilder
+    private func browserPanelPane(sessionId: String) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Browser")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Spacer()
+                Button {
+                    appState.activeBrowserPanelVisible = false
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("browserPanel.closeButton")
+                .accessibilityLabel("Close browser panel")
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(.bar)
+
+            Divider()
+
+            BrowserPanelView(sessionId: sessionId)
+        }
+        .accessibilityIdentifier("mainWindow.browserPanel")
+    }
+
     private var selectedConversation: Conversation? {
         guard let conversationId = windowState.selectedConversationId else { return nil }
         return conversations.first { $0.id == conversationId }
@@ -297,6 +337,43 @@ struct MainWindowView: View {
         .popover(isPresented: $showStatusPopover, arrowEdge: .bottom) {
             statusPopoverContent
         }
+    }
+
+    private var providerToggle: some View {
+        HStack(spacing: 1) {
+            Button {
+                defaultProvider = ProviderSelection.claude.rawValue
+            } label: {
+                Image("ClaudeIcon")
+                    .resizable()
+                    .frame(width: 15, height: 15)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .opacity(defaultProvider == ProviderSelection.claude.rawValue ? 1.0 : 0.3)
+            }
+            .buttonStyle(.plain)
+            .help("Switch to Claude")
+            .xrayId("mainWindow.providerToggle.claudeButton")
+            .accessibilityLabel("Claude")
+
+            Button {
+                defaultProvider = ProviderSelection.codex.rawValue
+            } label: {
+                Image("CodexIcon")
+                    .resizable()
+                    .frame(width: 15, height: 15)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .opacity(defaultProvider == ProviderSelection.codex.rawValue ? 1.0 : 0.3)
+            }
+            .buttonStyle(.plain)
+            .help("Switch to Codex")
+            .xrayId("mainWindow.providerToggle.codexButton")
+            .accessibilityLabel("Codex")
+        }
+        .padding(.horizontal, 5)
+        .padding(.vertical, 3)
+        .background(.quaternary, in: Capsule())
+        .xrayId("mainWindow.providerToggle")
+        .accessibilityLabel("Default provider: \(defaultProvider == ProviderSelection.claude.rawValue ? "Claude" : "Codex")")
     }
 
     @ViewBuilder

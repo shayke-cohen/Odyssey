@@ -44,7 +44,7 @@ final class SidebarFilterTests: XCTestCase {
 
     private func makeSession(for agent: Agent) -> Session {
         let session = Session(agent: agent)
-        agent.sessions.append(session)
+        agent.sessions = (agent.sessions ?? []) + [session]
         context.insert(session)
         return session
     }
@@ -52,7 +52,7 @@ final class SidebarFilterTests: XCTestCase {
     private func makeConversation(for session: Session, topic: String, archived: Bool = false) -> Conversation {
         let conv = Conversation(topic: topic)
         conv.isArchived = archived
-        session.conversations.append(conv)
+        session.conversations = (session.conversations ?? []) + [conv]
         context.insert(conv)
         return conv
     }
@@ -65,8 +65,8 @@ final class SidebarFilterTests: XCTestCase {
         let conv = makeConversation(for: session, topic: "My Thread")
         try context.save()
 
-        let result = agent.sessions
-            .compactMap { $0.conversations.first }
+        let result = (agent.sessions ?? [])
+            .compactMap { ($0.conversations ?? []).first }
             .filter { $0.sourceGroupId == nil && !$0.isArchived }
 
         XCTAssertEqual(result.count, 1)
@@ -81,8 +81,8 @@ final class SidebarFilterTests: XCTestCase {
         _ = makeConversation(for: session2, topic: "Archived", archived: true)
         try context.save()
 
-        let active = agent.sessions
-            .compactMap { $0.conversations.first }
+        let active = (agent.sessions ?? [])
+            .compactMap { ($0.conversations ?? []).first }
             .filter { !$0.isArchived }
 
         XCTAssertEqual(active.count, 1)
@@ -100,8 +100,8 @@ final class SidebarFilterTests: XCTestCase {
         _ = makeConversation(for: session2, topic: "Agent2 Thread")
         try context.save()
 
-        let agent1Convs = agent1.sessions.compactMap { $0.conversations.first }
-        let agent2Convs = agent2.sessions.compactMap { $0.conversations.first }
+        let agent1Convs = (agent1.sessions ?? []).compactMap { ($0.conversations ?? []).first }
+        let agent2Convs = (agent2.sessions ?? []).compactMap { ($0.conversations ?? []).first }
 
         XCTAssertEqual(agent1Convs.count, 1)
         XCTAssertEqual(agent2Convs.count, 1)
@@ -113,7 +113,7 @@ final class SidebarFilterTests: XCTestCase {
         let agent = makeAgent()
         try context.save()
 
-        let result = agent.sessions.compactMap { $0.conversations.first }
+        let result = (agent.sessions ?? []).compactMap { ($0.conversations ?? []).first }
         XCTAssertTrue(result.isEmpty)
     }
 
@@ -126,8 +126,8 @@ final class SidebarFilterTests: XCTestCase {
         _ = makeConversation(for: session2, topic: "Archived Thread", archived: true)
         try context.save()
 
-        let archived = agent.sessions
-            .compactMap { $0.conversations.first }
+        let archived = (agent.sessions ?? [])
+            .compactMap { ($0.conversations ?? []).first }
             .filter { $0.isArchived }
 
         XCTAssertEqual(archived.count, 1)
@@ -142,13 +142,13 @@ final class SidebarFilterTests: XCTestCase {
         // Same conversation referenced in both sessions (edge case)
         let conv = Conversation(topic: "Shared")
         context.insert(conv)
-        session1.conversations.append(conv)
-        session2.conversations.append(conv)
+        session1.conversations = (session1.conversations ?? []) + [conv]
+        session2.conversations = (session2.conversations ?? []) + [conv]
         try context.save()
 
         var seen = Set<UUID>()
-        let deduped = agent.sessions
-            .compactMap { $0.conversations.first }
+        let deduped = (agent.sessions ?? [])
+            .compactMap { ($0.conversations ?? []).first }
             .filter { seen.insert($0.id).inserted }
 
         XCTAssertEqual(deduped.count, 1)

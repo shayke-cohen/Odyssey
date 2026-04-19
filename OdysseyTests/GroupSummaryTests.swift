@@ -36,15 +36,15 @@ final class GroupSummaryTests: XCTestCase {
 
         let user = Participant(type: .user, displayName: "You")
         user.conversation = convo
-        convo.participants.append(user)
+        convo.participants = (convo.participants ?? []) + [user]
 
         let p1 = Participant(type: .agentSession(sessionId: s1.id), displayName: "Coder")
         p1.conversation = convo
-        convo.participants.append(p1)
+        convo.participants = (convo.participants ?? []) + [p1]
 
         let p2 = Participant(type: .agentSession(sessionId: s2.id), displayName: "Reviewer")
         p2.conversation = convo
-        convo.participants.append(p2)
+        convo.participants = (convo.participants ?? []) + [p2]
 
         // Coder messages
         let m1 = ConversationMessage(senderParticipantId: p1.id, text: "I implemented the feature.", type: .chat, conversation: convo)
@@ -112,11 +112,11 @@ final class GroupSummaryTests: XCTestCase {
 
         let participant = Participant(type: .agentSession(sessionId: session.id), displayName: "Talker")
         participant.conversation = convo
-        convo.participants.append(participant)
+        convo.participants = (convo.participants ?? []) + [participant]
 
         for i in 1...5 {
             let msg = ConversationMessage(senderParticipantId: participant.id, text: "Message \(i)", type: .chat, conversation: convo)
-            convo.messages.append(msg)
+            convo.messages = (convo.messages ?? []) + [msg]
             ctx.insert(msg)
         }
 
