@@ -6,7 +6,7 @@
  *
  * Usage: ODYSSEY_DATA_DIR=/tmp/odyssey-test-$(date +%s) bun test test/api/ws-protocol.test.ts
  */
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import { WsServer } from "../../src/ws-server.js";
 import { SessionRegistry } from "../../src/stores/session-registry.js";
 import { BlackboardStore } from "../../src/stores/blackboard-store.js";
@@ -18,6 +18,7 @@ import { ConnectorStore } from "../../src/stores/connector-store.js";
 import { ConversationStore } from "../../src/stores/conversation-store.js";
 import { ProjectStore } from "../../src/stores/project-store.js";
 import { NostrTransport } from "../../src/relay/nostr-transport.js";
+import { DelegationStore } from "../../src/stores/delegation-store.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import type { AgentConfig, SidecarEvent } from "../../src/types.js";
 
@@ -79,11 +80,23 @@ beforeAll(() => {
       sendCommand: async () => ({}),
     } as any,
     broadcast: () => {},
+    delegation: new DelegationStore(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     spawnSession: async (sid, config, prompt, wait) => ({ sessionId: sid }),
     agentDefinitions: new Map<string, AgentConfig>(),
   };
 
   wsServer = new WsServer(WS_PORT, mockSessionManager, ctx);
+});
+
+beforeEach(() => {
+  // Reset call arrays before each test so tests don't see accumulated state.
+  sessionCreateCalls = [];
+  sessionMessageCalls = [];
+  forkSessionCalls = [];
+  sessionBulkResumeCalls = [];
+  sessionUpdateModeCalls = [];
 });
 
 afterAll(() => {

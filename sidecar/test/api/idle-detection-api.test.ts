@@ -20,6 +20,7 @@ import { ConnectorStore } from "../../src/stores/connector-store.js";
 import { ConversationStore } from "../../src/stores/conversation-store.js";
 import { ProjectStore } from "../../src/stores/project-store.js";
 import { NostrTransport } from "../../src/relay/nostr-transport.js";
+import { DelegationStore } from "../../src/stores/delegation-store.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import type { AgentConfig } from "../../src/types.js";
 import { wsConnectDirect } from "../helpers.js";
@@ -63,6 +64,9 @@ beforeAll(() => {
       sendCommand: async () => ({}),
     } as any,
     broadcast: () => {},
+    delegation: new DelegationStore(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     spawnSession: async (sid) => ({ sessionId: sid }),
     agentDefinitions: new Map<string, AgentConfig>(),
   };

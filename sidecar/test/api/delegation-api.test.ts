@@ -60,6 +60,8 @@ function makeContext() {
       sendCommand: async () => ({}),
     } as any,
     delegation,
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     broadcast: (event: SidecarEvent) => {
       broadcastEvents.push(event);
       sseManager.broadcast(event);
@@ -320,6 +322,8 @@ describe("conversation.setDelegationMode WS command", () => {
         sendCommand: async () => ({}),
       } as any,
       delegation,
+      pendingBrowserBlocking: new Map(),
+      pendingBrowserResults: new Map(),
       broadcast: (event: SidecarEvent) => { broadcastedEvents.push(event); },
       agentDefinitions: new Map(),
       spawnSession: async (sessionId) => ({ sessionId }),
@@ -380,6 +384,8 @@ describe("conversation.setDelegationMode WS command", () => {
       nostrTransport: new NostrTransport(() => {}),
       relayClient: { isConnected: () => false, connect: async () => {}, sendCommand: async () => ({}) } as any,
       delegation,
+      pendingBrowserBlocking: new Map(),
+      pendingBrowserResults: new Map(),
       broadcast: () => {},
       agentDefinitions: new Map(),
       spawnSession: async (sessionId) => ({ sessionId }),
@@ -437,6 +443,8 @@ describe("conversation.setDelegationMode WS command", () => {
       nostrTransport: new NostrTransport(() => {}),
       relayClient: { isConnected: () => false, connect: async () => {}, sendCommand: async () => ({}) } as any,
       delegation,
+      pendingBrowserBlocking: new Map(),
+      pendingBrowserResults: new Map(),
       broadcast: () => {},
       agentDefinitions: new Map(),
       spawnSession: async (sessionId) => ({ sessionId }),

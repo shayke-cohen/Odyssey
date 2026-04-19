@@ -99,7 +99,7 @@ describe("ClaudeRuntime Ollama routing", () => {
       true,
     );
 
-    expect(options.model).toBe("claude-opus-4-6");
+    expect(options.model).toBe("claude-opus-4-7");
     expect(options.maxTurns).toBe(30);
   });
 

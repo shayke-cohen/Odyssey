@@ -19,6 +19,7 @@ import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
 import { ConnectorStore } from "../../src/stores/connector-store.js";
+import { DelegationStore } from "../../src/stores/delegation-store.js";
 import type { SidecarEvent } from "../../src/types.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 
@@ -46,6 +47,9 @@ function makeToolContext(): ToolContext {
       sendCommand: async () => ({}),
     } as any,
     broadcast: (_event: SidecarEvent) => {},
+    delegation: new DelegationStore(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     agentDefinitions: new Map(),
     spawnSession: async (_sessionId, _config, _prompt, _wait) => ({ sessionId: _sessionId }),
   };
