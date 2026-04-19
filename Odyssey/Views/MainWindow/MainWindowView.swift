@@ -76,17 +76,25 @@ struct MainWindowView: View {
                     SidebarView()
                 } detail: {
                     Group {
-                        if ws.inspectorVisible && windowState.selectedConversationId != nil {
+                        let showInspector = ws.inspectorVisible && windowState.selectedConversationId != nil
+                        let showBrowser = appState.activeBrowserPanelVisible && appState.activeBrowserSessionId != nil
+                        if showInspector || showBrowser {
                             HSplitView {
                                 mainDetailPane
                                     .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
                                     .layoutPriority(1)
-                                inspectorPane
-                                    .frame(minWidth: 320, idealWidth: 380, maxWidth: 720, maxHeight: .infinity)
+                                if showInspector {
+                                    inspectorPane
+                                        .frame(minWidth: 280, idealWidth: 340, maxWidth: 600, maxHeight: .infinity)
+                                }
+                                if showBrowser, let sessionId = appState.activeBrowserSessionId {
+                                    browserPanelPane(sessionId: sessionId)
+                                        .frame(minWidth: 400, idealWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
+                                }
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(SplitViewConfigurator(autosaveName: "odyssey.chatInspectorSplit"))
-                            .xrayId("mainWindow.chatInspectorSplit")
+                            .background(SplitViewConfigurator(autosaveName: "odyssey.chatBrowserSplit"))
+                            .xrayId("mainWindow.chatBrowserSplit")
                         } else {
                             mainDetailPane
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -260,6 +268,34 @@ struct MainWindowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .xrayId("mainWindow.inspectorPlaceholder")
         }
+    }
+
+    @ViewBuilder
+    private func browserPanelPane(sessionId: String) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Browser")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Spacer()
+                Button {
+                    appState.activeBrowserPanelVisible = false
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("browserPanel.closeButton")
+                .accessibilityLabel("Close browser panel")
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(.bar)
+
+            Divider()
+
+            BrowserPanelView(sessionId: sessionId)
+        }
+        .accessibilityIdentifier("mainWindow.browserPanel")
     }
 
     private var selectedConversation: Conversation? {
