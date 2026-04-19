@@ -73,6 +73,8 @@ function buildApiCtx(): ApiContext {
     broadcast: () => {},
     spawnSession: async (sid: string) => ({ sessionId: sid }),
     agentDefinitions: new Map<string, AgentConfig>(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
   };
   const mockSessionManager = {
     listSessions: () => Array.from(toolCtx.sessions.list()),

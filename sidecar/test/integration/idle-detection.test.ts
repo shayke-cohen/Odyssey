@@ -43,6 +43,8 @@ function buildCtx(emit: (e: SidecarEvent) => void = () => {}): ToolContext {
     broadcast: emit,
     spawnSession: async (sid) => ({ sessionId: sid }),
     agentDefinitions: new Map<string, AgentConfig>(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
   };
 }
 

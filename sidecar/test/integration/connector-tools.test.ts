@@ -29,6 +29,8 @@ function createContext() {
     broadcast: (event) => events.push(event),
     spawnSession: async (sessionId) => ({ sessionId }),
     agentDefinitions: new Map(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
   };
   return { ctx, events };
 }

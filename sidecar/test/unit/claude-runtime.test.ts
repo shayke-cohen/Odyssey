@@ -11,6 +11,7 @@ import { ConversationStore } from "../../src/stores/conversation-store.js";
 import { ProjectStore } from "../../src/stores/project-store.js";
 import { DelegationStore } from "../../src/stores/delegation-store.js";
 import { NostrTransport } from "../../src/relay/nostr-transport.js";
+import { TaskBoardStore } from "../../src/stores/task-board-store.js";
 import type { SidecarEvent } from "../../src/types.js";
 import type { ToolContext } from "../../src/tools/tool-context.js";
 import { makeAgentConfig } from "../helpers.js";
@@ -29,6 +30,7 @@ afterEach(() => {
 function makeToolContext(sessions: SessionRegistry, emit: (event: SidecarEvent) => void): ToolContext {
   return {
     blackboard: new BlackboardStore(`claude-runtime-${Date.now()}`),
+    taskBoard: new TaskBoardStore(`claude-runtime-${Date.now()}`),
     sessions,
     messages: new MessageStore(),
     channels: new ChatChannelStore(),
@@ -46,6 +48,8 @@ function makeToolContext(sessions: SessionRegistry, emit: (event: SidecarEvent) 
     } as any,
     broadcast: emit,
     agentDefinitions: new Map(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     spawnSession: async (sessionId, _config, _initialPrompt, _waitForResult) => ({ sessionId }),
   };
 }

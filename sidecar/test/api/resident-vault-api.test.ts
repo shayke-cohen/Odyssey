@@ -79,6 +79,8 @@ function makeCtx(): {
     } as any,
     broadcast: (event: SidecarEvent) => sseManager.broadcast(event),
     agentDefinitions: new Map(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     spawnSession: async (sessionId) => ({ sessionId }),
   };
 

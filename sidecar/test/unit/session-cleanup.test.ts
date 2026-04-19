@@ -1,6 +1,7 @@
 /**
  * Unit tests for SessionManager memory cleanup.
- * Verifies that turnHistory is freed after sendMessage completes or pauseSession is called.
+ * Verifies that turnHistory accumulates completed turns (up to 50) and is
+ * fully cleared when pauseSession is called.
  */
 import { describe, test, expect, beforeEach } from "bun:test";
 import { SessionManager } from "../../src/session-manager.js";
@@ -53,6 +54,8 @@ function buildCtx(broadcast: (e: SidecarEvent) => void = () => {}): ToolContext 
       return { sessionId: sid };
     },
     agentDefinitions: new Map<string, AgentConfig>(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
   };
 }
 
@@ -66,17 +69,18 @@ describe("SessionManager turnHistory cleanup", () => {
     sm = new SessionManager(() => {}, registry, ctx);
   });
 
-  test("clears turnHistory after sendMessage completes", async () => {
+  test("records one completed turn after sendMessage", async () => {
     await sm.createSession("s1", MOCK_CONFIG);
     await sm.sendMessage("s1", "hello");
-    expect(sm.getTurnHistory("s1")).toHaveLength(0);
+    expect(sm.getTurnHistory("s1")).toHaveLength(1);
+    expect(sm.getTurnHistory("s1")[0].status).toBe("completed");
   });
 
-  test("clears turnHistory after second send on same session", async () => {
+  test("accumulates turns across multiple sends on same session", async () => {
     await sm.createSession("s1", MOCK_CONFIG);
     await sm.sendMessage("s1", "first");
     await sm.sendMessage("s1", "second");
-    expect(sm.getTurnHistory("s1")).toHaveLength(0);
+    expect(sm.getTurnHistory("s1")).toHaveLength(2);
   });
 
   test("clears turnHistory after pauseSession", async () => {
@@ -92,16 +96,11 @@ describe("SessionManager turnHistory cleanup", () => {
     expect(sm.getTurnHistory("s1")).toHaveLength(0);
   });
 
-  test("does not leak memory across 50 sessions", async () => {
-    const ids = Array.from({ length: 50 }, (_, i) => `session-${i}`);
-    for (const id of ids) {
-      await sm.createSession(id, { ...MOCK_CONFIG });
+  test("caps history at 50 turns to prevent memory leaks", async () => {
+    await sm.createSession("s1", MOCK_CONFIG);
+    for (let i = 0; i < 55; i++) {
+      await sm.sendMessage("s1", `msg-${i}`);
     }
-    for (const id of ids) {
-      await sm.sendMessage(id, "ping");
-    }
-    for (const id of ids) {
-      expect(sm.getTurnHistory(id)).toHaveLength(0);
-    }
+    expect(sm.getTurnHistory("s1").length).toBeLessThanOrEqual(50);
   });
 });

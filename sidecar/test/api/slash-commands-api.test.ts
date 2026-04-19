@@ -54,6 +54,8 @@ function makeCtx(): { ctx: ApiContext; sessions: SessionRegistry } {
     } as any,
     broadcast: (event: SidecarEvent) => sseManager.broadcast(event),
     agentDefinitions: new Map(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     spawnSession: async (id) => ({ sessionId: id }),
   };
 

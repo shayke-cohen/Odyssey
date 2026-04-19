@@ -38,6 +38,8 @@ function makeContext() {
     projectStore,
     broadcast: () => {},
     agentDefinitions: new Map(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
     spawnSession: async (sessionId) => ({ sessionId }),
   };
 

@@ -69,6 +69,8 @@ beforeAll(() => {
     broadcast: () => {},
     spawnSession: async (sid) => ({ sessionId: sid }),
     agentDefinitions: new Map<string, AgentConfig>(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
   };
 
   wsServer = new WsServer(WS_PORT, mockSessionManager, ctx);

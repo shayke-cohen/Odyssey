@@ -139,6 +139,8 @@ function buildMinimalCtx(
     broadcast: () => {},
     spawnSession: async (sid) => ({ sessionId: sid }),
     agentDefinitions: new Map(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
   };
 }
 

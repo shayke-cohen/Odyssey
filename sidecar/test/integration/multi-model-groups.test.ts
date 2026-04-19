@@ -67,6 +67,8 @@ function buildCtx(
       return { sessionId };
     },
     agentDefinitions: new Map<string, AgentConfig>(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
   };
 }
 

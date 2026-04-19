@@ -59,6 +59,8 @@ function createTestContext(): {
       return { sessionId, result: wait ? "mock-result" : undefined };
     },
     agentDefinitions: new Map(),
+    pendingBrowserBlocking: new Map(),
+    pendingBrowserResults: new Map(),
   };
 
   return { ctx, events, spawnCalls };
