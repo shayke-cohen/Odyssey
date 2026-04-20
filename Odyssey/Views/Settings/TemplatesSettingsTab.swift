@@ -11,7 +11,6 @@ struct TemplatesSettingsTab: View {
 
     @Query(sort: [SortDescriptor(\Agent.name)]) private var agents: [Agent]
     @Query(sort: [SortDescriptor(\AgentGroup.sortOrder), SortDescriptor(\AgentGroup.name)]) private var groups: [AgentGroup]
-    @Query(sort: [SortDescriptor(\Project.lastOpenedAt, order: .reverse)]) private var projects: [Project]
     @Query private var allTemplates: [PromptTemplate]
 
     @State private var selectedOwner: OwnerKey?
@@ -23,13 +22,13 @@ struct TemplatesSettingsTab: View {
     enum OwnerKey: Hashable, Identifiable {
         case agent(UUID)
         case group(UUID)
-        case project(UUID)
+        case projectTemplates
 
         var id: String {
             switch self {
             case .agent(let id): "agent-\(id)"
             case .group(let id): "group-\(id)"
-            case .project(let id): "project-\(id)"
+            case .projectTemplates: "project-templates"
             }
         }
     }
@@ -57,12 +56,6 @@ struct TemplatesSettingsTab: View {
         return enabledGroups.filter { $0.name.lowercased().contains(needle) }
     }
 
-    private var filteredProjects: [Project] {
-        guard !searchText.isEmpty else { return projects }
-        let needle = searchText.lowercased()
-        return projects.filter { $0.name.lowercased().contains(needle) }
-    }
-
     private func templateCount(forAgent agent: Agent) -> Int {
         allTemplates.filter { $0.agent?.id == agent.id }.count
     }
@@ -71,8 +64,8 @@ struct TemplatesSettingsTab: View {
         allTemplates.filter { $0.group?.id == group.id }.count
     }
 
-    private func templateCount(forProject project: Project) -> Int {
-        allTemplates.filter { $0.project?.id == project.id }.count
+    private var globalProjectTemplateCount: Int {
+        allTemplates.filter { $0.isGlobalProjectTemplate }.count
     }
 
     private var selectedAgent: Agent? {
@@ -85,9 +78,8 @@ struct TemplatesSettingsTab: View {
         return enabledGroups.first { $0.id == id }
     }
 
-    private var selectedProject: Project? {
-        guard case .project(let id) = selectedOwner else { return nil }
-        return projects.first { $0.id == id }
+    private var isProjectTemplatesSelected: Bool {
+        selectedOwner == .projectTemplates
     }
 
     private var templatesForSelection: [PromptTemplate] {
@@ -95,7 +87,7 @@ struct TemplatesSettingsTab: View {
         switch selectedOwner {
         case .agent(let id): templates = allTemplates.filter { $0.agent?.id == id }
         case .group(let id): templates = allTemplates.filter { $0.group?.id == id }
-        case .project(let id): templates = allTemplates.filter { $0.project?.id == id }
+        case .projectTemplates: templates = allTemplates.filter { $0.isGlobalProjectTemplate }
         case .none: templates = []
         }
         return templates.sorted { lhs, rhs in
@@ -107,13 +99,13 @@ struct TemplatesSettingsTab: View {
     private var selectionTitle: String {
         if let agent = selectedAgent { return agent.name }
         if let group = selectedGroup { return group.name }
-        if let project = selectedProject { return project.name }
+        if isProjectTemplatesSelected { return "Project Templates" }
         return "Templates"
     }
 
     private var selectionKindNoun: String {
         if selectedGroup != nil { return "group" }
-        if selectedProject != nil { return "project" }
+        if isProjectTemplatesSelected { return "project" }
         return "agent"
     }
 
@@ -129,14 +121,14 @@ struct TemplatesSettingsTab: View {
             if selectedOwner == nil {
                 selectedOwner = enabledAgents.first.map { .agent($0.id) }
                     ?? enabledGroups.first.map { .group($0.id) }
-                    ?? projects.first.map { .project($0.id) }
+                    ?? .projectTemplates
             }
         }
         .sheet(item: $editingTemplate) { template in
             PromptTemplateCreationSheet(
                 ownerAgent: selectedAgent,
                 ownerGroup: selectedGroup,
-                ownerProject: selectedProject,
+                isGlobalProjectTemplate: isProjectTemplatesSelected,
                 existingTemplate: template
             ) { _ in
                 editingTemplate = nil
@@ -146,16 +138,16 @@ struct TemplatesSettingsTab: View {
             PromptTemplateCreationSheet(
                 ownerAgent: selectedAgent,
                 ownerGroup: selectedGroup,
-                ownerProject: selectedProject,
+                isGlobalProjectTemplate: isProjectTemplatesSelected,
                 existingTemplate: nil
             ) { _ in
                 showingNewSheet = false
             }
         }
         .sheet(isPresented: $showingLibrarySheet) {
-            if let project = selectedProject {
-                AddFromLibrarySheet(project: project) { selectedEntries in
-                    addLibraryTemplates(selectedEntries, toProject: project)
+            if isProjectTemplatesSelected {
+                AddFromLibrarySheet { selectedEntries in
+                    addLibraryTemplates(selectedEntries)
                     showingLibrarySheet = false
                 } onCancel: {
                     showingLibrarySheet = false
@@ -209,19 +201,15 @@ struct TemplatesSettingsTab: View {
                         }
                     }
                 }
-                if !filteredProjects.isEmpty {
-                    Section("Projects") {
-                        ForEach(filteredProjects) { project in
-                            ownerRow(
-                                name: project.name,
-                                icon: "folder.fill",
-                                tint: projectTint(project),
-                                count: templateCount(forProject: project)
-                            )
-                            .tag(OwnerKey.project(project.id))
-                            .xrayId("settings.templates.ownerRow.project.\(project.id.uuidString)")
-                        }
-                    }
+                Section("Projects") {
+                    ownerRow(
+                        name: "Project Templates",
+                        icon: "sparkles",
+                        tint: .purple,
+                        count: globalProjectTemplateCount
+                    )
+                    .tag(OwnerKey.projectTemplates)
+                    .xrayId("settings.templates.ownerRow.projectTemplates")
                 }
             }
             .listStyle(.sidebar)
@@ -258,23 +246,7 @@ struct TemplatesSettingsTab: View {
         return "person.crop.circle"
     }
 
-    private func projectTint(_ project: Project) -> Color {
-        switch project.color.lowercased() {
-        case "blue": return .blue
-        case "green": return .green
-        case "orange": return .orange
-        case "purple": return .purple
-        case "pink": return .pink
-        case "red": return .red
-        case "yellow": return .yellow
-        case "teal": return .teal
-        case "indigo": return .indigo
-        case "gray", "grey": return .gray
-        default: return .blue
-        }
-    }
-
-    private var detailPane: some View {
+private var detailPane: some View {
         VStack(alignment: .leading, spacing: 0) {
             detailHeader
             Divider()
@@ -289,8 +261,8 @@ struct TemplatesSettingsTab: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(selectionTitle)
                 .font(.title3.weight(.semibold))
-            if let project = selectedProject {
-                Text(projectSubtitle(project))
+            if isProjectTemplatesSelected {
+                Text("Prompts available in any project chat via the sparkles button or context menu.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -304,22 +276,7 @@ struct TemplatesSettingsTab: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func projectSubtitle(_ project: Project) -> String {
-        let displayPath = abbreviatePath(project.rootPath)
-        let count = templateCount(forProject: project)
-        let suffix = count == 1 ? "1 template" : "\(count) templates"
-        return "\(displayPath) \u{00B7} \(suffix)"
-    }
-
-    private func abbreviatePath(_ path: String) -> String {
-        let home = NSHomeDirectory()
-        if path.hasPrefix(home) {
-            return "~" + String(path.dropFirst(home.count))
-        }
-        return path
-    }
-
-    @ViewBuilder
+@ViewBuilder
     private var templatesList: some View {
         if selectedOwner == nil {
             emptySelection
@@ -429,7 +386,7 @@ struct TemplatesSettingsTab: View {
 
     @ViewBuilder
     private var emptyTemplates: some View {
-        if selectedProject != nil {
+        if isProjectTemplatesSelected {
             projectEmptyTemplates
         } else {
             agentOrGroupEmptyTemplates
@@ -461,7 +418,8 @@ struct TemplatesSettingsTab: View {
                 .font(.largeTitle)
                 .foregroundStyle(.tertiary)
             VStack(spacing: 4) {
-                Text("No templates yet for ") + Text(selectionTitle).bold() + Text(".")
+                Text("No project templates yet.")
+                    .bold()
                 Text("Add your own or start from the built-in library.")
                     .foregroundStyle(.secondary)
             }
@@ -501,7 +459,7 @@ struct TemplatesSettingsTab: View {
 
             Spacer()
 
-            if selectedProject != nil && !templatesForSelection.isEmpty {
+            if isProjectTemplatesSelected && !templatesForSelection.isEmpty {
                 Button {
                     showingLibrarySheet = true
                 } label: {
@@ -547,13 +505,25 @@ struct TemplatesSettingsTab: View {
     }
 
     private func duplicateTemplate(_ template: PromptTemplate) {
+        let copySlug: String?
+        if template.isGlobalProjectTemplate {
+            let slug = ConfigFileManager.uniquePromptTemplateSlug(
+                baseName: "\(template.name) Copy",
+                ownerKind: .projects,
+                ownerSlug: "_"
+            )
+            copySlug = "projects/_/\(slug)"
+        } else {
+            copySlug = nil
+        }
         let copy = PromptTemplate(
             name: "\(template.name) Copy",
             prompt: template.prompt,
             sortOrder: template.sortOrder + 1,
             agent: template.agent,
             group: template.group,
-            project: template.project
+            project: template.project,
+            configSlug: copySlug
         )
         modelContext.insert(copy)
         try? modelContext.save()
@@ -597,12 +567,10 @@ struct TemplatesSettingsTab: View {
             url = ConfigFileManager.promptTemplatesDirectory
                 .appendingPathComponent("groups")
                 .appendingPathComponent(slug)
-        case .project(let id):
-            let project = projects.first { $0.id == id }
-            let slug = project.map { ConfigFileManager.projectSlug(for: $0.canonicalRootPath) } ?? ""
+        case .projectTemplates:
             url = ConfigFileManager.promptTemplatesDirectory
                 .appendingPathComponent("projects")
-                .appendingPathComponent(slug)
+                .appendingPathComponent("_")
         case .none:
             url = ConfigFileManager.promptTemplatesDirectory
         }
@@ -620,17 +588,16 @@ struct TemplatesSettingsTab: View {
 
     // MARK: - Library Import
 
-    private func addLibraryTemplates(_ entries: [ProjectTemplateLibrary.Entry], toProject project: Project) {
-        let projectSlug = ConfigFileManager.projectSlug(for: project.canonicalRootPath)
-        let existingCount = templateCount(forProject: project)
+    private func addLibraryTemplates(_ entries: [ProjectTemplateLibrary.Entry]) {
+        let existingCount = globalProjectTemplateCount
 
         for (index, entry) in entries.enumerated() {
             let templateSlug = ConfigFileManager.uniquePromptTemplateSlug(
                 baseName: entry.name,
                 ownerKind: .projects,
-                ownerSlug: projectSlug
+                ownerSlug: "_"
             )
-            let configSlug = "projects/\(projectSlug)/\(templateSlug)"
+            let configSlug = "projects/_/\(templateSlug)"
             let template = PromptTemplate(
                 name: entry.name,
                 prompt: entry.prompt,
@@ -638,7 +605,7 @@ struct TemplatesSettingsTab: View {
                 isBuiltin: true,
                 agent: nil,
                 group: nil,
-                project: project,
+                project: nil,
                 configSlug: configSlug
             )
             modelContext.insert(template)
@@ -651,7 +618,6 @@ struct TemplatesSettingsTab: View {
 // MARK: - AddFromLibrarySheet
 
 private struct AddFromLibrarySheet: View {
-    let project: Project
     let onAdd: ([ProjectTemplateLibrary.Entry]) -> Void
     let onCancel: () -> Void
 
@@ -678,7 +644,7 @@ private struct AddFromLibrarySheet: View {
             Text("Starter Templates")
                 .font(.title3.weight(.semibold))
                 .xrayId("templates.addFromLibrarySheet.title")
-            Text("Select prompts to add to this project.")
+            Text("Select prompts to add to your project templates library.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }

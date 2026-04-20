@@ -1321,7 +1321,9 @@ final class ConfigSyncService {
 
             // Skip files whose owner can't be resolved (e.g. agent renamed to a new slug).
             // They stay on disk; the owner can be re-linked once its slug matches.
-            guard ownerAgent != nil || ownerGroup != nil || ownerProject != nil else {
+            // Exception: projects/_/<slug> are global project templates (no project association needed).
+            let isGlobalProjectTemplate = entry.ownerKind == .projects && entry.ownerSlug == "_"
+            guard ownerAgent != nil || ownerGroup != nil || ownerProject != nil || isGlobalProjectTemplate else {
                 Log.configSync.warning("Prompt template owner not found: \(entry.configSlug, privacy: .public)")
                 continue
             }
@@ -1357,6 +1359,52 @@ final class ConfigSyncService {
             if !seenSlugs.contains(slug) {
                 context.delete(entity)
             }
+        }
+
+        // Seed all built-in project templates on first run (none exist yet on disk).
+        let globalDir = ConfigFileManager.promptTemplatesDirectory
+            .appendingPathComponent("projects")
+            .appendingPathComponent("_")
+        let hasGlobalOnDisk = (try? FileManager.default.contentsOfDirectory(
+            at: globalDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
+        ))?.isEmpty == false
+        if !hasGlobalOnDisk {
+            seedDefaultProjectTemplates(context: context)
+        }
+    }
+
+    private func seedDefaultProjectTemplates(context: ModelContext) {
+        Log.configSync.info("Seeding default global project templates")
+        for (index, entry) in ProjectTemplateLibrary.all.enumerated() {
+            let templateSlug = ConfigFileManager.uniquePromptTemplateSlug(
+                baseName: entry.name,
+                ownerKind: .projects,
+                ownerSlug: "_"
+            )
+            let configSlug = "projects/_/\(templateSlug)"
+            let dto = PromptTemplateFileDTO(name: entry.name, sortOrder: index + 1, prompt: entry.prompt)
+            do {
+                try ConfigFileManager.writePromptTemplate(
+                    ownerKind: .projects,
+                    ownerSlug: "_",
+                    templateSlug: templateSlug,
+                    dto: dto
+                )
+            } catch {
+                Log.configSync.error("Failed to write default project template '\(entry.name)': \(error)")
+                continue
+            }
+            let template = PromptTemplate(
+                name: entry.name,
+                prompt: entry.prompt,
+                sortOrder: index + 1,
+                isBuiltin: true,
+                agent: nil,
+                group: nil,
+                project: nil,
+                configSlug: configSlug
+            )
+            context.insert(template)
         }
     }
 

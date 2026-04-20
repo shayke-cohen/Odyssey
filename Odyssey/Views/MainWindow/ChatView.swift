@@ -2472,9 +2472,9 @@ struct ChatView: View {
     }
 
     private var projectTemplates: [PromptTemplate] {
-        guard let projectId = selectedConversation.projectId else { return [] }
+        guard selectedConversation.projectId != nil else { return [] }
         return allTemplates
-            .filter { $0.project?.id == projectId }
+            .filter { $0.isGlobalProjectTemplate }
             .sorted { lhs, rhs in
                 if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
                 return lhs.name < rhs.name

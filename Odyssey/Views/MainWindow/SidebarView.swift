@@ -147,6 +147,7 @@ struct SidebarView: View {
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
     @Query(sort: \Session.startedAt, order: .reverse) private var allSessions: [Session]
     @Query(sort: \ScheduledMission.updatedAt, order: .reverse) private var schedules: [ScheduledMission]
+    @Query(sort: \PromptTemplate.sortOrder) private var allTemplates: [PromptTemplate]
     @State private var searchText = ""
     @State private var expandedAgentIds: Set<UUID> = []
     @State private var expandedGroupIds: Set<UUID> = []
@@ -1013,10 +1014,10 @@ struct SidebarView: View {
                 Label("Archive threads", systemImage: "archivebox")
             }
 
-            let templates = (project.promptTemplates ?? []).sorted { $0.sortOrder < $1.sortOrder }
-            if !templates.isEmpty {
+            let globalTemplates = allTemplates.filter { $0.isGlobalProjectTemplate }
+            if !globalTemplates.isEmpty {
                 Menu("Run Template\u{2026}") {
-                    ForEach(templates) { template in
+                    ForEach(globalTemplates) { template in
                         Button(template.name) {
                             runProjectTemplate(template, in: project)
                         }

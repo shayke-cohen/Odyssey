@@ -975,7 +975,13 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact schema:
 
     logger.info("ws", `generate.template: generating template for agent "${command.agentName}"`);
 
-    const rawTemplateText = await this.queryOnce(systemPrompt, command.intent, "claude-haiku-4-5-20251001");
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Template generation timed out after 30s")), 30_000)
+    );
+    const rawTemplateText = await Promise.race([
+      this.queryOnce(systemPrompt, command.intent, "claude-haiku-4-5-20251001"),
+      timeout,
+    ]);
     const jsonText = this.extractJSON(rawTemplateText);
 
     const spec = JSON.parse(jsonText);

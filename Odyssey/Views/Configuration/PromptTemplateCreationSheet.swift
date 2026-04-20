@@ -19,6 +19,7 @@ struct PromptTemplateCreationSheet: View {
     var ownerAgent: Agent? = nil
     var ownerGroup: AgentGroup? = nil
     var ownerProject: Project? = nil
+    var isGlobalProjectTemplate: Bool = false
     var existingTemplate: PromptTemplate? = nil
     var onSave: ((PromptTemplate) -> Void)? = nil
 
@@ -43,12 +44,14 @@ struct PromptTemplateCreationSheet: View {
         ownerAgent: Agent? = nil,
         ownerGroup: AgentGroup? = nil,
         ownerProject: Project? = nil,
+        isGlobalProjectTemplate: Bool = false,
         existingTemplate: PromptTemplate? = nil,
         onSave: ((PromptTemplate) -> Void)? = nil
     ) {
         self.ownerAgent = ownerAgent
         self.ownerGroup = ownerGroup
         self.ownerProject = ownerProject
+        self.isGlobalProjectTemplate = isGlobalProjectTemplate
         self.existingTemplate = existingTemplate
         self.onSave = onSave
 
@@ -126,6 +129,7 @@ struct PromptTemplateCreationSheet: View {
             }
         }
         .pickerStyle(.segmented)
+        .disabled(isGenerating)
         .padding(.horizontal)
         .padding(.vertical, 8)
         .accessibilityIdentifier("templateCreation.modePicker")
@@ -146,6 +150,7 @@ struct PromptTemplateCreationSheet: View {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                 )
+                .disabled(isGenerating)
                 .accessibilityIdentifier("templateCreation.intentEditor")
 
             if let error = generateError {
@@ -281,6 +286,7 @@ struct PromptTemplateCreationSheet: View {
                 ownerAgent: ownerAgent,
                 ownerGroup: ownerGroup,
                 ownerProject: ownerProject,
+                isGlobalProjectTemplate: isGlobalProjectTemplate,
                 sortOrder: sortOrder,
                 context: modelContext
             )
@@ -306,6 +312,7 @@ func performTemplateSave(
     ownerAgent: Agent?,
     ownerGroup: AgentGroup?,
     ownerProject: Project? = nil,
+    isGlobalProjectTemplate: Bool = false,
     sortOrder: Int,
     context: ModelContext
 ) throws -> PromptTemplate {
@@ -320,6 +327,9 @@ func performTemplateSave(
     } else if let project = ownerProject {
         ownerKind = .projects
         ownerSlug = ConfigFileManager.projectSlug(for: project.canonicalRootPath)
+    } else if isGlobalProjectTemplate {
+        ownerKind = .projects
+        ownerSlug = "_"
     } else {
         ownerKind = .agents
         ownerSlug = "unknown"

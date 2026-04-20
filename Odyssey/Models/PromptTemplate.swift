@@ -72,4 +72,10 @@ final class PromptTemplate {
         guard parts.count >= 3 else { return nil }
         return String(parts[2])
     }
+
+    /// True for templates stored at `projects/_/<slug>` — visible from all project chats.
+    @Transient
+    var isGlobalProjectTemplate: Bool {
+        project == nil && configSlug?.hasPrefix("projects/") == true
+    }
 }
