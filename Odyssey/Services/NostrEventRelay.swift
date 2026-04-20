@@ -37,6 +37,8 @@ final class NostrEventRelay {
 
     // Sessions initiated via Nostr: sessionId → iOS sender pubkeyHex
     private var nostrSessions: [String: String] = [:]
+    // Last iOS device that sent any Nostr command — used for broadcasts like conversations.list.result
+    private var lastKnownIosNpub: String?
 
     init(sidecarManager: SidecarManager) {
         self.sidecarManager = sidecarManager
@@ -47,7 +49,6 @@ final class NostrEventRelay {
     func start(privkeyHex: String, pubkeyHex: String, relays: [String]) {
         self.privkeyHex = privkeyHex
         self.pubkeyHex = pubkeyHex
-
         let manager = NostrRelayManager(
             relayURLs: relays,
             privkeyHex: privkeyHex,
@@ -82,11 +83,22 @@ final class NostrEventRelay {
     private func interceptSidecarMessage(_ rawJSON: String) {
         guard let data = rawJSON.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let sessionId = (json["sessionId"] as? String) ?? (json["conversationId"] as? String),
-              let iOSPubkey = nostrSessions[sessionId],
               let relay = relayManager,
               let priv = privkeyHex,
               let pub = pubkeyHex else { return }
+
+        // For session-scoped events, route to the originating iOS device
+        let msgType = json["type"] as? String
+        let sessionId = (json["sessionId"] as? String) ?? (json["conversationId"] as? String)
+        let iOSPubkey: String?
+        if let sid = sessionId {
+            iOSPubkey = nostrSessions[sid]
+        } else if msgType == "conversations.list.result" {
+            iOSPubkey = lastKnownIosNpub
+        } else {
+            iOSPubkey = nil
+        }
+        guard let iOSPubkey else { return }
 
         Task {
             do {
@@ -110,6 +122,9 @@ final class NostrEventRelay {
         do {
             let convKey = try NIP44.conversationKey(privkeyHex: priv, peerPubkeyHex: event.pubkey)
             let plaintext = try NIP44.decrypt(payload: event.content, conversationKey: convKey)
+
+            // Track last known iOS sender for broadcast routing (e.g. conversations.list.result)
+            lastKnownIosNpub = event.pubkey
 
             // Track which sessions came from iOS for reply routing
             if let cmdData = plaintext.data(using: .utf8),
@@ -141,31 +156,33 @@ final class NostrEventRelay {
 
     private func makeEventJSON(content: String, recipientPubkey: String, senderPubkey: String) -> String {
         guard let priv = privkeyHex,
-              let privBytes = Data(hexString: priv) else {
-            // Fallback: unsigned (relay will reject, but safe to return)
-            let ts = Int(Date().timeIntervalSince1970)
-            let esc = content.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-            return """
-            {"kind":4,"created_at":\(ts),"tags":[["p","\(recipientPubkey)"]],"content":"\(esc)","pubkey":"\(senderPubkey)","id":"","sig":""}
-            """
-        }
+              let privBytes = Data(hexString: priv) else { return "" }
+
         let timestamp = Int(Date().timeIntervalSince1970)
-        let canonical: [Any] = [0, senderPubkey, timestamp, 4, [["p", recipientPubkey]], content]
-        guard let canonicalData = try? JSONSerialization.data(withJSONObject: canonical) else {
-            return ""
-        }
+        let tags: [Any] = [["p", recipientPubkey]]
+        let canonical: [Any] = [0, senderPubkey, timestamp, 4, tags, content]
+        // .withoutEscapingSlashes is required: JSONSerialization escapes '/' as '\/' by default,
+        // but relays unescape '/' when parsing before re-computing the event ID hash.
+        guard let canonicalData = try? JSONSerialization.data(withJSONObject: canonical, options: .withoutEscapingSlashes) else { return "" }
+
         let hashDigest = SHA256.hash(data: canonicalData)
         let id = hashDigest.map { String(format: "%02x", $0) }.joined()
+
         guard let schnorrKey = try? P256K.Schnorr.PrivateKey(dataRepresentation: privBytes),
-              let sig = try? schnorrKey.signature(for: hashDigest) else {
-            return ""
-        }
+              let sig = try? schnorrKey.signature(for: hashDigest) else { return "" }
         let sigHex = sig.dataRepresentation.map { String(format: "%02x", $0) }.joined()
-        let contentEsc = content
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        return """
-        {"kind":4,"created_at":\(timestamp),"tags":[["p","\(recipientPubkey)"]],"content":"\(contentEsc)","pubkey":"\(senderPubkey)","id":"\(id)","sig":"\(sigHex)"}
-        """
+
+        let eventObj: [String: Any] = [
+            "kind": 4,
+            "created_at": timestamp,
+            "tags": tags,
+            "content": content,
+            "pubkey": senderPubkey,
+            "id": id,
+            "sig": sigHex
+        ]
+        guard let eventData = try? JSONSerialization.data(withJSONObject: eventObj, options: .withoutEscapingSlashes),
+              let eventString = String(data: eventData, encoding: .utf8) else { return "" }
+        return eventString
     }
 }
