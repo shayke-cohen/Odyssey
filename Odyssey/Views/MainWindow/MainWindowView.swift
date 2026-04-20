@@ -372,7 +372,7 @@ struct MainWindowView: View {
                     .opacity(defaultProvider == ProviderSelection.claude.rawValue ? 1.0 : 0.3)
             }
             .buttonStyle(.plain)
-            .help("Switch to Claude")
+            .help(defaultProvider == ProviderSelection.claude.rawValue ? "Claude · Active provider" : "Claude · Click to set as default provider")
             .xrayId("mainWindow.providerToggle.claudeButton")
             .accessibilityLabel("Claude")
 
@@ -386,7 +386,7 @@ struct MainWindowView: View {
                     .opacity(defaultProvider == ProviderSelection.codex.rawValue ? 1.0 : 0.3)
             }
             .buttonStyle(.plain)
-            .help("Switch to Codex")
+            .help(defaultProvider == ProviderSelection.codex.rawValue ? "Codex · Active provider" : "Codex · Click to set as default provider")
             .xrayId("mainWindow.providerToggle.codexButton")
             .accessibilityLabel("Codex")
         }

@@ -1185,7 +1185,7 @@ struct ChatView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 .buttonStyle(.plain)
-                                .help("\(role.label): \(member.name) — click to configure group")
+                                .help("\(role.displayName): \(member.name) — click to configure group")
                                 .xrayId("chat.roleChip.\(member.id.uuidString)")
                             }
                         }
