@@ -1,6 +1,7 @@
 // Odyssey/Views/Settings/iOSPairingSettingsView.swift
 import SwiftUI
 import OSLog
+import Network
 
 private let logger = Logger(subsystem: "com.odyssey.app", category: "iOSPairing")
 
@@ -91,7 +92,7 @@ struct iOSPairingSettingsView: View {
         let relays = AppSettings.nostrRelays()
         let payload = InviteCodeGenerator.generateDevice(
             instanceName: instanceName,
-            lanHint: nil,
+            lanHint: localLANIP(),
             nostrPubkey: npub,
             nostrRelays: relays
         )
@@ -106,7 +107,7 @@ struct iOSPairingSettingsView: View {
         let relays = AppSettings.nostrRelays()
         let payload = InviteCodeGenerator.generateDevice(
             instanceName: instanceName,
-            lanHint: nil,
+            lanHint: localLANIP(),
             nostrPubkey: npub,
             nostrRelays: relays
         )
@@ -119,5 +120,35 @@ struct iOSPairingSettingsView: View {
             try? await Task.sleep(for: .seconds(2))
             copyConfirmation = false
         }
+    }
+
+    // MARK: - Helpers
+
+    private func localLANIP() -> String? {
+        var result: String? = nil
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return nil }
+        defer { freeifaddrs(first) }
+        var ptr = first
+        while true {
+            let flags = Int32(ptr.pointee.ifa_flags)
+            let isUp = (flags & IFF_UP) != 0
+            let isLoopback = (flags & IFF_LOOPBACK) != 0
+            if isUp && !isLoopback,
+               ptr.pointee.ifa_addr.pointee.sa_family == UInt8(AF_INET) {
+                var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                if getnameinfo(ptr.pointee.ifa_addr, socklen_t(ptr.pointee.ifa_addr.pointee.sa_len),
+                               &hostname, socklen_t(hostname.count), nil, 0, NI_NUMERICHOST) == 0 {
+                    let ip = String(cString: hostname)
+                    if ip.hasPrefix("192.168.") || ip.hasPrefix("10.") || ip.hasPrefix("172.") {
+                        result = ip
+                        break
+                    }
+                }
+            }
+            guard let next = ptr.pointee.ifa_next else { break }
+            ptr = next
+        }
+        return result
     }
 }

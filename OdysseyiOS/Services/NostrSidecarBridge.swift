@@ -173,7 +173,9 @@ private enum NIP44iOS {
 
     private static func messageKeys(conversationKey: Data, nonce: Data) -> Keys {
         let exp = hkdfExpand(prk: conversationKey, info: nonce, len: 76)
-        return Keys(ck: exp[0..<32], cn: exp[32..<44], hk: exp[44..<76])
+        // Data slices preserve startIndex, so wrap with Data(...) to reset to 0
+        // before passing to u32le() which assumes startIndex == 0.
+        return Keys(ck: Data(exp[0..<32]), cn: Data(exp[32..<44]), hk: Data(exp[44..<76]))
     }
 
     private static func calcPaddedLen(_ n: Int) -> Int {

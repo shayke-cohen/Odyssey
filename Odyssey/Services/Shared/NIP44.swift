@@ -75,10 +75,12 @@ enum NIP44 {
 
     private static func messageKeys(conversationKey: Data, nonce: Data) throws -> MessageKeys {
         let expanded = hkdfExpand(prk: conversationKey, info: nonce, len: 76)
+        // Data slices preserve startIndex, so wrap with Data(...) to reset to 0
+        // before passing to toUInt32LE() which assumes startIndex == 0.
         return MessageKeys(
-            cipherKey: expanded[0..<32],
-            cipherNonce: expanded[32..<44],
-            hmacKey: expanded[44..<76]
+            cipherKey: Data(expanded[0..<32]),
+            cipherNonce: Data(expanded[32..<44]),
+            hmacKey: Data(expanded[44..<76])
         )
     }
 
