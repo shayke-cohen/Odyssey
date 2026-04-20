@@ -169,6 +169,8 @@ struct SidebarView: View {
     )
     @State private var autonomousGroup: AgentGroup?
     @State private var showAutoAssemble = false
+    @State private var showAgentCreation = false
+    @State private var showGroupCreation = false
     @State private var renamingConversation: Conversation?
     @State private var renameText = ""
     @State private var renamingProject: Project?
@@ -305,6 +307,15 @@ struct SidebarView: View {
 
     private var sidebarWithSheets: some View {
         sidebarList
+            .background {
+                // Hidden keyboard-shortcut triggers for New Agent / New Group
+                Button("") { showAgentCreation = true }
+                    .keyboardShortcut("a", modifiers: [.command, .option])
+                    .hidden()
+                Button("") { showGroupCreation = true }
+                    .keyboardShortcut("g", modifiers: [.command, .option])
+                    .hidden()
+            }
             .sheet(item: $editingGroup) { group in
                 GroupEditorView(group: group)
             }
@@ -314,6 +325,16 @@ struct SidebarView: View {
             }
             .sheet(isPresented: $showAutoAssemble) {
                 AutoAssembleSheet()
+                    .environment(appState)
+            }
+            .sheet(isPresented: $showAgentCreation) {
+                AgentCreationSheet { _ in
+                    showAgentCreation = false
+                }
+                .environment(appState)
+            }
+            .sheet(isPresented: $showGroupCreation) {
+                GroupEditorView(group: nil)
                     .environment(appState)
             }
             .sheet(isPresented: $showingAgentScheduleEditor) {
@@ -340,6 +361,12 @@ struct SidebarView: View {
                 guard let convId else { return }
                 expandForReveal(convId)
                 windowState.sidebarRevealConversationId = nil
+            }
+            .onChange(of: appState.showAgentCreationSheet) { _, show in
+                if show { showAgentCreation = true; appState.showAgentCreationSheet = false }
+            }
+            .onChange(of: appState.showGroupCreationSheet) { _, show in
+                if show { showGroupCreation = true; appState.showGroupCreationSheet = false }
             }
             .onAppear {
                 rebuildProjectCache()
@@ -1270,15 +1297,17 @@ struct SidebarView: View {
                 .buttonStyle(.plain)
                 Spacer()
                 Button {
-                    windowState.openConfiguration(section: .groups)
+                    showGroupCreation = true
                 } label: {
                     Image(systemName: "plus")
                         .font(.caption.weight(.semibold))
+                        .padding(6)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .xrayId("sidebar.groupsAddButton")
+                .appXrayTapProxy(id: "sidebar.groupsAddButton") { appState.showGroupCreationSheet = true }
+                .stableXrayId("sidebar.groupsAddButton")
                 .accessibilityLabel("Add group")
-                .contentShape(Rectangle())
             }
         }
         .stableXrayId("sidebar.groupsSection")
@@ -1304,15 +1333,17 @@ struct SidebarView: View {
             .buttonStyle(.plain)
             Spacer()
             Button {
-                windowState.openConfiguration(section: .agents)
+                showAgentCreation = true
             } label: {
                 Image(systemName: "plus")
                     .font(.caption.weight(.semibold))
+                    .padding(6)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .xrayId("sidebar.agentsSection.addButton")
+            .appXrayTapProxy(id: "sidebar.agentsSection.addButton") { appState.showAgentCreationSheet = true }
+            .stableXrayId("sidebar.agentsSection.addButton")
             .accessibilityLabel("Add agent")
-            .contentShape(Rectangle())
         }
     }
 

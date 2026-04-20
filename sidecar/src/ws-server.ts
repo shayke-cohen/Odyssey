@@ -257,6 +257,17 @@ export class WsServer {
         });
         break;
 
+      case "generate.group":
+        this.handleGenerateGroup(command).catch((err) => {
+          logger.error("ws", `generate.group handler error: ${err}`);
+          this.broadcast({
+            type: "generate.group.error",
+            requestId: command.requestId,
+            error: err.message ?? "Unknown error",
+          });
+        });
+        break;
+
       case "generate.skill":
         this.handleGenerateSkill(command).catch((err) => {
           logger.error("ws", `generate.skill handler error: ${err}`);
@@ -644,9 +655,25 @@ export class WsServer {
     }
   }
 
+  /** Extract the first valid JSON object from text that may contain markdown or prose. */
+  private extractJSON(text: string): string {
+    let cleaned = text.trim();
+    if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+    }
+    try { JSON.parse(cleaned); return cleaned; } catch { /* fall through */ }
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      const extracted = cleaned.substring(firstBrace, lastBrace + 1);
+      try { JSON.parse(extracted); return extracted; } catch { /* fall through */ }
+    }
+    return cleaned;
+  }
+
   /** Single-turn generation via the Agent SDK (uses Claude Code auth, no API key needed). */
   private async queryOnce(systemInstructions: string, userRequest: string, model: string): Promise<string> {
-    const prompt = `${userRequest}\n\nRespond with ONLY valid JSON as specified above. No markdown, no code fences.`;
+    const prompt = `${userRequest}\n\nRespond with ONLY valid JSON as specified above. No markdown, no code fences, no explanations.`;
     const env: Record<string, string> = {};
     for (const [k, v] of Object.entries(process.env)) {
       if (typeof v === "string") env[k] = v;
@@ -659,11 +686,7 @@ export class WsServer {
       allowDangerouslySkipPermissions: true,
       cwd: process.cwd(),
       env,
-      systemPrompt: {
-        type: "preset",
-        preset: "claude_code",
-        append: systemInstructions,
-      },
+      systemPrompt: systemInstructions,
     };
     if (_claudeCodeCliPath) options.pathToClaudeCodeExecutable = _claudeCodeCliPath;
     const stream = query({ prompt, options });
@@ -742,11 +765,8 @@ ${mcpsCatalog}`;
 
     logger.info("ws", `generate.agent: generating agent from prompt: "${command.prompt.substring(0, 100)}..."`);
 
-    let jsonText = await this.queryOnce(systemPrompt, command.prompt, "claude-sonnet-4-6");
-    if (jsonText.startsWith("```")) {
-      jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
-    }
-
+    const rawText = await this.queryOnce(systemPrompt, command.prompt, "claude-sonnet-4-6");
+    const jsonText = this.extractJSON(rawText);
     const spec = JSON.parse(jsonText);
 
     // Validate required fields
@@ -773,8 +793,72 @@ ${mcpsCatalog}`;
         color: spec.color ?? "blue",
         matchedSkillIds: Array.isArray(spec.matchedSkillIds) ? spec.matchedSkillIds : [],
         matchedMCPIds: Array.isArray(spec.matchedMCPIds) ? spec.matchedMCPIds : [],
-        maxTurns: spec.maxTurns ?? undefined,
+        maxTurns: spec.maxTurns ?? 30,
         maxBudget: spec.maxBudget ?? undefined,
+      },
+    });
+  }
+
+  private async handleGenerateGroup(
+    command: Extract<SidecarCommand, { type: "generate.group" }>
+  ): Promise<void> {
+
+    const validColors = ["blue", "red", "green", "purple", "orange", "yellow", "pink", "teal", "indigo", "gray"];
+
+    const agentsCatalog = command.availableAgents.length > 0
+      ? command.availableAgents
+          .map((a) => `- ID: ${a.id} | Name: ${a.name} | Description: ${a.description}`)
+          .join("\n")
+      : "(no agents available)";
+
+    const systemPrompt = `You are a group designer for an AI agent collaboration system. Given a user's description of a group they want to create, generate a complete group definition as JSON.
+
+## Output Format
+Return ONLY valid JSON (no markdown, no code fences) with this exact schema:
+{
+  "name": "string (short, 2-4 words)",
+  "description": "string (one sentence describing the group's purpose)",
+  "icon": "string (single emoji representing the group)",
+  "color": "string (from the allowed list)",
+  "groupInstruction": "string (instructions injected at the start of each group conversation, 100-400 words)",
+  "defaultMission": "string or null (optional pre-filled mission prompt for the group)",
+  "matchedAgentIds": ["array of agent ID strings to include in this group"]
+}
+
+## Constraints
+- icon must be a single emoji character (e.g. "🔧", "📊", "🛡️")
+- color must be one of: ${JSON.stringify(validColors)}
+- matchedAgentIds: only include IDs from the available agents catalog below. Pick agents that are directly relevant to the group's purpose.
+- The groupInstruction should describe how the agents should collaborate, their roles, and the group's working methodology.
+
+## Available Agents
+${agentsCatalog}`;
+
+    logger.info("ws", `generate.group: generating group from prompt: "${command.prompt.substring(0, 100)}..."`);
+
+    const rawText = await this.queryOnce(systemPrompt, command.prompt, "claude-sonnet-4-6");
+    const jsonText = this.extractJSON(rawText);
+    const spec = JSON.parse(jsonText);
+
+    if (!spec.name || !spec.groupInstruction) {
+      throw new Error("Generated spec missing required fields (name, groupInstruction)");
+    }
+
+    if (!validColors.includes(spec.color)) spec.color = "blue";
+
+    logger.info("ws", `generate.group: generated "${spec.name}" with ${spec.matchedAgentIds?.length ?? 0} agents`);
+
+    this.broadcast({
+      type: "generate.group.result",
+      requestId: command.requestId,
+      groupSpec: {
+        name: spec.name,
+        description: spec.description ?? "",
+        icon: spec.icon ?? "👥",
+        color: spec.color ?? "blue",
+        groupInstruction: spec.groupInstruction,
+        defaultMission: spec.defaultMission ?? undefined,
+        matchedAgentIds: Array.isArray(spec.matchedAgentIds) ? spec.matchedAgentIds : [],
       },
     });
   }
@@ -817,11 +901,8 @@ ${mcpsCatalog}`;
 
     logger.info("ws", `generate.skill: generating skill from prompt: "${command.prompt.substring(0, 100)}..."`);
 
-    let jsonText = await this.queryOnce(systemPrompt, command.prompt, "claude-sonnet-4-6");
-    if (jsonText.startsWith("```")) {
-      jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
-    }
-
+    const rawText = await this.queryOnce(systemPrompt, command.prompt, "claude-sonnet-4-6");
+    const jsonText = this.extractJSON(rawText);
     const spec = JSON.parse(jsonText);
 
     if (!spec.name || !spec.content) {
@@ -868,10 +949,8 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact schema:
 
     logger.info("ws", `generate.template: generating template for agent "${command.agentName}"`);
 
-    let jsonText = await this.queryOnce(systemPrompt, command.intent, "claude-haiku-4-5-20251001");
-    if (jsonText.startsWith("```")) {
-      jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
-    }
+    const rawTemplateText = await this.queryOnce(systemPrompt, command.intent, "claude-haiku-4-5-20251001");
+    const jsonText = this.extractJSON(rawTemplateText);
 
     const spec = JSON.parse(jsonText);
 

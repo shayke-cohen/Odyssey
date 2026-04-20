@@ -42,6 +42,9 @@ final class AppState {
     var generatedAgentSpec: GeneratedAgentSpec?
     var isGeneratingAgent: Bool = false
     var generateAgentError: String?
+    var generatedGroupSpec: GeneratedGroupSpec?
+    var isGeneratingGroup: Bool = false
+    var generateGroupError: String?
     var generatedSkillSpec: GeneratedSkillSpec?
     var isGeneratingSkill: Bool = false
     var generateSkillError: String?
@@ -52,6 +55,10 @@ final class AppState {
     var showAddResidentSheet: Bool = false
     /// Set to true to open the Add Agents to Chat sheet in the active ChatView. AppXray tests use setState to set this.
     var showAddAgentsToChatSheet: Bool = false
+    /// Set to true to open the Agent Creation sheet from sidebar. AppXray tests use setState to set this.
+    var showAgentCreationSheet: Bool = false
+    /// Set to true to open the Group Creation sheet from sidebar. AppXray tests use setState to set this.
+    var showGroupCreationSheet: Bool = false
     var pendingQuestions: [String: AgentQuestion] = [:]
     var pendingConfirmations: [String: AgentConfirmation] = [:]
     var progressTrackers: [String: ProgressTracker] = [:]
@@ -75,6 +82,7 @@ final class AppState {
 
     var createdSessions: Set<String> = []
     var generateAgentRequestId: String?
+    var generateGroupRequestId: String?
     var generateSkillRequestId: String?
     var generateTemplateRequestId: String?
 
@@ -899,6 +907,19 @@ final class AppState {
         ))
     }
 
+    func requestGroupGeneration(prompt: String, agents: [AgentCatalogEntry]) {
+        let requestId = UUID().uuidString
+        generateGroupRequestId = requestId
+        isGeneratingGroup = true
+        generateGroupError = nil
+        generatedGroupSpec = nil
+        sendToSidecar(.generateGroup(
+            requestId: requestId,
+            prompt: prompt,
+            availableAgents: agents
+        ))
+    }
+
     func requestSkillGeneration(prompt: String, categories: [String], mcps: [MCPCatalogEntry]) {
         let requestId = UUID().uuidString
         generateSkillRequestId = requestId
@@ -1355,6 +1376,19 @@ final class AppState {
             generateAgentRequestId = nil
             Log.appState.error("Agent generation error: \(error, privacy: .public)")
 
+        case .generatedGroup(let requestId, let spec):
+            guard requestId == generateGroupRequestId else { return }
+            generatedGroupSpec = spec
+            isGeneratingGroup = false
+            generateGroupRequestId = nil
+
+        case .generateGroupError(let requestId, let error):
+            guard requestId == generateGroupRequestId else { return }
+            generateGroupError = error
+            isGeneratingGroup = false
+            generateGroupRequestId = nil
+            Log.appState.error("Group generation error: \(error, privacy: .public)")
+
         case .generatedSkill(let requestId, let spec):
             guard requestId == generateSkillRequestId else { return }
             generatedSkillSpec = spec
@@ -1666,8 +1700,9 @@ final class AppState {
                 logger.warning("AppState: browserResume: no controller for sessionId \(sessionId)")
             }
             sendToSidecar(.browserStateChange(sessionId: sessionId, state: "agentDriving"))
+
         case .pairingConfirmed:
-            break
+            Log.appState.info("Pairing confirmed")
         }
     }
 

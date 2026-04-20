@@ -218,8 +218,12 @@ final class ConfigSyncService {
         repairGroupHomeFolders(context: context)
 
         do {
-            try context.save()
-            Log.configSync.info("Full sync complete")
+            if context.hasChanges {
+                try context.save()
+                Log.configSync.info("Full sync complete (saved changes)")
+            } else {
+                Log.configSync.info("Full sync complete (no changes)")
+            }
         } catch {
             Log.configSync.error("Failed to save: \(error)")
         }
@@ -440,7 +444,13 @@ final class ConfigSyncService {
         }
 
         for entity in existing where entity.configSlug != nil && !seenSlugs.contains(entity.configSlug!) {
-            entity.isEnabled = false
+            // Only disable if this agent isn't managed by the file-backed (subdirectory) format.
+            // File-backed agents (e.g. daily-news-digest/config.json) are handled by syncAgentFiles().
+            let fileBackedDir = ConfigFileManager.agentsDirectory.appendingPathComponent(entity.configSlug!)
+            let isFileBacked = FileManager.default.fileExists(atPath: fileBackedDir.appendingPathComponent("config.json").path)
+            if !isFileBacked {
+                entity.isEnabled = false
+            }
         }
     }
 
@@ -660,7 +670,12 @@ final class ConfigSyncService {
         }
 
         for entity in existing where entity.configSlug != nil && !seenSlugs.contains(entity.configSlug!) {
-            entity.isEnabled = false
+            // Only disable if not managed by file-backed (subdirectory) format
+            let fileBackedDir = ConfigFileManager.groupsDirectory.appendingPathComponent(entity.configSlug!)
+            let isFileBacked = FileManager.default.fileExists(atPath: fileBackedDir.appendingPathComponent("config.json").path)
+            if !isFileBacked {
+                entity.isEnabled = false
+            }
         }
     }
 
@@ -728,6 +743,7 @@ final class ConfigSyncService {
                 entity.maxBudget = entry.config.maxBudget
                 entity.maxThinkingTokens = entry.config.maxThinkingTokens
                 entity.defaultWorkingDirectory = entry.config.defaultWorkingDirectory
+                entity.isEnabled = true
                 entity.instancePolicy = AgentInstancePolicy(rawValue: entry.config.instancePolicy ?? "") ?? .agentDefault
                 entity.instancePolicyPoolMax = entry.config.instancePolicyPoolMax
                 if let isShared = entry.config.isShared { entity.isShared = isShared }
@@ -783,18 +799,18 @@ final class ConfigSyncService {
             }
         }
 
-        // Soft-disable entities whose files were removed
+        // Soft-disable entities whose file-backed directories were removed.
+        // Only touch agents that are in the file-backed format (subdirectory with config.json).
+        // Skip flat-format agents (e.g. coder.json) — those are managed by syncAgents().
         for entity in existing where entity.configSlug != nil && !seenSlugs.contains(entity.configSlug!) {
-            // Only disable if this slug looks like it came from the file-backed format (subdirectory style)
-            // Check: only touch entities whose slug is known to be from readAllAgentFiles (i.e. not already
-            // covered by syncAgents). To avoid double-disabling we skip — the legacy syncAgents() handles
-            // the catalog-format slugs; here we only disable if the file-backed directory is gone.
             let fileBackedDir = ConfigFileManager.agentsDirectory.appendingPathComponent(entity.configSlug!)
-            if FileManager.default.fileExists(atPath: fileBackedDir.path + "/config.json") == false
-                && seenSlugs.isEmpty == false {
-                // Only disable if this slug was seen by the file-backed reader at some point (i.e. the
-                // entity's configSlug matches the file-backed layout). We conservatively skip to avoid
-                // disabling catalog-format entities here.
+            let hasFlatFile = FileManager.default.fileExists(
+                atPath: ConfigFileManager.agentsDirectory.appendingPathComponent(entity.configSlug! + ".json").path
+            )
+            // Only disable if this was a file-backed agent (not flat-format) and the directory is gone
+            if !hasFlatFile
+                && !FileManager.default.fileExists(atPath: fileBackedDir.path + "/config.json")
+                && !seenSlugs.isEmpty {
                 entity.isEnabled = false
             }
         }
@@ -877,6 +893,7 @@ final class ConfigSyncService {
                 entity.autonomousCapable = entry.config.autonomousCapable ?? false
                 entity.coordinatorAgentId = coordinatorId
                 entity.agentRoles = roleMap
+                entity.isEnabled = true
                 entity.workflow = workflowSteps
             } else {
                 let byName = existing.first { $0.name == entry.config.name && $0.configSlug == nil }

@@ -25,6 +25,7 @@ export type SidecarCommand =
   | { type: "nostr.injectCommand"; command: SidecarCommand }
   | { type: "nostr.peerAnnounce"; pubkeyHex: string; relays: string[] }
   | { type: "generate.agent"; requestId: string; prompt: string; availableSkills: SkillCatalogEntry[]; availableMCPs: MCPCatalogEntry[] }
+  | { type: "generate.group"; requestId: string; prompt: string; availableAgents: AgentCatalogEntry[] }
   | { type: "generate.skill"; requestId: string; prompt: string; availableCategories: string[]; availableMCPs: MCPCatalogEntry[] }
   | { type: "generate.template"; requestId: string; intent: string; agentName: string; agentSystemPrompt: string }
   | { type: "session.questionAnswer"; sessionId: string; questionId: string; answer: string; selectedOptions?: string[] }
@@ -212,6 +213,22 @@ export interface GeneratedAgentSpec {
   maxBudget?: number;
 }
 
+export interface AgentCatalogEntry {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface GeneratedGroupSpec {
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  groupInstruction: string;
+  defaultMission?: string;
+  matchedAgentIds: string[];
+}
+
 export interface GeneratedSkillSpec {
   name: string;
   description: string;
@@ -245,6 +262,8 @@ export type SidecarEvent =
   | { type: "sidecar.ready"; port: number; version: string }
   | { type: "generate.agent.result"; requestId: string; spec: GeneratedAgentSpec }
   | { type: "generate.agent.error"; requestId: string; error: string }
+  | { type: "generate.group.result"; requestId: string; groupSpec: GeneratedGroupSpec }
+  | { type: "generate.group.error"; requestId: string; error: string }
   | { type: "generate.skill.result"; requestId: string; spec: GeneratedSkillSpec }
   | { type: "generate.skill.error"; requestId: string; error: string }
   | { type: "generate.template.result"; requestId: string; spec: GeneratedTemplateSpec }

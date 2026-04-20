@@ -18,6 +18,7 @@ enum SidecarCommand: Sendable {
     indirect case nostrInjectCommand(command: SidecarCommand)
     case nostrPeerAnnounce(pubkeyHex: String, relays: [String])
     case generateAgent(requestId: String, prompt: String, availableSkills: [SkillCatalogEntry], availableMCPs: [MCPCatalogEntry])
+    case generateGroup(requestId: String, prompt: String, availableAgents: [AgentCatalogEntry])
     case generateSkill(requestId: String, prompt: String, availableCategories: [String], availableMCPs: [MCPCatalogEntry])
     case generateTemplate(requestId: String, intent: String, agentName: String, agentSystemPrompt: String)
     case questionAnswer(sessionId: String, questionId: String, answer: String, selectedOptions: [String]?)
@@ -127,6 +128,10 @@ enum SidecarCommand: Sendable {
         case .generateAgent(let requestId, let prompt, let skills, let mcps):
             return try encoder.encode(
                 GenerateAgentWire(type: "generate.agent", requestId: requestId, prompt: prompt, availableSkills: skills, availableMCPs: mcps)
+            )
+        case .generateGroup(let requestId, let prompt, let agents):
+            return try encoder.encode(
+                GenerateGroupWire(type: "generate.group", requestId: requestId, prompt: prompt, availableAgents: agents)
             )
         case .generateSkill(let requestId, let prompt, let availableCategories, let mcps):
             return try encoder.encode(
@@ -451,6 +456,13 @@ private struct GenerateAgentWire: Encodable {
     let availableMCPs: [MCPCatalogEntry]
 }
 
+private struct GenerateGroupWire: Encodable {
+    let type: String
+    let requestId: String
+    let prompt: String
+    let availableAgents: [AgentCatalogEntry]
+}
+
 private struct GenerateSkillWire: Encodable {
     let type: String
     let requestId: String
@@ -465,6 +477,12 @@ private struct GenerateTemplateWire: Encodable {
     let intent: String
     let agentName: String
     let agentSystemPrompt: String
+}
+
+struct AgentCatalogEntry: Codable, Sendable {
+    let id: String
+    let name: String
+    let description: String
 }
 
 struct SkillCatalogEntry: Codable, Sendable {
@@ -491,6 +509,16 @@ struct GeneratedAgentSpec: Codable, Sendable, Equatable {
     let matchedMCPIds: [String]
     let maxTurns: Int?
     let maxBudget: Double?
+}
+
+struct GeneratedGroupSpec: Codable, Sendable, Equatable {
+    let name: String
+    let description: String
+    let icon: String
+    let color: String
+    let groupInstruction: String
+    let defaultMission: String?
+    let matchedAgentIds: [String]
 }
 
 struct GeneratedSkillSpec: Codable, Sendable, Equatable {
@@ -645,6 +673,8 @@ enum SidecarEvent: Sendable {
     case sessionReused(originalSessionId: String, reusedSessionId: String)
     case generatedAgent(requestId: String, spec: GeneratedAgentSpec)
     case generateAgentError(requestId: String, error: String)
+    case generatedGroup(requestId: String, spec: GeneratedGroupSpec)
+    case generateGroupError(requestId: String, error: String)
     case generatedSkill(requestId: String, spec: GeneratedSkillSpec)
     case generateSkillError(requestId: String, error: String)
     case generatedTemplate(requestId: String, spec: GeneratedTemplateSpec)
@@ -768,6 +798,7 @@ struct IncomingWireMessage: Codable, Sendable {
     let fileName: String?
     let requestId: String?
     let spec: GeneratedAgentSpec?
+    let groupSpec: GeneratedGroupSpec?
     let skillSpec: GeneratedSkillSpec?
     let templateSpec: GeneratedTemplateSpec?
     let questionId: String?
@@ -830,7 +861,7 @@ struct IncomingWireMessage: Codable, Sendable {
         case error, channelId, from, to, message, key, value, writtenBy
         case parentSessionId, childSessionId, originalSessionId, reusedSessionId
         case imageData, mediaType, filePath, fileType, fileName
-        case requestId, spec, skillSpec, templateSpec, questionId, question, options, multiSelect
+        case requestId, spec, groupSpec, skillSpec, templateSpec, questionId, question, options, multiSelect
         case `private`, inputType, inputConfig
         case confirmationId, action, reason, riskLevel, details
         case format, title, content, height, progressId, steps, suggestions
@@ -897,6 +928,12 @@ struct IncomingWireMessage: Codable, Sendable {
         case "generate.agent.error":
             guard let rid = requestId else { return nil }
             return .generateAgentError(requestId: rid, error: error ?? "Unknown error")
+        case "generate.group.result":
+            guard let rid = requestId, let s = groupSpec else { return nil }
+            return .generatedGroup(requestId: rid, spec: s)
+        case "generate.group.error":
+            guard let rid = requestId else { return nil }
+            return .generateGroupError(requestId: rid, error: error ?? "Unknown error")
         case "generate.skill.result":
             guard let rid = requestId, let s = skillSpec else { return nil }
             return .generatedSkill(requestId: rid, spec: s)

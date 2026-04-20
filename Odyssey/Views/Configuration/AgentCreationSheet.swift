@@ -124,7 +124,7 @@ struct AgentCreationSheet: View {
             Text(existingAgent != nil ? "Edit Agent" : "New Agent")
                 .font(.title3)
                 .fontWeight(.semibold)
-                .accessibilityIdentifier("agentCreation.title")
+                .stableXrayId("agentCreation.title")
             Spacer()
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -132,7 +132,8 @@ struct AgentCreationSheet: View {
             }
             .buttonStyle(.borderless)
             .help("Close")
-            .accessibilityIdentifier("agentCreation.closeButton")
+            .appXrayTapProxy(id: "agentCreation.closeButton") { dismiss() }
+            .stableXrayId("agentCreation.closeButton")
             .accessibilityLabel("Close")
         }
         .padding()
@@ -150,7 +151,8 @@ struct AgentCreationSheet: View {
         .pickerStyle(.segmented)
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .accessibilityIdentifier("agentCreation.modePicker")
+        .disabled(isGenerating)
+        .stableXrayId("agentCreation.modePicker")
     }
 
     // MARK: - From-Prompt Section
@@ -169,13 +171,15 @@ struct AgentCreationSheet: View {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                 )
-                .accessibilityIdentifier("agentCreation.promptEditor")
+                .disabled(isGenerating)
+                .opacity(isGenerating ? 0.6 : 1)
+                .stableXrayId("agentCreation.promptEditor")
 
             if let error = generateError {
                 Text(error)
                     .font(.caption)
                     .foregroundStyle(.red)
-                    .accessibilityIdentifier("agentCreation.generateError")
+                    .stableXrayId("agentCreation.generateError")
             }
 
             if isGenerating {
@@ -186,7 +190,7 @@ struct AgentCreationSheet: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                .accessibilityIdentifier("agentCreation.generatingIndicator")
+                .stableXrayId("agentCreation.generatingIndicator")
             }
         }
     }
@@ -198,7 +202,7 @@ struct AgentCreationSheet: View {
         Form {
             Section("Identity") {
                 TextField("Name", text: $name)
-                    .accessibilityIdentifier("agentCreation.nameField")
+                    .stableXrayId("agentCreation.nameField")
                     .onChange(of: name) { _, newName in
                         if !hasCustomHomeDir {
                             homeDirectory = Agent.defaultHomePath(for: newName)
@@ -207,7 +211,7 @@ struct AgentCreationSheet: View {
 
                 HStack {
                     TextField("Home Directory", text: $homeDirectory)
-                        .accessibilityIdentifier("agentCreation.homeDirectoryField")
+                        .stableXrayId("agentCreation.homeDirectoryField")
                         .onChange(of: homeDirectory) { _, newDir in
                             hasCustomHomeDir = newDir != Agent.defaultHomePath(for: name)
                         }
@@ -224,16 +228,16 @@ struct AgentCreationSheet: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .accessibilityIdentifier("agentCreation.homeDirectoryBrowseButton")
+                    .stableXrayId("agentCreation.homeDirectoryBrowseButton")
                 }
 
                 TextField("Description", text: $agentDescription, axis: .vertical)
                     .lineLimit(2...4)
-                    .accessibilityIdentifier("agentCreation.descriptionField")
+                    .stableXrayId("agentCreation.descriptionField")
 
                 HStack {
                     TextField("Icon (SF Symbol)", text: $icon)
-                        .accessibilityIdentifier("agentCreation.iconField")
+                        .stableXrayId("agentCreation.iconField")
                     Image(systemName: icon.isEmpty ? "questionmark" : icon)
                         .foregroundStyle(Color.accentColor)
                 }
@@ -243,7 +247,7 @@ struct AgentCreationSheet: View {
                         Text(c.capitalized).tag(c)
                     }
                 }
-                .accessibilityIdentifier("agentCreation.colorPicker")
+                .stableXrayId("agentCreation.colorPicker")
             }
 
             Section("Model") {
@@ -252,21 +256,21 @@ struct AgentCreationSheet: View {
                         Text(choice.label).tag(choice.rawValue)
                     }
                 }
-                .accessibilityIdentifier("agentCreation.providerPicker")
+                .stableXrayId("agentCreation.providerPicker")
 
                 Picker("Instance Policy", selection: $instancePolicy) {
                     ForEach(AgentInstancePolicy.allCases, id: \.self) { policy in
                         Text(policy.displayName).tag(policy)
                     }
                 }
-                .accessibilityIdentifier("agentCreation.instancePolicyPicker")
+                .stableXrayId("agentCreation.instancePolicyPicker")
             }
 
             Section("System Prompt") {
                 TextEditor(text: $systemPrompt)
                     .font(.body)
                     .frame(minHeight: 80)
-                    .accessibilityIdentifier("agentCreation.systemPromptEditor")
+                    .stableXrayId("agentCreation.systemPromptEditor")
             }
 
             Section("Capabilities") {
@@ -275,10 +279,10 @@ struct AgentCreationSheet: View {
 
             Section("Limits (optional)") {
                 TextField("Max Turns", text: $maxTurns)
-                    .accessibilityIdentifier("agentCreation.maxTurnsField")
+                    .stableXrayId("agentCreation.maxTurnsField")
 
                 TextField("Max Budget ($)", text: $maxBudget)
-                    .accessibilityIdentifier("agentCreation.maxBudgetField")
+                    .stableXrayId("agentCreation.maxBudgetField")
             }
         }
         .formStyle(.grouped)
@@ -299,7 +303,7 @@ struct AgentCreationSheet: View {
                     .font(.caption)
                     .buttonStyle(.borderless)
                     .foregroundStyle(Color.accentColor)
-                    .accessibilityIdentifier("agentCreation.addSkillButton")
+                    .stableXrayId("agentCreation.addSkillButton")
                     .popover(isPresented: $showSkillPicker, arrowEdge: .trailing) {
                         capabilityPickerPopover(
                             title: "Skills",
@@ -328,7 +332,7 @@ struct AgentCreationSheet: View {
                         }
                     }
                 }
-                .accessibilityIdentifier("agentCreation.selectedSkillsList")
+                .stableXrayId("agentCreation.selectedSkillsList")
             }
         }
 
@@ -345,7 +349,7 @@ struct AgentCreationSheet: View {
                     .font(.caption)
                     .buttonStyle(.borderless)
                     .foregroundStyle(Color.accentColor)
-                    .accessibilityIdentifier("agentCreation.addMCPButton")
+                    .stableXrayId("agentCreation.addMCPButton")
                     .popover(isPresented: $showMCPPicker, arrowEdge: .trailing) {
                         capabilityPickerPopover(
                             title: "MCPs",
@@ -374,7 +378,7 @@ struct AgentCreationSheet: View {
                         }
                     }
                 }
-                .accessibilityIdentifier("agentCreation.selectedMCPsList")
+                .stableXrayId("agentCreation.selectedMCPsList")
             }
         }
     }
@@ -465,7 +469,8 @@ struct AgentCreationSheet: View {
                 dismiss()
             }
             .keyboardShortcut(.cancelAction)
-            .accessibilityIdentifier("agentCreation.cancelButton")
+            .appXrayTapProxy(id: "agentCreation.cancelButton") { dismiss() }
+            .stableXrayId("agentCreation.cancelButton")
 
             if mode == .fromPrompt {
                 Button {
@@ -480,7 +485,8 @@ struct AgentCreationSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGenerating)
-                .accessibilityIdentifier("agentCreation.generateButton")
+                .appXrayTapProxy(id: "agentCreation.generateButton") { Task { await generate() } }
+                .stableXrayId("agentCreation.generateButton")
             } else {
                 Button(existingAgent != nil ? "Save" : "Create Agent") {
                     save()
@@ -488,7 +494,8 @@ struct AgentCreationSheet: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .keyboardShortcut(.defaultAction)
-                .accessibilityIdentifier("agentCreation.createButton")
+                .appXrayTapProxy(id: "agentCreation.createButton") { save() }
+                .stableXrayId("agentCreation.createButton")
             }
         }
         .padding()
@@ -536,6 +543,8 @@ struct AgentCreationSheet: View {
         systemPrompt = spec.systemPrompt
         maxTurns = spec.maxTurns.map { String($0) } ?? ""
         maxBudget = spec.maxBudget.map { String($0) } ?? ""
+        homeDirectory = Agent.defaultHomePath(for: spec.name)
+        hasCustomHomeDir = false
         // Map matched IDs from the spec back to UUIDs in our local catalog
         selectedSkillIds = Set(spec.matchedSkillIds.compactMap { UUID(uuidString: $0) })
         selectedMCPIds = Set(spec.matchedMCPIds.compactMap { UUID(uuidString: $0) })
