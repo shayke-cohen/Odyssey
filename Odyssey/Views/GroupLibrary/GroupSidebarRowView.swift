@@ -18,6 +18,8 @@ struct GroupSidebarRowView: View {
     var onDeleteConversation: ((Conversation) -> Void)?
     var projects: [Project] = []
     var onNewSessionInProject: ((Project) -> Void)?
+    var isPinned: Bool = false
+    var onTogglePin: (() -> Void)?
     var onHideFromSidebar: (() -> Void)?
     var onScheduleMission: (() -> Void)?
     var onViewSessionHistory: (() -> Void)?
@@ -235,6 +237,11 @@ struct GroupSidebarRowView: View {
                         .background(.quaternary)
                         .clipShape(Capsule())
                 }
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(tint.opacity(isSelected ? 0.9 : 0.7))
+                }
 
                 if isHeaderHovered {
                     if group.autonomousCapable, let onAuto = onNewAutonomousChat {
@@ -265,6 +272,8 @@ struct GroupSidebarRowView: View {
                         Button("View Session History") { onViewSessionHistory?() }
                             .accessibilityIdentifier("sidebar.groupContext.viewHistory.\(group.id.uuidString)")
                         Divider()
+                        Button(isPinned ? "Unpin from Sidebar" : "Pin to Sidebar") { onTogglePin?() }
+                            .accessibilityIdentifier("sidebar.groupContext.togglePin.\(group.id.uuidString)")
                         Button("Hide from Sidebar") { onHideFromSidebar?() }
                             .accessibilityIdentifier("sidebar.groupContext.hideSidebar.\(group.id.uuidString)")
                         Divider()
@@ -331,6 +340,8 @@ struct GroupSidebarRowView: View {
                 Button("View Session History") { onViewSessionHistory?() }
                     .accessibilityIdentifier("sidebar.groupContext.viewHistory.\(group.id.uuidString)")
                 Divider()
+                Button(isPinned ? "Unpin from Sidebar" : "Pin to Sidebar") { onTogglePin?() }
+                    .accessibilityIdentifier("sidebar.groupContext.togglePin.\(group.id.uuidString)")
                 Button("Hide from Sidebar") { onHideFromSidebar?() }
                     .accessibilityIdentifier("sidebar.groupContext.hideSidebar.\(group.id.uuidString)")
                 Divider()
@@ -354,6 +365,12 @@ struct GroupSidebarRowView: View {
             }
             .help("Hide")
             .tint(.gray)
+            Button { onTogglePin?() } label: {
+                Image(systemName: isPinned ? "pin.slash" : "pin")
+            }
+            .help(isPinned ? "Unpin" : "Pin")
+            .tint(.yellow)
+            .accessibilityIdentifier("sidebar.groupRow.swipePin.\(group.id.uuidString)")
         }
     }
 

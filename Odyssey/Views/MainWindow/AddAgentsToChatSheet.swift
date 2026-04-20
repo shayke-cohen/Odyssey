@@ -42,7 +42,7 @@ struct AddAgentsToChatSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Add agents or groups")
+            Text(filter == .agentsOnly ? "Add agents" : filter == .groupsOnly ? "Add groups" : "Add agents or groups")
                 .font(.headline)
                 .xrayId("addAgents.title")
 

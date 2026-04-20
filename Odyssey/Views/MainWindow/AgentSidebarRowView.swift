@@ -334,6 +334,12 @@ struct AgentSidebarRowView: View {
             }
             .help("Hide")
             .tint(.gray)
+            Button { onTogglePin?() } label: {
+                Image(systemName: isPinned ? "pin.slash" : "pin")
+            }
+            .help(isPinned ? "Unpin" : "Pin")
+            .tint(.yellow)
+            .accessibilityIdentifier("sidebar.agentRow.swipePin.\(agent.id.uuidString)")
         }
     }
 

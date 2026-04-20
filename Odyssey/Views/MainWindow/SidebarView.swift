@@ -198,6 +198,8 @@ struct SidebarView: View {
     @State private var cachedSortedProjects: [Project] = []
     @State private var cachedResidentAgents: [Agent] = []
     @State private var cachedNonResidentAgents: [Agent] = []
+    @State private var cachedResidentGroups: [AgentGroup] = []
+    @State private var cachedNonResidentGroups: [AgentGroup] = []
     @State private var conversationToAgentIndex: [UUID: UUID] = [:]
 
     private var workshopEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.workshopKey) || (masterFlag && workshopFlag) }
@@ -371,6 +373,7 @@ struct SidebarView: View {
             .onAppear {
                 rebuildProjectCache()
                 rebuildAgentCaches()
+                rebuildGroupCaches()
                 rebuildConversationIndex()
             }
             .onChange(of: projects.count) { _, _ in rebuildProjectCache() }
@@ -379,6 +382,10 @@ struct SidebarView: View {
                 rebuildConversationIndex()
             }
             .onChange(of: agents.map { $0.showInSidebar }) { _, _ in rebuildAgentCaches() }
+            .onChange(of: agents.map { $0.isResident }) { _, _ in rebuildAgentCaches() }
+            .onChange(of: groups.count) { _, _ in rebuildGroupCaches() }
+            .onChange(of: groups.map { $0.showInSidebar }) { _, _ in rebuildGroupCaches() }
+            .onChange(of: groups.map { $0.isResident }) { _, _ in rebuildGroupCaches() }
             .onChange(of: conversations.count) { _, _ in rebuildConversationIndex() }
     }
 
@@ -414,6 +421,7 @@ struct SidebarView: View {
             }
             rebuildProjectCache()
             rebuildAgentCaches()
+            rebuildGroupCaches()
         }
         .onChange(of: projects.count) { _, _ in rebuildProjectCache() }
         .onChange(of: agents.count) { _, _ in rebuildAgentCaches() }
@@ -504,6 +512,8 @@ struct SidebarView: View {
     private var sortedProjects: [Project] { cachedSortedProjects }
     private var residentAgents: [Agent] { cachedResidentAgents }
     private var nonResidentAgents: [Agent] { cachedNonResidentAgents }
+    private var residentGroups: [AgentGroup] { cachedResidentGroups }
+    private var nonResidentGroups: [AgentGroup] { cachedNonResidentGroups }
 
     private func rebuildProjectCache() {
         cachedSortedProjects = projects.sorted { lhs, rhs in
@@ -515,6 +525,11 @@ struct SidebarView: View {
     private func rebuildAgentCaches() {
         cachedResidentAgents = agents.filter { $0.isEnabled && $0.isResident }.sorted { $0.name < $1.name }
         cachedNonResidentAgents = agents.filter { $0.isEnabled && !$0.isResident && $0.showInSidebar }.sorted { $0.name < $1.name }
+    }
+
+    private func rebuildGroupCaches() {
+        cachedResidentGroups = groups.filter { $0.isEnabled && $0.isResident }.sorted { $0.name < $1.name }
+        cachedNonResidentGroups = groups.filter { $0.isEnabled && !$0.isResident && $0.showInSidebar }.sorted { $0.name < $1.name }
     }
 
     private func rebuildConversationIndex() {
@@ -1210,7 +1225,7 @@ struct SidebarView: View {
     // MARK: - Groups Section
 
     @ViewBuilder
-    private func groupSidebarRow(_ group: AgentGroup) -> some View {
+    private func groupSidebarRow(_ group: AgentGroup, isPinned: Bool = false) -> some View {
         GroupSidebarRowView(
             group: group,
             conversations: conversationsForGroup(group),
@@ -1246,6 +1261,11 @@ struct SidebarView: View {
             onDeleteConversation: { conv in promptDelete(conv) },
             projects: projects,
             onNewSessionInProject: { project in selectOrCreateGroupChat(group, in: project) },
+            isPinned: isPinned,
+            onTogglePin: {
+                group.isResident.toggle()
+                try? modelContext.save()
+            },
             onHideFromSidebar: { group.showInSidebar = false; try? modelContext.save() },
             onScheduleMission: {
                 groupScheduleDraft = ScheduledMissionDraft(
@@ -1272,12 +1292,39 @@ struct SidebarView: View {
         )
     }
 
+    @AppStorage("sidebar.nonResidentGroupsExpanded") private var isNonResidentGroupsExpanded: Bool = false
+
     @ViewBuilder
     private var groupsSection: some View {
         Section {
             if isGroupsSectionExpanded {
-                ForEach(groups.filter { $0.isEnabled && $0.showInSidebar }) { group in
-                    groupSidebarRow(group)
+                // 1. Resident (pinned) groups — always shown
+                ForEach(residentGroups) { group in
+                    groupSidebarRow(group, isPinned: true)
+                }
+
+                // 2. Non-resident groups — collapsed under "N more groups..."
+                if !nonResidentGroups.isEmpty {
+                    if isNonResidentGroupsExpanded {
+                        ForEach(nonResidentGroups) { group in
+                            groupSidebarRow(group, isPinned: false)
+                        }
+                    }
+                    Button {
+                        isNonResidentGroupsExpanded.toggle()
+                    } label: {
+                        Label(
+                            isNonResidentGroupsExpanded
+                                ? "Show fewer"
+                                : "\(nonResidentGroups.count) more group\(nonResidentGroups.count == 1 ? "" : "s")\u{2026}",
+                            systemImage: isNonResidentGroupsExpanded ? "chevron.up" : "chevron.down"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 8)
+                    .accessibilityIdentifier("sidebar.groupsShowMore")
                 }
 
                 let hiddenGroupCount = groups.filter { $0.isEnabled && !$0.showInSidebar }.count
