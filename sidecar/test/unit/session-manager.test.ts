@@ -5,8 +5,9 @@
  * short-circuit on missing sessions, missing configs, and mode updates.
  * Full lifecycle tests live in test/integration/local-agent-runtime.test.ts.
  */
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { SessionManager } from "../../src/session-manager.js";
+import { pendingQuestions, questionsBySession } from "../../src/tools/ask-user-tool.js";
 import { SessionRegistry } from "../../src/stores/session-registry.js";
 import { BlackboardStore } from "../../src/stores/blackboard-store.js";
 import { MessageStore } from "../../src/stores/message-store.js";
@@ -48,6 +49,114 @@ function buildCtx(broadcast: (e: SidecarEvent) => void = () => {}): ToolContext 
     agentDefinitions: new Map<string, AgentConfig>(),
   };
 }
+
+describe("pauseSession — ask_user cleanup", () => {
+  let events: SidecarEvent[];
+  let registry: SessionRegistry;
+  let ctx: ToolContext;
+  let sm: SessionManager;
+
+  beforeEach(() => {
+    events = [];
+    registry = new SessionRegistry();
+    ctx = { ...buildCtx((e) => events.push(e)), sessions: registry };
+    sm = new SessionManager((e) => events.push(e), registry, ctx);
+  });
+
+  afterEach(() => {
+    pendingQuestions.clear();
+    questionsBySession.clear();
+  });
+
+  test("pauseSession resolves pending ask_user questions with a pause message", async () => {
+    const sessionId = "pause-q-session";
+    registry.create(sessionId, {
+      name: "QuestionBot",
+      systemPrompt: "",
+      allowedTools: [],
+      mcpServers: [],
+      model: "claude-sonnet-4-6",
+      workingDirectory: "/tmp",
+      skills: [],
+    });
+
+    let resolvedAnswer: string | undefined;
+    const questionId = "q-pause-test";
+    pendingQuestions.set(questionId, {
+      resolve: (result) => { resolvedAnswer = result.answer; },
+      reject: () => {},
+      timer: setTimeout(() => {}, 60_000),
+    });
+    questionsBySession.set(sessionId, new Set([questionId]));
+
+    await sm.pauseSession(sessionId);
+
+    expect(resolvedAnswer).toBe("[Session was paused before you could answer.]");
+    expect(pendingQuestions.has(questionId)).toBe(false);
+    expect(questionsBySession.has(sessionId)).toBe(false);
+  });
+
+  test("pauseSession resolves all pending questions when multiple are outstanding", async () => {
+    const sessionId = "multi-q-session";
+    registry.create(sessionId, {
+      name: "MultiQBot",
+      systemPrompt: "",
+      allowedTools: [],
+      mcpServers: [],
+      model: "claude-sonnet-4-6",
+      workingDirectory: "/tmp",
+      skills: [],
+    });
+
+    const answers: string[] = [];
+    const ids = ["q1", "q2", "q3"];
+    for (const id of ids) {
+      pendingQuestions.set(id, {
+        resolve: (result) => answers.push(result.answer),
+        reject: () => {},
+        timer: setTimeout(() => {}, 60_000),
+      });
+    }
+    questionsBySession.set(sessionId, new Set(ids));
+
+    await sm.pauseSession(sessionId);
+
+    expect(answers).toHaveLength(3);
+    expect(answers.every((a) => a === "[Session was paused before you could answer.]")).toBe(true);
+    expect(pendingQuestions.size).toBe(0);
+  });
+
+  test("pauseSession on missing session does not throw and leaves questions untouched", async () => {
+    const questionId = "q-untouched";
+    pendingQuestions.set(questionId, {
+      resolve: () => {},
+      reject: () => {},
+      timer: setTimeout(() => {}, 60_000),
+    });
+
+    await sm.pauseSession("ghost");
+
+    expect(pendingQuestions.has(questionId)).toBe(true);
+    pendingQuestions.delete(questionId);
+  });
+
+  test("session status is set to paused after pauseSession", async () => {
+    const sessionId = "status-check-session";
+    registry.create(sessionId, {
+      name: "StatusBot",
+      systemPrompt: "",
+      allowedTools: [],
+      mcpServers: [],
+      model: "claude-sonnet-4-6",
+      workingDirectory: "/tmp",
+      skills: [],
+    });
+
+    await sm.pauseSession(sessionId);
+
+    expect(registry.get(sessionId)?.status).toBe("paused");
+  });
+});
 
 describe("SessionManager short-circuit paths", () => {
   let events: SidecarEvent[];

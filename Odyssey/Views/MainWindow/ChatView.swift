@@ -964,26 +964,31 @@ struct ChatView: View {
             HStack(spacing: -6) {
                 ForEach((convo.sessions ?? []).prefix(3), id: \.id) { s in
                     if let ag = s.agent {
+                        let isActive = appState.sessionActivity[s.id.uuidString]?.isActive == true
                         Image(systemName: ag.icon)
                             .foregroundStyle(Color.fromAgentColor(ag.color))
                             .font(.caption)
                             .padding(5)
                             .background(.ultraThinMaterial, in: Circle())
+                            .help("\(ag.name) — \(isActive ? "running" : "idle")")
                     }
                 }
             }
             .xrayId("chat.groupAvatarStack")
         } else if let agent = primarySession?.agent {
+            let isActive = appState.sessionActivity[primarySession?.id.uuidString ?? ""]?.isActive == true
             Image(systemName: agent.icon)
                 .foregroundStyle(Color.fromAgentColor(agent.color))
                 .font(.title3)
                 .frame(width: 32, height: 32)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                .help("\(agent.name) — \(isActive ? "running" : "idle")")
                 .xrayId("chat.agentAvatar")
         } else {
             Image(systemName: "bubble.left.and.bubble.right.fill")
                 .foregroundStyle(.blue)
                 .font(.title3)
+                .help("Chat conversation")
                 .xrayId("chat.chatIcon")
         }
     }
@@ -1006,6 +1011,7 @@ struct ChatView: View {
                         .background(Color.indigo.opacity(0.18), in: RoundedRectangle(cornerRadius: 4))
                         .foregroundStyle(.indigo)
                         .fixedSize()
+                        .help("Group conversation — multiple agents working together")
                         .xrayId("chat.identityTypeBadge")
                 } else if let agent = primarySession?.agent {
                     Text(agent.name)
@@ -1020,6 +1026,7 @@ struct ChatView: View {
                         .background(Color.blue.opacity(0.18), in: RoundedRectangle(cornerRadius: 4))
                         .foregroundStyle(.blue)
                         .fixedSize()
+                        .help("Single agent conversation")
                         .xrayId("chat.identityTypeBadge")
                 } else {
                     Text("Chat")
@@ -1035,11 +1042,12 @@ struct ChatView: View {
                 HStack(spacing: 4) {
                     // Compact status: colored dots only, no names
                     ForEach(sessions, id: \.id) { session in
-                        if session.agent != nil {
+                        if let ag = session.agent {
                             let isActive = appState.sessionActivity[session.id.uuidString]?.isActive == true
                             Circle()
                                 .fill(isActive ? Color.green : Color.secondary.opacity(0.35))
                                 .frame(width: 5, height: 5)
+                                .help("\(ag.name) — \(isActive ? "running" : "idle")")
                                 .xrayId("chat.memberStatus.\(session.id.uuidString)")
                         }
                     }
@@ -1135,6 +1143,7 @@ struct ChatView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
+                        .help("Skill: \(skill.name) — click to configure")
                         .xrayId("chat.skillChip.\(skill.id.uuidString)")
                     }
 
@@ -1152,6 +1161,7 @@ struct ChatView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
+                        .help("Tool server: \(mcp.name) — click to configure")
                         .xrayId("chat.mcpChip.\(mcp.id.uuidString)")
                     }
 
@@ -1175,6 +1185,7 @@ struct ChatView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 .buttonStyle(.plain)
+                                .help("\(role.label): \(member.name) — click to configure group")
                                 .xrayId("chat.roleChip.\(member.id.uuidString)")
                             }
                         }
@@ -1246,6 +1257,7 @@ struct ChatView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(.orange, in: Capsule())
+                    .help("Plan mode — agent outlines a plan before executing")
                     .xrayId("chat.planModeBadge")
             }
 
@@ -1274,6 +1286,7 @@ struct ChatView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .help("Stop the running agent")
                     .xrayId("chat.stopButton")
                     .accessibilityLabel("Stop agent")
                 } else if hasInterruptedSessions {
@@ -1285,6 +1298,7 @@ struct ChatView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .help("Restore interrupted agent context")
                     .xrayId("chat.restoreContextButton")
                     .accessibilityLabel("Restore agent context")
                 }
@@ -1602,6 +1616,7 @@ struct ChatView: View {
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
+        .help("Session settings — model, cost, fork, export, and more")
         .xrayId("chat.sessionMenu")
         .accessibilityLabel("Session menu")
     }
@@ -1656,6 +1671,7 @@ struct ChatView: View {
             .labelsHidden()
             .controlSize(.small)
             .frame(width: 130)
+            .help("Interactive: you approve each step · Auto: agent runs uninterrupted")
             .xrayId("chat.executionModeSegmented")
             .accessibilityLabel("Execution mode")
         }

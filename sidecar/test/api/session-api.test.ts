@@ -7,6 +7,7 @@ import { ChatChannelStore } from "../../src/stores/chat-channel-store.js";
 import { WorkspaceStore } from "../../src/stores/workspace-store.js";
 import { PeerRegistry } from "../../src/stores/peer-registry.js";
 import { ConnectorStore } from "../../src/stores/connector-store.js";
+import { DelegationStore } from "../../src/stores/delegation-store.js";
 import { SseManager } from "../../src/sse-manager.js";
 import { WebhookManager } from "../../src/webhook-manager.js";
 import type { ApiContext } from "../../src/types.js";
@@ -42,6 +43,7 @@ function makeContext() {
     } as any,
     broadcast: (event: SidecarEvent) => sseManager.broadcast(event),
     agentDefinitions: new Map(),
+    delegation: new DelegationStore(),
     pendingBrowserBlocking: new Map(),
     pendingBrowserResults: new Map(),
     spawnSession: async (sessionId) => ({ sessionId }),
@@ -97,6 +99,98 @@ afterEach(() => {
   while (activeSseManagers.length > 0) {
     activeSseManagers.pop()?.close();
   }
+});
+
+describe("Close Conversation — session pause API", () => {
+  test("POST /sessions/:id/pause returns 404 for unknown session", async () => {
+    const { ctx } = makeContext();
+    const response = await handleApiRequest(
+      new Request(`${BASE}/sessions/ghost-session/pause`, { method: "POST" }),
+      ctx,
+    );
+    expect(response?.status).toBe(404);
+    const body = await response?.json() as any;
+    expect(body.error).toBe("session_not_found");
+  });
+
+  test("POST /sessions/:id/pause on active session pauses it and returns 200", async () => {
+    const { ctx, sessions, pauseCalls } = makeContext();
+    sessions.create("active-session", makeAgentConfig({ name: "ActiveBot" }));
+    sessions.update("active-session", { status: "active" });
+
+    const response = await handleApiRequest(
+      new Request(`${BASE}/sessions/active-session/pause`, { method: "POST" }),
+      ctx,
+    );
+
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toEqual({ sessionId: "active-session", status: "paused" });
+    expect(pauseCalls).toEqual(["active-session"]);
+    expect(sessions.get("active-session")?.status).toBe("paused");
+  });
+
+  test("Close Conversation pauses all participant sessions", async () => {
+    const { ctx, sessions, pauseCalls } = makeContext();
+    const sessionIds = ["conv-s1", "conv-s2", "conv-s3"];
+    for (const id of sessionIds) {
+      sessions.create(id, makeAgentConfig({ name: `Agent-${id}` }));
+      sessions.update(id, { status: "active" });
+    }
+
+    // Mirror what Swift closeConversation() does: pause all sessions in the conversation
+    for (const id of sessionIds) {
+      const response = await handleApiRequest(
+        new Request(`${BASE}/sessions/${id}/pause`, { method: "POST" }),
+        ctx,
+      );
+      expect(response?.status).toBe(200);
+    }
+
+    expect(pauseCalls).toEqual(sessionIds);
+    for (const id of sessionIds) {
+      expect(sessions.get(id)?.status).toBe("paused");
+    }
+  });
+
+  test("pausing an already-paused session is idempotent", async () => {
+    const { ctx, sessions, pauseCalls } = makeContext();
+    sessions.create("paused-session", makeAgentConfig({ name: "PausedBot" }));
+    sessions.update("paused-session", { status: "paused" });
+
+    const response = await handleApiRequest(
+      new Request(`${BASE}/sessions/paused-session/pause`, { method: "POST" }),
+      ctx,
+    );
+
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toEqual({ sessionId: "paused-session", status: "paused" });
+    expect(pauseCalls).toEqual(["paused-session"]);
+  });
+
+  test("DELETE is blocked on an active session — must pause first", async () => {
+    const { ctx, sessions } = makeContext();
+    sessions.create("blocking-session", makeAgentConfig({ name: "BlockingBot" }));
+    sessions.update("blocking-session", { status: "active" });
+
+    const deleteWhileActive = await handleApiRequest(
+      new Request(`${BASE}/sessions/blocking-session`, { method: "DELETE" }),
+      ctx,
+    );
+    expect(deleteWhileActive?.status).toBe(409);
+    const body = await deleteWhileActive?.json() as any;
+    expect(body.error).toBe("session_not_active");
+
+    await handleApiRequest(
+      new Request(`${BASE}/sessions/blocking-session/pause`, { method: "POST" }),
+      ctx,
+    );
+    const deleteAfterPause = await handleApiRequest(
+      new Request(`${BASE}/sessions/blocking-session`, { method: "DELETE" }),
+      ctx,
+    );
+    expect(deleteAfterPause?.status).toBe(200);
+    expect(sessions.get("blocking-session")).toBeUndefined();
+  });
 });
 
 describe("Session API recovery routes", () => {
