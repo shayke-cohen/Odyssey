@@ -878,7 +878,7 @@ enum ConfigFileManager {
     // MARK: - Prompt Templates (per-owner markdown files)
 
     /// Root for user-editable chat-start prompt templates.
-    /// Layout: `prompt-templates/{agents,groups}/<owner-slug>/<template-slug>.md`.
+    /// Layout: `prompt-templates/{agents,groups,projects}/<owner-slug>/<template-slug>.md`.
     /// Kept distinct from `templates/` (which holds SystemPromptTemplates).
     static var promptTemplatesDirectory: URL {
         configDirectory.appendingPathComponent("prompt-templates")
@@ -1108,7 +1108,11 @@ enum ConfigFileManager {
         let base = URL(fileURLWithPath: canonicalRootPath).lastPathComponent
             .lowercased()
             .replacingOccurrences(of: " ", with: "-")
-        return base.isEmpty ? "unknown" : base
+            .filter { $0.isLetter || $0.isNumber || $0 == "-" }
+        let safeName = base.isEmpty ? "project" : base
+        // Append a hash suffix to guarantee uniqueness when two projects share the same folder name.
+        let hash = abs(canonicalRootPath.hashValue) % 1_000_000
+        return "\(safeName)-\(String(format: "%06d", hash))"
     }
 
     // MARK: - Private Helpers
