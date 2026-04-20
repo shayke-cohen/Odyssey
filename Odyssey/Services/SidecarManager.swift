@@ -632,25 +632,22 @@ extension SidecarManager {
                 )
             }
 
-            // Collect message wires via a direct fetch — using the relationship (conv.messages)
-            // can return empty after SwiftData faults; a separate fetch is more reliable.
+            // Collect message wires per conversation (capped fetch to avoid main-thread stalls).
             var messageWiresByConv: [(convId: String, wires: [MessageWire])] = []
             if pushMessages {
-                // Fetch all messages with no predicate, then filter in Swift to avoid
-                // potential SwiftData predicate compilation issues.
-                let msgDescriptor = FetchDescriptor<ConversationMessage>(
-                    sortBy: [SortDescriptor(\.timestamp)]
-                )
-                let allMessages = (try? modelContext.fetch(msgDescriptor)) ?? []
-                var byConv: [String: [ConversationMessage]] = [:]
-                for msg in allMessages {
-                    guard !msg.isStreaming, !msg.text.isEmpty,
-                          let convId = msg.conversation?.id.uuidString else { continue }
-                    byConv[convId, default: []].append(msg)
-                }
-                for (convId, msgs) in byConv {
-                    let wires = msgs.suffix(30).map { msg in
-                        MessageWire(
+                for conv in conversations {
+                    let convId = conv.id
+                    var msgDesc = FetchDescriptor<ConversationMessage>(
+                        predicate: #Predicate<ConversationMessage> { msg in
+                            msg.conversation?.id == convId
+                        },
+                        sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+                    )
+                    msgDesc.fetchLimit = 30
+                    let recent = ((try? modelContext.fetch(msgDesc)) ?? []).reversed()
+                    let wires: [MessageWire] = recent.compactMap { msg in
+                        guard !msg.isStreaming, !msg.text.isEmpty else { return nil }
+                        return MessageWire(
                             id: msg.id.uuidString,
                             text: msg.text,
                             type: msg.type.rawValue,
@@ -662,7 +659,9 @@ extension SidecarManager {
                             thinkingText: msg.thinkingText
                         )
                     }
-                    messageWiresByConv.append((convId: convId, wires: wires))
+                    if !wires.isEmpty {
+                        messageWiresByConv.append((convId: convId.uuidString, wires: wires))
+                    }
                 }
             }
 

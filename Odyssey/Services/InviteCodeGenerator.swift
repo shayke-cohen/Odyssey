@@ -41,16 +41,41 @@ struct InviteCodeGenerator {
         )
     }
 
-    /// Build a user-invite payload for Matrix-based peer pairing.
-    static func generateUser(instanceName: String, matrixUserId: String) throws -> String {
-        struct UserPayload: Encodable {
-            let v: Int; let type: String; let instanceName: String; let matrixUserId: String
-        }
-        let data = try JSONEncoder().encode(UserPayload(v: 1, type: "user", instanceName: instanceName, matrixUserId: matrixUserId))
-        return base64urlEncode(data)
+    /// Build a user-invite code from a display name and Matrix user ID.
+    /// Returns the base64url-encoded payload string.
+    static func generateUser(
+        instanceName: String,
+        matrixUserId: String
+    ) throws -> String {
+        logger.info("InviteCodeGenerator: generating user invite for '\(instanceName, privacy: .public)'")
+        let payload = InvitePayload(
+            type: "user",
+            macNpub: matrixUserId,
+            displayName: instanceName,
+            relays: [],
+            lanHint: nil
+        )
+        return try encode(payload)
     }
 
-    // MARK: - Encode / Decode
+    // MARK: - Decode / Verify
+
+    /// Decode a base64url-encoded invite payload.
+    static func decode(_ base64url: String) throws -> InvitePayload {
+        try InvitePayload.decode(base64url)
+    }
+
+    /// Basic validation — ensures the payload has a non-empty identity and display name.
+    static func verify(_ payload: InvitePayload) throws {
+        guard !payload.macNpub.isEmpty else {
+            throw InviteCodeError.encodingFailed
+        }
+        guard !payload.displayName.isEmpty else {
+            throw InviteCodeError.encodingFailed
+        }
+    }
+
+    // MARK: - Encode
 
     /// Encode a payload to a URL-safe base64url string.
     static func encode(_ payload: InvitePayload) throws -> String {

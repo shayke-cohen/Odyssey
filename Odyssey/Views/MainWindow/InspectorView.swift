@@ -21,7 +21,6 @@ struct InspectorView: View {
     @Query private var allAgents: [Agent]
     @AppStorage(FeatureFlags.showAdvancedKey, store: AppSettings.store) private var masterFlag = false
     @AppStorage(FeatureFlags.federationKey, store: AppSettings.store) private var federationFlag = false
-    @State private var now = Date()
     @State private var editingGroup: AgentGroup?
     @State private var instructionExpanded = false
     @State private var parentConversationTitle: String?
@@ -33,8 +32,6 @@ struct InspectorView: View {
     @State private var switchingBranchName: String?
     // editingWorkingDirectory removed — project dir is per-window
     // workingDirectoryDraft removed — project dir is per-window, not editable per-session
-
-    private let durationTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var federationEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.federationKey) || (masterFlag && federationFlag) }
 
@@ -176,9 +173,6 @@ struct InspectorView: View {
             }
         }
         .frame(minWidth: 320, idealWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
-        .onReceive(durationTimer) { _ in
-            now = Date()
-        }
         .onChange(of: isGroupConversation) {
             normalizeSelectedTab()
         }
@@ -288,7 +282,7 @@ struct InspectorView: View {
             InfoRow(label: "Status", value: appState.sessionActivity[session.id.uuidString]?.displayLabel ?? session.status.rawValue.capitalized)
             InfoRow(label: "Model", value: modelShortName(session.model ?? session.agent?.model ?? ""))
             InfoRow(label: "Mode", value: session.mode.rawValue.capitalized)
-            InfoRow(label: "Duration", value: durationString(from: conversation.startedAt))
+            LiveDurationRow(startedAt: conversation.startedAt)
         }
         .inspectorSectionCard()
     }
@@ -1033,17 +1027,6 @@ struct InspectorView: View {
         }
     }
 
-    private func durationString(from start: Date) -> String {
-        let interval = now.timeIntervalSince(start)
-        let hours = Int(interval) / 3600
-        let minutes = (Int(interval) % 3600) / 60
-        let seconds = Int(interval) % 60
-        if hours > 0 {
-            return String(format: "%dh %02dm", hours, minutes)
-        }
-        return String(format: "%dm %02ds", minutes, seconds)
-    }
-
     private func turnProgressColor(used: Int, max: Int) -> Color {
         let ratio = Double(used) / Double(max)
         if ratio >= 0.9 { return .red }
@@ -1556,6 +1539,31 @@ private extension WindowInspectorTab {
         case .group:
             return "person.3"
         }
+    }
+}
+
+/// Isolated subview that owns the 1-second timer so only this tiny Text
+/// re-renders each tick — not the entire InspectorView.
+private struct LiveDurationRow: View {
+    let startedAt: Date
+    @State private var now = Date()
+
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        InfoRow(label: "Duration", value: durationString)
+            .onReceive(timer) { _ in now = Date() }
+    }
+
+    private var durationString: String {
+        let interval = now.timeIntervalSince(startedAt)
+        let hours = Int(interval) / 3600
+        let minutes = (Int(interval) % 3600) / 60
+        if hours > 0 {
+            return String(format: "%dh %02dm", hours, minutes)
+        }
+        let seconds = Int(interval) % 60
+        return String(format: "%dm %02ds", minutes, seconds)
     }
 }
 

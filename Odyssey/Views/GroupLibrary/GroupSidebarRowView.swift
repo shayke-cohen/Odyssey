@@ -50,15 +50,17 @@ struct GroupSidebarRowView: View {
                 .accessibilityIdentifier("sidebar.groupThreadRow.\(conv.id.uuidString)")
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button(role: .destructive) { onDeleteConversation?(conv) } label: {
-                        Label("Delete", systemImage: "trash")
+                        Image(systemName: "trash")
                     }
+                    .help("Delete")
                     Button {
                         conv.isArchived = true
                         conv.isPinned = false
                         try? modelContext.save()
                     } label: {
-                        Label("Archive", systemImage: "archivebox")
+                        Image(systemName: "archivebox")
                     }
+                    .help("Archive")
                     .tint(.indigo)
                 }
                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
@@ -66,8 +68,9 @@ struct GroupSidebarRowView: View {
                         conv.isPinned.toggle()
                         try? modelContext.save()
                     } label: {
-                        Label(conv.isPinned ? "Unpin" : "Pin", systemImage: conv.isPinned ? "pin.slash" : "pin")
+                        Image(systemName: conv.isPinned ? "pin.slash" : "pin")
                     }
+                    .help(conv.isPinned ? "Unpin" : "Pin")
                     .tint(.yellow)
                 }
                 .contextMenu {
@@ -146,14 +149,16 @@ struct GroupSidebarRowView: View {
                                 conv.isArchived = false
                                 try? modelContext.save()
                             } label: {
-                                Label("Unarchive", systemImage: "tray.and.arrow.up")
+                                Image(systemName: "tray.and.arrow.up")
                             }
+                            .help("Unarchive")
                             .tint(.blue)
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) { onDeleteConversation?(conv) } label: {
-                                Label("Delete", systemImage: "trash")
+                                Image(systemName: "trash")
                             }
+                            .help("Delete")
                         }
                         .contextMenu {
                             Button("Open Thread") { onSelectConversation(conv) }
@@ -194,7 +199,8 @@ struct GroupSidebarRowView: View {
                         Text(group.name)
                             .font(isSelected ? .headline.weight(.semibold) : .headline.weight(.medium))
                             .lineLimit(1)
-                        let memberNames = allAgents.filter { group.agentIds.contains($0.id) }.map(\.name).joined(separator: " · ")
+                        let members = allAgents.filter { group.agentIds.contains($0.id) }
+                        let memberNames = members.map(\.name).joined(separator: " · ")
                         if !memberNames.isEmpty {
                             Text(memberNames)
                                 .font(.caption2)
@@ -205,6 +211,11 @@ struct GroupSidebarRowView: View {
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { onSelectGroup?() }
+                .help({
+                    let members = allAgents.filter { group.agentIds.contains($0.id) }
+                    if members.isEmpty { return group.name }
+                    return "\(group.name)\n\(members.map(\.name).joined(separator: ", "))"
+                }())
 
                 Spacer()
 
@@ -332,14 +343,16 @@ struct GroupSidebarRowView: View {
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button { onNewChat() } label: {
-                Label("Start Chat", systemImage: "square.and.pencil")
+                Image(systemName: "square.and.pencil")
             }
+            .help("Start Chat")
             .tint(Color.fromAgentColor(group.color))
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button { onHideFromSidebar?() } label: {
-                Label("Hide", systemImage: "eye.slash")
+                Image(systemName: "eye.slash")
             }
+            .help("Hide")
             .tint(.gray)
         }
     }

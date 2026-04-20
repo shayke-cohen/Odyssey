@@ -50,15 +50,17 @@ struct AgentSidebarRowView: View {
                 .accessibilityLabel("Open chat \(conv.topic ?? "Untitled")")
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button(role: .destructive) { onDeleteConversation?(conv) } label: {
-                        Label("Delete", systemImage: "trash")
+                        Image(systemName: "trash")
                     }
+                    .help("Delete")
                     Button {
                         conv.isArchived = true
                         conv.isPinned = false
                         try? modelContext.save()
                     } label: {
-                        Label("Archive", systemImage: "archivebox")
+                        Image(systemName: "archivebox")
                     }
+                    .help("Archive")
                     .tint(.indigo)
                 }
                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
@@ -66,8 +68,9 @@ struct AgentSidebarRowView: View {
                         conv.isPinned.toggle()
                         try? modelContext.save()
                     } label: {
-                        Label(conv.isPinned ? "Unpin" : "Pin", systemImage: conv.isPinned ? "pin.slash" : "pin")
+                        Image(systemName: conv.isPinned ? "pin.slash" : "pin")
                     }
+                    .help(conv.isPinned ? "Unpin" : "Pin")
                     .tint(.yellow)
                 }
                 .contextMenu {
@@ -145,14 +148,16 @@ struct AgentSidebarRowView: View {
                                 conv.isArchived = false
                                 try? modelContext.save()
                             } label: {
-                                Label("Unarchive", systemImage: "tray.and.arrow.up")
+                                Image(systemName: "tray.and.arrow.up")
                             }
+                            .help("Unarchive")
                             .tint(.blue)
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) { onDeleteConversation?(conv) } label: {
-                                Label("Delete", systemImage: "trash")
+                                Image(systemName: "trash")
                             }
+                            .help("Delete")
                         }
                         .contextMenu {
                             Button("Open Thread") { onSelectConversation(conv) }
@@ -318,14 +323,16 @@ struct AgentSidebarRowView: View {
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button { onNewChat() } label: {
-                Label("New Session", systemImage: "square.and.pencil")
+                Image(systemName: "square.and.pencil")
             }
+            .help("New Session")
             .tint(Color.fromAgentColor(agent.color))
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button { onHideFromSidebar?() } label: {
-                Label("Hide", systemImage: "eye.slash")
+                Image(systemName: "eye.slash")
             }
+            .help("Hide")
             .tint(.gray)
         }
     }

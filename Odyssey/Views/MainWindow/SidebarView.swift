@@ -773,29 +773,33 @@ struct SidebarView: View {
             Button {
                 projectToArchiveThreads = project
             } label: {
-                Label("Archive Threads", systemImage: "archivebox")
+                Image(systemName: "archivebox")
             }
+            .help("Archive Threads")
             .tint(.indigo)
 
             Button(role: .destructive) {
                 projectToRemove = project
             } label: {
-                Label("Remove", systemImage: "trash")
+                Image(systemName: "trash")
             }
+            .help("Remove")
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
                 createQuickChat(in: project)
             } label: {
-                Label("New Thread", systemImage: "square.and.pencil")
+                Image(systemName: "square.and.pencil")
             }
+            .help("New Thread")
             .tint(tint)
 
             Button {
                 openProjectInFinder(project)
             } label: {
-                Label("Open in Finder", systemImage: "folder")
+                Image(systemName: "folder")
             }
+            .help("Open in Finder")
             .tint(.blue)
         }
         .xrayId("sidebar.projectRow.\(project.id.uuidString)")
@@ -940,13 +944,15 @@ struct SidebarView: View {
                         .onTapGesture { selectConversation(convo) }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) { promptDelete(convo) } label: {
-                                Label("Delete", systemImage: "trash")
+                                Image(systemName: "trash")
                             }
+                            .help("Delete")
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             Button { unarchiveConversation(convo) } label: {
-                                Label("Unarchive", systemImage: "tray.and.arrow.up")
+                                Image(systemName: "tray.and.arrow.up")
                             }
+                            .help("Unarchive")
                             .tint(.blue)
                         }
                 }
@@ -1142,17 +1148,20 @@ struct SidebarView: View {
                 .onTapGesture { selectConversation(convo) }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) { promptDelete(convo) } label: {
-                        Label("Delete", systemImage: "trash")
+                        Image(systemName: "trash")
                     }
+                    .help("Delete")
                     Button { archiveConversation(convo) } label: {
-                        Label("Archive", systemImage: "archivebox")
+                        Image(systemName: "archivebox")
                     }
+                    .help("Archive")
                     .tint(.indigo)
                 }
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                     Button { togglePin(convo) } label: {
-                        Label(pinAction, systemImage: convo.isPinned ? "pin.slash" : "pin")
+                        Image(systemName: convo.isPinned ? "pin.slash" : "pin")
                     }
+                    .help(pinAction)
                     .tint(.yellow)
                 }
         } else {
@@ -1169,17 +1178,20 @@ struct SidebarView: View {
             .tag(convo.id)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) { promptDelete(convo) } label: {
-                    Label("Delete", systemImage: "trash")
+                    Image(systemName: "trash")
                 }
+                .help("Delete")
                 Button { archiveConversation(convo) } label: {
-                    Label("Archive", systemImage: "archivebox")
+                    Image(systemName: "archivebox")
                 }
+                .help("Archive")
                 .tint(.indigo)
             }
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button { togglePin(convo) } label: {
-                    Label(pinAction, systemImage: convo.isPinned ? "pin.slash" : "pin")
+                    Image(systemName: convo.isPinned ? "pin.slash" : "pin")
                 }
+                .help(pinAction)
                 .tint(.yellow)
             }
         }

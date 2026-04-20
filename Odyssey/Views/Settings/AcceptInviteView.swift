@@ -129,12 +129,12 @@ struct AcceptInviteView: View {
             return
         }
 
-        let nostrPubkey = payload.macNpub
-        guard !nostrPubkey.isEmpty else {
+        guard !payload.macNpub.isEmpty else {
             status = .error("This invite does not include a Nostr pubkey and cannot be used for internet relay.")
             return
         }
 
+        let nostrPubkey = payload.macNpub
         let relays = payload.relays
         let displayName = payload.displayName
 

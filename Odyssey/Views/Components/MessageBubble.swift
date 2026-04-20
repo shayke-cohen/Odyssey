@@ -354,18 +354,17 @@ struct MessageBubble: View {
 
     @ViewBuilder
     private var systemMessage: some View {
-        HStack {
-            Spacer()
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "info.circle")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 2)
             Text(message.text)
                 .font(captionFont)
-                .foregroundStyle(.secondary)
-                .italic()
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(.quaternary)
-                .clipShape(Capsule())
-            Spacer()
+                .foregroundStyle(.tertiary)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 
     @ViewBuilder

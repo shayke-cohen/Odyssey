@@ -688,7 +688,7 @@ final class AppState {
                         try? await Task.sleep(for: .seconds(30))
                         guard let self, !Task.isCancelled else { break }
                         if let ctx = self.modelContext {
-                            await self.sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: true)
+                            await self.sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: false)
                         }
                     }
                 }
@@ -1525,7 +1525,7 @@ final class AppState {
                     try? await Task.sleep(for: .seconds(30))
                     guard let self, !Task.isCancelled else { break }
                     if let ctx = self.modelContext {
-                        await self.sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: true)
+                        await self.sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: false)
                     }
                 }
             }

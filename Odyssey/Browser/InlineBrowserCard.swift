@@ -62,7 +62,8 @@ struct InlineBrowserCard: View {
             displayURL = controller?.currentURL?.absoluteString ?? ""
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .default).autoconnect()) { _ in
-            displayURL = controller?.currentURL?.absoluteString ?? ""
+            let current = controller?.currentURL?.absoluteString ?? ""
+            if current != displayURL { displayURL = current }
         }
         .accessibilityIdentifier("inlineBrowser.card")
     }
