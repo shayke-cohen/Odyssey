@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Settings tab for managing prompt templates on agents and groups.
+/// Settings tab for managing prompt templates on agents, groups, and projects.
 /// Templates live on disk at `~/.odyssey/config/prompt-templates/` — the UI is
 /// a convenience layer on top of the file store, with `ConfigSyncService`
 /// handling sync in both directions.
@@ -11,21 +11,25 @@ struct TemplatesSettingsTab: View {
 
     @Query(sort: [SortDescriptor(\Agent.name)]) private var agents: [Agent]
     @Query(sort: [SortDescriptor(\AgentGroup.sortOrder), SortDescriptor(\AgentGroup.name)]) private var groups: [AgentGroup]
+    @Query(sort: [SortDescriptor(\Project.lastOpenedAt, order: .reverse)]) private var projects: [Project]
     @Query private var allTemplates: [PromptTemplate]
 
     @State private var selectedOwner: OwnerKey?
     @State private var searchText: String = ""
     @State private var editingTemplate: PromptTemplate?
     @State private var showingNewSheet: Bool = false
+    @State private var showingLibrarySheet: Bool = false
 
     enum OwnerKey: Hashable, Identifiable {
         case agent(UUID)
         case group(UUID)
+        case project(UUID)
 
         var id: String {
             switch self {
             case .agent(let id): "agent-\(id)"
             case .group(let id): "group-\(id)"
+            case .project(let id): "project-\(id)"
             }
         }
     }
@@ -41,6 +45,10 @@ struct TemplatesSettingsTab: View {
         }
     }
 
+    private var sortedProjects: [Project] {
+        projects.sorted { $0.lastOpenedAt > $1.lastOpenedAt }
+    }
+
     private var filteredAgents: [Agent] {
         guard !searchText.isEmpty else { return enabledAgents }
         let needle = searchText.lowercased()
@@ -53,12 +61,22 @@ struct TemplatesSettingsTab: View {
         return enabledGroups.filter { $0.name.lowercased().contains(needle) }
     }
 
+    private var filteredProjects: [Project] {
+        guard !searchText.isEmpty else { return sortedProjects }
+        let needle = searchText.lowercased()
+        return sortedProjects.filter { $0.name.lowercased().contains(needle) }
+    }
+
     private func templateCount(forAgent agent: Agent) -> Int {
         allTemplates.filter { $0.agent?.id == agent.id }.count
     }
 
     private func templateCount(forGroup group: AgentGroup) -> Int {
         allTemplates.filter { $0.group?.id == group.id }.count
+    }
+
+    private func templateCount(forProject project: Project) -> Int {
+        allTemplates.filter { $0.project?.id == project.id }.count
     }
 
     private var selectedAgent: Agent? {
@@ -71,11 +89,17 @@ struct TemplatesSettingsTab: View {
         return enabledGroups.first { $0.id == id }
     }
 
+    private var selectedProject: Project? {
+        guard case .project(let id) = selectedOwner else { return nil }
+        return sortedProjects.first { $0.id == id }
+    }
+
     private var templatesForSelection: [PromptTemplate] {
         let templates: [PromptTemplate]
         switch selectedOwner {
         case .agent(let id): templates = allTemplates.filter { $0.agent?.id == id }
         case .group(let id): templates = allTemplates.filter { $0.group?.id == id }
+        case .project(let id): templates = allTemplates.filter { $0.project?.id == id }
         case .none: templates = []
         }
         return templates.sorted { lhs, rhs in
@@ -87,7 +111,14 @@ struct TemplatesSettingsTab: View {
     private var selectionTitle: String {
         if let agent = selectedAgent { return agent.name }
         if let group = selectedGroup { return group.name }
+        if let project = selectedProject { return project.name }
         return "Templates"
+    }
+
+    private var selectionKindNoun: String {
+        if selectedGroup != nil { return "group" }
+        if selectedProject != nil { return "project" }
+        return "agent"
     }
 
     var body: some View {
@@ -102,12 +133,14 @@ struct TemplatesSettingsTab: View {
             if selectedOwner == nil {
                 selectedOwner = enabledAgents.first.map { .agent($0.id) }
                     ?? enabledGroups.first.map { .group($0.id) }
+                    ?? sortedProjects.first.map { .project($0.id) }
             }
         }
         .sheet(item: $editingTemplate) { template in
             PromptTemplateCreationSheet(
                 ownerAgent: selectedAgent,
                 ownerGroup: selectedGroup,
+                ownerProject: selectedProject,
                 existingTemplate: template
             ) { _ in
                 editingTemplate = nil
@@ -117,9 +150,20 @@ struct TemplatesSettingsTab: View {
             PromptTemplateCreationSheet(
                 ownerAgent: selectedAgent,
                 ownerGroup: selectedGroup,
+                ownerProject: selectedProject,
                 existingTemplate: nil
-            ) { newTemplate in
+            ) { _ in
                 showingNewSheet = false
+            }
+        }
+        .sheet(isPresented: $showingLibrarySheet) {
+            if let project = selectedProject {
+                AddFromLibrarySheet(project: project) { selectedEntries in
+                    addLibraryTemplates(selectedEntries, toProject: project)
+                    showingLibrarySheet = false
+                } onCancel: {
+                    showingLibrarySheet = false
+                }
             }
         }
         .xrayId("settings.templates.root")
@@ -147,6 +191,7 @@ struct TemplatesSettingsTab: View {
                             ownerRow(
                                 name: agent.name,
                                 icon: agent.icon,
+                                tint: .secondary,
                                 count: templateCount(forAgent: agent)
                             )
                             .tag(OwnerKey.agent(agent.id))
@@ -160,10 +205,25 @@ struct TemplatesSettingsTab: View {
                             ownerRow(
                                 name: group.name,
                                 icon: "person.3",
+                                tint: .secondary,
                                 count: templateCount(forGroup: group)
                             )
                             .tag(OwnerKey.group(group.id))
                             .xrayId("settings.templates.ownerRow.group.\(group.id.uuidString)")
+                        }
+                    }
+                }
+                if !filteredProjects.isEmpty {
+                    Section("Projects") {
+                        ForEach(filteredProjects) { project in
+                            ownerRow(
+                                name: project.name,
+                                icon: "folder.fill",
+                                tint: projectTint(project),
+                                count: templateCount(forProject: project)
+                            )
+                            .tag(OwnerKey.project(project.id))
+                            .xrayId("templates.projectRow.\(project.id.uuidString)")
                         }
                     }
                 }
@@ -174,11 +234,11 @@ struct TemplatesSettingsTab: View {
     }
 
     @ViewBuilder
-    private func ownerRow(name: String, icon: String, count: Int) -> some View {
+    private func ownerRow(name: String, icon: String, tint: Color, count: Int) -> some View {
         HStack(spacing: 8) {
             Image(systemName: iconSystemName(icon))
                 .frame(width: 18)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(tint)
             Text(name)
                 .lineLimit(1)
             Spacer()
@@ -202,6 +262,22 @@ struct TemplatesSettingsTab: View {
         return "person.crop.circle"
     }
 
+    private func projectTint(_ project: Project) -> Color {
+        switch project.color.lowercased() {
+        case "blue": return .blue
+        case "green": return .green
+        case "orange": return .orange
+        case "purple": return .purple
+        case "pink": return .pink
+        case "red": return .red
+        case "yellow": return .yellow
+        case "teal": return .teal
+        case "indigo": return .indigo
+        case "gray", "grey": return .gray
+        default: return .blue
+        }
+    }
+
     private var detailPane: some View {
         VStack(alignment: .leading, spacing: 0) {
             detailHeader
@@ -217,13 +293,34 @@ struct TemplatesSettingsTab: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(selectionTitle)
                 .font(.title3.weight(.semibold))
-            Text("Starter prompts available when you begin a chat with this \(selectedGroup != nil ? "group" : "agent").")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if let project = selectedProject {
+                Text(projectSubtitle(project))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Starter prompts available when you begin a chat with this \(selectionKindNoun).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func projectSubtitle(_ project: Project) -> String {
+        let displayPath = abbreviatePath(project.rootPath)
+        let count = templateCount(forProject: project)
+        let suffix = count == 1 ? "1 template" : "\(count) templates"
+        return "\(displayPath) \u{00B7} \(suffix)"
+    }
+
+    private func abbreviatePath(_ path: String) -> String {
+        let home = NSHomeDirectory()
+        if path.hasPrefix(home) {
+            return "~" + String(path.dropFirst(home.count))
+        }
+        return path
     }
 
     @ViewBuilder
@@ -327,14 +424,23 @@ struct TemplatesSettingsTab: View {
             Image(systemName: "text.badge.plus")
                 .font(.largeTitle)
                 .foregroundStyle(.tertiary)
-            Text("Select an agent or group to manage its templates.")
+            Text("Select an agent, group, or project to manage its templates.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    @ViewBuilder
     private var emptyTemplates: some View {
+        if selectedProject != nil {
+            projectEmptyTemplates
+        } else {
+            agentOrGroupEmptyTemplates
+        }
+    }
+
+    private var agentOrGroupEmptyTemplates: some View {
         VStack(spacing: 10) {
             Image(systemName: "doc.plaintext")
                 .font(.largeTitle)
@@ -353,6 +459,40 @@ struct TemplatesSettingsTab: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private var projectEmptyTemplates: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.largeTitle)
+                .foregroundStyle(.tertiary)
+            VStack(spacing: 4) {
+                Text("No templates yet for ") + Text(selectionTitle).bold() + Text(".")
+                Text("Add your own or start from the built-in library.")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.callout)
+            .multilineTextAlignment(.center)
+
+            HStack(spacing: 10) {
+                Button {
+                    showingNewSheet = true
+                } label: {
+                    Label("New Template", systemImage: "plus")
+                }
+                .buttonStyle(.bordered)
+                .xrayId("settings.templates.addFirstButton")
+
+                Button {
+                    showingLibrarySheet = true
+                } label: {
+                    Label("Add from library", systemImage: "sparkles")
+                }
+                .buttonStyle(.borderedProminent)
+                .xrayId("templates.addFromLibraryButton")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     private var footer: some View {
         HStack {
             Button {
@@ -364,6 +504,16 @@ struct TemplatesSettingsTab: View {
             .xrayId("settings.templates.revealButton")
 
             Spacer()
+
+            if selectedProject != nil && !templatesForSelection.isEmpty {
+                Button {
+                    showingLibrarySheet = true
+                } label: {
+                    Label("Add from library", systemImage: "sparkles")
+                }
+                .buttonStyle(.bordered)
+                .xrayId("templates.addFromLibraryButton")
+            }
 
             Button {
                 showingNewSheet = true
@@ -405,7 +555,8 @@ struct TemplatesSettingsTab: View {
             prompt: template.prompt,
             sortOrder: template.sortOrder + 1,
             agent: template.agent,
-            group: template.group
+            group: template.group,
+            project: template.project
         )
         modelContext.insert(copy)
         try? modelContext.save()
@@ -449,6 +600,12 @@ struct TemplatesSettingsTab: View {
             url = ConfigFileManager.promptTemplatesDirectory
                 .appendingPathComponent("groups")
                 .appendingPathComponent(slug)
+        case .project(let id):
+            let project = sortedProjects.first { $0.id == id }
+            let slug = project.map { ConfigFileManager.projectSlug(for: $0.canonicalRootPath) } ?? ""
+            url = ConfigFileManager.promptTemplatesDirectory
+                .appendingPathComponent("projects")
+                .appendingPathComponent(slug)
         case .none:
             url = ConfigFileManager.promptTemplatesDirectory
         }
@@ -462,5 +619,142 @@ struct TemplatesSettingsTab: View {
             .appendingPathComponent(slug)
             .appendingPathExtension("md")
         NSWorkspace.shared.open(fileURL)
+    }
+
+    // MARK: - Library Import
+
+    private func addLibraryTemplates(_ entries: [ProjectTemplateLibrary.Entry], toProject project: Project) {
+        let projectSlug = ConfigFileManager.projectSlug(for: project.canonicalRootPath)
+        let existingCount = templateCount(forProject: project)
+
+        for (index, entry) in entries.enumerated() {
+            let templateSlug = librarySlugify(entry.name)
+            let configSlug = "projects/\(projectSlug)/\(templateSlug)"
+            let template = PromptTemplate(
+                name: entry.name,
+                prompt: entry.prompt,
+                sortOrder: existingCount + index,
+                isBuiltin: true,
+                agent: nil,
+                group: nil,
+                project: project,
+                configSlug: configSlug
+            )
+            modelContext.insert(template)
+            appState.configSyncService?.writeBack(promptTemplate: template)
+        }
+        try? modelContext.save()
+    }
+
+    private func librarySlugify(_ name: String) -> String {
+        name.lowercased().replacingOccurrences(of: " ", with: "-")
+    }
+}
+
+// MARK: - AddFromLibrarySheet
+
+private struct AddFromLibrarySheet: View {
+    let project: Project
+    let onAdd: ([ProjectTemplateLibrary.Entry]) -> Void
+    let onCancel: () -> Void
+
+    @State private var selectedIds: Set<String> = []
+
+    private var selectedEntries: [ProjectTemplateLibrary.Entry] {
+        ProjectTemplateLibrary.all.filter { selectedIds.contains($0.id) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            list
+            Divider()
+            footer
+        }
+        .frame(minWidth: 480, minHeight: 460)
+        .xrayId("templates.addFromLibrarySheet.root")
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Starter Templates")
+                .font(.title3.weight(.semibold))
+                .xrayId("templates.addFromLibrarySheet.title")
+            Text("Select prompts to add to this project.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+    }
+
+    private var list: some View {
+        List {
+            ForEach(ProjectTemplateLibrary.all) { entry in
+                row(entry)
+                    .xrayId("templates.addFromLibrarySheet.row.\(entry.id)")
+            }
+        }
+        .listStyle(.inset)
+    }
+
+    @ViewBuilder
+    private func row(_ entry: ProjectTemplateLibrary.Entry) -> some View {
+        Toggle(isOn: Binding(
+            get: { selectedIds.contains(entry.id) },
+            set: { newValue in
+                if newValue {
+                    selectedIds.insert(entry.id)
+                } else {
+                    selectedIds.remove(entry.id)
+                }
+            }
+        )) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(entry.name)
+                    .font(.body.weight(.medium))
+                Text(shortDescription(entry.prompt))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .toggleStyle(.checkbox)
+        .padding(.vertical, 4)
+    }
+
+    private func shortDescription(_ prompt: String) -> String {
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.count <= 60 { return trimmed }
+        let idx = trimmed.index(trimmed.startIndex, offsetBy: 60)
+        return String(trimmed[..<idx]) + "\u{2026}"
+    }
+
+    private var footer: some View {
+        HStack {
+            Spacer()
+            Button("Cancel") {
+                onCancel()
+            }
+            .keyboardShortcut(.cancelAction)
+            .xrayId("templates.addFromLibrarySheet.cancelButton")
+
+            Button(addButtonLabel) {
+                onAdd(selectedEntries)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(selectedIds.isEmpty)
+            .keyboardShortcut(.defaultAction)
+            .xrayId("templates.addFromLibrarySheet.addButton")
+        }
+        .padding()
+    }
+
+    private var addButtonLabel: String {
+        let n = selectedIds.count
+        if n == 0 { return "Add Templates" }
+        if n == 1 { return "Add 1 Template" }
+        return "Add \(n) Templates"
     }
 }

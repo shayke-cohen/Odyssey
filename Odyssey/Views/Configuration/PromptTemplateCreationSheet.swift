@@ -18,6 +18,7 @@ struct PromptTemplateCreationSheet: View {
 
     var ownerAgent: Agent? = nil
     var ownerGroup: AgentGroup? = nil
+    var ownerProject: Project? = nil
     var existingTemplate: PromptTemplate? = nil
     var onSave: ((PromptTemplate) -> Void)? = nil
 
@@ -41,11 +42,13 @@ struct PromptTemplateCreationSheet: View {
     init(
         ownerAgent: Agent? = nil,
         ownerGroup: AgentGroup? = nil,
+        ownerProject: Project? = nil,
         existingTemplate: PromptTemplate? = nil,
         onSave: ((PromptTemplate) -> Void)? = nil
     ) {
         self.ownerAgent = ownerAgent
         self.ownerGroup = ownerGroup
+        self.ownerProject = ownerProject
         self.existingTemplate = existingTemplate
         self.onSave = onSave
 
@@ -250,7 +253,7 @@ struct PromptTemplateCreationSheet: View {
 
         appState.requestTemplateGeneration(
             intent: intentText.trimmingCharacters(in: .whitespacesAndNewlines),
-            agentName: ownerAgent?.name ?? ownerGroup?.name ?? "",
+            agentName: ownerAgent?.name ?? ownerGroup?.name ?? ownerProject?.name ?? "",
             agentSystemPrompt: ownerAgent?.systemPrompt ?? ""
         )
     }
@@ -277,6 +280,7 @@ struct PromptTemplateCreationSheet: View {
                 prompt: prompt.trimmingCharacters(in: .whitespacesAndNewlines),
                 ownerAgent: ownerAgent,
                 ownerGroup: ownerGroup,
+                ownerProject: ownerProject,
                 sortOrder: sortOrder,
                 context: modelContext
             )
@@ -301,13 +305,25 @@ func performTemplateSave(
     prompt: String,
     ownerAgent: Agent?,
     ownerGroup: AgentGroup?,
+    ownerProject: Project? = nil,
     sortOrder: Int,
     context: ModelContext
 ) throws -> PromptTemplate {
-    let ownerKind: PromptTemplateOwnerKindOnDisk = ownerAgent != nil ? .agents : .groups
-    let ownerSlug: String = ownerAgent?.configSlug
-        ?? ownerGroup?.configSlug
-        ?? ConfigFileManager.slugify(ownerAgent?.name ?? ownerGroup?.name ?? "unknown")
+    let ownerKind: PromptTemplateOwnerKindOnDisk
+    let ownerSlug: String
+    if ownerAgent != nil {
+        ownerKind = .agents
+        ownerSlug = ownerAgent?.configSlug ?? ConfigFileManager.slugify(ownerAgent?.name ?? "unknown")
+    } else if ownerGroup != nil {
+        ownerKind = .groups
+        ownerSlug = ownerGroup?.configSlug ?? ConfigFileManager.slugify(ownerGroup?.name ?? "unknown")
+    } else if let project = ownerProject {
+        ownerKind = .projects
+        ownerSlug = ConfigFileManager.projectSlug(for: project.canonicalRootPath)
+    } else {
+        ownerKind = .agents
+        ownerSlug = "unknown"
+    }
 
     let templateSlug: String
     if let existing = existingTemplate, let slug = existing.templateSlugComponent {
@@ -350,6 +366,7 @@ func performTemplateSave(
             isBuiltin: false,
             agent: ownerAgent,
             group: ownerGroup,
+            project: ownerProject,
             configSlug: configSlug
         )
         context.insert(template)
