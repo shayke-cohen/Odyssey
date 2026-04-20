@@ -3229,8 +3229,9 @@ struct ChatView: View {
         guard let pending = windowState.pendingTemplatePrompt,
               pending.conversationId == conversationId else { return }
         windowState.pendingTemplatePrompt = nil
+        // Set autoSendText and let onChange(of: windowState.autoSendText) handle sending —
+        // avoids spawning a second Task if we also call consumeAutoSendText() directly here.
         windowState.autoSendText = pending.text
-        consumeAutoSendText()
     }
 
     private func handleExecutionModeToggle() {
