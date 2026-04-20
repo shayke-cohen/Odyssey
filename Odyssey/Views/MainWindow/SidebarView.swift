@@ -1009,9 +1009,8 @@ struct SidebarView: View {
                     }
                 }
                 .xrayId("sidebar.projectRow.runTemplateMenu.\(project.id.uuidString)")
+                Divider()
             }
-
-            Divider()
 
             Button {
                 showsArchivedProjectSection.toggle()
@@ -2237,7 +2236,6 @@ struct SidebarView: View {
         windowState.selectedConversationId = conversation.id
     }
 
-    @MainActor
     private func runProjectTemplate(_ template: PromptTemplate, in project: Project) {
         let conversation = Conversation(
             topic: template.name,
