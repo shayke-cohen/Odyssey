@@ -64,6 +64,9 @@ final class Project {
     var pinnedGroupIds: [UUID] = []
     var browserSessionMode: String = "project"
 
+    @Relationship(deleteRule: .nullify, inverse: \PromptTemplate.project)
+    var promptTemplates: [PromptTemplate]? = nil
+
     init(
         name: String,
         rootPath: String,
