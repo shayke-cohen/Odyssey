@@ -1,7 +1,6 @@
-import Foundation
-
 struct ProjectTemplateLibrary {
-    struct Entry {
+    struct Entry: Identifiable, Hashable {
+        var id: String { name }
         let name: String
         let prompt: String
     }
