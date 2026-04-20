@@ -1054,6 +1054,8 @@ struct ChatView: View {
                     Text("\(activeCount)/\(sessions.count) active")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .fixedSize()
                 }
             } else if let session = primarySession {
                 HStack(spacing: 3) {
@@ -1064,6 +1066,8 @@ struct ChatView: View {
                     Text(isActive ? "Running" : "Idle")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .fixedSize()
                 }
                 .xrayId("chat.agentStatus")
             }
@@ -1212,22 +1216,25 @@ struct ChatView: View {
                         .xrayId("chat.topicField")
                 } else {
                     headerIdentityInfo
-                        .layoutPriority(1)
+                        .layoutPriority(0)
+                        .frame(minWidth: 60)
                 }
 
-                Spacer(minLength: 4)
+                Spacer(minLength: 0)
 
-                simplifiedHeaderStatusPills
-                    .layoutPriority(2)
+                HStack(spacing: 6) {
+                    simplifiedHeaderStatusPills
 
-                executionModeSegmented
+                    executionModeSegmented
 
-                if let convo = conversation {
-                    if (convo.sessions ?? []).count > 1 {
-                        delegationBadgeButton(convo)
+                    if let convo = conversation {
+                        if (convo.sessions ?? []).count > 1 {
+                            delegationBadgeButton(convo)
+                        }
+                        simplifiedSessionMenu(convo)
                     }
-                    simplifiedSessionMenu(convo)
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
 
             headerChips
