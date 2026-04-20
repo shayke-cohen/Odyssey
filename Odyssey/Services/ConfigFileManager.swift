@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import OSLog
 
@@ -253,9 +254,10 @@ struct PromptTemplateFileDTO {
     var prompt: String
 }
 
-enum PromptTemplateOwnerKindOnDisk: String {
+enum PromptTemplateOwnerKindOnDisk: String, CaseIterable {
     case agents
     case groups
+    case projects
 }
 
 enum BuiltInConfigKind: String, CaseIterable {
@@ -363,7 +365,7 @@ enum ConfigFileManager {
 
     static func createDirectoryStructure() throws {
         let fm = FileManager.default
-        let dirs = ["agents", "groups", "skills", "mcps", "permissions", "templates", "prompt-templates", "prompt-templates/agents", "prompt-templates/groups"]
+        let dirs = ["agents", "groups", "skills", "mcps", "permissions", "templates", "prompt-templates", "prompt-templates/agents", "prompt-templates/groups", "prompt-templates/projects"]
         for dir in dirs {
             try fm.createDirectory(at: configDirectory.appendingPathComponent(dir), withIntermediateDirectories: true)
         }
@@ -877,7 +879,7 @@ enum ConfigFileManager {
     // MARK: - Prompt Templates (per-owner markdown files)
 
     /// Root for user-editable chat-start prompt templates.
-    /// Layout: `prompt-templates/{agents,groups}/<owner-slug>/<template-slug>.md`.
+    /// Layout: `prompt-templates/{agents,groups,projects}/<owner-slug>/<template-slug>.md`.
     /// Kept distinct from `templates/` (which holds SystemPromptTemplates).
     static var promptTemplatesDirectory: URL {
         configDirectory.appendingPathComponent("prompt-templates")
@@ -893,7 +895,7 @@ enum ConfigFileManager {
     static func readAllPromptTemplates() -> [(configSlug: String, ownerKind: PromptTemplateOwnerKindOnDisk, ownerSlug: String, templateSlug: String, dto: PromptTemplateFileDTO)] {
         var results: [(configSlug: String, ownerKind: PromptTemplateOwnerKindOnDisk, ownerSlug: String, templateSlug: String, dto: PromptTemplateFileDTO)] = []
         let fm = FileManager.default
-        for ownerKind in [PromptTemplateOwnerKindOnDisk.agents, .groups] {
+        for ownerKind in PromptTemplateOwnerKindOnDisk.allCases {
             let kindDir = promptTemplatesDirectory.appendingPathComponent(ownerKind.rawValue)
             guard let ownerDirs = try? fm.contentsOfDirectory(
                 at: kindDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
@@ -920,7 +922,7 @@ enum ConfigFileManager {
     static func promptTemplateWatchDirectories() -> [URL] {
         let fm = FileManager.default
         var dirs: [URL] = [promptTemplatesDirectory]
-        for ownerKind in ["agents", "groups"] {
+        for ownerKind in PromptTemplateOwnerKindOnDisk.allCases.map(\.rawValue) {
             let kindDir = promptTemplatesDirectory.appendingPathComponent(ownerKind)
             dirs.append(kindDir)
             if let contents = try? fm.contentsOfDirectory(
@@ -1098,6 +1100,21 @@ enum ConfigFileManager {
             .replacingOccurrences(of: " & ", with: "-and-")
             .replacingOccurrences(of: " ", with: "-")
             .filter { $0.isLetter || $0.isNumber || $0 == "-" }
+    }
+
+    /// Derive a stable disk slug for a project from its canonical root path.
+    /// Uses the last path component, lowercased, with spaces replaced by dashes.
+    /// E.g. "/Users/shay/Odyssey" → "odyssey", "My Project" → "my-project".
+    static func projectSlug(for canonicalRootPath: String) -> String {
+        let base = URL(fileURLWithPath: canonicalRootPath).lastPathComponent
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .filter { $0.isLetter || $0.isNumber || $0 == "-" }
+        let safeName = base.isEmpty ? "project" : base
+        // Append a deterministic SHA256-based suffix to guarantee uniqueness when two projects share the same folder name.
+        let digest = SHA256.hash(data: Data(canonicalRootPath.utf8))
+        let hex = digest.prefix(3).map { String(format: "%02x", $0) }.joined()
+        return "\(safeName)-\(hex)"
     }
 
     // MARK: - Private Helpers

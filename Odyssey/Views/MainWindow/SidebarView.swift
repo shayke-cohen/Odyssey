@@ -1013,7 +1013,19 @@ struct SidebarView: View {
                 Label("Archive threads", systemImage: "archivebox")
             }
 
-            Divider()
+            let templates = (project.promptTemplates ?? []).sorted { $0.sortOrder < $1.sortOrder }
+            if !templates.isEmpty {
+                Menu("Run Template\u{2026}") {
+                    ForEach(templates) { template in
+                        Button(template.name) {
+                            runProjectTemplate(template, in: project)
+                        }
+                        .xrayId("sidebar.projectRow.runTemplate.\(project.id.uuidString).\(template.id.uuidString)")
+                    }
+                }
+                .xrayId("sidebar.projectRow.runTemplateMenu.\(project.id.uuidString)")
+                Divider()
+            }
 
             Button {
                 showsArchivedProjectSection.toggle()
@@ -2268,6 +2280,28 @@ struct SidebarView: View {
 
         expandedProjectIds.insert(project.id)
         windowState.selectProject(project, preserveSelection: true)
+        windowState.selectedConversationId = conversation.id
+    }
+
+    private func runProjectTemplate(_ template: PromptTemplate, in project: Project) {
+        let conversation = Conversation(
+            topic: template.name,
+            projectId: project.id,
+            threadKind: .freeform
+        )
+        let userParticipant = Participant(type: .user, displayName: "You")
+        userParticipant.conversation = conversation
+        conversation.participants = (conversation.participants ?? []) + [userParticipant]
+
+        modelContext.insert(conversation)
+        try? modelContext.save()
+
+        expandedProjectIds.insert(project.id)
+        windowState.selectProject(project, preserveSelection: true)
+        windowState.pendingTemplatePrompt = PendingTemplatePrompt(
+            conversationId: conversation.id,
+            text: template.prompt
+        )
         windowState.selectedConversationId = conversation.id
     }
 

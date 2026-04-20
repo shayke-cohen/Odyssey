@@ -4,6 +4,7 @@ import SwiftData
 enum PromptTemplateOwnerKind: String, Sendable, Hashable {
     case agent
     case group
+    case project
 }
 
 @Model
@@ -17,12 +18,13 @@ final class PromptTemplate {
     var updatedAt: Date = Date()
 
     /// Disk identity: "<ownerKind-plural>/<ownerSlug>/<templateSlug>"
-    /// e.g. "agents/coder/review-pr" or "groups/security-audit/full-codebase-audit".
+    /// e.g. "agents/coder/review-pr", "groups/security-audit/full-codebase-audit", or "projects/odyssey/check-issues".
     var configSlug: String?
 
     /// Exactly one of these is non-nil. Nullable relationships give us cascade delete.
     var agent: Agent?
     var group: AgentGroup?
+    var project: Project?
 
     init(
         name: String,
@@ -31,6 +33,7 @@ final class PromptTemplate {
         isBuiltin: Bool = false,
         agent: Agent? = nil,
         group: AgentGroup? = nil,
+        project: Project? = nil,
         configSlug: String? = nil
     ) {
         self.id = UUID()
@@ -40,6 +43,7 @@ final class PromptTemplate {
         self.isBuiltin = isBuiltin
         self.agent = agent
         self.group = group
+        self.project = project
         self.configSlug = configSlug
         self.createdAt = Date()
         self.updatedAt = Date()
@@ -49,6 +53,7 @@ final class PromptTemplate {
     var ownerKind: PromptTemplateOwnerKind? {
         if agent != nil { return .agent }
         if group != nil { return .group }
+        if project != nil { return .project }
         return nil
     }
 

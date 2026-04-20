@@ -223,6 +223,11 @@ enum ProjectRecords {
     }
 }
 
+struct PendingTemplatePrompt: Equatable {
+    let conversationId: UUID
+    let text: String
+}
+
 /// Per-window state for the project-first shell.
 @MainActor @Observable
 final class WindowState {
@@ -288,6 +293,10 @@ final class WindowState {
 
     var launchError: String?
     var autoSendText: String?
+    /// Set by the sidebar project template context menu; consumed by ChatView to auto-send
+    /// the prompt when the new conversation appears. The consumer should only act when
+    /// `pendingTemplatePrompt.conversationId` matches the currently displayed conversation ID.
+    var pendingTemplatePrompt: PendingTemplatePrompt?
 
     init(project: Project) {
         self.selectedProjectId = project.id
