@@ -14,6 +14,8 @@ final class iOSAppState {
     var streamingBuffers: [String: String] = [:]
     var activeConversationId: String?
     var projects: [ProjectSummaryWire] = []
+    var agents: [AgentSummaryWire] = []
+    var sessionErrors: [String: String] = [:]
     var connectionStatus = RemoteSidecarManager.ConnectionStatus.disconnected
     var lanLoadError: String? = nil
 
@@ -61,6 +63,7 @@ final class iOSAppState {
         Task {
             await loadConversations()
             await loadProjects()
+            await loadAgents()
         }
         // Announce iOS npub to Mac so it can register this device as trusted.
         // 1-second delay lets the relay WebSocket handshake complete first.
@@ -117,6 +120,21 @@ final class iOSAppState {
         projects = (try? JSONDecoder().decode(Wrapper.self, from: data))?.projects ?? []
     }
 
+    func loadAgents() async {
+        if let baseURL = currentBaseURL(),
+           let url = URL(string: "\(baseURL)/api/v1/agents") {
+            let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 5)
+            if let (data, _) = try? await URLSession.shared.data(for: request) {
+                struct Wrapper: Decodable { let agents: [AgentSummaryWire] }
+                if let decoded = try? JSONDecoder().decode(Wrapper.self, from: data) {
+                    agents = decoded.agents
+                    return
+                }
+            }
+        }
+        nostrBridge?.send(.agentsList)
+    }
+
     // MARK: - Session management
 
     func startOrResumeSession(
@@ -167,6 +185,7 @@ final class iOSAppState {
             Task {
                 await loadConversations()
                 await loadProjects()
+                await loadAgents()
             }
         case .disconnected:
             // NostrSidecarBridge reconnects internally; reflect current state
@@ -179,6 +198,10 @@ final class iOSAppState {
         case .conversationsListResult(let list):
             conversations = list
             lanLoadError = nil
+        case .agentsListResult(let list):
+            agents = list
+        case .sessionError(let sessionId, let error):
+            sessionErrors[sessionId] = error
         default:
             break
         }
@@ -194,6 +217,7 @@ final class iOSAppState {
                 guard let self, !Task.isCancelled else { break }
                 await self.loadConversations()
                 await self.loadProjects()
+                await self.loadAgents()
             }
         }
     }

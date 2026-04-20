@@ -93,7 +93,7 @@ final class NostrEventRelay {
         let iOSPubkey: String?
         if let sid = sessionId {
             iOSPubkey = nostrSessions[sid]
-        } else if msgType == "conversations.list.result" {
+        } else if msgType == "conversations.list.result" || msgType == "agents.list.result" {
             iOSPubkey = lastKnownIosNpub
         } else {
             iOSPubkey = nil

@@ -111,7 +111,9 @@ final class NostrSidecarBridge: ObservableObject {
         let timestamp = Int(Date().timeIntervalSince1970)
         // Canonical serialization per NIP-01: [0, pubkey, created_at, kind, tags, content]
         let canonical: [Any] = [0, senderPubkey, timestamp, 4, [["p", recipientPubkey]], content]
-        let canonicalData = try JSONSerialization.data(withJSONObject: canonical)
+        // .withoutEscapingSlashes is required: relays unescape '\/' → '/' when parsing,
+        // so the hash must be computed on the unescaped form.
+        let canonicalData = try JSONSerialization.data(withJSONObject: canonical, options: .withoutEscapingSlashes)
         let hashBytes = SHA256.hash(data: canonicalData)
         let id = hashBytes.map { String(format: "%02x", $0) }.joined()
         // Schnorr sign with iOS private key

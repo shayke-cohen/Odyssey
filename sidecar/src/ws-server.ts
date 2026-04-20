@@ -129,14 +129,17 @@ export class WsServer {
   private async handleCommand(command: SidecarCommand): Promise<void> {
     switch (command.type) {
       case "session.create": {
-        // Ensure a conversation entry exists so iOS can retrieve messages via REST.
+        // Prefer the Mac-side agent definition (has correct provider/model/skills/MCPs).
+        // Fall back to the wire config only if the agent isn't registered locally.
+        const registeredConfig = this.ctx.agentDefinitions.get(command.agentConfig.name);
+        const resolvedConfig = registeredConfig ?? command.agentConfig;
         this.ctx.conversationStore.ensureConversation(
           command.conversationId,
-          command.agentConfig.name,
+          resolvedConfig.name,
         );
         await this.sessionManager.createSession(
           command.conversationId,
-          command.agentConfig,
+          resolvedConfig,
         );
         break;
       }
@@ -500,6 +503,22 @@ export class WsServer {
           conversations: this.ctx.conversationStore.listConversations(),
         });
         break;
+
+      case "agents.list": {
+        const agentsList: any[] = [];
+        for (const [name, config] of this.ctx.agentDefinitions) {
+          agentsList.push({
+            name,
+            provider: config.provider ?? "claude",
+            model: config.model,
+            skillCount: config.skills?.length ?? 0,
+            mcpServerCount: config.mcpServers?.length ?? 0,
+          });
+        }
+        logger.info("nostr", `agents.list: returning ${agentsList.length} agents`);
+        this.broadcast({ type: "agents.list.result", agents: agentsList });
+        break;
+      }
     }
   }
 

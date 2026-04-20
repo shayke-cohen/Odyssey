@@ -18,11 +18,6 @@ struct AgentSummaryWire: Codable, Identifiable {
     var description: String { "\(provider ?? "claude") · \(model)" }
 }
 
-/// Wrapper for GET /api/v1/agents response.
-private struct AgentsResponse: Decodable {
-    let agents: [AgentSummaryWire]
-}
-
 // MARK: - Helper types
 
 struct AgentListItem: View {
@@ -196,7 +191,6 @@ struct ConnectionStatusRow: View {
 
 struct iOSAgentListView: View {
     @Environment(iOSAppState.self) private var appState
-    @State private var agents: [AgentSummaryWire] = []
     @State private var selectedAgent: AgentSummaryWire?
     @State private var isLoadingAgents = false
     @State private var path = NavigationPath()
@@ -204,10 +198,10 @@ struct iOSAgentListView: View {
     var body: some View {
         NavigationStack(path: $path) {
             Group {
-                if isLoadingAgents {
+                if isLoadingAgents && appState.agents.isEmpty {
                     ProgressView("Loading agents…")
                         .accessibilityIdentifier("agentList.loadingIndicator")
-                } else if agents.isEmpty {
+                } else if appState.agents.isEmpty {
                     ContentUnavailableView(
                         "No Agents",
                         systemImage: "person.crop.circle.badge.questionmark",
@@ -215,7 +209,7 @@ struct iOSAgentListView: View {
                     )
                     .accessibilityIdentifier("agentList.emptyState")
                 } else {
-                    List(agents) { agent in
+                    List(appState.agents) { agent in
                         AgentListItem(agent: agent) { selected in
                             selectedAgent = selected
                         }
@@ -230,7 +224,7 @@ struct iOSAgentListView: View {
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
-                        Task { await loadAgents() }
+                        Task { await appState.loadAgents() }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -258,18 +252,15 @@ struct iOSAgentListView: View {
             .environment(appState)
         }
         .task {
-            await loadAgents()
+            guard case .connected = appState.connectionStatus else { return }
+            isLoadingAgents = appState.agents.isEmpty
+            await appState.loadAgents()
+            // For Nostr path the agents arrive async; give it a moment.
+            if appState.agents.isEmpty {
+                try? await Task.sleep(for: .seconds(3))
+            }
+            isLoadingAgents = false
         }
-    }
-
-    private func loadAgents() async {
-        guard case .connected = appState.connectionStatus else { return }
-        guard let baseURL = appState.lanBaseURL,
-              let url = URL(string: "\(baseURL)/api/v1/agents") else { return }
-        isLoadingAgents = true
-        defer { isLoadingAgents = false }
-        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
-        agents = (try? JSONDecoder().decode(AgentsResponse.self, from: data))?.agents ?? []
     }
 }
 

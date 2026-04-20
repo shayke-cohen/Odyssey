@@ -96,13 +96,23 @@ struct iOSChatView: View {
         .navigationTitle(conversation.topic)
         .navigationBarTitleDisplayMode(.inline)
         .task {
+            // Ensure sidecar has an active session before sending messages.
+            try? await appState.startOrResumeSession(
+                conversationId: conversation.id,
+                agentId: conversation.topic,
+                workingDirectory: conversation.workingDirectory
+            )
             messages = await appState.loadMessages(for: conversation.id)
-            // If the session completed before this view appeared (fast response),
-            // the streaming buffer was already cleared. Retry once after a short
-            // delay to pick up messages that were just written to the sidecar.
             if messages.isEmpty {
                 try? await Task.sleep(for: .seconds(1))
                 messages = await appState.loadMessages(for: conversation.id)
+            }
+        }
+        .onChange(of: appState.sessionErrors[conversation.id]) { _, err in
+            if let err {
+                errorMessage = err
+                isSending = false
+                appState.sessionErrors.removeValue(forKey: conversation.id)
             }
         }
     }
