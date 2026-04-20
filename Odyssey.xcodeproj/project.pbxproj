@@ -32,6 +32,7 @@
 		0D5CDDC9E3BDD37CA2C9EC4C /* CatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F86B99E423BFFA56B8DFFC /* CatalogService.swift */; };
 		0D7A5BE525843D851635E419 /* AttachmentThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F7D42C94A92A46E86CFD71 /* AttachmentThumbnail.swift */; };
 		0D81DA119C7A3C714D637245 /* DelegationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1EAC857ED65AD9DEEC35C5 /* DelegationTests.swift */; };
+		0EAB57270DC9264C936D45DA /* ProjectTemplateLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71961CF3EF07F98D448CA491 /* ProjectTemplateLibrary.swift */; };
 		0F36C22BC773A908B011855A /* WorkshopEntityBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB5DE1F584713BED7EF97D97 /* WorkshopEntityBrowser.swift */; };
 		0F4B05AB09231C7258385A9D /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE2E60A29D216D4EC39AD5DD /* Log.swift */; };
 		0FA2E25ECB30D6044CDAA9FC /* LocalProviderSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D666CF47FEE49605F45E2E30 /* LocalProviderSupportTests.swift */; };
@@ -454,6 +455,7 @@
 		6CBE6D508B750D68D5F8FF29 /* SharedRoomLocalBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedRoomLocalBackendTests.swift; sourceTree = "<group>"; };
 		6DF134C6E798CB85E421324B /* QuickActionsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsSettingsView.swift; sourceTree = "<group>"; };
 		7177E0BD3EB888C0261198A9 /* ConfigFileDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigFileDTOs.swift; sourceTree = "<group>"; };
+		71961CF3EF07F98D448CA491 /* ProjectTemplateLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectTemplateLibrary.swift; sourceTree = "<group>"; };
 		725E90B449DC3E4C8B034DB3 /* OdysseyiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OdysseyiOS.entitlements; sourceTree = "<group>"; };
 		72F25E50586F2AB1558EC46B /* TerminalOutputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalOutputView.swift; sourceTree = "<group>"; };
 		736B9634BE86AA5C59D7F3F3 /* StableXrayModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableXrayModifier.swift; sourceTree = "<group>"; };
@@ -1033,6 +1035,7 @@
 				EABC674EDD3F47999BEA9FAE /* Participant.swift */,
 				D226D7279D998140E54DD3B3 /* Peer.swift */,
 				EFE61F38DD7B9E57DF10B0B5 /* PermissionSet.swift */,
+				71961CF3EF07F98D448CA491 /* ProjectTemplateLibrary.swift */,
 				31D54F17BE4D8447127FBA81 /* PromptTemplate.swift */,
 				4BC8F961FF4889CDD708737E /* QuickActionConfig.swift */,
 				9AF738A4F1E23CAE25A34EA2 /* ScheduledMission.swift */,
@@ -1706,6 +1709,7 @@
 				80C74715980389A86D3110AA /* PeerNetworkView.swift in Sources */,
 				7B3195669831085550F16A04 /* PeerWireModels.swift in Sources */,
 				DB4CBB0970FF15A4782A984A /* PermissionSet.swift in Sources */,
+				0EAB57270DC9264C936D45DA /* ProjectTemplateLibrary.swift in Sources */,
 				4A9EF5119AE6FB66324C3D03 /* PromptTemplate.swift in Sources */,
 				D4895D020150B52E464F96B4 /* PromptTemplateCreationSheet.swift in Sources */,
 				4198D83D1C95290EBEBEAAFC /* QuickActionConfig.swift in Sources */,

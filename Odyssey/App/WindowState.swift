@@ -288,6 +288,9 @@ final class WindowState {
 
     var launchError: String?
     var autoSendText: String?
+    /// Set by the sidebar project template context menu; consumed by ChatView to auto-send
+    /// the prompt when the new conversation appears.
+    var pendingTemplatePrompt: (conversationId: UUID, text: String)?
 
     init(project: Project) {
         self.selectedProjectId = project.id
