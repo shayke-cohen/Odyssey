@@ -997,6 +997,7 @@ struct ChatView: View {
                     Text(group.name)
                         .font(.headline)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                         .xrayId("chat.identityName")
                     Text("GROUP")
                         .font(.system(size: 9, weight: .bold))
@@ -1004,11 +1005,13 @@ struct ChatView: View {
                         .padding(.vertical, 2)
                         .background(Color.indigo.opacity(0.18), in: RoundedRectangle(cornerRadius: 4))
                         .foregroundStyle(.indigo)
+                        .fixedSize()
                         .xrayId("chat.identityTypeBadge")
                 } else if let agent = primarySession?.agent {
                     Text(agent.name)
                         .font(.headline)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                         .xrayId("chat.identityName")
                     Text("AGENT")
                         .font(.system(size: 9, weight: .bold))
@@ -1016,6 +1019,7 @@ struct ChatView: View {
                         .padding(.vertical, 2)
                         .background(Color.blue.opacity(0.18), in: RoundedRectangle(cornerRadius: 4))
                         .foregroundStyle(.blue)
+                        .fixedSize()
                         .xrayId("chat.identityTypeBadge")
                 } else {
                     Text("Chat")
@@ -1026,21 +1030,22 @@ struct ChatView: View {
 
             // Member status dots (group) or agent status (1:1)
             if let convo = conversation, (convo.sessions ?? []).count > 1 {
-                HStack(spacing: 8) {
-                    ForEach((convo.sessions ?? []), id: \.id) { session in
-                        if let ag = session.agent {
-                            HStack(spacing: 3) {
-                                let isActive = appState.sessionActivity[session.id.uuidString]?.isActive == true
-                                Circle()
-                                    .fill(isActive ? Color.green : Color.secondary.opacity(0.35))
-                                    .frame(width: 5, height: 5)
-                                Text(ag.name)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .xrayId("chat.memberStatus.\(session.id.uuidString)")
+                let sessions = convo.sessions ?? []
+                let activeCount = sessions.filter { appState.sessionActivity[$0.id.uuidString]?.isActive == true }.count
+                HStack(spacing: 4) {
+                    // Compact status: colored dots only, no names
+                    ForEach(sessions, id: \.id) { session in
+                        if session.agent != nil {
+                            let isActive = appState.sessionActivity[session.id.uuidString]?.isActive == true
+                            Circle()
+                                .fill(isActive ? Color.green : Color.secondary.opacity(0.35))
+                                .frame(width: 5, height: 5)
+                                .xrayId("chat.memberStatus.\(session.id.uuidString)")
                         }
                     }
+                    Text("\(activeCount)/\(sessions.count) active")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             } else if let session = primarySession {
                 HStack(spacing: 3) {
@@ -1122,6 +1127,7 @@ struct ChatView: View {
                             windowState.openConfiguration(section: .skills, slug: skill.configSlug)
                         } label: {
                             Text("⚡ \(skill.name)")
+                                .fixedSize()
                                 .font(.caption2)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -1138,6 +1144,7 @@ struct ChatView: View {
                             windowState.openConfiguration(section: .mcps, slug: mcp.configSlug)
                         } label: {
                             Text("🔧 \(mcp.name)")
+                                .fixedSize()
                                 .font(.caption2)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -1160,6 +1167,7 @@ struct ChatView: View {
                                     windowState.openConfiguration(section: .groups, slug: group.configSlug)
                                 } label: {
                                     Text("\(role.emoji) \(member.name)")
+                                        .fixedSize()
                                         .font(.caption2)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
@@ -1172,12 +1180,13 @@ struct ChatView: View {
                         }
                     }
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
         }
     }
 
     private var simplifiedChatHeader: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 10) {
                 headerAvatarView
 
@@ -1192,11 +1201,13 @@ struct ChatView: View {
                         .xrayId("chat.topicField")
                 } else {
                     headerIdentityInfo
+                        .layoutPriority(1)
                 }
 
-                Spacer()
+                Spacer(minLength: 4)
 
                 simplifiedHeaderStatusPills
+                    .layoutPriority(2)
 
                 executionModeSegmented
 
@@ -1208,6 +1219,8 @@ struct ChatView: View {
                 }
             }
 
+            headerChips
+
             simplifiedMissionSection
 
             if hasRecoverableInterruption {
@@ -1215,7 +1228,7 @@ struct ChatView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .background(.bar)
         .task(id: resolvedChatTitle) {
             windowState.chatTitle = resolvedChatTitle
@@ -1688,11 +1701,13 @@ struct ChatView: View {
                 }
             }
         } label: {
-            Label("Group Settings", systemImage: "person.3.sequence")
+            Image(systemName: "person.3.sequence")
+                .font(captionFont.weight(.medium))
         }
         .fixedSize()
         .xrayId("chat.groupSettingsMenu")
         .accessibilityLabel("Group settings")
+        .help("Group settings")
     }
 
     // MARK: - Message List
@@ -2167,21 +2182,21 @@ struct ChatView: View {
                         windowState.sharedRoomInviteConversationId = conversationId
                         windowState.showSharedRoomInviteSheet = true
                     } label: {
-                        Label(conversation?.isSharedRoom == true ? "Add People" : "Share Room",
-                              systemImage: "person.wave.2")
+                        Image(systemName: "person.wave.2")
                             .font(captionFont.weight(.medium))
                     }
                     .buttonStyle(.borderless)
                     .disabled(isProcessing)
                     .xrayId("chat.shareRoomButton")
                     .accessibilityLabel(conversation?.isSharedRoom == true ? "Add people" : "Share room")
+                    .help(conversation?.isSharedRoom == true ? "Add people" : "Share room")
                 }
 
                 Button {
                     conversation?.planModeEnabled.toggle()
                     try? modelContext.save()
                 } label: {
-                    Label("Plan", systemImage: "doc.text.magnifyingglass")
+                    Image(systemName: "doc.text.magnifyingglass")
                         .font(captionFont.weight(.medium))
                         .foregroundStyle(planModeEnabled ? .orange : .secondary)
                 }
