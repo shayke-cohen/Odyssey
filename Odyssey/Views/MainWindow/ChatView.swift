@@ -1302,8 +1302,10 @@ struct ChatView: View {
                     .font(.system(size: 10))
                 Text(isActive ? "Auto · \(convo.delegationMode.shortLabel)" : "Auto-Answer")
                     .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
                 Image(systemName: "chevron.down").font(.system(size: 8))
             }
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(isActive ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.15))
@@ -1436,13 +1438,6 @@ struct ChatView: View {
     @ViewBuilder
     private func simplifiedSessionMenu(_ convo: Conversation) -> some View {
         Menu {
-            Button {
-                windowState.openInspector(tab: .blackboard)
-            } label: {
-                Label("Open Blackboard", systemImage: "square.grid.2x2")
-            }
-            .xrayId("chat.sessionMenu.openBlackboard")
-
             Section {
                 if let model = currentModel {
                     Label("Model: \(modelShortName(model))", systemImage: "cpu")

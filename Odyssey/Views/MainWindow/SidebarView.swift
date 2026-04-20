@@ -378,6 +378,7 @@ struct SidebarView: View {
                 rebuildAgentCaches()
                 rebuildConversationIndex()
             }
+            .onChange(of: agents.map { $0.showInSidebar }) { _, _ in rebuildAgentCaches() }
             .onChange(of: conversations.count) { _, _ in rebuildConversationIndex() }
     }
 
@@ -416,6 +417,7 @@ struct SidebarView: View {
         }
         .onChange(of: projects.count) { _, _ in rebuildProjectCache() }
         .onChange(of: agents.count) { _, _ in rebuildAgentCaches() }
+        .onChange(of: agents.map { $0.showInSidebar }) { _, _ in rebuildAgentCaches() }
         .onChange(of: windowState.selectedConversationId) { _, newValue in
             guard let selectedId = newValue else { return }
             handleConversationSelectionChange(selectedId)

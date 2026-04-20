@@ -43,7 +43,7 @@ struct InspectorView: View {
     private var isGroupConversation: Bool { sourceGroup != nil }
 
     private var availableTabs: [WindowInspectorTab] {
-        var tabs: [WindowInspectorTab] = [.info, .blackboard]
+        var tabs: [WindowInspectorTab] = [.info]
         if hasWorkingDirectory { tabs.append(.files) }
         if isGroupConversation { tabs.append(.group) }
         return tabs
@@ -172,7 +172,7 @@ struct InspectorView: View {
                 }
             }
         }
-        .frame(minWidth: 320, idealWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 320, idealWidth: 360, maxWidth: 400, maxHeight: .infinity)
         .onChange(of: isGroupConversation) {
             normalizeSelectedTab()
         }

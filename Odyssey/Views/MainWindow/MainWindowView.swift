@@ -101,7 +101,7 @@ struct MainWindowView: View {
                                     .layoutPriority(1)
                                 if showInspector {
                                     inspectorPane
-                                        .frame(minWidth: 280, idealWidth: 340, maxWidth: 600, maxHeight: .infinity)
+                                        .frame(minWidth: 320, idealWidth: 360, maxWidth: 400, maxHeight: .infinity)
                                 }
                                 if showBrowser, let sessionId = appState.activeBrowserSessionId {
                                     browserPanelPane(sessionId: sessionId)
