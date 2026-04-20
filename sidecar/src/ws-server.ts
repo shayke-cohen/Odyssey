@@ -5,20 +5,8 @@ import type { ToolContext } from "./tools/tool-context.js";
 import { resolveQuestion } from "./tools/ask-user-tool.js";
 import { logger } from "./logger.js";
 import { probeConnector } from "./connectors/provider-runtime.js";
-import { query } from "@anthropic-ai/claude-agent-sdk";
 import { ConversationEvaluator } from "./conversation-evaluator.js";
-import { existsSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
 
-const _claudeCodeCliPath = (() => {
-  const sidecarDir = dirname(fileURLToPath(import.meta.url));
-  const bundled = resolve(sidecarDir, "claude-code-cli.js");
-  if (existsSync(bundled)) return bundled;
-  const devPath = resolve(sidecarDir, "../../node_modules/@anthropic-ai/claude-agent-sdk/cli.js");
-  if (existsSync(devPath)) return devPath;
-  return undefined;
-})();
 
 export interface WsServerOptions {
   token?: string;
@@ -697,35 +685,20 @@ export class WsServer {
     return cleaned;
   }
 
-  /** Single-turn generation via the Agent SDK (uses Claude Code auth, no API key needed). */
+  /** Single-turn generation via the Anthropic SDK (direct API call, no subprocess). */
   private async queryOnce(systemInstructions: string, userRequest: string, model: string): Promise<string> {
     const prompt = `${userRequest}\n\nRespond with ONLY valid JSON as specified above. No markdown, no code fences, no explanations.`;
-    const env: Record<string, string> = {};
-    for (const [k, v] of Object.entries(process.env)) {
-      if (typeof v === "string") env[k] = v;
-    }
-    delete env.CLAUDECODE; // prevent "nested session" rejection
-    const options: Record<string, any> = {
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const anthropic = new Anthropic();
+    const response = await anthropic.messages.create({
       model,
-      maxTurns: 1,
-      permissionMode: "bypassPermissions",
-      allowDangerouslySkipPermissions: true,
-      cwd: process.cwd(),
-      env,
-      systemPrompt: systemInstructions,
-    };
-    if (_claudeCodeCliPath) options.pathToClaudeCodeExecutable = _claudeCodeCliPath;
-    const stream = query({ prompt, options });
-    let resultText = "";
-    for await (const message of stream) {
-      const msg = message as any;
-      if (msg.type === "assistant") {
-        for (const block of msg.message?.content ?? []) {
-          if (block.type === "text" && block.text) resultText += block.text;
-        }
-      }
-    }
-    return resultText.trim();
+      max_tokens: 4096,
+      system: systemInstructions,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") throw new Error("No text response from Claude");
+    return textBlock.text.trim();
   }
 
   private async handleGenerateAgent(
@@ -976,7 +949,7 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact schema:
     logger.info("ws", `generate.template: generating template for agent "${command.agentName}"`);
 
     const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Template generation timed out after 30s")), 30_000)
+      setTimeout(() => reject(new Error("Template generation timed out after 90s")), 90_000)
     );
     const rawTemplateText = await Promise.race([
       this.queryOnce(systemPrompt, command.intent, "claude-haiku-4-5-20251001"),
