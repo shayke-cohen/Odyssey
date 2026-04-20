@@ -125,10 +125,10 @@ struct MainWindowView: View {
         .toolbar {
             if ws.activeRoute != .settings {
                 ToolbarItem(placement: .status) {
-                    sidecarStatusPill
-                }
-                ToolbarItem(placement: .status) {
-                    providerToggle
+                    HStack(spacing: 6) {
+                        sidecarStatusPill
+                        providerToggle
+                    }
                 }
             }
 
