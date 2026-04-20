@@ -1020,6 +1020,8 @@ struct IncomingWireMessage: Codable, Sendable {
         case "browser.resume":
             guard let sid = sessionId else { return nil }
             return .browserResume(sessionId: sid)
+        case "pairing.confirmed":
+            return .pairingConfirmed
         default:
             return nil
         }

@@ -41,6 +41,15 @@ struct InviteCodeGenerator {
         )
     }
 
+    /// Build a user-invite payload for Matrix-based peer pairing.
+    static func generateUser(instanceName: String, matrixUserId: String) throws -> String {
+        struct UserPayload: Encodable {
+            let v: Int; let type: String; let instanceName: String; let matrixUserId: String
+        }
+        let data = try JSONEncoder().encode(UserPayload(v: 1, type: "user", instanceName: instanceName, matrixUserId: matrixUserId))
+        return base64urlEncode(data)
+    }
+
     // MARK: - Encode / Decode
 
     /// Encode a payload to a URL-safe base64url string.

@@ -1,6 +1,7 @@
 // Odyssey/Views/Settings/AcceptInviteView.swift
 import SwiftUI
 import SwiftData
+import OdysseyCore
 
 /// Settings view for pasting an invite code from another Mac to establish
 /// a Nostr relay connection.
@@ -122,19 +123,19 @@ struct AcceptInviteView: View {
 
         let payload: InvitePayload
         do {
-            payload = try InviteCodeGenerator.decode(base64url)
-            try InviteCodeGenerator.verify(payload)
+            payload = try InvitePayload.decode(base64url)
         } catch {
             status = .error("Invalid invite: \(error.localizedDescription)")
             return
         }
 
-        guard let nostrPubkey = payload.nostrPubkey, !nostrPubkey.isEmpty else {
+        let nostrPubkey = payload.macNpub
+        guard !nostrPubkey.isEmpty else {
             status = .error("This invite does not include a Nostr pubkey and cannot be used for internet relay.")
             return
         }
 
-        let relays = payload.nostrRelays ?? []
+        let relays = payload.relays
         let displayName = payload.displayName
 
         // Upsert NostrPeer in SwiftData

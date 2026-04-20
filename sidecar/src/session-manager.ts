@@ -14,6 +14,7 @@ import { LocalAgentRuntime } from "./providers/local-agent-runtime.js";
 import { MockRuntime } from "./providers/mock-runtime.js";
 import type { ProviderRuntime } from "./providers/runtime.js";
 import { buildMCPPreflightReport } from "./mcp-preflight.js";
+import { checkClaudePreflight, checkCodexPreflight } from "./providers/preflight-check.js";
 
 type EventEmitter = (event: SidecarEvent) => void;
 
@@ -92,6 +93,20 @@ export class SessionManager {
       ...config,
       provider: config.provider ?? "claude",
     };
+
+    // Pre-flight: verify required tool is installed and authenticated before creating the session.
+    const preflightResult =
+      normalizedConfig.provider === "codex"
+        ? checkCodexPreflight()
+        : normalizedConfig.provider === "claude"
+          ? checkClaudePreflight()
+          : { ok: true };
+    if (!preflightResult.ok) {
+      const error = preflightResult.error!;
+      logger.error("session", `Pre-flight check failed for ${conversationId}: ${error}`);
+      this.emit({ type: "session.error", sessionId: conversationId, error });
+      return;
+    }
     this.registry.create(conversationId, normalizedConfig);
     this.logMCPPreflight(conversationId, normalizedConfig);
     const createPromise = this.runtimeFor(normalizedConfig)

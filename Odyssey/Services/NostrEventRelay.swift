@@ -1,5 +1,22 @@
 import Foundation
+import CryptoKit
+import P256K
 import OSLog
+
+private extension Data {
+    init?(hexString: String) {
+        guard hexString.count % 2 == 0 else { return nil }
+        var data = Data(capacity: hexString.count / 2)
+        var idx = hexString.startIndex
+        while idx < hexString.endIndex {
+            let next = hexString.index(idx, offsetBy: 2)
+            guard let byte = UInt8(hexString[idx..<next], radix: 16) else { return nil }
+            data.append(byte)
+            idx = next
+        }
+        self = data
+    }
+}
 
 // MARK: - NostrEventRelay
 
@@ -123,12 +140,32 @@ final class NostrEventRelay {
     // MARK: - Helpers
 
     private func makeEventJSON(content: String, recipientPubkey: String, senderPubkey: String) -> String {
+        guard let priv = privkeyHex,
+              let privBytes = Data(hexString: priv) else {
+            // Fallback: unsigned (relay will reject, but safe to return)
+            let ts = Int(Date().timeIntervalSince1970)
+            let esc = content.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+            return """
+            {"kind":4,"created_at":\(ts),"tags":[["p","\(recipientPubkey)"]],"content":"\(esc)","pubkey":"\(senderPubkey)","id":"","sig":""}
+            """
+        }
         let timestamp = Int(Date().timeIntervalSince1970)
+        let canonical: [Any] = [0, senderPubkey, timestamp, 4, [["p", recipientPubkey]], content]
+        guard let canonicalData = try? JSONSerialization.data(withJSONObject: canonical) else {
+            return ""
+        }
+        let hashDigest = SHA256.hash(data: canonicalData)
+        let id = hashDigest.map { String(format: "%02x", $0) }.joined()
+        guard let schnorrKey = try? P256K.Schnorr.PrivateKey(dataRepresentation: privBytes),
+              let sig = try? schnorrKey.signature(for: hashDigest) else {
+            return ""
+        }
+        let sigHex = sig.dataRepresentation.map { String(format: "%02x", $0) }.joined()
         let contentEsc = content
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
         return """
-        {"kind":4,"created_at":\(timestamp),"tags":[["p","\(recipientPubkey)"]],"content":"\(contentEsc)","pubkey":"\(senderPubkey)","id":"","sig":""}
+        {"kind":4,"created_at":\(timestamp),"tags":[["p","\(recipientPubkey)"]],"content":"\(contentEsc)","pubkey":"\(senderPubkey)","id":"\(id)","sig":"\(sigHex)"}
         """
     }
 }

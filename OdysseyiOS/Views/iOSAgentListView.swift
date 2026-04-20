@@ -263,13 +263,9 @@ struct iOSAgentListView: View {
     }
 
     private func loadAgents() async {
-        guard case .connected = appState.connectionStatus,
-              let peer = appState.sidecarManager.connectedPeer else { return }
-        let host = peer.lanHint?.components(separatedBy: ":").first
-            ?? peer.wanHint?.components(separatedBy: ":").first
-            ?? "localhost"
-        let httpPort = peer.wsPort + 1
-        guard let url = URL(string: "http://\(host):\(httpPort)/api/v1/agents") else { return }
+        guard case .connected = appState.connectionStatus else { return }
+        guard let baseURL = appState.lanBaseURL,
+              let url = URL(string: "\(baseURL)/api/v1/agents") else { return }
         isLoadingAgents = true
         defer { isLoadingAgents = false }
         guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }

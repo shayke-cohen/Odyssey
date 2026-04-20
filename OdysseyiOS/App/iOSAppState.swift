@@ -1,5 +1,6 @@
 // OdysseyiOS/App/iOSAppState.swift
 import Foundation
+import UIKit
 import OdysseyCore
 
 /// Global observable state for the iOS thin-client app.
@@ -59,6 +60,14 @@ final class iOSAppState {
         Task {
             await loadConversations()
             await loadProjects()
+        }
+        // Announce iOS npub to Mac so it can register this device as trusted.
+        // 1-second delay lets the relay WebSocket handshake complete first.
+        let iosNpub = keypair.pubkeyHex
+        let deviceName = UIDevice.current.name
+        Task {
+            try? await Task.sleep(for: .seconds(1))
+            bridge.send(.pairingHello(iosNpub: iosNpub, displayName: deviceName))
         }
     }
 
@@ -167,6 +176,8 @@ final class iOSAppState {
             }
         }
     }
+
+    var lanBaseURL: String? { currentBaseURL() }
 
     private func currentBaseURL() -> String? {
         guard let lan = storedCredentials?.lanHint else { return nil }

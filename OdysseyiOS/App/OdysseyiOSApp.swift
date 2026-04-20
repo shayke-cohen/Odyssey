@@ -39,12 +39,10 @@ struct OdysseyiOSApp: App {
             ContentRootView()
                 .environment(appState)
                 .onChange(of: scenePhase) { _, newPhase in
-                    Task {
-                        if newPhase == .background {
-                            await appState.sidecarManager.suspendForBackground()
-                        } else if newPhase == .active {
-                            await appState.sidecarManager.reconnectIfNeeded()
-                        }
+                    // Nostr bridge handles reconnection internally; re-connect on foreground
+                    // in case the system suspended the relay socket while backgrounded.
+                    if newPhase == .active {
+                        Task { await appState.connectToFirstPairedMac() }
                     }
                 }
         }

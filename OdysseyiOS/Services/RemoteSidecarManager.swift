@@ -47,20 +47,8 @@ final class RemoteSidecarManager: ObservableObject {
 
     // MARK: - Public API
 
+    // Deprecated: Nostr relay is the sole transport. This method always fails.
     func connect(using credentials: PeerCredentials) async {
-        // Prevent concurrent connection attempts from racing and cancelling each other.
-        guard case .disconnected = status else { return }
-        status = .connecting
-        connectedPeer = credentials
-
-        for endpoint in Self.candidateEndpoints(for: credentials) {
-            do {
-                try await connectWebSocket(to: endpoint, credentials: credentials)
-                return
-            } catch {
-                continue
-            }
-        }
         status = .disconnected
         eventContinuation?.yield(.disconnected)
     }
@@ -99,62 +87,7 @@ final class RemoteSidecarManager: ObservableObject {
     func trackSession(_ sessionId: String) { activeSessions.insert(sessionId) }
     func untrackSession(_ sessionId: String) { activeSessions.remove(sessionId) }
 
-    // MARK: - Endpoint helpers
-
-    static func candidateEndpoints(for credentials: PeerCredentials) -> [String] {
-        var endpoints: [String] = []
-        if let lan = credentials.lanHint { endpoints.append(lan) }
-        if let wan = credentials.wanHint { endpoints.append(wan) }
-        if let relay = credentials.turnRelay { endpoints.append(relay) }
-        return endpoints
-    }
-
-    // MARK: - Private connection
-
-    private func connectWebSocket(to host: String, credentials: PeerCredentials) async throws {
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        urlSession?.invalidateAndCancel()
-
-        // Normalise host:port
-        let hostPort: String
-        if host.contains(":") {
-            hostPort = host
-        } else {
-            hostPort = "\(host):\(credentials.wsPort)"
-        }
-        let url = URL(string: "wss://\(hostPort)")!
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(credentials.wsToken)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = 5
-
-        let config = URLSessionConfiguration.default
-        let delegate = CertPinningDelegate(pinnedDER: credentials.tlsCertDER)
-        let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
-        urlSession = session
-        let task = session.webSocketTask(with: request)
-        webSocketTask = task
-        task.resume()
-
-        // Receive the sidecar.ready handshake message (any first message is treated as handshake).
-        let message = try await task.receive()
-        _ = message  // discard — just confirms the connection is live
-
-        // Determine method
-        let method: ConnectionMethod
-        if let lan = credentials.lanHint, host.hasPrefix(lan) {
-            method = .lan
-        } else if let relay = credentials.turnRelay,
-                  host.hasPrefix(relay.components(separatedBy: ":").first ?? "") {
-            method = .turn
-        } else {
-            method = .wanDirect
-        }
-
-        status = .connected(method: method.rawValue)
-        eventContinuation?.yield(.connected)
-        receiveMessages()
-        startPing()
-    }
+    // MARK: - Deprecated stubs (LAN fast-path placeholder)
 
     private func receiveMessages() {
         webSocketTask?.receive { [weak self] result in

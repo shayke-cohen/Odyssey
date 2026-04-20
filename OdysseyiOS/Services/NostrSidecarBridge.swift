@@ -1,5 +1,6 @@
 // OdysseyiOS/Services/NostrSidecarBridge.swift
 import Foundation
+import CryptoKit
 import OdysseyCore
 import P256K
 import OSLog
@@ -66,7 +67,12 @@ final class NostrSidecarBridge: ObservableObject {
                       let cmdStr = String(data: cmdData, encoding: .utf8) else { return }
                 let convKey = try NIP44iOS.conversationKey(privkeyHex: priv, peerPubkeyHex: macPubkeyHex)
                 let encrypted = try NIP44iOS.encrypt(plaintext: cmdStr, conversationKey: convKey)
-                let eventJSON = makeEventJSON(content: encrypted, recipientPubkey: macPubkeyHex, senderPubkey: pubkeyHex)
+                let eventJSON = try signedEventJSON(
+                    content: encrypted,
+                    recipientPubkey: macPubkeyHex,
+                    senderPubkey: pubkeyHex,
+                    privkeyHex: priv
+                )
                 relay.publish(to: macPubkeyHex, eventJSON: eventJSON)
             } catch {
                 log.error("NostrSidecarBridge: send failed — \(error)")
@@ -95,13 +101,29 @@ final class NostrSidecarBridge: ObservableObject {
         }
     }
 
-    private func makeEventJSON(content: String, recipientPubkey: String, senderPubkey: String) -> String {
+    /// Builds a properly signed NIP-01 kind-4 event (BIP-340 Schnorr signature).
+    private func signedEventJSON(
+        content: String,
+        recipientPubkey: String,
+        senderPubkey: String,
+        privkeyHex: String
+    ) throws -> String {
         let timestamp = Int(Date().timeIntervalSince1970)
+        // Canonical serialization per NIP-01: [0, pubkey, created_at, kind, tags, content]
+        let canonical: [Any] = [0, senderPubkey, timestamp, 4, [["p", recipientPubkey]], content]
+        let canonicalData = try JSONSerialization.data(withJSONObject: canonical)
+        let hashBytes = SHA256.hash(data: canonicalData)
+        let id = hashBytes.map { String(format: "%02x", $0) }.joined()
+        // Schnorr sign with iOS private key
+        let privBytes = Data(hexString: privkeyHex)!
+        let schnorrKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privBytes)
+        let sig = try schnorrKey.signature(for: hashBytes)
+        let sigHex = sig.dataRepresentation.map { String(format: "%02x", $0) }.joined()
         let contentEsc = content
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
         return """
-        {"kind":4,"created_at":\(timestamp),"tags":[["p","\(recipientPubkey)"]],"content":"\(contentEsc)","pubkey":"\(senderPubkey)","id":"","sig":""}
+        {"kind":4,"created_at":\(timestamp),"tags":[["p","\(recipientPubkey)"]],"content":"\(contentEsc)","pubkey":"\(senderPubkey)","id":"\(id)","sig":"\(sigHex)"}
         """
     }
 }

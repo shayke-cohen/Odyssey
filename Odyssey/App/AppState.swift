@@ -455,8 +455,7 @@ final class AppState {
     private func handleConnectInvite(encoded: String, windowState: WindowState) async {
         let inviteLogger = Logger(subsystem: "com.odyssey.app", category: "LaunchIntent")
         do {
-            let payload = try InviteCodeGenerator.decode(encoded)
-            try InviteCodeGenerator.verify(payload)
+            let payload = try InvitePayload.decode(encoded)
             inviteLogger.info("Received valid connect invite from '\(payload.displayName, privacy: .public)'")
         } catch {
             inviteLogger.error("connectInvite handling failed: \(error.localizedDescription)")
@@ -1667,6 +1666,8 @@ final class AppState {
                 logger.warning("AppState: browserResume: no controller for sessionId \(sessionId)")
             }
             sendToSidecar(.browserStateChange(sessionId: sessionId, state: "agentDriving"))
+        case .pairingConfirmed:
+            break
         }
     }
 

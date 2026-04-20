@@ -28,6 +28,7 @@ export interface WsServerOptions {
 
 export class WsServer {
   private clients = new Set<ServerWebSocket<unknown>>();
+  readonly trustedIosNpubs = new Set<string>();
   private sessionManager: SessionManager;
   private ctx: ToolContext;
   private server: ReturnType<typeof Bun.serve> | null = null;
@@ -474,6 +475,12 @@ export class WsServer {
       }
       case "browser.stateChange":
         logger.info("browser", `browser.stateChange: session=${command.sessionId} state=${command.state}`);
+        break;
+
+      case "pairing.hello":
+        logger.info("nostr", `pairing.hello from iOS npub=${command.iosNpub.slice(0, 8)}… displayName="${command.displayName}"`);
+        this.trustedIosNpubs.add(command.iosNpub);
+        this.broadcast({ type: "pairing.confirmed" });
         break;
     }
   }

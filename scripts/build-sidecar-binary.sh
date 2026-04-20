@@ -27,6 +27,12 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
+# Ensure sidecar dependencies are installed before bundling.
+# This is required so that node_modules/@anthropic-ai/claude-agent-sdk/cli.js
+# exists when we copy it below.
+echo "build-sidecar-binary.sh: running bun install in $SIDECAR_SRC..."
+"$BUN_PATH" install --cwd "$SIDECAR_SRC" 2>&1 | tail -3 || true
+
 # Build a single bundled JS file (no compiled runtime — bun binary is bundled separately)
 "$BUN_PATH" build --target=bun \
   "$SIDECAR_SRC/src/index.ts" \
