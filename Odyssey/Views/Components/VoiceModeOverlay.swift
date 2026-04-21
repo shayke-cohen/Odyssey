@@ -65,37 +65,37 @@ struct VoiceModeOverlay: View {
             }
 
             // Centered large mic button
+            // Note: plain Image + contentShape avoids Button gesture conflict on macOS
             HStack {
                 Spacer()
-                Button {} label: {
-                    Image(systemName: appState.voiceInput.isRecording ? "waveform" : "mic")
-                        .font(.system(size: 28))
-                        .foregroundStyle(appState.voiceInput.isRecording ? Color.red : (appState.tts.isSpeaking ? Color.secondary : Color.primary))
-                        .frame(width: 56, height: 56)
-                        .background(Circle().fill(appState.voiceInput.isRecording ? Color.red.opacity(0.12) : Color.primary.opacity(0.06)))
-                        .overlay(Circle().stroke(appState.voiceInput.isRecording ? Color.red.opacity(0.5) : Color.secondary.opacity(0.3), lineWidth: 1.5))
-                }
-                .buttonStyle(.plain)
-                .disabled(appState.tts.isSpeaking)
-                .onLongPressGesture(minimumDuration: 0.0, maximumDistance: 200, pressing: { isPressing in
-                    guard !appState.tts.isSpeaking else { return }
-                    if isPressing && !appState.voiceInput.isRecording {
-                        Task { await appState.voiceInput.startRecording() }
-                    } else if !isPressing && appState.voiceInput.isRecording {
-                        Task {
-                            let transcript = await appState.voiceInput.stopRecording()
-                            if !transcript.isEmpty {
-                                NotificationCenter.default.post(
-                                    name: .voiceModeAutoSend,
-                                    object: nil,
-                                    userInfo: ["transcript": transcript]
-                                )
+                Image(systemName: appState.voiceInput.isRecording ? "waveform" : "mic")
+                    .font(.system(size: 28))
+                    .foregroundStyle(appState.voiceInput.isRecording ? Color.red : (appState.tts.isSpeaking ? Color.secondary : Color.primary))
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(appState.voiceInput.isRecording ? Color.red.opacity(0.12) : Color.primary.opacity(0.06)))
+                    .overlay(Circle().stroke(appState.voiceInput.isRecording ? Color.red.opacity(0.5) : Color.secondary.opacity(0.3), lineWidth: 1.5))
+                    .contentShape(Circle())
+                    .opacity(appState.tts.isSpeaking ? 0.4 : 1.0)
+                    .allowsHitTesting(!appState.tts.isSpeaking)
+                    .onLongPressGesture(minimumDuration: 0.0, maximumDistance: 200, pressing: { isPressing in
+                        guard !appState.tts.isSpeaking else { return }
+                        if isPressing && !appState.voiceInput.isRecording {
+                            Task { await appState.voiceInput.startRecording() }
+                        } else if !isPressing && appState.voiceInput.isRecording {
+                            Task {
+                                let transcript = await appState.voiceInput.stopRecording()
+                                if !transcript.isEmpty {
+                                    NotificationCenter.default.post(
+                                        name: .voiceModeAutoSend,
+                                        object: nil,
+                                        userInfo: ["transcript": transcript]
+                                    )
+                                }
                             }
                         }
-                    }
-                }, perform: {})
-                .accessibilityIdentifier("voiceMode.micButton")
-                .accessibilityLabel("Hold to record, release to send")
+                    }, perform: {})
+                    .accessibilityIdentifier("voiceMode.micButton")
+                    .accessibilityLabel("Hold to record, release to send")
                 Spacer()
             }
             .padding(.vertical, 12)

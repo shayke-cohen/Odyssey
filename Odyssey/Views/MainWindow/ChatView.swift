@@ -2309,27 +2309,25 @@ struct ChatView: View {
                 }
 
                 // Mic button (push-to-talk) — hidden when voice features disabled
+                // Note: plain Image + contentShape avoids Button gesture conflict on macOS
                 if voiceFeaturesEnabled {
-                Button {
-                    // tap does nothing — hold gesture handles it
-                } label: {
-                    Image(systemName: appState.voiceInput.isRecording ? "waveform" : "mic")
-                        .foregroundColor(appState.voiceInput.isRecording ? .red : .secondary)
-                        .symbolEffect(.variableColor, isActive: appState.voiceInput.isRecording)
-                }
-                .accessibilityIdentifier("chat.voiceMicButton")
-                .accessibilityLabel("Hold to record voice input")
-                .onLongPressGesture(minimumDuration: 0.0, maximumDistance: 200, pressing: { isPressing in
-                    if isPressing && !appState.voiceInput.isRecording {
-                        Task { await appState.voiceInput.startRecording() }
-                    } else if !isPressing {
-                        Task {
-                            let transcript = await appState.voiceInput.stopRecording()
-                            if !transcript.isEmpty { inputText = transcript }
+                Image(systemName: appState.voiceInput.isRecording ? "waveform" : "mic")
+                    .foregroundColor(appState.voiceInput.isRecording ? .red : .secondary)
+                    .symbolEffect(.variableColor, isActive: appState.voiceInput.isRecording)
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
+                    .accessibilityIdentifier("chat.voiceMicButton")
+                    .accessibilityLabel("Hold to record voice input")
+                    .onLongPressGesture(minimumDuration: 0.0, maximumDistance: 200, pressing: { isPressing in
+                        if isPressing && !appState.voiceInput.isRecording {
+                            Task { await appState.voiceInput.startRecording() }
+                        } else if !isPressing {
+                            Task {
+                                let transcript = await appState.voiceInput.stopRecording()
+                                if !transcript.isEmpty { inputText = transcript }
+                            }
                         }
-                    }
-                }, perform: {})
-                .buttonStyle(.plain)
+                    }, perform: {})
 
                 // Voice mode toggle
                 Button {
