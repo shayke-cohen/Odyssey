@@ -18,10 +18,10 @@ final class VoiceInputService: NSObject {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
+    private var tapInstalled = false
 
     // MARK: - Permissions
     func requestPermissions() async -> Bool {
-        // Request SFSpeechRecognizer authorization
         let speechStatus = await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in
                 continuation.resume(returning: status)
@@ -32,7 +32,6 @@ final class VoiceInputService: NSObject {
             return false
         }
 
-        // Request microphone access
         let micGranted = await AVCaptureDevice.requestAccess(for: .audio)
         permissionGranted = micGranted
         return micGranted
@@ -42,7 +41,6 @@ final class VoiceInputService: NSObject {
     func startRecording() async {
         guard !isRecording else { return }
 
-        // Request permissions if not yet granted
         if !permissionGranted {
             let granted = await requestPermissions()
             guard granted else {
@@ -67,7 +65,10 @@ final class VoiceInputService: NSObject {
         guard isRecording else { return partialTranscript }
 
         audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if tapInstalled {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
 
@@ -83,9 +84,11 @@ final class VoiceInputService: NSObject {
 
     // MARK: - Private implementation
     private func startAudioEngine(recognizer: SFSpeechRecognizer) async throws {
-        // Reset any existing state
         audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if tapInstalled {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
         recognitionRequest = nil
         recognitionTask?.cancel()
         recognitionTask = nil
@@ -94,12 +97,16 @@ final class VoiceInputService: NSObject {
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
-        request.requiresOnDeviceRecognition = true  // on-device only, privacy-preserving
         recognitionRequest = request
 
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
 
+        guard recordingFormat.sampleRate > 0 else {
+            throw VoiceInputError.audioFormatUnavailable
+        }
+
+        tapInstalled = true
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
             guard let self else { return }
             request.append(buffer)
@@ -113,7 +120,7 @@ final class VoiceInputService: NSObject {
                     rms += channelData[i] * channelData[i]
                 }
                 rms = sqrt(rms / Float(frameCount))
-                let normalized = min(rms * 10.0, 1.0)  // scale to 0–1
+                let normalized = min(rms * 10.0, 1.0)
                 Task { @MainActor [weak self] in
                     self?.audioLevel = normalized
                 }
@@ -147,6 +154,7 @@ final class VoiceInputService: NSObject {
 enum VoiceInputError: LocalizedError {
     case permissionDenied
     case recognizerUnavailable
+    case audioFormatUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -154,6 +162,8 @@ enum VoiceInputError: LocalizedError {
             return "Microphone or speech recognition permission was denied."
         case .recognizerUnavailable:
             return "Speech recognition is not available on this device."
+        case .audioFormatUnavailable:
+            return "No microphone input is available. Please connect a microphone and try again."
         }
     }
 }

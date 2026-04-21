@@ -77,29 +77,23 @@ struct VoiceModeOverlay: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(appState.tts.isSpeaking)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { _ in
-                            guard !appState.voiceInput.isRecording, !appState.tts.isSpeaking else { return }
-                            Task { await appState.voiceInput.startRecording() }
-                        }
-                        .onEnded { _ in
-                            guard appState.voiceInput.isRecording else { return }
-                            Task {
-                                // In voice mode: auto-send on release
-                                let transcript = await appState.voiceInput.stopRecording()
-                                if !transcript.isEmpty {
-                                    // Signal ChatView to send via a notification since
-                                    // VoiceModeOverlay doesn't have access to sendMessage()
-                                    NotificationCenter.default.post(
-                                        name: .voiceModeAutoSend,
-                                        object: nil,
-                                        userInfo: ["transcript": transcript]
-                                    )
-                                }
+                .onLongPressGesture(minimumDuration: 0.0, maximumDistance: 200, pressing: { isPressing in
+                    guard !appState.tts.isSpeaking else { return }
+                    if isPressing && !appState.voiceInput.isRecording {
+                        Task { await appState.voiceInput.startRecording() }
+                    } else if !isPressing && appState.voiceInput.isRecording {
+                        Task {
+                            let transcript = await appState.voiceInput.stopRecording()
+                            if !transcript.isEmpty {
+                                NotificationCenter.default.post(
+                                    name: .voiceModeAutoSend,
+                                    object: nil,
+                                    userInfo: ["transcript": transcript]
+                                )
                             }
                         }
-                )
+                    }
+                }, perform: {})
                 .accessibilityIdentifier("voiceMode.micButton")
                 .accessibilityLabel("Hold to record, release to send")
                 Spacer()

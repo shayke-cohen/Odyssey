@@ -2151,6 +2151,23 @@ struct ChatView: View {
                 .xrayId("chat.mentionSuggestions")
             }
 
+            // Voice error banner
+            if voiceFeaturesEnabled, let voiceError = appState.voiceInput.error {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 11))
+                    Text(voiceError.localizedDescription)
+                        .font(.system(size: 11))
+                    Spacer()
+                    Button("Dismiss") { appState.voiceInput.error = nil }
+                        .font(.system(size: 11))
+                        .buttonStyle(.plain)
+                }
+                .foregroundStyle(Color.orange)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+            }
+
             // Live waveform while recording
             if voiceFeaturesEnabled && appState.voiceInput.isRecording {
                 WaveformBarsView(audioLevel: appState.voiceInput.audioLevel)
@@ -2302,24 +2319,16 @@ struct ChatView: View {
                 }
                 .accessibilityIdentifier("chat.voiceMicButton")
                 .accessibilityLabel("Hold to record voice input")
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { _ in
-                            if !appState.voiceInput.isRecording {
-                                Task {
-                                    await appState.voiceInput.startRecording()
-                                }
-                            }
+                .onLongPressGesture(minimumDuration: 0.0, maximumDistance: 200, pressing: { isPressing in
+                    if isPressing && !appState.voiceInput.isRecording {
+                        Task { await appState.voiceInput.startRecording() }
+                    } else if !isPressing {
+                        Task {
+                            let transcript = await appState.voiceInput.stopRecording()
+                            if !transcript.isEmpty { inputText = transcript }
                         }
-                        .onEnded { _ in
-                            Task {
-                                let transcript = await appState.voiceInput.stopRecording()
-                                if !transcript.isEmpty {
-                                    inputText = transcript
-                                }
-                            }
-                        }
-                )
+                    }
+                }, perform: {})
                 .buttonStyle(.plain)
 
                 // Voice mode toggle
