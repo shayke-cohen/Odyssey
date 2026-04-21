@@ -8,17 +8,19 @@ import Foundation
 /// All file paths, ports, and UserDefaults are namespaced under the instance name.
 enum InstanceConfig {
 
+    // Held open for process lifetime so the flock stays acquired.
+    nonisolated(unsafe) private static var _lockFd: Int32 = -1
+
     static let name: String = {
         let args = CommandLine.arguments
         if let idx = args.firstIndex(of: "--instance"), idx + 1 < args.count {
             return args[idx + 1]
         }
         if tryAcquireLock(for: "default") { return "default" }
-        return "instance-\(UUID().uuidString.prefix(8).lowercased())"
+        let fallback = "instance-\(UUID().uuidString.prefix(8).lowercased())"
+        _ = tryAcquireLock(for: fallback)
+        return fallback
     }()
-
-    // Held open for process lifetime so the flock stays acquired.
-    nonisolated(unsafe) private static var _lockFd: Int32 = -1
 
     private static func tryAcquireLock(for instanceName: String) -> Bool {
         let home = FileManager.default.homeDirectoryForCurrentUser
