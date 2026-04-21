@@ -430,7 +430,7 @@ private var detailPane: some View {
                 Button {
                     showingNewSheet = true
                 } label: {
-                    Label("New Template", systemImage: "plus")
+                    Label("New Template", systemImage: "sparkles")
                 }
                 .buttonStyle(.bordered)
                 .xrayId("settings.templates.addFirstButton")
@@ -438,7 +438,7 @@ private var detailPane: some View {
                 Button {
                     showingLibrarySheet = true
                 } label: {
-                    Label("Add from library", systemImage: "sparkles")
+                    Label("Add from library", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
                 .xrayId("settings.templates.addFromLibraryButton")
@@ -463,7 +463,7 @@ private var detailPane: some View {
                 Button {
                     showingLibrarySheet = true
                 } label: {
-                    Label("Add from library", systemImage: "sparkles")
+                    Label("Add from library", systemImage: "plus")
                 }
                 .buttonStyle(.bordered)
                 .xrayId("settings.templates.addFromLibraryFooterButton")
@@ -473,7 +473,7 @@ private var detailPane: some View {
             Button {
                 showingNewSheet = true
             } label: {
-                Label("New Template", systemImage: "plus")
+                Label("New Template", systemImage: "sparkles")
             }
             .buttonStyle(.borderedProminent)
             .disabled(selectedOwner == nil)
