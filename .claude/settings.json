@@ -47,7 +47,8 @@
       "Bash(xcodebuild -project Odyssey.xcodeproj -scheme Odyssey -configuration Debug -derivedDataPath /tmp/odyssey-check build)",
       "Bash(git check-ignore *)",
       "Bash(mkdir -p /Users/shayco/Odyssey/.claude/skills/release)",
-      "Bash(mv /Users/shayco/Odyssey/.claude/skills/release.md /Users/shayco/Odyssey/.claude/skills/release/SKILL.md)"
+      "Bash(mv /Users/shayco/Odyssey/.claude/skills/release.md /Users/shayco/Odyssey/.claude/skills/release/SKILL.md)",
+      "Edit(/.claude/skills/release/**)"
     ],
     "additionalDirectories": [
       "/Users/shayco/.claudestudio/instances/default/data",
