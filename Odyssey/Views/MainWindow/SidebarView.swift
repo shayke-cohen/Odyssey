@@ -145,7 +145,6 @@ struct SidebarView: View {
     @Query(sort: \Conversation.startedAt, order: .reverse) private var conversations: [Conversation]
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
-    @Query(sort: \Session.startedAt, order: .reverse) private var allSessions: [Session]
     @Query(sort: \ScheduledMission.updatedAt, order: .reverse) private var schedules: [ScheduledMission]
     @Query(sort: \PromptTemplate.sortOrder) private var allTemplates: [PromptTemplate]
     @State private var searchText = ""
@@ -202,6 +201,9 @@ struct SidebarView: View {
     @State private var cachedResidentGroups: [AgentGroup] = []
     @State private var cachedNonResidentGroups: [AgentGroup] = []
     @State private var conversationToAgentIndex: [UUID: UUID] = [:]
+    @State private var cachedActiveAgentIds: Set<UUID> = []
+    @State private var cachedActiveGroupIds: Set<UUID> = []
+    @State private var sessionIdToAgentId: [UUID: UUID] = [:]
 
     private var workshopEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.workshopKey) || (masterFlag && workshopFlag) }
     private var autoAssembleEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.autoAssembleKey) || (masterFlag && autoAssembleFlag) }
@@ -209,6 +211,15 @@ struct SidebarView: View {
 
     var body: some View {
         sidebarWithSheets
+            .background {
+                // Isolated observer: subscribes to sessionActivity WITHOUT invalidating the main sidebar body
+                ActiveSessionObserver(
+                    activeAgentIds: $cachedActiveAgentIds,
+                    activeGroupIds: $cachedActiveGroupIds,
+                    sessionIdToAgentId: sessionIdToAgentId,
+                    groups: groups
+                )
+            }
             .alert("Rename Conversation", isPresented: Binding(
                 get: { renamingConversation != nil },
                 set: { if !$0 { renamingConversation = nil } }
@@ -388,6 +399,9 @@ struct SidebarView: View {
             .onChange(of: groups.map { $0.showInSidebar }) { _, _ in rebuildGroupCaches() }
             .onChange(of: groups.map { $0.isResident }) { _, _ in rebuildGroupCaches() }
             .onChange(of: conversations.count) { _, _ in rebuildConversationIndex() }
+            .onChange(of: appState.createdSessions.count) { _, _ in
+                rebuildConversationIndex()
+            }
     }
 
     private var sidebarList: some View {
@@ -416,6 +430,12 @@ struct SidebarView: View {
         .listStyle(.sidebar)
         .searchable(text: $searchText, prompt: "Search threads…")
         .xrayId("sidebar.conversationList")
+        .onChange(of: appState.sidebarSearchText) { _, newValue in
+            if searchText != newValue { searchText = newValue }
+        }
+        .onChange(of: searchText) { _, newValue in
+            if appState.sidebarSearchText != newValue { appState.sidebarSearchText = newValue }
+        }
         .onAppear {
             if let selectedProjectId = windowState.selectedProjectId {
                 expandedProjectIds.insert(selectedProjectId)
@@ -534,15 +554,19 @@ struct SidebarView: View {
     }
 
     private func rebuildConversationIndex() {
+        let descriptor = FetchDescriptor<Session>(sortBy: [SortDescriptor(\.startedAt, order: .reverse)])
+        guard let sessions = try? modelContext.fetch(descriptor) else { return }
         var index: [UUID: UUID] = [:]
-        for agent in agents {
-            for session in (agent.sessions ?? []) {
-                for convo in (session.conversations ?? []) {
-                    index[convo.id] = agent.id
-                }
+        var sessionAgentMap: [UUID: UUID] = [:]
+        for session in sessions {
+            guard let agentId = session.agent?.id else { continue }
+            sessionAgentMap[session.id] = agentId
+            for convo in (session.conversations ?? []) {
+                index[convo.id] = agentId
             }
         }
         conversationToAgentIndex = index
+        sessionIdToAgentId = sessionAgentMap
     }
 
     private var projectsHeader: some View {
@@ -1991,27 +2015,11 @@ struct SidebarView: View {
     // MARK: - Activity State
 
     private func agentHasActiveSession(_ agent: Agent, in project: Project? = nil) -> Bool {
-        for conversation in conversationsForAgent(agent, in: project) {
-            for session in (conversation.sessions ?? []) where session.agent?.id == agent.id {
-                let key = session.id.uuidString
-                if appState.sessionActivity[key]?.isActive == true {
-                    return true
-                }
-            }
-        }
-        return false
+        cachedActiveAgentIds.contains(agent.id)
     }
 
     private func groupHasActiveSession(_ group: AgentGroup, in project: Project? = nil) -> Bool {
-        for conversation in conversationsForGroup(group, in: project) {
-            for session in (conversation.sessions ?? []) {
-                let key = session.id.uuidString
-                if appState.sessionActivity[key]?.isActive == true {
-                    return true
-                }
-            }
-        }
-        return false
+        cachedActiveGroupIds.contains(group.id)
     }
 
     // MARK: - Agent Chat History
@@ -2031,19 +2039,21 @@ struct SidebarView: View {
     }
 
     private func conversationsForAgent(_ agent: Agent, in project: Project? = nil) -> [Conversation] {
-        var seen = Set<UUID>()
-        return (agent.sessions ?? [])
-            .compactMap { ($0.conversations ?? []).first }
-            .filter { $0.sourceGroupId == nil && !$0.isArchived && inGlobalScope($0, project: project) }
-            .filter { seen.insert($0.id).inserted }
+        conversations.filter { conv in
+            conversationToAgentIndex[conv.id] == agent.id
+                && conv.sourceGroupId == nil
+                && !conv.isArchived
+                && inGlobalScope(conv, project: project)
+        }
     }
 
     private func archivedConversationsForAgent(_ agent: Agent, in project: Project? = nil) -> [Conversation] {
-        var seen = Set<UUID>()
-        return (agent.sessions ?? [])
-            .compactMap { ($0.conversations ?? []).first }
-            .filter { $0.sourceGroupId == nil && $0.isArchived && inGlobalScope($0, project: project) }
-            .filter { seen.insert($0.id).inserted }
+        conversations.filter { conv in
+            conversationToAgentIndex[conv.id] == agent.id
+                && conv.sourceGroupId == nil
+                && conv.isArchived
+                && inGlobalScope(conv, project: project)
+        }
     }
 
     private func expandForReveal(_ conversationId: UUID) {
@@ -2472,6 +2482,52 @@ private struct AddResidentSheet: View {
             }
         }
         .frame(minWidth: 400, minHeight: 400)
+    }
+}
+
+// MARK: - Isolated Observer (avoids subscribing SidebarView body to sessionActivity)
+
+/// Invisible view that observes `appState.sessionActivity` in isolation.
+/// Changes to activity state only rebuild the cached sets via @Binding —
+/// they do NOT invalidate the main SidebarView body.
+private struct ActiveSessionObserver: View {
+    @Environment(AppState.self) private var appState
+    @Binding var activeAgentIds: Set<UUID>
+    @Binding var activeGroupIds: Set<UUID>
+    let sessionIdToAgentId: [UUID: UUID]
+    let groups: [AgentGroup]
+
+    @Query(sort: \Session.startedAt, order: .reverse) private var allSessions: [Session]
+    @State private var debounceTask: Task<Void, Never>?
+
+    var body: some View {
+        Color.clear.frame(width: 0, height: 0)
+            .onChange(of: appState.sessionActivity) { _, _ in
+                debounceTask?.cancel()
+                debounceTask = Task {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard !Task.isCancelled else { return }
+                    rebuild()
+                }
+            }
+            .onAppear { rebuild() }
+    }
+
+    private func rebuild() {
+        var agentIds = Set<UUID>()
+        var groupIds = Set<UUID>()
+        let groupAgentSets = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, Set($0.agentIds)) })
+        for session in allSessions {
+            let key = session.id.uuidString
+            guard appState.sessionActivity[key]?.isActive == true else { continue }
+            guard let agentId = sessionIdToAgentId[session.id] else { continue }
+            agentIds.insert(agentId)
+            for (gid, memberIds) in groupAgentSets where memberIds.contains(agentId) {
+                groupIds.insert(gid)
+            }
+        }
+        if agentIds != activeAgentIds { activeAgentIds = agentIds }
+        if groupIds != activeGroupIds { activeGroupIds = groupIds }
     }
 }
 

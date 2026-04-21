@@ -422,6 +422,10 @@ private struct ProjectWindowContent: View {
                     let val = (v as? Bool) ?? false
                     DispatchQueue.main.async { appState?.showAddAgentsToChatSheet = val }
                 },
+                "sidebarSearchText": { [weak appState] v in
+                    let val = (v as? String) ?? ""
+                    DispatchQueue.main.async { appState?.sidebarSearchText = val }
+                },
                 "sidecarStatusOverrideForTesting": { [weak appState] v in
                     guard let str = v as? String else { return }
                     let status: AppState.SidecarStatus = str == "connected" ? .connected : str == "connecting" ? .connecting : .disconnected

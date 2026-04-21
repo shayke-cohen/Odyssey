@@ -424,7 +424,7 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
             return
         }
 
-        let pids = try conflictingManagedSidecarPIDs()
+        let pids = try await conflictingManagedSidecarPIDs()
         guard !pids.isEmpty else { return }
 
         Log.sidecar.warning("Stopping \(pids.count) conflicting sidecar listener(s) before launch")
@@ -436,7 +436,7 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
             return
         }
 
-        let stubbornPIDs = try conflictingManagedSidecarPIDs()
+        let stubbornPIDs = try await conflictingManagedSidecarPIDs()
         for pid in stubbornPIDs {
             _ = Darwin.kill(pid, SIGKILL)
         }
@@ -450,27 +450,29 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
         let clock = ContinuousClock()
         let deadline = clock.now.advanced(by: timeout)
         while clock.now < deadline {
-            if try conflictingManagedSidecarPIDs().isEmpty {
+            if try await conflictingManagedSidecarPIDs().isEmpty {
                 return true
             }
             await sleep(for: .milliseconds(150))
         }
-        return try conflictingManagedSidecarPIDs().isEmpty
+        return try await conflictingManagedSidecarPIDs().isEmpty
     }
 
-    private func conflictingManagedSidecarPIDs() throws -> [pid_t] {
-        let ports = Set([config.wsPort, config.httpPort])
-        let pids = try ports.flatMap(listeningPIDs(on:))
-        let managed = try pids.filter { pid in
-            guard let command = try commandLine(for: pid) else {
-                return false
+    private func conflictingManagedSidecarPIDs() async throws -> [pid_t] {
+        try await Task.detached(priority: .userInitiated) { [config] in
+            let ports = Set([config.wsPort, config.httpPort])
+            let pids = try ports.flatMap { try Self.listeningPIDs(on: $0) }
+            let managed = try pids.filter { pid in
+                guard let command = try Self.commandLine(for: pid) else {
+                    return false
+                }
+                return Self.looksLikeManagedSidecar(command)
             }
-            return Self.looksLikeManagedSidecar(command)
-        }
-        return Array(Set(managed)).sorted()
+            return Array(Set(managed)).sorted()
+        }.value
     }
 
-    private func listeningPIDs(on port: Int) throws -> [pid_t] {
+    nonisolated private static func listeningPIDs(on port: Int) throws -> [pid_t] {
         let output = try runCommand("/usr/sbin/lsof", arguments: [
             "-n", "-P", "-t",
             "-iTCP:\(port)",
@@ -482,13 +484,13 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
             .compactMap { pid_t($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
     }
 
-    private func commandLine(for pid: pid_t) throws -> String? {
+    nonisolated private static func commandLine(for pid: pid_t) throws -> String? {
         let output = try runCommand("/bin/ps", arguments: ["-p", "\(pid)", "-o", "command="])
         let command = output.trimmingCharacters(in: .whitespacesAndNewlines)
         return command.isEmpty ? nil : command
     }
 
-    private func runCommand(_ launchPath: String, arguments: [String]) throws -> String {
+    nonisolated private static func runCommand(_ launchPath: String, arguments: [String]) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: launchPath)
         process.arguments = arguments
@@ -521,7 +523,7 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
         )
     }
 
-    private static func looksLikeManagedSidecar(_ command: String) -> Bool {
+    nonisolated private static func looksLikeManagedSidecar(_ command: String) -> Bool {
         (command.contains("sidecar/src/index.ts") || command.contains("odyssey-sidecar.js"))
             && command.contains("bun")
     }

@@ -59,6 +59,9 @@ final class AppState {
     var showAgentCreationSheet: Bool = false
     /// Set to true to open the Group Creation sheet from sidebar. AppXray tests use setState to set this.
     var showGroupCreationSheet: Bool = false
+    /// Sidebar search text — exposed to AppXray for UI testing.
+    var sidebarSearchText: String = ""
+
     var pendingQuestions: [String: AgentQuestion] = [:]
     var pendingConfirmations: [String: AgentConfirmation] = [:]
     var progressTrackers: [String: ProgressTracker] = [:]
@@ -232,6 +235,7 @@ final class AppState {
         "writefile", "createfile", "renamefile", "deletefile"
     ]
     private static let iso8601 = ISO8601DateFormatter()
+    private var pendingTokenCounts: [UUID: Int] = [:]
 
     private(set) var sidecarManager: SidecarManager?
     private var nostrEventRelay: NostrEventRelay?
@@ -1206,11 +1210,22 @@ final class AppState {
         switch event {
         case .streamToken(let sessionId, let text):
             streamingTokens[sessionId, default: []].append(text)
-            streamingText[sessionId] = streamingTokens[sessionId]!.joined()
+            // Append directly instead of O(n) re-join on every token
+            if streamingText[sessionId] != nil {
+                streamingText[sessionId]!.append(text)
+            } else {
+                streamingText[sessionId] = text
+            }
             if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
-                activeSessions[uuid]?.isStreaming = true
-                // Rough estimate: ~4 chars per output token, refined on completion
-                activeSessions[uuid]?.tokenCount += max(1, text.count / 4)
+                if activeSessions[uuid]?.isStreaming != true {
+                    activeSessions[uuid]?.isStreaming = true
+                }
+                // Batch token count — only publish every ~10 tokens to reduce dictionary mutations
+                pendingTokenCounts[uuid, default: 0] += max(1, text.count / 4)
+                if pendingTokenCounts[uuid, default: 0] >= 10 {
+                    activeSessions[uuid]?.tokenCount += pendingTokenCounts[uuid]!
+                    pendingTokenCounts[uuid] = 0
+                }
             }
             if sessionActivity[sessionId] != .streaming {
                 sessionActivity[sessionId] = .streaming
@@ -1249,6 +1264,8 @@ final class AppState {
         case .sessionResult(let sessionId, let resultText, let cost, let tokenCount, let toolCallCount):
             workerStandbySessions.remove(sessionId)
             if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
+                // Flush any pending batched token counts before overwriting with final values
+                pendingTokenCounts.removeValue(forKey: uuid)
                 activeSessions[uuid]?.isStreaming = false
                 activeSessions[uuid]?.cost = cost
                 activeSessions[uuid]?.tokenCount = tokenCount

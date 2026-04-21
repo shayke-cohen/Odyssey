@@ -7,34 +7,20 @@ struct WelcomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Agent.name) private var allAgents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var allGroups: [AgentGroup]
-    @Query(sort: \Session.startedAt, order: .reverse) private var recentSessions: [Session]
+    @State private var recentSessions: [Session] = []
 
     var onQuickChat: () -> Void
     var onStartAgent: (Agent) -> Void
     var onStartGroup: (AgentGroup) -> Void
 
     @State private var browseSheetTab: AgentBrowseTab? = nil
+    @State private var cachedRecentAgents: [Agent] = []
+    @State private var cachedEnabledGroups: [AgentGroup] = []
 
     // MARK: - Computed
 
     private var enabledAgents: [Agent] {
         allAgents.filter(\.isEnabled)
-    }
-
-    private var recentAgents: [Agent] {
-        var seen = Set<UUID>()
-        var result: [Agent] = []
-        for session in recentSessions {
-            guard let agent = session.agent, agent.isEnabled, !seen.contains(agent.id) else { continue }
-            seen.insert(agent.id)
-            result.append(agent)
-            if result.count >= 6 { break }
-        }
-        return result
-    }
-
-    private var enabledGroups: [AgentGroup] {
-        allGroups.filter(\.isEnabled)
     }
 
     // MARK: - Body
@@ -44,10 +30,10 @@ struct WelcomeView: View {
             VStack(spacing: 24) {
                 heroSection
                 quickActionsGrid
-                if !recentAgents.isEmpty {
+                if !cachedRecentAgents.isEmpty {
                     recentAgentsSection
                 }
-                if !enabledGroups.isEmpty {
+                if !cachedEnabledGroups.isEmpty {
                     agentGroupsSection
                 }
             }
@@ -56,6 +42,9 @@ struct WelcomeView: View {
         }
         .stableXrayId("welcome.scrollView")
         .background(Color(nsColor: .controlBackgroundColor))
+        .onAppear { fetchRecentSessions(); rebuildWelcomeCaches() }
+        .onChange(of: appState.createdSessions.count) { _, _ in fetchRecentSessions(); rebuildWelcomeCaches() }
+        .onChange(of: allGroups.count) { _, _ in rebuildWelcomeCaches() }
         .sheet(item: $browseSheetTab) { tab in
             AgentBrowseSheet(
                 initialTab: tab,
@@ -117,7 +106,7 @@ struct WelcomeView: View {
             }
             quickActionCard(
                 title: "Browse Groups",
-                subtitle: "\(enabledGroups.count) teams",
+                subtitle: "\(cachedEnabledGroups.count) teams",
                 icon: "person.3",
                 shortcut: nil,
                 color: .teal,
@@ -181,6 +170,25 @@ struct WelcomeView: View {
 
     // MARK: - Recent Agents
 
+    private func fetchRecentSessions() {
+        var descriptor = FetchDescriptor<Session>(sortBy: [SortDescriptor(\.startedAt, order: .reverse)])
+        descriptor.fetchLimit = 30
+        recentSessions = (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    private func rebuildWelcomeCaches() {
+        var seen = Set<UUID>()
+        var recent: [Agent] = []
+        for session in recentSessions {
+            guard let agent = session.agent, agent.isEnabled, !seen.contains(agent.id) else { continue }
+            seen.insert(agent.id)
+            recent.append(agent)
+            if recent.count >= 6 { break }
+        }
+        cachedRecentAgents = recent
+        cachedEnabledGroups = allGroups.filter(\.isEnabled)
+    }
+
     @ViewBuilder
     private var recentAgentsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -193,7 +201,7 @@ struct WelcomeView: View {
             LazyVGrid(columns: [
                 GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 12)
             ], spacing: 12) {
-                ForEach(recentAgents) { agent in
+                ForEach(cachedRecentAgents) { agent in
                     recentAgentCard(agent)
                 }
             }
@@ -247,7 +255,7 @@ struct WelcomeView: View {
                 .xrayId("welcome.agentGroups")
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(enabledGroups.prefix(6)) { group in
+                ForEach(cachedEnabledGroups.prefix(6)) { group in
                     welcomeGroupCard(group)
                 }
             }
