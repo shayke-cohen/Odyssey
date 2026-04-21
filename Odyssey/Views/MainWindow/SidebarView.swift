@@ -731,23 +731,22 @@ struct SidebarView: View {
 
     @ViewBuilder
     private func projectRows(_ project: Project) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: expandedProjectIds.contains(project.id) ? "chevron.down" : "chevron.right")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 12)
-                .accessibilityHidden(true)
-                .onTapGesture { toggleProjectExpansion(project) }
-            projectHeaderRow(project)
-        }
-
-        if expandedProjectIds.contains(project.id) {
+        let isExpanded = Binding<Bool>(
+            get: { expandedProjectIds.contains(project.id) },
+            set: { expanded in
+                windowState.selectProject(project)
+                if expanded { expandedProjectIds.insert(project.id) } else { expandedProjectIds.remove(project.id) }
+            }
+        )
+        DisclosureGroup(isExpanded: isExpanded) {
             projectThreadRows(project)
             if showsProjectSchedulesSection {
                 projectIndentedRow {
                     projectSchedulesSection(project)
                 }
             }
+        } label: {
+            projectHeaderRow(project)
         }
     }
 
@@ -810,9 +809,6 @@ struct SidebarView: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture {
-            toggleProjectExpansion(project)
-        }
         .onHover { isHovering in
             hoveredProjectId = isHovering ? project.id : nil
         }
