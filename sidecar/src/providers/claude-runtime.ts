@@ -27,6 +27,7 @@ import {
 import { buildSkillsSection } from "../utils/prompt-builder.js";
 import { createPeerBusServer } from "../tools/peerbus-server.js";
 import { createBrowserServer } from "../tools/browser-server.js";
+import { createOdysseyControlServer } from "../tools/odyssey-control-server.js";
 import type {
   ProviderRuntime,
   RuntimeDependencies,
@@ -305,7 +306,8 @@ export class ClaudeRuntime implements ProviderRuntime {
       cwd: config.workingDirectory || undefined,
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
-      strictMcpConfig: true,
+      strictMcpConfig: false,
+      settingSources: ["user"],
       env,
     };
     if (claudeCodeCliPath) {
@@ -354,6 +356,9 @@ export class ClaudeRuntime implements ProviderRuntime {
     const isInteractive = config.interactive ?? false;
     mcpServers.peerbus = createPeerBusServer(this.deps.toolCtx, sessionId, isInteractive);
     mcpServers.browser = createBrowserServer(this.deps.toolCtx);
+    if (config.mcpServers?.some((m) => m.name === "odyssey-control" && !m.command && !m.url)) {
+      mcpServers["odyssey-control"] = createOdysseyControlServer();
+    }
 
     options.mcpServers = mcpServers;
 

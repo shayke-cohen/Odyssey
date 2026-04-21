@@ -14,6 +14,7 @@ import type {
 } from "./types.js";
 import { resolveQuestion, createQuestion, questionsBySession } from "./tools/ask-user-tool.js";
 import { logger, getLogBuffer, type SidecarLogLevel } from "./logger.js";
+import { execFileSync } from "child_process";
 import { GenerationService } from "./generation-service.js";
 
 const generationService = new GenerationService();
@@ -280,6 +281,12 @@ export async function handleApiRequest(
     params = matchRoute("/api/v1/tasks/:id/claim", "POST", req.method, path);
     if (params) {
       return await handleClaimTask(params.id, req, ctx);
+    }
+
+    // ─── Launch (open interactive session in the Odyssey app) ───
+
+    if (matchRoute("/api/v1/launch", "POST", req.method, path)) {
+      return await handleLaunch(req);
     }
 
     // ─── Generation (Agent SDK — same path as WS handlers) ───
@@ -865,6 +872,37 @@ async function handleClaimTask(taskId: string, req: Request, ctx: ApiContext): P
   if (!task) return apiError("conflict", `Task ${taskId} cannot be claimed (not in 'ready' status)`, 409);
   ctx.toolCtx.broadcast({ type: "task.updated", task });
   return apiJson(task);
+}
+
+// ─── Launch ───
+
+async function handleLaunch(req: Request): Promise<Response> {
+  const body = await parseBody<{ type: "agent" | "group" | "project"; name: string; prompt?: string; workdir?: string; autonomous?: boolean }>(req);
+  if (!body.type || !body.name) return apiError("invalid_request", "type and name are required", 400);
+
+  let url: string;
+  const encodedName = encodeURIComponent(body.name);
+  const params = new URLSearchParams();
+  if (body.prompt) params.set("prompt", body.prompt);
+  if (body.workdir) params.set("workdir", body.workdir);
+  if (body.autonomous) params.set("autonomous", "true");
+  const qs = params.toString() ? `?${params.toString()}` : "";
+
+  if (body.type === "agent") {
+    url = `odyssey://agent/${encodedName}${qs}`;
+  } else if (body.type === "group") {
+    url = `odyssey://group/${encodedName}${qs}`;
+  } else {
+    url = `odyssey://project/${encodedName}${qs}`;
+  }
+
+  try {
+    execFileSync("open", [url]);
+    logger.info("api", `launch: ${url}`);
+    return apiJson({ url, opened: true });
+  } catch (e: any) {
+    return apiError("internal_error", `Failed to open URL: ${e.message}`, 500);
+  }
 }
 
 // ─── Generation via GenerationService (Agent SDK path) ───

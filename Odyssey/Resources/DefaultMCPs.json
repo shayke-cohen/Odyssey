@@ -5,6 +5,11 @@
     "transportKind": "builtin"
   },
   {
+    "name": "odyssey-control",
+    "serverDescription": "Manage Odyssey agents, groups, skills, and projects. Open interactive chats. Read what's new. Complete Odyssey app control via structured tools — config CRUD, navigation, and system info.",
+    "transportKind": "builtin"
+  },
+  {
     "name": "Argus",
     "serverDescription": "UI testing, screenshots, browser automation, and mobile simulator control. Supports web, iOS, Android, macOS, and terminal platforms.",
     "transportKind": "stdio",
