@@ -322,6 +322,26 @@ enum DefaultsSeeder {
                 autonomousCapable: true,
                 coordinatorAgentName: "Orchestrator"
             ),
+            GroupSpec(
+                name: "Lean Startup",
+                description: "CEO-led executive team for strategy and cross-functional execution.",
+                icon: "🏢", color: "indigo",
+                instruction: "This is a startup executive team. CEO directs and synthesizes. CTO owns technology, CMO owns marketing and growth, CFO owns financial discipline, CPO owns product strategy. Each exec speaks from their domain — challenge each other constructively, then align on a clear decision or action plan.",
+                defaultMission: nil,
+                agentNames: ["CEO", "CTO", "CMO", "CFO", "CPO"],
+                sortOrder: 17,
+                workflowAgentNames: [
+                    (agent: "CEO", instruction: "Assess the request. Identify which domains it touches, frame the key questions for each exec, and kick off the discussion.", label: "Assess & Frame", autoAdvance: true, condition: nil, artifactGate: nil),
+                    (agent: "CPO", instruction: "Define the product angle: what user problem are we solving, what should we build, and in what order?", label: "Product", autoAdvance: true, condition: nil, artifactGate: nil),
+                    (agent: "CTO", instruction: "Assess technical feasibility: what can be built, how long will it take, and what are the architectural risks and trade-offs?", label: "Technology", autoAdvance: true, condition: nil, artifactGate: nil),
+                    (agent: "CMO", instruction: "Define the go-to-market angle: how do we reach customers, what's the positioning, and which channels will we use?", label: "Marketing", autoAdvance: true, condition: nil, artifactGate: nil),
+                    (agent: "CFO", instruction: "Model the financials: what does this cost, what's the ROI, what's the burn impact, and what's the downside scenario?", label: "Finance", autoAdvance: true, condition: nil, artifactGate: nil),
+                    (agent: "CEO", instruction: "Synthesize all exec inputs. Make the call: what do we do, in what order, and why? Produce a clear, actionable decision with owners and next steps.", label: "Decision", autoAdvance: false, condition: nil, artifactGate: nil),
+                ],
+                roles: ["CEO": "coordinator"],
+                autonomousCapable: true,
+                coordinatorAgentName: "CEO"
+            ),
         ]
 
         for spec in specs {
@@ -641,7 +661,7 @@ enum DefaultsSeeder {
         skills: [String: Skill],
         templates: [String: String]
     ) {
-        let agentFiles = ["orchestrator", "coder", "reviewer", "researcher", "tester", "devops", "writer", "product-manager", "analyst", "designer", "config-agent", "friday", "coder-codex", "attacker-codex", "coder-sonnet", "tester-haiku", "coder-local"]
+        let agentFiles = ["orchestrator", "coder", "reviewer", "researcher", "tester", "devops", "writer", "product-manager", "analyst", "designer", "config-agent", "friday", "coder-codex", "attacker-codex", "coder-sonnet", "tester-haiku", "coder-local", "ceo", "cto", "cmo", "cfo", "cpo"]
 
         for fileName in agentFiles {
             guard let data = loadAgentResource(name: fileName) else {

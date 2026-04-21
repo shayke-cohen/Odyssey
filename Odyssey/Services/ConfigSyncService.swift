@@ -589,14 +589,14 @@ final class ConfigSyncService {
     private func syncGroups(context: ModelContext) {
         let fileDTOs = ConfigFileManager.readAllGroups()
         let existing = (try? context.fetch(FetchDescriptor<AgentGroup>())) ?? []
-        let slugMap = Dictionary(uniqueKeysWithValues: existing.compactMap { e in
-            e.configSlug.map { ($0, e) }
-        })
+        let slugMap = Dictionary(existing.compactMap { e in e.configSlug.map { ($0, e) } },
+                                 uniquingKeysWith: { first, _ in first })
         var seenSlugs: Set<String> = []
 
         // Build agent name → UUID map
         let allAgents = (try? context.fetch(FetchDescriptor<Agent>())) ?? []
-        let agentByName: [String: UUID] = Dictionary(uniqueKeysWithValues: allAgents.map { ($0.name, $0.id) })
+        let agentByName: [String: UUID] = Dictionary(allAgents.map { ($0.name, $0.id) },
+                                                     uniquingKeysWith: { first, _ in first })
 
         for (slug, dto) in fileDTOs {
             seenSlugs.insert(slug)
@@ -827,15 +827,13 @@ final class ConfigSyncService {
     private func syncGroupFiles(context: ModelContext) {
         let fileEntries = ConfigFileManager.readAllGroupFiles()
         let existing = (try? context.fetch(FetchDescriptor<AgentGroup>())) ?? []
-        let slugMap = Dictionary(uniqueKeysWithValues: existing.compactMap { e in
-            e.configSlug.map { ($0, e) }
-        })
+        let slugMap = Dictionary(existing.compactMap { e in e.configSlug.map { ($0, e) } },
+                                 uniquingKeysWith: { first, _ in first })
 
         // Build agent slug → UUID map
         let allAgents = (try? context.fetch(FetchDescriptor<Agent>())) ?? []
-        let agentBySlug: [String: UUID] = Dictionary(uniqueKeysWithValues: allAgents.compactMap { a in
-            a.configSlug.map { ($0, a.id) }
-        })
+        let agentBySlug: [String: UUID] = Dictionary(allAgents.compactMap { a in a.configSlug.map { ($0, a.id) } },
+                                                     uniquingKeysWith: { first, _ in first })
 
         var seenSlugs: Set<String> = []
 
@@ -1280,26 +1278,21 @@ final class ConfigSyncService {
     private func syncPromptTemplates(context: ModelContext) {
         let fileEntries = ConfigFileManager.readAllPromptTemplates()
         let existing = (try? context.fetch(FetchDescriptor<PromptTemplate>())) ?? []
-        let slugMap = Dictionary(uniqueKeysWithValues: existing.compactMap { template in
-            template.configSlug.map { ($0, template) }
-        })
+        let slugMap = Dictionary(existing.compactMap { template in template.configSlug.map { ($0, template) } },
+                                 uniquingKeysWith: { first, _ in first })
         var seenSlugs: Set<String> = []
 
         // Build owner lookup maps by slug (preferred) then display-name fallback.
         let allAgents = (try? context.fetch(FetchDescriptor<Agent>())) ?? []
-        let agentBySlug: [String: Agent] = Dictionary(uniqueKeysWithValues: allAgents.compactMap { agent in
-            agent.configSlug.map { ($0, agent) }
-        })
-        let agentByDerivedSlug: [String: Agent] = Dictionary(uniqueKeysWithValues: allAgents.map {
-            (ConfigFileManager.slugify($0.name), $0)
-        })
+        let agentBySlug: [String: Agent] = Dictionary(allAgents.compactMap { agent in agent.configSlug.map { ($0, agent) } },
+                                                      uniquingKeysWith: { first, _ in first })
+        let agentByDerivedSlug: [String: Agent] = Dictionary(allAgents.map { (ConfigFileManager.slugify($0.name), $0) },
+                                                             uniquingKeysWith: { first, _ in first })
         let allGroups = (try? context.fetch(FetchDescriptor<AgentGroup>())) ?? []
-        let groupBySlug: [String: AgentGroup] = Dictionary(uniqueKeysWithValues: allGroups.compactMap { group in
-            group.configSlug.map { ($0, group) }
-        })
-        let groupByDerivedSlug: [String: AgentGroup] = Dictionary(uniqueKeysWithValues: allGroups.map {
-            (ConfigFileManager.slugify($0.name), $0)
-        })
+        let groupBySlug: [String: AgentGroup] = Dictionary(allGroups.compactMap { group in group.configSlug.map { ($0, group) } },
+                                                           uniquingKeysWith: { first, _ in first })
+        let groupByDerivedSlug: [String: AgentGroup] = Dictionary(allGroups.map { (ConfigFileManager.slugify($0.name), $0) },
+                                                                  uniquingKeysWith: { first, _ in first })
         let allProjects: [Project] = (try? context.fetch(FetchDescriptor<Project>())) ?? []
         let projectBySlug: [String: Project] = Dictionary(
             allProjects.compactMap { project in
