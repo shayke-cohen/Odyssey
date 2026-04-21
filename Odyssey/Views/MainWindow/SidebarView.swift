@@ -749,7 +749,12 @@ struct SidebarView: View {
         let showsProjectActions = isSelectedProject || isHoveredProject
         let tint = projectTint(project)
 
-        return HStack(spacing: 8) {
+        return HStack(spacing: 6) {
+            Image(systemName: expandedProjectIds.contains(project.id) ? "chevron.down" : "chevron.right")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 12)
+                .accessibilityHidden(true)
             sidebarSymbolBadge(
                 symbol: project.icon,
                 tint: tint,
