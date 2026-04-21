@@ -134,7 +134,6 @@ struct SidebarView: View {
     @AppStorage(FeatureFlags.showAdvancedKey, store: AppSettings.store) private var masterFlag = false
     @AppStorage(FeatureFlags.autoAssembleKey, store: AppSettings.store) private var autoAssembleFlag = false
     @AppStorage(FeatureFlags.autonomousMissionsKey, store: AppSettings.store) private var autonomousMissionsFlag = false
-    @AppStorage("sidebar.showArchivedProjectSection") private var showsArchivedProjectSection = false
     @AppStorage("sidebar.showProjectSchedulesSection") private var showsProjectSchedulesSection = false
     @Query(sort: \Project.createdAt, order: .reverse) private var projects: [Project]
     @Query(sort: \Conversation.startedAt, order: .reverse) private var conversations: [Conversation]
@@ -178,9 +177,8 @@ struct SidebarView: View {
     @State private var scheduleToDelete: ScheduledMission?
     @State private var scheduleForHistory: ScheduledMission?
     @State private var isPinnedExpanded = true
-    @State private var isActiveExpanded = true
-    @State private var isHistoryExpanded = false
     @State private var isArchivedExpanded = false
+    @State private var projectsShowingAllThreads: Set<UUID> = []
     @State private var hoveredProjectId: UUID?
     @State private var hoveredConversationId: UUID?
     @State private var expandedProjectIds: Set<UUID> = []
@@ -880,11 +878,12 @@ struct SidebarView: View {
                 return lhs.startedAt > rhs.startedAt
             }
         let pinnedThreads = filteredConversations(liveThreads.filter(\.isPinned))
-        let activeThreads = filteredConversations(Array(liveThreads.filter { !$0.isPinned }.prefix(10)))
-        let historyThreads = filteredConversations(Array(liveThreads.filter { !$0.isPinned }.dropFirst(10)))
+        let unpinnedThreads = filteredConversations(liveThreads.filter { !$0.isPinned })
         let archivedThreads = filteredConversations(rootConversations(in: project).filter(\.isArchived))
+        let showAll = projectsShowingAllThreads.contains(project.id)
+        let displayedThreads = showAll ? unpinnedThreads : Array(unpinnedThreads.prefix(10))
 
-        if liveThreads.isEmpty {
+        if liveThreads.isEmpty && archivedThreads.isEmpty {
             projectIndentedRow {
                 Text("No threads")
                     .font(.caption2)
@@ -903,33 +902,27 @@ struct SidebarView: View {
                 xrayId: "sidebar.pinnedSection"
             )
 
-            projectThreadBucket(
-                title: "Active (\(activeThreads.count))",
-                symbol: "bolt.fill",
-                isExpanded: Binding(
-                    get: { isActiveExpanded || !searchText.isEmpty },
-                    set: { isActiveExpanded = $0 }
-                ),
-                conversations: activeThreads,
-                pinAction: "Pin",
-                xrayId: "sidebar.activeSection"
-            )
+            ForEach(displayedThreads) { convo in
+                projectIndentedRow {
+                    conversationTreeNode(convo, pinAction: "Pin")
+                }
+            }
 
-            projectThreadBucket(
-                title: "History (\(historyThreads.count))",
-                symbol: "clock.arrow.circlepath",
-                isExpanded: Binding(
-                    get: { isHistoryExpanded || !searchText.isEmpty },
-                    set: { isHistoryExpanded = $0 }
-                ),
-                conversations: historyThreads,
-                pinAction: "Pin",
-                xrayId: "sidebar.historySection"
-            )
-        }
+            if unpinnedThreads.count > 10 && !showAll {
+                projectIndentedRow {
+                    Button("Show all \(unpinnedThreads.count) threads →") {
+                        projectsShowingAllThreads.insert(project.id)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .buttonStyle(.plain)
+                    .xrayId("sidebar.projectShowAllThreads.\(project.id.uuidString)")
+                }
+            }
 
-        if showsArchivedProjectSection && !archivedThreads.isEmpty {
-            projectArchivedRows(archivedThreads)
+            if !archivedThreads.isEmpty {
+                projectArchivedRows(archivedThreads)
+            }
         }
     }
 
@@ -1073,16 +1066,6 @@ struct SidebarView: View {
                 .xrayId("sidebar.projectRow.runTemplateMenu.\(project.id.uuidString)")
                 Divider()
             }
-
-            Button {
-                showsArchivedProjectSection.toggle()
-            } label: {
-                Label(
-                    showsArchivedProjectSection ? "Hide archived section" : "Show archived section",
-                    systemImage: showsArchivedProjectSection ? "eye.slash" : "archivebox"
-                )
-            }
-            .xrayId("sidebar.projectActions.toggleArchived.\(project.id.uuidString)")
 
             Button {
                 showsProjectSchedulesSection.toggle()
