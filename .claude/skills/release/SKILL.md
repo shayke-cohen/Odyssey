@@ -56,14 +56,31 @@ MARKETING_VERSION: "X.Y.Z"
 ```
 The release script also auto-increments the build number — so you only need to set `MARKETING_VERSION` here; the script will bump `CURRENT_PROJECT_VERSION` by 1 again automatically.
 
-### 3. Regenerate Xcode project
+### 3. Update `whats-new.json`
+
+Edit `Odyssey/Resources/WhatsNew/whats-new.json` — prepend a new entry at the top of the array:
+
+```json
+{
+  "version": "X.Y.Z",
+  "date": "YYYY-MM-DD",
+  "highlights": [
+    "Short user-facing description of the biggest change",
+    "Another highlight"
+  ]
+}
+```
+
+Keep highlights to 3–5 bullet points, user-facing language only (no internal jargon). This file ships in the app bundle and is copied to `~/.odyssey/whats-new.json` on launch so Ulysses can read it.
+
+### 4. Regenerate Xcode project
 ```sh
 xcodegen generate
-git add project.yml Odyssey.xcodeproj
+git add project.yml Odyssey.xcodeproj Odyssey/Resources/WhatsNew/whats-new.json
 git commit -m "chore: bump to vX.Y.Z (build N)"
 ```
 
-### 4. Run the release script
+### 5. Run the release script
 ```sh
 export SIGN_UPDATE_PATH="$HOME/tools/sparkle/sign_update"
 bash scripts/release.sh X.Y.Z
@@ -71,14 +88,14 @@ bash scripts/release.sh X.Y.Z
 
 Takes ~5–8 minutes (archive + Apple notarization wait).
 
-### 5. Verify the DMG runs
+### 6. Verify the DMG runs
 ```sh
 hdiutil attach ~/Downloads/Odyssey-X.Y.Z.dmg -quiet
 "/Volumes/Odyssey X.Y.Z/Odyssey.app/Contents/MacOS/Odyssey" &
 sleep 4 && kill -0 $! && echo "✅ Running" || echo "❌ Crashed"
 ```
 
-### 6. Commit Xcode project sync (if script left changes)
+### 7. Commit Xcode project sync (if script left changes)
 ```sh
 git status
 git add -A && git commit -m "chore: sync Xcode project after vX.Y.Z release"
