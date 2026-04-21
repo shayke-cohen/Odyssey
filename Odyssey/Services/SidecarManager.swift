@@ -163,6 +163,7 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
         process.environment = normalizedEnvironment()
         process.environment?["ODYSSEY_WS_PORT"] = "\(config.wsPort)"
         process.environment?["ODYSSEY_HTTP_PORT"] = "\(config.httpPort)"
+        process.environment?["ODYSSEY_INSTANCE"] = config.instanceName
         process.environment?["CLAUDESTUDIO_WS_PORT"] = "\(config.wsPort)"
         process.environment?["CLAUDESTUDIO_HTTP_PORT"] = "\(config.httpPort)"
         if let dataDir = config.dataDirectory {
