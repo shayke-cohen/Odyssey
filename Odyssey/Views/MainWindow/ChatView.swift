@@ -3180,7 +3180,7 @@ struct ChatView: View {
         convo.participants = (convo.participants ?? []) + [agentParticipant]
         modelContext.insert(session)
         modelContext.insert(agentParticipant)
-        try? modelContext.save()
+        // Save deferred — caller batches all inserts into one save
         return session
     }
 
@@ -3190,7 +3190,7 @@ struct ChatView: View {
         let expectedName = AgentDefaults.displayName(forProvider: session.provider)
         guard participant.displayName != expectedName else { return }
         participant.displayName = expectedName
-        try? modelContext.save()
+        // Save deferred — caller batches
     }
 
     private func participantForSession(_ session: Session, in convo: Conversation) -> Participant? {
@@ -3738,7 +3738,7 @@ struct ChatView: View {
                 session.workingDirectory = windowState.projectDirectory
             }
         }
-        try? modelContext.save()
+        // Don't save yet — batch with message insert below
 
         var targetSessions: [Session] = conversationSessions.sorted(by: { $0.startedAt < $1.startedAt })
         if targetSessions.isEmpty {
@@ -3797,7 +3797,8 @@ struct ChatView: View {
             autoNameConversation(convo, firstMessage: nameHint)
         }
 
-        try? modelContext.save()
+        // Single batched save for all inserts (sessions, participants, message, attachments)
+        Task { @MainActor in try? modelContext.save() }
         appState.notifyUserMessageAppended(conversationId: convo.id, message: message)
 
         if convo.isSharedRoom {
