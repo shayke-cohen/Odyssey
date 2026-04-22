@@ -102,6 +102,15 @@ enum AgentSuggestions {
             ],
             chips: ["Write spec", "Prioritize", "Roadmap", "User stories", "Acceptance criteria"]
         ),
+        "Ulysses": SuggestionSet(
+            starters: [
+                "What agents and groups do I have?",
+                "Create a new agent for code review",
+                "Open a chat with the Coder agent",
+                "What's new in this version of Odyssey?",
+            ],
+            chips: ["List agents", "Create agent", "Open chat", "What's new", "List skills", "App status"]
+        ),
         "Config Agent": SuggestionSet(
             starters: [
                 "Generate a new agent configuration",
