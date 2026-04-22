@@ -16,10 +16,14 @@ type RouteTarget =
   | { kind: "group"; name: string }
   | null;
 
-export class GHRouter {
-  private poller?: import("./gh-poller.js").GHPoller;
+interface IssueTracker {
+  trackIssue(repo: string, issueNumber: number, conversationId: string, issueUrl: string): void;
+}
 
-  setPoller(poller: import("./gh-poller.js").GHPoller): void {
+export class GHRouter {
+  private poller?: IssueTracker;
+
+  setPoller(poller: IssueTracker): void {
     this.poller = poller;
   }
 
@@ -111,12 +115,14 @@ export class GHRouter {
 
   /** Parse routing from labels and @mentions */
   parseRouting(issue: GHIssue, defaultAgentName: string | null): RouteTarget {
-    // Check labels first
+    // Agent labels have priority over group labels — two passes
     for (const label of issue.labels) {
       if (label.name.startsWith("odyssey:agent:")) {
         const name = label.name.slice("odyssey:agent:".length).trim();
         if (name) return { kind: "agent", name };
       }
+    }
+    for (const label of issue.labels) {
       if (label.name.startsWith("odyssey:group:")) {
         const name = label.name.slice("odyssey:group:".length).trim();
         if (name) return { kind: "group", name };

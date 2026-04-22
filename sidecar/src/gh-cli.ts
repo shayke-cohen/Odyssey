@@ -24,5 +24,6 @@ function findGh(): string {
   for (const p of candidates) {
     if (existsSync(p)) return p;
   }
+  logger.warn("github", "gh CLI not found in known paths, falling back to PATH", {});
   return "gh";
 }

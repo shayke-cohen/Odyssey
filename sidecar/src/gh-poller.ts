@@ -44,11 +44,15 @@ interface PollerState {
   lastPollAt: string;
 }
 
+interface IssueHandler {
+  handleNewIssue(issue: any, repo: string, defaultAgentName: string | null, ctx: any): Promise<void>;
+}
+
 export class GHPoller {
   private timer?: ReturnType<typeof setInterval>;
   private state: PollerState;
   private statePath: string;
-  private router?: GHRouter;
+  private router?: IssueHandler;
 
   constructor() {
     const baseDir = process.env.ODYSSEY_DATA_DIR ?? join(homedir(), ".odyssey");
@@ -57,7 +61,7 @@ export class GHPoller {
     this.state = this.loadState();
   }
 
-  setRouter(router: GHRouter): void {
+  setRouter(router: IssueHandler): void {
     this.router = router;
   }
 
@@ -160,6 +164,7 @@ export class GHPoller {
     for (const issue of issues) {
       const key = `${projectRepo.repo}#${issue.number}`;
       if (this.state.processedIssues[key]) continue;
+      // Empty trustedUsers means all authors are trusted (for public/open repos)
       if (projectRepo.trustedUsers.length > 0 && !projectRepo.trustedUsers.includes(issue.author.login)) {
         continue;
       }
@@ -198,8 +203,9 @@ export class GHPoller {
         });
         active.lastCommentAt = comment.createdAt;
       }
+      // Save progress after each active issue so a crash doesn't lose state
+      this.saveState();
     }
-    this.saveState();
   }
 
   /** Run `gh issue list` and return open issues */
@@ -233,5 +239,3 @@ export class GHPoller {
   }
 }
 
-// Import here to avoid circular dependency issues at module level
-import type { GHRouter } from "./gh-router.js";

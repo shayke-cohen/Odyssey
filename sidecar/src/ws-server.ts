@@ -9,6 +9,7 @@ import { ConversationEvaluator } from "./conversation-evaluator.js";
 import { GenerationService } from "./generation-service.js";
 import type { GHPoller } from "./gh-poller.js";
 import type { GHRouter } from "./gh-router.js";
+import { runGh } from "./gh-cli.js";
 
 
 export interface WsServerOptions {
@@ -515,37 +516,30 @@ export class WsServer {
         break;
       }
 
-      case "gh.issue.create":
-        if (this.ghRouter) {
-          import("./gh-cli.js").then(async ({ runGh }) => {
-            try {
-              const args = ["issue", "create", "--repo", command.repo,
-                "--title", command.title, "--body", command.body];
-              for (const label of (command.labels ?? [])) {
-                args.push("--label", label);
-              }
-              const output = await runGh(args);
-              // output is the issue URL
-              const issueUrl = output.trim();
-              const issueMatch = issueUrl.match(/\/issues\/(\d+)$/);
-              const issueNumber = issueMatch ? parseInt(issueMatch[1]) : 0;
-              this.ctx.broadcast({
-                type: "gh.issue.created",
-                issueUrl,
-                issueNumber,
-                repo: command.repo,
-                conversationId: command.conversationId,
-              });
-            } catch (err) {
-              logger.error("github", "gh.issue.create failed", { error: String(err) });
-            }
-          }).catch(err => {
-            logger.error("github", "gh.issue.create import failed", { error: String(err) });
+      case "gh.issue.create": {
+        try {
+          const args = ["issue", "create", "--repo", command.repo,
+            "--title", command.title, "--body", command.body];
+          for (const label of (command.labels ?? [])) {
+            args.push("--label", label);
+          }
+          const output = await runGh(args);
+          const issueUrl = output.trim();
+          const issueMatch = issueUrl.match(/\/issues\/(\d+)$/);
+          const issueNumber = issueMatch ? parseInt(issueMatch[1]) : 0;
+          // Broadcast created event so Swift can link the conversation to the issue
+          this.ctx.broadcast({
+            type: "gh.issue.created",
+            issueUrl,
+            issueNumber,
+            repo: command.repo,
+            conversationId: command.conversationId,
           });
-        } else {
-          logger.warn("github", "gh.issue.create received but GHRouter not initialised");
+        } catch (err) {
+          logger.error("github", "gh.issue.create failed", { error: String(err) });
         }
         break;
+      }
 
       case "gh.poller.config":
         if (this.ghPoller && this.ghRouter) {
