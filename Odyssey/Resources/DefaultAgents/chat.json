@@ -1,0 +1,11 @@
+{
+  "name": "Chat",
+  "enabled": true,
+  "agentDescription": "Plain Claude conversation — no tools, no working directory. Ask anything.",
+  "model": "sonnet",
+  "icon": "bubble.left.and.bubble.right",
+  "color": "gray",
+  "skillNames": [],
+  "mcpServerNames": [],
+  "permissionSetName": "Read Only"
+}

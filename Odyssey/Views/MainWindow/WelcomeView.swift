@@ -126,7 +126,7 @@ struct WelcomeView: View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
             quickActionCard(
                 title: "Quick Chat",
-                subtitle: "Freeform, no agent",
+                subtitle: "Plain Chat, no tools",
                 icon: "plus.message",
                 shortcut: "\u{21E7}\u{2318}N",
                 color: .blue,

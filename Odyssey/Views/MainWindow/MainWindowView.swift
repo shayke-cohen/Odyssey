@@ -483,25 +483,25 @@ struct MainWindowView: View {
     // MARK: - Actions
 
     private func createQuickChat() {
-        let conversation = Conversation(
-            topic: "New Thread",
-            projectId: windowState.selectedProjectId,
-            threadKind: .freeform
-        )
-        let userParticipant = Participant(type: .user, displayName: "You")
-        userParticipant.conversation = conversation
-        conversation.participants = (conversation.participants ?? []) + [userParticipant]
-        modelContext.insert(conversation)
-        try? modelContext.save()
-        windowState.selectedConversationId = conversation.id
+        let chatAgent = (try? modelContext.fetch(
+            FetchDescriptor<Agent>(predicate: #Predicate { $0.configSlug == "chat" })
+        ))?.first
+        if let agent = chatAgent {
+            startSessionWithAgent(agent)
+        } else {
+            let conversation = Conversation(topic: "New Thread", projectId: nil, threadKind: .freeform)
+            let userParticipant = Participant(type: .user, displayName: "You")
+            userParticipant.conversation = conversation
+            conversation.participants = [userParticipant]
+            modelContext.insert(conversation)
+            try? modelContext.save()
+            windowState.selectedConversationId = conversation.id
+        }
     }
 
     private func startSessionWithAgent(_ agent: Agent) {
         let session = Session(agent: agent, mode: .interactive)
-        // Agent home always wins when set; project dir is fallback for non-resident agents
-        let rawDir = agent.defaultWorkingDirectory?.isEmpty == false
-            ? agent.defaultWorkingDirectory!
-            : windowState.projectDirectory
+        let rawDir = agent.defaultWorkingDirectory ?? ""
         if !rawDir.isEmpty {
             session.workingDirectory = NSString(string: rawDir).expandingTildeInPath
         }
@@ -528,9 +528,11 @@ struct MainWindowView: View {
     }
 
     private func startGroupChat(_ group: AgentGroup) {
+        let groupDir = group.defaultWorkingDirectory.flatMap { $0.isEmpty ? nil : $0 }
+            .map { NSString(string: $0).expandingTildeInPath as String } ?? ""
         if let convoId = appState.startGroupChat(
             group: group,
-            projectDirectory: "",
+            projectDirectory: groupDir,
             projectId: nil,
             modelContext: modelContext
         ) {

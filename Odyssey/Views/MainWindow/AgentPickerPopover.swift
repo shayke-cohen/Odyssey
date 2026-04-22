@@ -196,6 +196,13 @@ extension AgentPickerPopover {
                                         .font(.system(size: 10))
                                         .foregroundStyle(.quaternary)
                                 }
+                                if let wd = agent.defaultWorkingDirectory, !wd.isEmpty {
+                                    Text((wd as NSString).abbreviatingWithTildeInPath)
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(.quaternary)
+                                        .lineLimit(1)
+                                        .truncationMode(.head)
+                                }
                             }
                             Spacer()
                         }

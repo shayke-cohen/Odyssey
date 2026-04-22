@@ -143,12 +143,14 @@ struct AgentBrowseSheet: View {
     // MARK: - Actions
 
     private func startChat(agent: Agent) {
-        let conversation = Conversation(topic: nil, projectId: projectId, threadKind: .direct)
+        let agentWD = agent.defaultWorkingDirectory.flatMap { $0.isEmpty ? nil : $0 }
+            .map { NSString(string: $0).expandingTildeInPath as String } ?? ""
+        let conversation = Conversation(topic: nil, projectId: nil, threadKind: .direct)
         let userParticipant = Participant(type: .user, displayName: "You")
         userParticipant.conversation = conversation
         conversation.participants = (conversation.participants ?? []) + [userParticipant]
 
-        let session = Session(agent: agent, mission: nil, workingDirectory: projectDirectory)
+        let session = Session(agent: agent, mission: nil, workingDirectory: agentWD)
         session.conversations = [conversation]
         conversation.sessions = (conversation.sessions ?? []) + [session]
 
@@ -169,10 +171,12 @@ struct AgentBrowseSheet: View {
     }
 
     private func startGroupChat(group: AgentGroup) {
+        let groupWD = group.defaultWorkingDirectory.flatMap { $0.isEmpty ? nil : $0 }
+            .map { NSString(string: $0).expandingTildeInPath as String } ?? ""
         guard let convId = appState.startGroupChat(
             group: group,
-            projectDirectory: projectDirectory,
-            projectId: projectId,
+            projectDirectory: groupWD,
+            projectId: nil,
             modelContext: modelContext,
             missionOverride: nil
         ) else { return }

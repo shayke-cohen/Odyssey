@@ -119,6 +119,13 @@ struct GroupPickerPopover: View {
                         .font(.system(size: 10))
                         .foregroundStyle(.quaternary)
                 }
+                if let wd = group.defaultWorkingDirectory, !wd.isEmpty {
+                    Text((wd as NSString).abbreviatingWithTildeInPath)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.quaternary)
+                        .lineLimit(1)
+                        .truncationMode(.head)
+                }
             }
             Spacer()
             Text("↵")

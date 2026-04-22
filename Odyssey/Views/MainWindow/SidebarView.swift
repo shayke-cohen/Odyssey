@@ -1026,6 +1026,14 @@ struct SidebarView: View {
     private func projectActionsMenu(for project: Project) -> some View {
         Menu {
             Button {
+                createQuickChat(in: project)
+            } label: {
+                Label("New Thread", systemImage: "square.and.pencil")
+            }
+
+            Divider()
+
+            Button {
                 openProjectInFinder(project)
             } label: {
                 Label("Open in Finder", systemImage: "folder")
@@ -2236,10 +2244,7 @@ struct SidebarView: View {
                 // Project context wins — agent works in the project root, not its home dir
                 session.workingDirectory = (project.rootPath as NSString).expandingTildeInPath
             } else if let residentDir = agent.defaultWorkingDirectory, !residentDir.isEmpty {
-                // No project — agent's home dir is its project root
                 session.workingDirectory = (residentDir as NSString).expandingTildeInPath
-            } else if !windowState.projectDirectory.isEmpty {
-                session.workingDirectory = (windowState.projectDirectory as NSString).expandingTildeInPath
             }
         }
         let conversation = Conversation(

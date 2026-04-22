@@ -1774,9 +1774,11 @@ struct NewSessionSheet: View {
     private func startGroupThread() {
         guard let selectedGroup else { return }
         let missionText = mission.trimmingCharacters(in: .whitespacesAndNewlines)
+        let groupWD = selectedGroup.defaultWorkingDirectory.flatMap { $0.isEmpty ? nil : $0 }
+            .map { NSString(string: $0).expandingTildeInPath as String } ?? ""
         if let conversationId = appState.startGroupChat(
             group: selectedGroup,
-            projectDirectory: "",
+            projectDirectory: groupWD,
             projectId: nil,
             modelContext: modelContext,
             missionOverride: missionText,
@@ -1799,10 +1801,10 @@ struct NewSessionSheet: View {
     }
 
     private func createQuickChat() {
-        let projectDir = windowState.projectDirectory
+        let chatAgent = agents.first(where: { $0.configSlug == "chat" })
         let conversation = Conversation(
             topic: "New Thread",
-            projectId: windowState.selectedProjectId,
+            projectId: nil,
             threadKind: .freeform
         )
         conversation.executionMode = .interactive
@@ -1812,22 +1814,17 @@ struct NewSessionSheet: View {
         conversation.participants = (conversation.participants ?? []) + [userParticipant]
 
         let session = Session(
-            agent: nil,
+            agent: chatAgent,
             mission: nil,
             mode: .interactive,
-            workingDirectory: projectDir
-        )
-        session.provider = AgentDefaults.resolveEffectiveProvider(sessionOverride: blankProviderOverride)
-        session.model = AgentDefaults.resolveEffectiveModel(
-            sessionOverride: blankModelOverride,
-            provider: session.provider
+            workingDirectory: ""
         )
         session.conversations = [conversation]
         conversation.sessions = (conversation.sessions ?? []) + [session]
 
         let agentParticipant = Participant(
             type: .agentSession(sessionId: session.id),
-            displayName: AgentDefaults.displayName(forProvider: session.provider)
+            displayName: chatAgent?.name ?? "Chat"
         )
         agentParticipant.conversation = conversation
         conversation.participants = (conversation.participants ?? []) + [agentParticipant]

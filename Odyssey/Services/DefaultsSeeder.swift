@@ -661,7 +661,7 @@ enum DefaultsSeeder {
         skills: [String: Skill],
         templates: [String: String]
     ) {
-        let agentFiles = ["orchestrator", "coder", "reviewer", "researcher", "tester", "devops", "writer", "product-manager", "analyst", "designer", "ulysses", "friday", "coder-codex", "attacker-codex", "coder-sonnet", "tester-haiku", "coder-local", "ceo", "cto", "cmo", "cfo", "cpo"]
+        let agentFiles = ["orchestrator", "coder", "reviewer", "researcher", "tester", "devops", "writer", "product-manager", "analyst", "designer", "ulysses", "friday", "coder-codex", "attacker-codex", "coder-sonnet", "tester-haiku", "coder-local", "ceo", "cto", "cmo", "cfo", "cpo", "chat"]
 
         for fileName in agentFiles {
             guard let data = loadAgentResource(name: fileName) else {
