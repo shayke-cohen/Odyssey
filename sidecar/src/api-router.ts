@@ -15,7 +15,16 @@ import type {
 import { resolveQuestion, createQuestion, questionsBySession } from "./tools/ask-user-tool.js";
 import { logger, getLogBuffer, type SidecarLogLevel } from "./logger.js";
 import { execFileSync } from "child_process";
+import { existsSync, readFileSync } from "fs";
+import { homedir } from "os";
+import { join } from "path";
 import { GenerationService } from "./generation-service.js";
+
+const SCHEDULES_DATA_PATH = join(
+  process.env.ODYSSEY_DATA_DIR ?? process.env.CLAUDESTUDIO_DATA_DIR ?? join(homedir(), ".odyssey"),
+  "data",
+  "schedules.json",
+);
 
 const generationService = new GenerationService();
 
@@ -281,6 +290,31 @@ export async function handleApiRequest(
     params = matchRoute("/api/v1/tasks/:id/claim", "POST", req.method, path);
     if (params) {
       return await handleClaimTask(params.id, req, ctx);
+    }
+
+    // ─── Schedules ───
+
+    if (matchRoute("/api/v1/schedules", "GET", req.method, path)) {
+      return handleListSchedules(url);
+    }
+
+    if (matchRoute("/api/v1/schedules", "POST", req.method, path)) {
+      return await handleCreateSchedule(req, ctx);
+    }
+
+    params = matchRoute("/api/v1/schedules/:id/trigger", "POST", req.method, path);
+    if (params) {
+      return handleTriggerSchedule(params.id, ctx);
+    }
+
+    params = matchRoute("/api/v1/schedules/:id", "PATCH", req.method, path);
+    if (params) {
+      return await handleUpdateSchedule(params.id, req, ctx);
+    }
+
+    params = matchRoute("/api/v1/schedules/:id", "DELETE", req.method, path);
+    if (params) {
+      return handleDeleteSchedule(params.id, ctx);
     }
 
     // ─── Launch (open interactive session in the Odyssey app) ───
@@ -987,4 +1021,49 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact schema:
   const spec = JSON.parse(generationService.extractJSON(raw));
   if (!spec.name || !spec.prompt) throw new Error("Generated template spec missing required fields");
   return apiJson(spec, 201);
+}
+
+// ─── Schedule handlers ────────────────────────────────────────────────────────
+
+function handleListSchedules(url: URL): Response {
+  const enabledFilter = url.searchParams.get("enabled");
+  if (!existsSync(SCHEDULES_DATA_PATH)) return apiJson({ schedules: [] });
+  try {
+    const all = JSON.parse(readFileSync(SCHEDULES_DATA_PATH, "utf8")) as any[];
+    const schedules = enabledFilter !== null
+      ? all.filter((s) => String(s.isEnabled) === enabledFilter)
+      : all;
+    return apiJson({ schedules });
+  } catch {
+    return apiJson({ schedules: [] });
+  }
+}
+
+async function handleCreateSchedule(req: Request, ctx: ApiContext): Promise<Response> {
+  const body = await parseBody<Record<string, unknown>>(req);
+  if (!body.name || !body.targetKind || !body.targetName || !body.promptTemplate) {
+    return apiError("invalid_request", "name, targetKind, targetName, promptTemplate are required", 400);
+  }
+  ctx.toolCtx.broadcast({ type: "schedule.create", payload: JSON.stringify(body) });
+  logger.info("api", `schedule.create: ${body.name}`);
+  return apiJson({ ok: true, note: "Schedule creation sent to app" });
+}
+
+async function handleUpdateSchedule(id: string, req: Request, ctx: ApiContext): Promise<Response> {
+  const body = await parseBody<Record<string, unknown>>(req);
+  ctx.toolCtx.broadcast({ type: "schedule.update", scheduleId: id, payload: JSON.stringify(body) });
+  logger.info("api", `schedule.update: ${id}`);
+  return apiJson({ ok: true, note: "Schedule update sent to app" });
+}
+
+function handleDeleteSchedule(id: string, ctx: ApiContext): Response {
+  ctx.toolCtx.broadcast({ type: "schedule.delete", scheduleId: id });
+  logger.info("api", `schedule.delete: ${id}`);
+  return apiJson({ ok: true, note: "Schedule deletion sent to app" });
+}
+
+function handleTriggerSchedule(id: string, ctx: ApiContext): Response {
+  ctx.toolCtx.broadcast({ type: "schedule.trigger", scheduleId: id });
+  logger.info("api", `schedule.trigger: ${id}`);
+  return apiJson({ ok: true, note: "Schedule trigger sent to app" });
 }

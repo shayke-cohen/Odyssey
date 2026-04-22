@@ -1750,7 +1750,120 @@ final class AppState {
 
         case .pairingConfirmed:
             Log.appState.info("Pairing confirmed")
+
+        case .scheduleCreate(let payload):
+            handleScheduleCreate(payload: payload)
+        case .scheduleUpdate(let scheduleId, let payload):
+            handleScheduleUpdate(scheduleId: scheduleId, payload: payload)
+        case .scheduleDelete(let scheduleId):
+            handleScheduleDelete(scheduleId: scheduleId)
+        case .scheduleTrigger(let scheduleId):
+            handleScheduleTrigger(scheduleId: scheduleId)
         }
+    }
+
+    // MARK: - Schedule Event Handlers
+
+    private func handleScheduleCreate(payload: String) {
+        guard let ctx = modelContext,
+              let data = payload.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+
+        let name = json["name"] as? String ?? "New Schedule"
+        let targetKindRaw = json["targetKind"] as? String ?? "agent"
+        let targetKind = ScheduledMissionTargetKind(rawValue: targetKindRaw) ?? .agent
+        let targetName = json["targetName"] as? String ?? ""
+        let promptTemplate = json["promptTemplate"] as? String ?? ""
+        let projectDirectory = json["projectDirectory"] as? String ?? ""
+
+        // Resolve agent/group ID by name
+        var agentId: UUID?
+        var groupId: UUID?
+        switch targetKind {
+        case .agent:
+            let d = FetchDescriptor<Agent>()
+            agentId = (try? ctx.fetch(d))?.first(where: { $0.name == targetName })?.id
+        case .group:
+            let d = FetchDescriptor<AgentGroup>()
+            groupId = (try? ctx.fetch(d))?.first(where: { $0.name == targetName })?.id
+        default: break
+        }
+
+        let schedule = ScheduledMission(name: name, targetKind: targetKind, projectDirectory: projectDirectory, promptTemplate: promptTemplate)
+        schedule.targetAgentId = agentId
+        schedule.targetGroupId = groupId
+
+        if let cadenceRaw = json["cadenceKind"] as? String,
+           let cadence = ScheduledMissionCadenceKind(rawValue: cadenceRaw) {
+            schedule.cadenceKind = cadence
+        }
+        if let h = json["intervalHours"] as? Int { schedule.intervalHours = h }
+        if let h = json["localHour"] as? Int { schedule.localHour = h }
+        if let m = json["localMinute"] as? Int { schedule.localMinute = m }
+        if let days = json["daysOfWeek"] as? [String] {
+            schedule.daysOfWeek = days.compactMap { label in
+                ScheduledMissionWeekday.allCases.first { $0.shortLabel.lowercased() == label.lowercased() }
+            }
+        }
+        if let runModeRaw = json["runMode"] as? String,
+           let runMode = ScheduledMissionRunMode(rawValue: runModeRaw) {
+            schedule.runMode = runMode
+        }
+        if let auto = json["usesAutonomousMode"] as? Bool { schedule.usesAutonomousMode = auto }
+
+        ctx.insert(schedule)
+        scheduleEngine?.syncSchedule(schedule)
+        Log.appState.info("Schedule created: \(name)")
+    }
+
+    private func handleScheduleUpdate(scheduleId: String, payload: String) {
+        guard let ctx = modelContext,
+              let uuid = UUID(uuidString: scheduleId),
+              let data = payload.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        let descriptor = FetchDescriptor<ScheduledMission>(predicate: #Predicate { $0.id == uuid })
+        guard let schedule = try? ctx.fetch(descriptor).first else {
+            Log.appState.warning("Schedule not found for update: \(scheduleId)")
+            return
+        }
+        if let v = json["name"] as? String { schedule.name = v }
+        if let v = json["isEnabled"] as? Bool { schedule.isEnabled = v }
+        if let v = json["promptTemplate"] as? String { schedule.promptTemplate = v }
+        if let v = json["projectDirectory"] as? String { schedule.projectDirectory = v }
+        if let v = json["intervalHours"] as? Int { schedule.intervalHours = v }
+        if let v = json["localHour"] as? Int { schedule.localHour = v }
+        if let v = json["localMinute"] as? Int { schedule.localMinute = v }
+        if let days = json["daysOfWeek"] as? [String] {
+            schedule.daysOfWeek = days.compactMap { label in
+                ScheduledMissionWeekday.allCases.first { $0.shortLabel.lowercased() == label.lowercased() }
+            }
+        }
+        if let v = json["cadenceKind"] as? String, let c = ScheduledMissionCadenceKind(rawValue: v) { schedule.cadenceKind = c }
+        if let v = json["runMode"] as? String, let r = ScheduledMissionRunMode(rawValue: v) { schedule.runMode = r }
+        if let v = json["usesAutonomousMode"] as? Bool { schedule.usesAutonomousMode = v }
+        scheduleEngine?.syncSchedule(schedule)
+        Log.appState.info("Schedule updated: \(scheduleId)")
+    }
+
+    private func handleScheduleDelete(scheduleId: String) {
+        guard let ctx = modelContext,
+              let uuid = UUID(uuidString: scheduleId) else { return }
+        let descriptor = FetchDescriptor<ScheduledMission>(predicate: #Predicate { $0.id == uuid })
+        guard let schedule = try? ctx.fetch(descriptor).first else {
+            Log.appState.warning("Schedule not found for delete: \(scheduleId)")
+            return
+        }
+        scheduleEngine?.removeSchedule(schedule)
+        ctx.delete(schedule)
+        try? ctx.save()
+        scheduleEngine?.exportSchedules()
+        Log.appState.info("Schedule deleted: \(scheduleId)")
+    }
+
+    private func handleScheduleTrigger(scheduleId: String) {
+        guard let uuid = UUID(uuidString: scheduleId) else { return }
+        scheduleEngine?.runNow(scheduleId: uuid)
+        Log.appState.info("Schedule triggered: \(scheduleId)")
     }
 
     private func upsertConnection(_ wire: ConnectorWire) {

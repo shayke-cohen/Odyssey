@@ -298,7 +298,11 @@ export type SidecarEvent =
   | { type: "browser.yieldToUser";     sessionId: string; message: string }
   | { type: "browser.renderHtml";      sessionId: string; html: string; title?: string }
   | { type: "browser.takeControl";     sessionId: string }
-  | { type: "browser.resume";          sessionId: string };
+  | { type: "browser.resume";          sessionId: string }
+  | { type: "schedule.create";  payload: string }
+  | { type: "schedule.update";  scheduleId: string; payload: string }
+  | { type: "schedule.delete";  scheduleId: string }
+  | { type: "schedule.trigger"; scheduleId: string };
 
 export interface QuestionOption {
   label: string;

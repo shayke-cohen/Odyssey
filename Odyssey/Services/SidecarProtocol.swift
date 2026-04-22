@@ -722,6 +722,10 @@ enum SidecarEvent: Sendable {
     case browserTakeControl(sessionId: String)
     case browserResume(sessionId: String)
     case pairingConfirmed
+    case scheduleCreate(payload: String)
+    case scheduleUpdate(scheduleId: String, payload: String)
+    case scheduleDelete(scheduleId: String)
+    case scheduleTrigger(scheduleId: String)
 }
 
 struct QuestionOption: Codable, Sendable, Identifiable {
@@ -858,6 +862,7 @@ struct IncomingWireMessage: Codable, Sendable {
     let commandType: String?
     let payload: String?
     let browserData: String?
+    let scheduleId: String?
 
     enum CodingKeys: String, CodingKey {
         case type, sessionId, conversationId, status, text, tool, input, output, result, cost
@@ -881,6 +886,7 @@ struct IncomingWireMessage: Codable, Sendable {
         case browserState = "state"
         case commandType, payload
         case browserData = "data"
+        case scheduleId
     }
 
     func toEvent() -> SidecarEvent? {
@@ -1063,6 +1069,18 @@ struct IncomingWireMessage: Codable, Sendable {
             return .browserResume(sessionId: sid)
         case "pairing.confirmed":
             return .pairingConfirmed
+        case "schedule.create":
+            guard let p = payload else { return nil }
+            return .scheduleCreate(payload: p)
+        case "schedule.update":
+            guard let sid = scheduleId ?? sessionId, let p = payload else { return nil }
+            return .scheduleUpdate(scheduleId: sid, payload: p)
+        case "schedule.delete":
+            guard let sid = scheduleId ?? sessionId else { return nil }
+            return .scheduleDelete(scheduleId: sid)
+        case "schedule.trigger":
+            guard let sid = scheduleId ?? sessionId else { return nil }
+            return .scheduleTrigger(scheduleId: sid)
         default:
             return nil
         }

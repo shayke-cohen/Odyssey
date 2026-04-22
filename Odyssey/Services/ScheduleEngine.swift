@@ -33,6 +33,7 @@ final class ScheduleEngine {
         hasStarted = true
         recoverStaleRuns(now: Date())
         evaluateDueSchedules(now: Date(), triggerSource: .timer)
+        exportSchedules()
 
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -58,11 +59,66 @@ final class ScheduleEngine {
             : nil
         launchdManager.sync(schedule: schedule)
         try? modelContext.save()
+        exportSchedules()
     }
 
     func removeSchedule(_ schedule: ScheduledMission) {
         launchdManager.remove(schedule: schedule)
         try? modelContext.save()
+        exportSchedules()
+    }
+
+    func exportSchedules() {
+        let descriptor = FetchDescriptor<ScheduledMission>()
+        guard let schedules = try? modelContext.fetch(descriptor) else { return }
+        let agentDescriptor = FetchDescriptor<Agent>()
+        let groupDescriptor = FetchDescriptor<AgentGroup>()
+        let agents = (try? modelContext.fetch(agentDescriptor)) ?? []
+        let groups = (try? modelContext.fetch(groupDescriptor)) ?? []
+        let iso = ISO8601DateFormatter()
+        let dtos = schedules.map { s -> [String: Any?] in
+            let targetName: String?
+            switch s.targetKind {
+            case .agent: targetName = agents.first(where: { $0.id == s.targetAgentId })?.name
+            case .group: targetName = groups.first(where: { $0.id == s.targetGroupId })?.name
+            default: targetName = nil
+            }
+            return [
+                "id": s.id.uuidString,
+                "name": s.name,
+                "isEnabled": s.isEnabled,
+                "targetKind": s.targetKind.rawValue,
+                "targetName": targetName,
+                "cadenceKind": s.cadenceKind.rawValue,
+                "intervalHours": s.intervalHours,
+                "localHour": s.localHour,
+                "localMinute": s.localMinute,
+                "daysOfWeek": s.daysOfWeek.map(\.shortLabel),
+                "promptTemplate": s.promptTemplate,
+                "projectDirectory": s.projectDirectory,
+                "runMode": s.runMode.rawValue,
+                "usesAutonomousMode": s.usesAutonomousMode,
+                "nextRunAt": s.nextRunAt.map { iso.string(from: $0) },
+                "lastStartedAt": s.lastStartedAt.map { iso.string(from: $0) },
+                "lastSucceededAt": s.lastSucceededAt.map { iso.string(from: $0) },
+                "lastFailedAt": s.lastFailedAt.map { iso.string(from: $0) },
+                "createdAt": iso.string(from: s.createdAt),
+            ]
+        }
+        let dataDir: URL
+        let customDir = ProcessInfo.processInfo.environment["ODYSSEY_DATA_DIR"]
+            ?? ProcessInfo.processInfo.environment["CLAUDESTUDIO_DATA_DIR"]
+        if let dir = customDir {
+            dataDir = URL(fileURLWithPath: dir)
+        } else {
+            dataDir = FileManager.default.homeDirectoryForCurrentUser.appending(path: ".odyssey")
+        }
+        let dir = dataDir.appending(path: "data")
+        let fileURL = dir.appending(path: "schedules.json")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if let data = try? JSONSerialization.data(withJSONObject: dtos, options: [.prettyPrinted]) {
+            try? data.write(to: fileURL)
+        }
     }
 
     func runNow(scheduleId: UUID, windowState: WindowState? = nil) {

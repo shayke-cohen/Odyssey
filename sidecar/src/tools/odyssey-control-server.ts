@@ -325,6 +325,141 @@ const openProjectTool = defineSharedTool(
   },
 );
 
+// ─── Schedule tools ────────────────────────────────────────────────────────────
+
+const SCHEDULES_FILE = join(DATA_DIR, "data", "schedules.json");
+
+function readSchedules(): any[] {
+  if (!existsSync(SCHEDULES_FILE)) return [];
+  try { return JSON.parse(readFileSync(SCHEDULES_FILE, "utf8")); } catch { return []; }
+}
+
+function findSchedule(idOrName: string): any | undefined {
+  const all = readSchedules();
+  return all.find((s) => s.name === idOrName || s.id === idOrName);
+}
+
+const listSchedulesTool = defineSharedTool(
+  "list_schedules",
+  "List all scheduled missions — name, enabled status, cadence, next run, target agent/group.",
+  { enabled: z.boolean().optional().describe("Filter to enabled-only when true") },
+  async ({ enabled }) => {
+    const all = readSchedules();
+    const schedules = enabled !== undefined ? all.filter((s) => s.isEnabled === enabled) : all;
+    return createTextResult({ schedules });
+  },
+);
+
+const getScheduleTool = defineSharedTool(
+  "get_schedule",
+  "Get full details of a schedule by name or UUID.",
+  { id_or_name: z.string().describe("Schedule name or UUID") },
+  async ({ id_or_name }) => {
+    const found = findSchedule(id_or_name);
+    if (!found) return createTextResult({ error: `Schedule "${id_or_name}" not found` }, false);
+    return createTextResult(found);
+  },
+);
+
+const createScheduleTool = defineSharedTool(
+  "create_schedule",
+  "Create a new scheduled mission. Cadence: hourly (intervalHours) or daily (hour + minute + optional days array).",
+  {
+    name: z.string().describe("Display name for the schedule"),
+    target_kind: z.enum(["agent", "group"]).describe("Whether to run an agent or group"),
+    target_name: z.string().describe("Agent or group display name"),
+    cadence_kind: z.enum(["hourlyInterval", "dailyTime"]),
+    interval_hours: z.number().optional().describe("Hours between runs (hourly cadence)"),
+    hour: z.number().optional().describe("Local hour 0-23 (daily cadence)"),
+    minute: z.number().optional().describe("Local minute 0-59 (daily cadence, default 0)"),
+    days: z.array(z.string()).optional().describe("Days to run: mon tue wed thu fri sat sun — omit for every day"),
+    prompt_template: z.string().describe("Prompt sent each run. Supports {{now}}, {{lastRunAt}}, {{runCount}}"),
+    project_directory: z.string().optional().describe("Working directory for the agent"),
+    autonomous: z.boolean().optional().describe("Run without user interaction (default true)"),
+    run_mode: z.enum(["freshConversation", "reuseConversation"]).optional(),
+  },
+  async (args) => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: args.name,
+          targetKind: args.target_kind,
+          targetName: args.target_name,
+          cadenceKind: args.cadence_kind,
+          intervalHours: args.interval_hours,
+          localHour: args.hour,
+          localMinute: args.minute ?? 0,
+          daysOfWeek: args.days,
+          promptTemplate: args.prompt_template,
+          projectDirectory: args.project_directory ?? "",
+          usesAutonomousMode: args.autonomous ?? true,
+          runMode: args.run_mode ?? "freshConversation",
+        }),
+      });
+      return createTextResult(await res.json());
+    } catch (e) {
+      return createTextResult({ error: String(e) }, false);
+    }
+  },
+);
+
+const updateScheduleTool = defineSharedTool(
+  "update_schedule",
+  "Update an existing schedule. Accepts any subset of schedule fields.",
+  {
+    id_or_name: z.string().describe("Schedule name or UUID"),
+    fields: z.record(z.string(), z.unknown()).describe("Fields to update: isEnabled, promptTemplate, intervalHours, localHour, localMinute, daysOfWeek, usesAutonomousMode, runMode"),
+  },
+  async ({ id_or_name, fields }) => {
+    const found = findSchedule(id_or_name);
+    if (!found) return createTextResult({ error: `Schedule "${id_or_name}" not found` }, false);
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/schedules/${found.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      });
+      return createTextResult(await res.json());
+    } catch (e) {
+      return createTextResult({ error: String(e) }, false);
+    }
+  },
+);
+
+const deleteScheduleTool = defineSharedTool(
+  "delete_schedule",
+  "Delete a schedule by name or UUID.",
+  { id_or_name: z.string() },
+  async ({ id_or_name }) => {
+    const found = findSchedule(id_or_name);
+    if (!found) return createTextResult({ error: `Schedule "${id_or_name}" not found` }, false);
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/schedules/${found.id}`, { method: "DELETE" });
+      return createTextResult(await res.json());
+    } catch (e) {
+      return createTextResult({ error: String(e) }, false);
+    }
+  },
+);
+
+const triggerScheduleTool = defineSharedTool(
+  "trigger_schedule",
+  "Run a schedule immediately (manual trigger, ignores cadence).",
+  { id_or_name: z.string() },
+  async ({ id_or_name }) => {
+    const found = findSchedule(id_or_name);
+    if (!found) return createTextResult({ error: `Schedule "${id_or_name}" not found` }, false);
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/schedules/${found.id}/trigger`, { method: "POST" });
+      return createTextResult(await res.json());
+    } catch (e) {
+      return createTextResult({ error: String(e) }, false);
+    }
+  },
+);
+
 // ─── System tools ──────────────────────────────────────────────────────────────
 
 const getWhatsNewTool = defineSharedTool(
@@ -364,6 +499,7 @@ export const odysseyControlToolDefinitions = [
   listSkillsTool, getSkillTool, updateSkillTool,
   openChatTool, openGroupChatTool,
   listProjectsTool, openProjectTool,
+  listSchedulesTool, getScheduleTool, createScheduleTool, updateScheduleTool, deleteScheduleTool, triggerScheduleTool,
   getWhatsNewTool, getAppStatusTool,
 ];
 
