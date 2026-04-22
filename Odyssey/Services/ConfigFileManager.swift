@@ -322,10 +322,10 @@ enum ConfigFileManager {
     private static let bundledTemplateNames = ["specialist", "worker", "coordinator"]
 
     static var configDirectory: URL {
-        let dataDir = ProcessInfo.processInfo.environment["ODYSSEY_DATA_DIR"]
-            ?? ProcessInfo.processInfo.environment["CLAUDESTUDIO_DATA_DIR"]
-            ?? "\(NSHomeDirectory())/.odyssey"
-        return URL(fileURLWithPath: dataDir).appendingPathComponent("config")
+        // Config dir is shared across instances — always ~/.odyssey/config unless explicitly overridden.
+        let configDir = ProcessInfo.processInfo.environment["ODYSSEY_CONFIG_DIR"]
+            ?? "\(NSHomeDirectory())/.odyssey/config"
+        return URL(fileURLWithPath: configDir)
     }
 
     static var factoryDirectory: URL {

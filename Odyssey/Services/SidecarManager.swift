@@ -170,6 +170,9 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
             process.environment?["ODYSSEY_DATA_DIR"] = dataDir
             process.environment?["CLAUDESTUDIO_DATA_DIR"] = dataDir
         }
+        // Shared config dir is always ~/.odyssey/config — independent of the per-instance data dir.
+        let configDir = NSHomeDirectory() + "/.odyssey/config"
+        process.environment?["ODYSSEY_CONFIG_DIR"] = configDir
         for (key, value) in localProviderEnvironment() {
             process.environment?[key] = value
         }

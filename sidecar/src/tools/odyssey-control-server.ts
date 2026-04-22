@@ -13,7 +13,10 @@ function toAlwaysLoadTool(def: ReturnType<typeof defineSharedTool>) {
 
 const HOME = homedir();
 const DATA_DIR = process.env.ODYSSEY_DATA_DIR ?? process.env.CLAUDESTUDIO_DATA_DIR ?? join(HOME, ".odyssey");
-const CONFIG_DIR = join(DATA_DIR, "config");
+// CONFIG_DIR is always the shared config root, independent of the per-instance DATA_DIR.
+const CONFIG_DIR = process.env.ODYSSEY_CONFIG_DIR ?? join(HOME, ".odyssey", "config");
+// whats-new.json sits in the odyssey root, not in the instance data dir.
+const ODYSSEY_ROOT_DIR = process.env.ODYSSEY_CONFIG_DIR ? join(process.env.ODYSSEY_CONFIG_DIR, "..") : join(HOME, ".odyssey");
 const HTTP_PORT = parseInt(process.env.ODYSSEY_HTTP_PORT ?? process.env.CLAUDESTUDIO_HTTP_PORT ?? "9850", 10);
 const BASE_URL = `http://127.0.0.1:${HTTP_PORT}`;
 
@@ -467,7 +470,7 @@ const getWhatsNewTool = defineSharedTool(
   "Read the Odyssey release notes / what's new changelog.",
   {},
   async () => {
-    const filePath = join(DATA_DIR, "whats-new.json");
+    const filePath = join(ODYSSEY_ROOT_DIR, "whats-new.json");
     if (!existsSync(filePath)) return createTextResult({ entries: [] });
     try {
       return createTextResult(JSON.parse(readFileSync(filePath, "utf8")));
