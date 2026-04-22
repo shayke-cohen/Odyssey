@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.5.12",
+    "date": "2026-04-22",
+    "highlights": [
+      "Voice mode — hold mic to speak, agents respond aloud via TTS",
+      "Ulysses companion — list agents, open chats, create agents, and schedule tasks by asking in natural language",
+      "Odyssey-control MCP — structured app control tools available to any Claude session",
+      "Sidebar redesign — flat thread list with auto-shown archived section and foldable project rows",
+      "Parallel instances — run multiple Odyssey instances with automatic lock-based naming"
+    ]
+  },
+  {
     "version": "0.5.11",
     "date": "2026-04-20",
     "highlights": [
