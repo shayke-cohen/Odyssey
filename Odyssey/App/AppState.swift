@@ -1771,13 +1771,13 @@ final class AppState {
         case .scheduleTrigger(let scheduleId):
             handleScheduleTrigger(scheduleId: scheduleId)
 
-        case .ghIssueTriggered(let issueUrl, let issueNumber, let repo, let title, let conversationId):
+        case .ghIssueTriggered(_, let issueNumber, let repo, let title, let conversationId):
             Log.github.info("gh.issue.triggered #\(issueNumber, privacy: .public) \(repo, privacy: .public) conv=\(conversationId, privacy: .public)")
-            ChatNotificationManager.shared.notifyGHIssueTriggered(issueNumber: issueNumber, repo: repo, title: title, conversationId: conversationId)
+            ChatNotificationManager.shared.notifyGHIssueTriggered(issueNumber: issueNumber, repo: repo, title: title)
 
-        case .ghIssueComment(let issueUrl, let commentBody, let author, let conversationId):
+        case .ghIssueComment(_, let commentBody, let author, let conversationId):
             Log.github.info("gh.issue.comment from \(author, privacy: .public) conv=\(conversationId, privacy: .public)")
-            handleGHIssueComment(issueUrl: issueUrl, commentBody: commentBody, author: author, conversationId: conversationId)
+            handleGHIssueComment(commentBody: commentBody, author: author, conversationId: conversationId)
 
         case .ghIssueCreated(let issueUrl, let issueNumber, let repo, let conversationId):
             Log.github.info("gh.issue.created #\(issueNumber, privacy: .public) \(repo, privacy: .public)")
@@ -1787,7 +1787,7 @@ final class AppState {
 
     // MARK: - GitHub Issue Bridge Event Handlers
 
-    private func handleGHIssueComment(issueUrl: String, commentBody: String, author: String, conversationId: String) {
+    private func handleGHIssueComment(commentBody: String, author: String, conversationId: String) {
         guard let ctx = modelContext,
               let uuid = UUID(uuidString: conversationId) else { return }
         let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == uuid })

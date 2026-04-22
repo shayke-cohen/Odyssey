@@ -807,31 +807,6 @@ struct PlanAllowedPrompt: Codable, Sendable, Identifiable {
     var id: String { "\(tool):\(prompt)" }
 }
 
-struct GHIssueTriggeredWire: Codable {
-    let type: String  // "gh.issue.triggered"
-    let issueUrl: String
-    let issueNumber: Int
-    let repo: String
-    let title: String
-    let conversationId: String
-}
-
-struct GHIssueCommentWire: Codable {
-    let type: String  // "gh.issue.comment"
-    let issueUrl: String
-    let commentBody: String
-    let author: String
-    let conversationId: String
-}
-
-struct GHIssueCreatedWire: Codable {
-    let type: String  // "gh.issue.created"
-    let issueUrl: String
-    let issueNumber: Int
-    let repo: String
-    let conversationId: String?
-}
-
 struct IncomingWireMessage: Codable, Sendable {
     let type: String
     let sessionId: String?
