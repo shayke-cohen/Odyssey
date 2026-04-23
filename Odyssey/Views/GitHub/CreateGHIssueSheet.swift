@@ -4,7 +4,7 @@ import SwiftData
 // MARK: - Create GitHub Issue Sheet
 
 struct CreateGHIssueSheet: View {
-    let conversation: Conversation
+    let conversation: Conversation?
     let project: Project?
 
     @Environment(AppState.self) private var appState
@@ -28,7 +28,7 @@ struct CreateGHIssueSheet: View {
     }
 
     private var inboxRoutingLabels: [String] {
-        guard let agent = conversation.sessions?.first?.agent else { return [] }
+        guard let agent = conversation?.sessions?.first?.agent else { return [] }
         return ["odyssey:agent:\(agent.name)"]
     }
 
@@ -55,7 +55,7 @@ struct CreateGHIssueSheet: View {
         }
         .frame(minWidth: 520, minHeight: 420)
         .onAppear {
-            title = conversation.topic ?? ""
+            title = conversation?.topic ?? ""
             selectedRepo = availableRepos.first ?? ""
         }
     }
@@ -179,7 +179,7 @@ struct CreateGHIssueSheet: View {
             title: trimmedTitle,
             body: issueBody.trimmingCharacters(in: .whitespacesAndNewlines),
             labels: labels,
-            conversationId: conversation.id.uuidString
+            conversationId: conversation?.id.uuidString
         ))
 
         dismiss()

@@ -15,6 +15,7 @@ struct GitHubSettingsView: View {
     @State private var inboxSetupSuccess = false
     @State private var isDaemonToggling = false
     @State private var daemonError: String? = nil
+    @State private var showCreateInboxIssueSheet = false
 
     var body: some View {
         Form {
@@ -32,6 +33,9 @@ struct GitHubSettingsView: View {
         .onChange(of: settings.trustedGitHubUsers) { _, _ in appState.sendGHPollerConfig() }
         .onChange(of: projects.map { "\($0.githubRepo ?? ""):\($0.githubDefaultAgentId?.uuidString ?? "")" }) { _, _ in
             appState.sendGHPollerConfig()
+        }
+        .sheet(isPresented: $showCreateInboxIssueSheet) {
+            CreateGHIssueSheet(conversation: nil, project: nil)
         }
     }
 
@@ -73,14 +77,31 @@ struct GitHubSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("Open on GitHub") {
-                        if let url = URL(string: "https://github.com/\(settings.inboxRepo)") {
-                            NSWorkspace.shared.open(url)
+                    HStack(spacing: 12) {
+                        Button("Create Issue") {
+                            showCreateInboxIssueSheet = true
                         }
+                        .buttonStyle(.bordered)
+                        .stableXrayId("settings.github.inboxCreateIssueButton")
+
+                        Button("View Issues") {
+                            if let url = URL(string: "https://github.com/\(settings.inboxRepo)/issues?q=is%3Aopen+label%3Aodyssey") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.blue)
+                        .stableXrayId("settings.github.inboxViewIssuesButton")
+
+                        Button("Open on GitHub") {
+                            if let url = URL(string: "https://github.com/\(settings.inboxRepo)") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .stableXrayId("settings.github.inboxOpenButton")
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.blue)
-                    .stableXrayId("settings.github.inboxOpenButton")
                 }
             }
             if let err = inboxSetupError {
