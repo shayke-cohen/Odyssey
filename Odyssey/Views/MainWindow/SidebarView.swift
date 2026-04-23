@@ -444,10 +444,6 @@ struct SidebarView: View {
 
             groupsSection
 
-            if !nostrPeers.isEmpty {
-                peersSection
-            }
-
             if sortedProjects.isEmpty {
                 emptyState
             } else {
@@ -460,6 +456,10 @@ struct SidebarView: View {
                 } header: {
                     projectsHeader
                 }
+            }
+
+            if !nostrPeers.isEmpty {
+                peersSection
             }
         }
         .listStyle(.sidebar)
