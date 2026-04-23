@@ -9,14 +9,25 @@ struct CreateGHIssueSheet: View {
 
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: [SortDescriptor(\Agent.name)]) private var agents: [Agent]
+    @Query(sort: [SortDescriptor(\AgentGroup.name)]) private var groups: [AgentGroup]
 
     @State private var title: String = ""
     @State private var issueBody: String = ""
     @State private var selectedRepo: String = ""
+    @State private var routingType: RoutingType = .none
+    @State private var selectedAgentName: String = ""
+    @State private var selectedGroupName: String = ""
     @State private var isSubmitting = false
     @State private var submitError: String? = nil
 
     private var settings: GHPollerSettings { GHPollerSettings.shared }
+
+    enum RoutingType: String, CaseIterable {
+        case none = "None"
+        case agent = "Agent"
+        case group = "Group"
+    }
 
     private var availableRepos: [String] {
         var repos: [String] = []
@@ -27,9 +38,19 @@ struct CreateGHIssueSheet: View {
         return repos
     }
 
-    private var inboxRoutingLabels: [String] {
-        guard let agent = conversation?.sessions?.first?.agent else { return [] }
-        return ["odyssey:agent:\(agent.name)"]
+    private var isInboxSelected: Bool { selectedRepo == settings.inboxRepo }
+
+    private var computedLabels: [String] {
+        if let agent = conversation?.sessions?.first?.agent {
+            return ["odyssey:agent:\(agent.name)"]
+        }
+        guard isInboxSelected else { return [] }
+        switch routingType {
+        case .none: return []
+        case .agent where !selectedAgentName.isEmpty: return ["odyssey:agent:\(selectedAgentName)"]
+        case .group where !selectedGroupName.isEmpty: return ["odyssey:group:\(selectedGroupName)"]
+        default: return []
+        }
     }
 
     var body: some View {
@@ -40,7 +61,13 @@ struct CreateGHIssueSheet: View {
                 VStack(alignment: .leading, spacing: 20) {
                     titleSection
                     repoSection
+                    if isInboxSelected && conversation?.sessions?.first?.agent == nil {
+                        routingSection
+                    }
                     bodySection
+                    if !computedLabels.isEmpty {
+                        labelsPreview
+                    }
                     if let err = submitError {
                         Text(err)
                             .foregroundStyle(.red)
@@ -53,10 +80,20 @@ struct CreateGHIssueSheet: View {
             Divider()
             footerBar
         }
-        .frame(minWidth: 520, minHeight: 420)
+        .frame(minWidth: 520, minHeight: 460)
         .onAppear {
             title = conversation?.topic ?? ""
             selectedRepo = availableRepos.first ?? ""
+            if let agent = conversation?.sessions?.first?.agent {
+                routingType = .agent
+                selectedAgentName = agent.name
+            } else if let first = agents.filter(\.isEnabled).first {
+                routingType = .agent
+                selectedAgentName = first.name
+            }
+            if selectedGroupName.isEmpty, let first = groups.first {
+                selectedGroupName = first.name
+            }
         }
     }
 
@@ -64,7 +101,7 @@ struct CreateGHIssueSheet: View {
 
     private var headerBar: some View {
         HStack {
-            Image(systemName: "arrow.triangle.2.circlepath")
+            Image(systemName: "logo.github")
                 .foregroundStyle(.secondary)
             Text("Create GitHub Issue")
                 .font(.headline)
@@ -109,19 +146,69 @@ struct CreateGHIssueSheet: View {
                 }
                 .labelsHidden()
                 .stableXrayId("createGHIssue.repoPicker")
+            }
+        }
+    }
 
-                if selectedRepo == settings.inboxRepo && !inboxRoutingLabels.isEmpty {
-                    HStack(spacing: 6) {
-                        Image(systemName: "tag")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("Will add label: \(inboxRoutingLabels.joined(separator: ", "))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+    private var routingSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Route To")
+                .font(.subheadline.weight(.medium))
+            Picker("Route to", selection: $routingType) {
+                ForEach(RoutingType.allCases, id: \.self) { type in
+                    Text(type.rawValue).tag(type)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .stableXrayId("createGHIssue.routingTypePicker")
+
+            switch routingType {
+            case .none:
+                Text("Issue will be filed without a routing label. You can add one manually on GitHub.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            case .agent:
+                let enabledAgents = agents.filter(\.isEnabled)
+                if enabledAgents.isEmpty {
+                    Text("No enabled agents found.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Picker("Agent", selection: $selectedAgentName) {
+                        ForEach(enabledAgents, id: \.name) { agent in
+                            Text(agent.name).tag(agent.name)
+                        }
                     }
+                    .stableXrayId("createGHIssue.agentPicker")
+                }
+            case .group:
+                if groups.isEmpty {
+                    Text("No groups found.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Picker("Group", selection: $selectedGroupName) {
+                        ForEach(groups, id: \.name) { group in
+                            Text(group.name).tag(group.name)
+                        }
+                    }
+                    .stableXrayId("createGHIssue.groupPicker")
                 }
             }
         }
+    }
+
+    private var labelsPreview: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "tag")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(computedLabels.map { "'\($0)'" }.joined(separator: ", "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .stableXrayId("createGHIssue.labelsPreview")
     }
 
     private var bodySection: some View {
@@ -166,11 +253,6 @@ struct CreateGHIssueSheet: View {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         guard !trimmedTitle.isEmpty, !selectedRepo.isEmpty else { return }
 
-        var labels: [String] = []
-        if selectedRepo == settings.inboxRepo {
-            labels = inboxRoutingLabels
-        }
-
         isSubmitting = true
         submitError = nil
 
@@ -178,7 +260,7 @@ struct CreateGHIssueSheet: View {
             repo: selectedRepo,
             title: trimmedTitle,
             body: issueBody.trimmingCharacters(in: .whitespacesAndNewlines),
-            labels: labels,
+            labels: computedLabels,
             conversationId: conversation?.id.uuidString
         ))
 

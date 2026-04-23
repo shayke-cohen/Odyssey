@@ -1293,7 +1293,7 @@ struct ChatView: View {
                         Button {
                             showCreateGHIssueSheet = true
                         } label: {
-                            Image(systemName: "arrow.triangle.2.circlepath")
+                            Image(systemName: "logo.github")
                         }
                         .buttonStyle(.plain)
                         .help("Create GitHub issue from this thread")
@@ -1454,7 +1454,7 @@ struct ChatView: View {
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
+                    Image(systemName: "logo.github")
                         .font(.caption2)
                     Text("#\(issueNumber) · \(repo)")
                         .font(.caption2)

@@ -7,32 +7,30 @@ set -e
 LABEL="com.odyssey.sidecar"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 
-# Locate bun
-BUN_PATH="$HOME/.bun/bin/bun"
-if [ ! -f "$BUN_PATH" ]; then
-    BUN_PATH="$(command -v bun 2>/dev/null || true)"
-fi
-if [ -z "$BUN_PATH" ] || [ ! -f "$BUN_PATH" ]; then
-    echo "Error: bun not found. Install bun first: https://bun.sh" >&2
-    exit 1
-fi
-
-# Locate sidecar index.ts — sibling of this script's app bundle
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# When bundled, script is at Contents/Resources/install-daemon.sh
-APP_BUNDLE="$(echo "$SCRIPT_DIR" | sed 's|/Contents/Resources$||')"
-SIDECAR_INDEX="$APP_BUNDLE/Contents/Resources/sidecar/src/index.ts"
-if [ ! -f "$SIDECAR_INDEX" ]; then
-    # Fallback: look relative to script in dev builds
-    SIDECAR_INDEX="$(dirname "$SCRIPT_DIR")/src/index.ts"
-fi
-if [ ! -f "$SIDECAR_INDEX" ]; then
-    echo "Error: sidecar/src/index.ts not found at $SIDECAR_INDEX" >&2
-    exit 1
-fi
-
 case "$1" in
 install)
+    # Locate bun (only needed for install)
+    BUN_PATH="$HOME/.bun/bin/bun"
+    if [ ! -f "$BUN_PATH" ]; then
+        BUN_PATH="$(command -v bun 2>/dev/null || true)"
+    fi
+    if [ -z "$BUN_PATH" ] || [ ! -f "$BUN_PATH" ]; then
+        echo "Error: bun not found. Install bun first: https://bun.sh" >&2
+        exit 1
+    fi
+
+    # Locate sidecar index.ts — sibling of this script's app bundle
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    APP_BUNDLE="$(echo "$SCRIPT_DIR" | sed 's|/Contents/Resources$||')"
+    SIDECAR_INDEX="$APP_BUNDLE/Contents/Resources/sidecar/src/index.ts"
+    if [ ! -f "$SIDECAR_INDEX" ]; then
+        SIDECAR_INDEX="$(dirname "$SCRIPT_DIR")/src/index.ts"
+    fi
+    if [ ! -f "$SIDECAR_INDEX" ]; then
+        echo "Error: sidecar/src/index.ts not found at $SIDECAR_INDEX" >&2
+        exit 1
+    fi
+
     mkdir -p "$HOME/Library/LaunchAgents"
     cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
