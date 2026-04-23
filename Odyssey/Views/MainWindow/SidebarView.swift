@@ -558,9 +558,7 @@ struct SidebarView: View {
         return List {
             globalUtilitiesSection
 
-            if !ghIssues.isEmpty {
-                ghInboxSection
-            }
+            ghInboxSection
 
             pinnedSection
 
