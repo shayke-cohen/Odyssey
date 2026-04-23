@@ -1289,17 +1289,15 @@ struct ChatView: View {
 
                     executionModeSegmented
 
-                    if ghIssueButtonVisible {
-                        Button {
-                            showCreateGHIssueSheet = true
-                        } label: {
-                            Image(systemName: "logo.github")
-                        }
-                        .buttonStyle(.plain)
-                        .help("Create GitHub issue from this thread")
-                        .xrayId("chat.createGHIssueButton")
-                        .accessibilityLabel("Create GitHub Issue")
+                    Button {
+                        showCreateGHIssueSheet = true
+                    } label: {
+                        Image(systemName: "logo.github")
                     }
+                    .buttonStyle(.plain)
+                    .help("Create GitHub issue from this thread")
+                    .xrayId("chat.createGHIssueButton")
+                    .accessibilityLabel("Create GitHub Issue")
 
                     if let convo = conversation {
                         if (convo.sessions ?? []).count > 1 {
