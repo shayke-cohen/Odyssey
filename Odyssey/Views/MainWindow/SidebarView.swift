@@ -512,7 +512,9 @@ struct SidebarView: View {
                 ScheduleHistorySheet(schedule: schedule).environment(appState).environment(windowState)
             }
             .sheet(isPresented: $showingGHIssueSheet) {
-                CreateGHIssueSheet(conversation: nil, project: nil).environment(appState)
+                CreateGHIssueSheet(conversation: nil, project: nil)
+                    .environment(appState)
+                    .environment(\.modelContext, modelContext)
             }
     }
 
@@ -676,6 +678,9 @@ struct SidebarView: View {
 
     private var sortedProjects: [Project] { cachedSortedProjects }
     private var ulyssesAgent: Agent? { agents.first { $0.name == "Ulysses" && $0.isEnabled } }
+    private var ghUnhandledCount: Int {
+        ghIssues.filter { ($0.primarySession?.status ?? .completed) != .active }.count
+    }
     private var residentAgents: [Agent] { cachedResidentAgents }
     private var nonResidentAgents: [Agent] { cachedNonResidentAgents }
     private var residentGroups: [AgentGroup] { cachedResidentGroups }
@@ -1807,11 +1812,8 @@ struct SidebarView: View {
                             .foregroundStyle(.secondary)
                         Text("GH Inbox")
                             .font(.headline.weight(.semibold))
-                        let unhandledCount = ghIssues.filter {
-                            ($0.primarySession?.status ?? .completed) != .active
-                        }.count
-                        if unhandledCount > 0 {
-                            Text("\(unhandledCount)")
+                        if ghUnhandledCount > 0 {
+                            Text("\(ghUnhandledCount)")
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 5)
@@ -1902,8 +1904,9 @@ struct SidebarView: View {
             Divider()
 
             // 4. Assign & Run submenu (agents only)
+            let enabledAgents = agents.filter { $0.isEnabled }
             Menu {
-                ForEach(agents.filter { $0.isEnabled }) { agent in
+                ForEach(enabledAgents) { agent in
                     Button(agent.name) {
                         appState.ghIssueRunNow(conv, agentOverride: agent)
                     }
@@ -1911,6 +1914,7 @@ struct SidebarView: View {
             } label: {
                 Label("Assign & Run…", systemImage: "cpu")
             }
+            .disabled(enabledAgents.isEmpty)
 
             Divider()
 
