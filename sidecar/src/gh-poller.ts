@@ -148,7 +148,8 @@ export class GHPoller {
     for (const issue of issues) {
       const key = `${repo}#${issue.number}`;
       if (this.state.processedIssues[key]) continue;
-      if (!trustedUsers.includes(issue.author.login)) {
+      // Empty trustedUsers means all authors are trusted (repo owner scenario)
+      if (trustedUsers.length > 0 && !trustedUsers.includes(issue.author.login)) {
         logger.debug("github", "Skipping issue from untrusted user", { repo, number: issue.number, author: issue.author.login });
         continue;
       }

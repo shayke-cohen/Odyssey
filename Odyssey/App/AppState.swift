@@ -730,6 +730,7 @@ final class AppState {
                 listenForEvents(from: manager)
                 registerAgentDefinitions()
                 registerConnections()
+                sendGHPollerConfig()
                 startNostrRelay(for: manager)
                 // Conversation sync and timer are handled by the .connected event handler
                 // which fires from the sidecar.ready handshake during start().
