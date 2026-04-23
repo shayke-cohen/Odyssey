@@ -32,6 +32,7 @@ enum AppSettings {
 
     // MARK: - Onboarding
     static let fteShownKey = "odyssey.fte.v1.shown"
+    static let walkthroughShownKey = "odyssey.walkthrough.v1.shown"
 
     // MARK: - Instance
     static let instanceWorkingDirectoryKey = "odyssey.instanceWorkingDirectory"
@@ -71,6 +72,7 @@ enum AppSettings {
     static let nostrRelaysKey = "nostrRelays"
     static let nostrRelay1Key = "odyssey.nostrRelay1"
     static let nostrRelay2Key = "odyssey.nostrRelay2"
+    static let nostrDirectoryEnabledKey = "odyssey.nostrDirectoryEnabled"
     static let defaultNostrRelay1 = "wss://relay.damus.io"
     static let defaultNostrRelay2 = "wss://relay.nostr.band"
 
@@ -124,6 +126,7 @@ enum AppSettings {
             sharedRoomUserIdKey, sharedRoomDisplayNameKey,
             turnEnabledKey, turnURLKey, turnUsernameKey, turnCredentialKey,
             fteShownKey,
+            walkthroughShownKey,
         ] + FeatureFlags.all
     }
 

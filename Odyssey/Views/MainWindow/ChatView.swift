@@ -255,7 +255,6 @@ struct ChatView: View {
     @State private var showSlashLoopSheet = false
     @State private var showSlashBranchPicker = false
     @State private var slashPlanModeActive = false
-    @State private var showCreateGHIssueSheet = false
     @State private var streamingStateRestoreTask: Task<Void, Never>?
     @State private var isHoldingMic: Bool = false
     @FocusState private var topicFieldFocused: Bool
@@ -325,18 +324,6 @@ struct ChatView: View {
         conversationSessions.min { $0.startedAt < $1.startedAt }
     }
 
-    private var ghIssueButtonVisible: Bool {
-        let settings = GHPollerSettings.shared
-        let hasInbox = !settings.inboxRepo.isEmpty
-        guard hasInbox else {
-            if let projectId = conversation?.projectId,
-               let project = try? modelContext.fetch(FetchDescriptor<Project>(predicate: #Predicate { $0.id == projectId })).first {
-                return !(project.githubRepo ?? "").isEmpty
-            }
-            return false
-        }
-        return true
-    }
 
     private var conversationProject: Project? {
         guard let projectId = conversation?.projectId else { return nil }
@@ -846,16 +833,6 @@ struct ChatView: View {
                 .environment(appState)
                 .environment(\.modelContext, modelContext)
         }
-        .sheet(isPresented: $showCreateGHIssueSheet) {
-            if let convo = conversation {
-                CreateGHIssueSheet(
-                    conversation: convo,
-                    project: conversationProject,
-                    sourceGroup: sourceGroup
-                )
-                .environment(appState)
-            }
-        }
         // Slash command sheets — attached via background to avoid type-checker overload
         .background(slashCommandSheets)
         .alert("Slash Commands", isPresented: $showSlashHelp) {
@@ -1289,17 +1266,6 @@ struct ChatView: View {
                     simplifiedHeaderStatusPills
 
                     executionModeSegmented
-
-                    Button {
-                        showCreateGHIssueSheet = true
-                    } label: {
-                        Label("Issue", systemImage: "exclamationmark.circle")
-                            .font(captionFont.weight(.medium))
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Create GitHub issue from this thread")
-                    .xrayId("chat.createGHIssueButton")
-                    .accessibilityLabel("Create GitHub Issue")
 
                     if let convo = conversation {
                         if (convo.sessions ?? []).count > 1 {
@@ -2452,6 +2418,7 @@ struct ChatView: View {
             .padding(.bottom, 4)
         }
         .background(.bar)
+        .walkthroughAnchor(.chatComposer)
         .onDrop(of: [.image, .fileURL, .plainText, .pdf], isTargeted: nil) { providers in
             handleDrop(providers)
             return true

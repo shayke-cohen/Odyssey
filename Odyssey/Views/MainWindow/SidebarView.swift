@@ -127,6 +127,115 @@ private struct GlobalScheduleEditRequest: Identifiable {
     let draft: ScheduledMissionDraft
 }
 
+enum SidebarOrganizeMode: String, CaseIterable {
+    case byProject = "By project"
+    case chronological = "Chronological list"
+    case chatsFirst = "Chats first"
+}
+
+enum SidebarSortField: String, CaseIterable {
+    case created = "Created"
+    case updated = "Updated"
+}
+
+enum SidebarShowFilter: String, CaseIterable {
+    case allChats = "All chats"
+    case relevant = "Relevant"
+}
+
+private struct SidebarSortPopover: View {
+    @Binding var organizeMode: String
+    @Binding var sortField: String
+    @Binding var showFilter: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sortSection(title: "Organize") {
+                ForEach(SidebarOrganizeMode.allCases, id: \.rawValue) { mode in
+                    sortRow(
+                        label: mode.rawValue,
+                        icon: icon(for: mode),
+                        isSelected: organizeMode == mode.rawValue
+                    ) {
+                        organizeMode = mode.rawValue
+                    }
+                }
+            }
+            Divider()
+            sortSection(title: "Sort by") {
+                ForEach(SidebarSortField.allCases, id: \.rawValue) { field in
+                    sortRow(
+                        label: field.rawValue,
+                        icon: field == .created ? "plus.circle" : "pencil",
+                        isSelected: sortField == field.rawValue
+                    ) {
+                        sortField = field.rawValue
+                    }
+                }
+            }
+            Divider()
+            sortSection(title: "Show") {
+                ForEach(SidebarShowFilter.allCases, id: \.rawValue) { filter in
+                    sortRow(
+                        label: filter.rawValue,
+                        icon: filter == .allChats ? "bubble.left.and.bubble.right" : "star",
+                        isSelected: showFilter == filter.rawValue
+                    ) {
+                        showFilter = filter.rawValue
+                    }
+                }
+            }
+        }
+        .frame(width: 200)
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func sortSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
+            content()
+                .padding(.bottom, 4)
+        }
+    }
+
+    private func sortRow(label: String, icon: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .frame(width: 16)
+                    .foregroundStyle(.secondary)
+                Text(label)
+                    .font(.callout)
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func icon(for mode: SidebarOrganizeMode) -> String {
+        switch mode {
+        case .byProject: "folder"
+        case .chronological: "clock"
+        case .chatsFirst: "bubble.left.and.bubble.right"
+        }
+    }
+}
+
 struct SidebarView: View {
     @Environment(AppState.self) private var appState
     @Environment(WindowState.self) private var windowState: WindowState
@@ -190,6 +299,10 @@ struct SidebarView: View {
     @AppStorage("sidebar.schedulesExpanded") private var isSchedulesSectionExpanded: Bool = true
     @AppStorage("sidebar.projectsExpanded") private var isProjectsSectionExpanded: Bool = true
     @AppStorage("sidebar.allSchedulesExpanded") private var isAllSchedulesExpanded: Bool = false
+    @AppStorage("sidebar.organizeMode") private var organizeMode: String = SidebarOrganizeMode.byProject.rawValue
+    @AppStorage("sidebar.sortField") private var sortField: String = SidebarSortField.updated.rawValue
+    @AppStorage("sidebar.showFilter") private var showFilter: String = SidebarShowFilter.allChats.rawValue
+    @State private var showingSortPopover = false
     @State private var globalScheduleEditRequest: GlobalScheduleEditRequest?
     @State private var cachedSortedProjects: [Project] = []
     @State private var cachedPinnedProjects: [Project] = []
@@ -318,8 +431,10 @@ struct SidebarView: View {
             .focusedSceneValue(\.addProjectAction, AddProjectAction { addProjectFolder() })
     }
 
-    private var sidebarWithSheets: some View {
+    private var sidebarWithBackground: some View {
         sidebarList
+            .onChange(of: sortField) { _, _ in rebuildProjectCache() }
+            .onChange(of: showFilter) { _, _ in rebuildProjectCache() }
             .background {
                 // Hidden keyboard-shortcut triggers for New Agent / New Group
                 Button("") { showAgentCreation = true }
@@ -337,65 +452,43 @@ struct SidebarView: View {
                 .keyboardShortcut("u", modifiers: [.command, .option])
                 .hidden()
             }
-            .sheet(item: $editingGroup) { group in
-                GroupEditorView(group: group)
-            }
-            .sheet(item: $autonomousGroup) { group in
-                AutonomousMissionSheet(group: group)
-                    .environment(appState)
-            }
-            .sheet(isPresented: $showAutoAssemble) {
-                AutoAssembleSheet()
-                    .environment(appState)
-            }
-            .sheet(isPresented: $showAgentCreation) {
-                AgentCreationSheet { _ in
-                    showAgentCreation = false
-                }
-                .environment(appState)
-            }
-            .sheet(isPresented: $showGroupCreation) {
-                GroupEditorView(group: nil)
-                    .environment(appState)
-            }
+    }
+
+    private var sidebarWithGroupSheets: some View {
+        Group { sidebarWithBackground }
+            .sheet(item: $editingGroup) { group in GroupEditorView(group: group) }
+            .sheet(item: $autonomousGroup) { group in AutonomousMissionSheet(group: group).environment(appState) }
+            .sheet(isPresented: $showAutoAssemble) { AutoAssembleSheet().environment(appState) }
+            .sheet(isPresented: $showAgentCreation) { AgentCreationSheet { _ in showAgentCreation = false }.environment(appState) }
+            .sheet(isPresented: $showGroupCreation) { GroupEditorView(group: nil).environment(appState) }
             .sheet(isPresented: $showAgentBrowseSheet) {
-                AgentBrowseSheet(
-                    initialTab: .agents,
-                    projectId: windowState.selectedProjectId,
-                    projectDirectory: windowState.projectDirectory
-                )
-                .environment(appState)
-                .environment(windowState)
+                AgentBrowseSheet(initialTab: .agents, projectId: windowState.selectedProjectId, projectDirectory: windowState.projectDirectory)
+                    .environment(appState).environment(windowState)
             }
             .sheet(isPresented: $showGroupBrowseSheet) {
-                AgentBrowseSheet(
-                    initialTab: .groups,
-                    projectId: windowState.selectedProjectId,
-                    projectDirectory: windowState.projectDirectory
-                )
-                .environment(appState)
-                .environment(windowState)
+                AgentBrowseSheet(initialTab: .groups, projectId: windowState.selectedProjectId, projectDirectory: windowState.projectDirectory)
+                    .environment(appState).environment(windowState)
             }
+    }
+
+    private var sidebarWithScheduleSheets: some View {
+        sidebarWithGroupSheets
             .sheet(isPresented: $showingAgentScheduleEditor) {
-                ScheduleEditorView(schedule: nil, draft: agentScheduleDraft)
-                    .environment(appState)
-                    .environment(\.modelContext, modelContext)
+                ScheduleEditorView(schedule: nil, draft: agentScheduleDraft).environment(appState).environment(\.modelContext, modelContext)
             }
             .sheet(isPresented: $showingGroupScheduleEditor) {
-                ScheduleEditorView(schedule: nil, draft: groupScheduleDraft)
-                    .environment(appState)
-                    .environment(\.modelContext, modelContext)
+                ScheduleEditorView(schedule: nil, draft: groupScheduleDraft).environment(appState).environment(\.modelContext, modelContext)
             }
             .sheet(item: $globalScheduleEditRequest) { req in
-                ScheduleEditorView(schedule: req.schedule, draft: req.draft)
-                    .environment(appState)
-                    .environment(\.modelContext, modelContext)
+                ScheduleEditorView(schedule: req.schedule, draft: req.draft).environment(appState).environment(\.modelContext, modelContext)
             }
             .sheet(item: $scheduleForHistory) { schedule in
-                ScheduleHistorySheet(schedule: schedule)
-                    .environment(appState)
-                    .environment(windowState)
+                ScheduleHistorySheet(schedule: schedule).environment(appState).environment(windowState)
             }
+    }
+
+    private var sidebarWithObservers1: some View {
+        sidebarWithScheduleSheets
             .onChange(of: windowState.sidebarRevealConversationId) { _, convId in
                 guard let convId else { return }
                 expandForReveal(convId)
@@ -408,26 +501,22 @@ struct SidebarView: View {
                 if show { showGroupCreation = true; appState.showGroupCreationSheet = false }
             }
             .onAppear {
-                rebuildProjectCache()
-                rebuildAgentCaches()
-                rebuildGroupCaches()
-                rebuildConversationIndex()
+                rebuildProjectCache(); rebuildAgentCaches(); rebuildGroupCaches(); rebuildConversationIndex()
             }
             .onChange(of: projects.count) { _, _ in rebuildProjectCache() }
             .onChange(of: projects.map { $0.isPinned }) { _, _ in rebuildProjectCache() }
-            .onChange(of: agents.count) { _, _ in
-                rebuildAgentCaches()
-                rebuildConversationIndex()
-            }
+    }
+
+    private var sidebarWithSheets: some View {
+        sidebarWithObservers1
+            .onChange(of: agents.count) { _, _ in rebuildAgentCaches(); rebuildConversationIndex() }
             .onChange(of: agents.map { $0.showInSidebar }) { _, _ in rebuildAgentCaches() }
             .onChange(of: agents.map { $0.isResident }) { _, _ in rebuildAgentCaches() }
             .onChange(of: groups.count) { _, _ in rebuildGroupCaches() }
             .onChange(of: groups.map { $0.showInSidebar }) { _, _ in rebuildGroupCaches() }
             .onChange(of: groups.map { $0.isResident }) { _, _ in rebuildGroupCaches() }
             .onChange(of: conversations.count) { _, _ in scheduleConversationIndexRebuild() }
-            .onChange(of: appState.createdSessions.count) { _, _ in
-                scheduleConversationIndexRebuild()
-            }
+            .onChange(of: appState.createdSessions.count) { _, _ in scheduleConversationIndexRebuild() }
     }
 
     private var searchText: String { appState.sidebarSearchText }
@@ -447,15 +536,7 @@ struct SidebarView: View {
             if sortedProjects.isEmpty {
                 emptyState
             } else {
-                Section {
-                    if isProjectsSectionExpanded {
-                        ForEach(sortedProjects) { project in
-                            projectRows(project)
-                        }
-                    }
-                } header: {
-                    projectsHeader
-                }
+                projectsSection
             }
 
             if !nostrPeers.isEmpty {
@@ -465,6 +546,7 @@ struct SidebarView: View {
         .listStyle(.sidebar)
         .searchable(text: $as_.sidebarSearchText, prompt: "Search threads…")
         .xrayId("sidebar.conversationList")
+        .walkthroughAnchor(.sidebarSearch)
         .onAppear {
             if let selectedProjectId = windowState.selectedProjectId {
                 expandedProjectIds.insert(selectedProjectId)
@@ -566,10 +648,35 @@ struct SidebarView: View {
     private var residentGroups: [AgentGroup] { cachedResidentGroups }
     private var nonResidentGroups: [AgentGroup] { cachedNonResidentGroups }
 
+    private var currentSortField: SidebarSortField { SidebarSortField(rawValue: sortField) ?? .updated }
+    private var currentShowFilter: SidebarShowFilter { SidebarShowFilter(rawValue: showFilter) ?? .allChats }
+
     private func rebuildProjectCache() {
-        let byDate: (Project, Project) -> Bool = { $0.createdAt > $1.createdAt }
-        cachedPinnedProjects = projects.filter { $0.isPinned }.sorted(by: byDate)
-        cachedSortedProjects = projects.filter { !$0.isPinned }.sorted(by: byDate)
+        let field = currentSortField
+        let sort: (Project, Project) -> Bool = { lhs, rhs in
+            switch field {
+            case .created: return lhs.createdAt > rhs.createdAt
+            case .updated: return lhs.lastOpenedAt > rhs.lastOpenedAt
+            }
+        }
+        cachedPinnedProjects = projects.filter { $0.isPinned }.sorted(by: sort)
+        cachedSortedProjects = projects.filter { !$0.isPinned }.sorted(by: sort)
+    }
+
+    private var chronologicalConversations: [Conversation] {
+        let cutoff = currentShowFilter == .relevant ? Calendar.current.date(byAdding: .day, value: -30, to: Date()) : nil
+        return conversations
+            .filter { !$0.isArchived }
+            .filter { cutoff == nil || $0.startedAt >= cutoff! }
+            .sorted { $0.startedAt > $1.startedAt }
+    }
+
+    private var nonProjectConversations: [Conversation] {
+        let cutoff = currentShowFilter == .relevant ? Calendar.current.date(byAdding: .day, value: -30, to: Date()) : nil
+        return conversations
+            .filter { !$0.isArchived && $0.projectId == nil }
+            .filter { cutoff == nil || $0.startedAt >= cutoff! }
+            .sorted { $0.startedAt > $1.startedAt }
     }
 
     private func rebuildAgentCaches() {
@@ -612,8 +719,54 @@ struct SidebarView: View {
         rebuildGroupCaches()
     }
 
+    @ViewBuilder
+    private var projectsSection: some View {
+        let currentOrganize = SidebarOrganizeMode(rawValue: organizeMode) ?? .byProject
+        switch currentOrganize {
+        case .byProject:
+            Section {
+                if isProjectsSectionExpanded {
+                    ForEach(sortedProjects) { project in
+                        projectRows(project)
+                    }
+                }
+            } header: {
+                projectsHeader
+            }
+        case .chronological:
+            Section {
+                if isProjectsSectionExpanded {
+                    ForEach(chronologicalConversations) { convo in
+                        conversationRow(convo)
+                            .tag(convo.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture { selectConversation(convo) }
+                    }
+                }
+            } header: {
+                projectsHeader
+            }
+        case .chatsFirst:
+            Section {
+                if isProjectsSectionExpanded {
+                    ForEach(nonProjectConversations) { convo in
+                        conversationRow(convo)
+                            .tag(convo.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture { selectConversation(convo) }
+                    }
+                    ForEach(sortedProjects) { project in
+                        projectRows(project)
+                    }
+                }
+            } header: {
+                projectsHeader
+            }
+        }
+    }
+
     private var projectsHeader: some View {
-        HStack {
+        HStack(spacing: 4) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isProjectsSectionExpanded.toggle()
@@ -630,9 +783,26 @@ struct SidebarView: View {
             .buttonStyle(.plain)
             Spacer()
             Button {
+                showingSortPopover.toggle()
+            } label: {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.plain)
+            .help("Sort and filter")
+            .xrayId("sidebar.projectsHeader.sortFilter")
+            .accessibilityLabel("Sort and filter projects")
+            .popover(isPresented: $showingSortPopover, arrowEdge: .bottom) {
+                SidebarSortPopover(
+                    organizeMode: $organizeMode,
+                    sortField: $sortField,
+                    showFilter: $showFilter
+                )
+            }
+            Button {
                 addProjectFolder()
             } label: {
-                Image(systemName: "plus")
+                Image(systemName: "folder.badge.plus")
                     .font(.caption.weight(.semibold))
             }
             .buttonStyle(.plain)
@@ -640,6 +810,7 @@ struct SidebarView: View {
             .xrayId("sidebar.projectsHeader.addProject")
             .accessibilityLabel("Add project folder")
         }
+        .walkthroughAnchor(.sidebarProjects)
     }
 
     // MARK: - Bottom Bar
@@ -653,6 +824,7 @@ struct SidebarView: View {
         .padding(.vertical, 6)
         .background(.bar)
         .xrayId("sidebar.bottomBar")
+        .walkthroughAnchor(.sidebarToolbar)
     }
 
     private var sidebarBottomBarButtons: some View {
@@ -760,10 +932,13 @@ struct SidebarView: View {
         let showsProjectActions = isSelectedProject || isHoveredProject
         let tint = projectTint(project)
 
+        let isShared = project.githubRepo != nil && !(project.githubRepo?.isEmpty ?? true)
+        let folderSymbol = isShared ? "folder.badge.person.crop" : project.icon
+
         return HStack(spacing: 8) {
             sidebarSymbolBadge(
-                symbol: project.icon,
-                tint: tint,
+                symbol: folderSymbol,
+                tint: isShared ? .blue : tint,
                 size: 28,
                 cornerRadius: 9,
                 emphasize: isSelectedProject
@@ -1404,6 +1579,7 @@ struct SidebarView: View {
             }
         }
         .stableXrayId("sidebar.groupsSection")
+        .walkthroughAnchor(.sidebarGroups)
     }
 
     // MARK: - Peers Section
@@ -1574,6 +1750,7 @@ struct SidebarView: View {
             }
         }
         .stableXrayId("sidebar.globalUtilitiesSection")
+        .walkthroughAnchor(.sidebarSchedules)
     }
 
     @ViewBuilder
@@ -1743,18 +1920,19 @@ struct SidebarView: View {
                         isPinnedSectionExpanded.toggle()
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 3) {
+                        Text("Pinned")
+                            .font(.headline.weight(.semibold))
                         Image(systemName: isPinnedSectionExpanded ? "chevron.down" : "chevron.right")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        Text("Pinned")
-                            .font(.headline.weight(.semibold))
                     }
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("sidebar.pinnedSection.header")
             }
             .stableXrayId("sidebar.pinnedSection")
+            .walkthroughAnchor(.sidebarPinned)
         }
     }
 
@@ -1785,6 +1963,7 @@ struct SidebarView: View {
             agentsSectionHeader
         }
         .stableXrayId("sidebar.agentsSection")
+        .walkthroughAnchor(.sidebarAgents)
     }
 
     @ViewBuilder
@@ -1862,79 +2041,63 @@ struct SidebarView: View {
         let isSelected = windowState.selectedConversationId == convo.id
         let showsConversationMenu = isHovered || isSelected
 
-        return HStack(spacing: 8) {
+        return HStack(spacing: 6) {
             if convo.isUnread {
                 Circle()
                     .fill(Color.blue)
-                    .frame(width: 8, height: 8)
+                    .frame(width: 6, height: 6)
                     .stableXrayId("sidebar.unreadBadge.\(convo.id.uuidString)")
             }
-            sidebarSymbolBadge(
-                symbol: conversationIconDescriptor(convo).symbol,
-                tint: conversationIconDescriptor(convo).color,
-                size: 24,
-                cornerRadius: 8
-            )
 
-            HStack(spacing: 4) {
-                Text(convo.topic ?? "Untitled")
-                    .lineLimit(1)
-                    .font(convo.isUnread ? .callout.bold() : .callout)
-                    .layoutPriority(1)
+            Text(convo.topic ?? "Untitled")
+                .lineLimit(1)
+                .font(convo.isUnread ? .callout.bold() : .callout)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
 
-                Text("·")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
+            Text(relativeTime(convo.startedAt))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
 
-                Text(relativeTime(convo.startedAt))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-
-                if let preview = lastMessagePreview(convo) {
-                    Text("·")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .accessibilityHidden(true)
-
-                    if let icon = preview.attachmentIcon {
-                        Image(systemName: icon)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Text(preview.text)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            if showsConversationMenu {
-                Menu {
-                    conversationMenuContent(convo)
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 16, height: 16)
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .xrayId("sidebar.moreMenu.\(convo.id.uuidString)")
-                .accessibilityLabel("More options for \(convo.topic ?? "this thread")")
-            }
             ThreadActivityIndicator(conversation: convo)
-            .xrayId("sidebar.activityIndicator.\(convo.id.uuidString)")
+                .xrayId("sidebar.activityIndicator.\(convo.id.uuidString)")
+
             if let result = appState.idleResults[convo.id.uuidString] {
                 Image(systemName: result.status.icon)
                     .font(.system(size: 10))
                     .foregroundStyle(result.status.color)
                     .xrayId("sidebar.conversationRow.\(convo.id.uuidString).idleStatusIcon")
                     .accessibilityLabel(result.status.label)
+            }
+
+            if showsConversationMenu {
+                if !convo.isArchived {
+                    Button {
+                        archiveConversation(convo)
+                    } label: {
+                        Image(systemName: "archivebox")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 20, height: 20)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Archive")
+                    .xrayId("sidebar.archiveButton.\(convo.id.uuidString)")
+                    .accessibilityLabel("Archive \(convo.topic ?? "this thread")")
+                }
+                Menu {
+                    conversationMenuContent(convo)
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20, height: 20)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .xrayId("sidebar.moreMenu.\(convo.id.uuidString)")
+                .accessibilityLabel("More options for \(convo.topic ?? "this thread")")
             }
         }
         .padding(.vertical, 6)
@@ -1958,28 +2121,94 @@ struct SidebarView: View {
 
     @ViewBuilder
     private func conversationMenuContent(_ convo: Conversation) -> some View {
+        // Group 1 — Chat actions
         Button {
             renameText = convo.topic ?? ""
             renamingConversation = convo
         } label: {
-            Label("Rename\u{2026}", systemImage: "pencil")
+            Label("Rename Chat\u{2026}", systemImage: "pencil")
         }
         .xrayId("sidebar.conversationContext.rename.\(convo.id.uuidString)")
+
         Button { togglePin(convo) } label: {
-            Label(convo.isPinned ? "Unpin" : "Pin", systemImage: convo.isPinned ? "pin.slash" : "pin")
+            Label(convo.isPinned ? "Unpin Chat" : "Pin Chat",
+                  systemImage: convo.isPinned ? "pin.slash" : "pin")
         }
         .xrayId("sidebar.conversationContext.pin.\(convo.id.uuidString)")
+
+        if convo.isArchived {
+            Button { unarchiveConversation(convo) } label: {
+                Label("Unarchive Chat", systemImage: "tray.and.arrow.up")
+            }
+            .xrayId("sidebar.conversationContext.unarchive.\(convo.id.uuidString)")
+        } else {
+            Button { archiveConversation(convo) } label: {
+                Label("Archive Chat", systemImage: "archivebox")
+            }
+            .xrayId("sidebar.conversationContext.archive.\(convo.id.uuidString)")
+        }
+
         Button { toggleUnread(convo) } label: {
             Label(convo.isUnread ? "Mark as Read" : "Mark as Unread",
                   systemImage: convo.isUnread ? "envelope.open" : "envelope.badge")
         }
         .xrayId("sidebar.conversationContext.unread.\(convo.id.uuidString)")
-        if let project = projectForConversation(convo) {
-            Button { openProjectInFinder(project) } label: {
-                Label("Open Project Folder", systemImage: "folder")
+
+        // Group 2 — Workspace
+        let project = projectForConversation(convo)
+        if project != nil || convo.primarySession != nil {
+            Divider()
+            if let project {
+                Button { openProjectInFinder(project) } label: {
+                    Label("Open in Finder", systemImage: "folder")
+                }
+                .xrayId("sidebar.conversationContext.openProject.\(convo.id.uuidString)")
+
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(project.rootPath, forType: .string)
+                } label: {
+                    Label("Copy Working Directory", systemImage: "doc.on.clipboard")
+                }
+                .xrayId("sidebar.conversationContext.copyWorkdir.\(convo.id.uuidString)")
             }
-            .xrayId("sidebar.conversationContext.openProject.\(convo.id.uuidString)")
+            if let sessionId = convo.primarySession?.id.uuidString {
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(sessionId, forType: .string)
+                } label: {
+                    Label("Copy Session ID", systemImage: "key")
+                }
+                .xrayId("sidebar.conversationContext.copySessionId.\(convo.id.uuidString)")
+            }
+            Button {
+                let deeplink = "odyssey://chat?id=\(convo.id.uuidString)"
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(deeplink, forType: .string)
+            } label: {
+                Label("Copy Deeplink", systemImage: "link")
+            }
+            .xrayId("sidebar.conversationContext.copyDeeplink.\(convo.id.uuidString)")
         }
+
+        // Group 3 — Fork
+        Divider()
+        Button { duplicateConversation(convo) } label: {
+            Label("Fork into Local", systemImage: "arrow.triangle.branch")
+        }
+        .xrayId("sidebar.conversationContext.forkLocal.\(convo.id.uuidString)")
+
+        Button {
+            guard let project = projectForConversation(convo), !project.rootPath.isEmpty else { return }
+            Task { @MainActor in
+                await WorktreeManager.createWorktree(for: convo, projectDirectory: project.rootPath, modelContext: modelContext)
+            }
+        } label: {
+            Label("Fork into New Worktree", systemImage: "arrow.triangle.branch")
+        }
+        .xrayId("sidebar.conversationContext.forkWorktree.\(convo.id.uuidString)")
+
+        // Group 4 — Window / Session
         Divider()
         if convo.status == .active {
             Button { closeConversation(convo) } label: {
@@ -1987,18 +2216,7 @@ struct SidebarView: View {
             }
             .xrayId("sidebar.conversationContext.close.\(convo.id.uuidString)")
         }
-        if convo.isArchived {
-            Button { unarchiveConversation(convo) } label: {
-                Label("Unarchive", systemImage: "tray.and.arrow.up")
-            }
-            .xrayId("sidebar.conversationContext.unarchive.\(convo.id.uuidString)")
-        } else {
-            Button { archiveConversation(convo) } label: {
-                Label("Archive", systemImage: "archivebox")
-            }
-            .xrayId("sidebar.conversationContext.archive.\(convo.id.uuidString)")
-        }
-        Divider()
+
         Button(role: .destructive) { promptDelete(convo) } label: {
             Label("Delete", systemImage: "trash")
         }

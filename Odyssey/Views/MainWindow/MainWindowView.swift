@@ -61,6 +61,8 @@ struct MainWindowView: View {
     @AppStorage(FeatureFlags.federationKey, store: AppSettings.store) private var federationFlag = false
     @AppStorage(FeatureFlags.agentCommsKey, store: AppSettings.store) private var agentCommsFlag = false
     @AppStorage(AppSettings.fteShownKey, store: AppSettings.store) private var fteShown = false
+    @AppStorage(AppSettings.walkthroughShownKey, store: AppSettings.store) private var walkthroughShown = false
+    @State private var walkthroughManager = WalkthroughManager()
     @AppStorage(AppSettings.defaultProviderKey, store: AppSettings.store) private var defaultProvider = AppSettings.defaultProvider
     @Query private var conversations: [Conversation]
     @Query(filter: #Predicate<Agent> { $0.configSlug == "chat" }) private var chatAgents: [Agent]
@@ -103,6 +105,7 @@ struct MainWindowView: View {
                                 if showInspector {
                                     inspectorPane
                                         .frame(minWidth: 320, idealWidth: 360, maxWidth: 400, maxHeight: .infinity)
+                                        .walkthroughAnchor(.inspectorPanel)
                                 }
                                 if showBrowser, let sessionId = appState.activeBrowserSessionId {
                                     browserPanelPane(sessionId: sessionId)
@@ -253,9 +256,28 @@ struct MainWindowView: View {
             \.showWelcomeGuideAction,
             ShowWelcomeGuideAction {
                 AppSettings.store.removeObject(forKey: AppSettings.fteShownKey)
+                AppSettings.store.removeObject(forKey: AppSettings.walkthroughShownKey)
                 windowState.showFTE = true
             }
         )
+        .coordinateSpace(name: "walkthroughCoordSpace")
+        .onPreferenceChange(WalkthroughAnchorsKey.self) { frames in
+            walkthroughManager.anchorFrames = frames
+        }
+        .overlay {
+            if walkthroughManager.isActive {
+                WalkthroughOverlayView()
+                    .environment(walkthroughManager)
+            }
+        }
+        .onChange(of: fteShown) { _, shown in
+            if shown, !walkthroughShown {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(600))
+                    walkthroughManager.start()
+                }
+            }
+        }
     }
 
     private var launchErrorBinding: Binding<Bool> {

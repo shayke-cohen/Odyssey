@@ -1903,6 +1903,7 @@ private struct AdvancedSettingsTab: View {
     @AppStorage(AppSettings.builtInConfigOverridePolicyKey, store: AppSettings.store) private var builtInConfigOverridePolicy = AppSettings.defaultBuiltInConfigOverridePolicy
     @AppStorage(AppSettings.nostrRelay1Key, store: AppSettings.store) private var nostrRelay1 = AppSettings.defaultNostrRelay1
     @AppStorage(AppSettings.nostrRelay2Key, store: AppSettings.store) private var nostrRelay2 = AppSettings.defaultNostrRelay2
+    @AppStorage(AppSettings.nostrDirectoryEnabledKey, store: AppSettings.store) private var nostrDirectoryEnabled = true
     @State private var showResetConfirmation = false
     @State private var copiedNpub = false
 
@@ -2009,6 +2010,14 @@ private struct AdvancedSettingsTab: View {
                         .xrayId("settings.advanced.nostrRelay2Field")
                 }
                 Text("Changes take effect after restarting the sidecar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Nostr Instance Directory") {
+                Toggle("Publish to Nostr directory", isOn: $nostrDirectoryEnabled)
+                    .xrayId("settings.advanced.nostrDirectoryToggle")
+                Text("When enabled, your instance auto-registers on Nostr relays on launch so other Odyssey users can discover and connect without an invite code. Your display name and agent list are visible to anyone on the same relays. Changes take effect after restarting the sidecar.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

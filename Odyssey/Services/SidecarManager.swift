@@ -20,6 +20,8 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
         /// The instance name used for Keychain key namespacing and TLS cert paths.
         /// Defaults to "default" to match the existing log directory convention.
         var instanceName: String = "default"
+        /// Agent names to publish in the Nostr instance directory profile.
+        var agentNames: [String] = []
     }
 
     struct Hooks: Sendable {
@@ -195,6 +197,14 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
         let relays = AppSettings.nostrRelays()
         if !relays.isEmpty {
             process.environment?["ODYSSEY_NOSTR_RELAYS"] = relays.joined(separator: ",")
+        }
+        // Inject directory opt-out flag (default enabled when key absent)
+        let rawDirectoryValue = InstanceConfig.userDefaults.object(forKey: AppSettings.nostrDirectoryEnabledKey)
+        let directoryEnabled = rawDirectoryValue == nil ? true : InstanceConfig.userDefaults.bool(forKey: AppSettings.nostrDirectoryEnabledKey)
+        process.environment?["ODYSSEY_NOSTR_DIRECTORY"] = directoryEnabled ? "1" : "0"
+        // Inject agent names for directory profile
+        if !config.agentNames.isEmpty {
+            process.environment?["ODYSSEY_AGENT_NAMES"] = config.agentNames.joined(separator: ",")
         }
 
         // TLS is intentionally disabled for localhost IPC — bearer token auth is sufficient,

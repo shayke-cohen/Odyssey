@@ -89,6 +89,15 @@ enum WorktreeManager {
         }
     }
 
+    @discardableResult
+    static func createWorktree(
+        for conversation: Conversation,
+        projectDirectory: String,
+        modelContext: ModelContext
+    ) async -> String {
+        await ensureWorktree(for: conversation, projectDirectory: projectDirectory, modelContext: modelContext)
+    }
+
     static func isUsableWorktree(at path: String) -> Bool {
         let gitFile = (path as NSString).appendingPathComponent(".git")
         return FileManager.default.fileExists(atPath: gitFile)

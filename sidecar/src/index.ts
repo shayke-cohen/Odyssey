@@ -48,7 +48,10 @@ const relayClient = new RelayClient((event) => broadcastFn(event));
 const NOSTR_PRIVKEY_HEX = process.env.ODYSSEY_NOSTR_PRIVKEY_HEX ?? ''
 const NOSTR_PUBKEY_HEX = process.env.ODYSSEY_NOSTR_PUBKEY_HEX ?? ''
 const NOSTR_RELAYS = (process.env.ODYSSEY_NOSTR_RELAYS ?? '').split(',').filter(Boolean)
+const NOSTR_DIRECTORY_ENABLED = process.env.ODYSSEY_NOSTR_DIRECTORY !== '0'
+const NOSTR_AGENT_NAMES = (process.env.ODYSSEY_AGENT_NAMES ?? '').split(',').filter(Boolean)
 const nostrTransport = new NostrTransport((event) => broadcastFn(event))
+nostrTransport.configureDirectory(NOSTR_DIRECTORY_ENABLED, NOSTR_AGENT_NAMES)
 if (NOSTR_PRIVKEY_HEX && NOSTR_PUBKEY_HEX) {
   nostrTransport.setIdentity(NOSTR_PRIVKEY_HEX, NOSTR_PUBKEY_HEX, NOSTR_RELAYS)
 }
