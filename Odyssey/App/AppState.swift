@@ -1899,8 +1899,8 @@ final class AppState {
             handleGHIssueCreated(issueUrl: issueUrl, issueNumber: issueNumber, repo: repo, conversationId: conversationId)
 
         case .ghIssueClosed(let repo, let number):
-            // TODO: Task 4 — replace with handleGHIssueClosed(repo: repo, number: number)
             Log.github.info("gh.issue.closed #\(number, privacy: .public) \(repo, privacy: .public)")
+            handleGHIssueClosed(repo: repo, number: number)
         }
     }
 
@@ -1970,6 +1970,75 @@ final class AppState {
         convo.githubIssueRepo = repo
         try? ctx.save()
         Log.github.info("gh.issue.created: linked conv=\(cidStr, privacy: .public) to issue #\(issueNumber, privacy: .public) in \(repo, privacy: .public)")
+    }
+
+    // MARK: - GH Inbox Actions
+
+    @MainActor
+    func ghIssueRunNow(_ conv: Conversation, agentOverride: Agent? = nil) {
+        guard let ctx = modelContext else { return }
+
+        // Store agent override if provided
+        if let override = agentOverride {
+            conv.ghOverrideAgentId = override.id
+            try? ctx.save()
+        }
+
+        // Resolve target agent: override arg → stored override → existing session's agent
+        let targetAgent: Agent? = {
+            if let a = agentOverride { return a }
+            if let overrideId = conv.ghOverrideAgentId {
+                let d = FetchDescriptor<Agent>(predicate: #Predicate { $0.id == overrideId })
+                if let a = try? ctx.fetch(d).first { return a }
+            }
+            return conv.primarySession?.agent
+        }()
+
+        guard let agent = targetAgent else {
+            Log.github.warning("ghIssueRunNow: no agent resolved for conv \(conv.id)")
+            return
+        }
+
+        let existingSession = conv.primarySession
+
+        // Resume if a pausable session with a claudeSessionId exists
+        if let session = existingSession,
+           let claudeSessionId = session.claudeSessionId,
+           session.status == .paused || session.status == .interrupted {
+            session.status = .active
+            try? ctx.save()
+            sendToSidecar(.sessionResume(sessionId: session.id.uuidString, claudeSessionId: claudeSessionId))
+            Log.github.info("ghIssueRunNow: resumed session \(session.id) for conv \(conv.id)")
+            return
+        }
+
+        // Create a new session
+        let provisioner = AgentProvisioner(modelContext: ctx)
+        let mission = conv.topic ?? conv.githubIssueNumber.map { "GitHub Issue #\($0)" } ?? "GitHub Issue"
+        let (config, newSession) = provisioner.provision(agent: agent, mission: mission, mode: .autonomous)
+
+        newSession.conversations = [conv]
+        conv.sessions = (conv.sessions ?? []) + [newSession]
+        ctx.insert(newSession)
+        try? ctx.save()
+
+        sendToSidecar(.sessionCreate(conversationId: newSession.id.uuidString, agentConfig: config))
+        Log.github.info("ghIssueRunNow: created session \(newSession.id) for conv \(conv.id)")
+    }
+
+    @MainActor
+    private func handleGHIssueClosed(repo: String, number: Int) {
+        guard let ctx = modelContext else { return }
+        let descriptor = FetchDescriptor<Conversation>(
+            predicate: #Predicate { $0.githubIssueNumber == number }
+        )
+        guard let conv = (try? ctx.fetch(descriptor))?.first(where: { $0.githubIssueRepo == repo }) else {
+            Log.github.warning("gh.issue.closed: no conversation for #\(number) in \(repo)")
+            return
+        }
+        conv.isArchived = true
+        try? ctx.save()
+        Log.github.info("gh.issue.closed: archived conv \(conv.id) for #\(number) in \(repo)")
     }
 
     // MARK: - Schedule Event Handlers
