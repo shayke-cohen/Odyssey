@@ -136,6 +136,7 @@ final class Conversation {
     var githubIssueUrl: String?          // link back to GH issue if this thread was created from/for one
     var githubIssueNumber: Int?
     var githubIssueRepo: String?         // "owner/repo"
+    var ghOverrideAgentId: UUID?    // agent override set by Assign & Run
 
     @Transient var pendingQuestionRouting: [String: String] = [:]
     @Transient var resolvedQuestions: [String: ResolvedQuestionInfo] = [:]
