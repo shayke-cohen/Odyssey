@@ -1066,6 +1066,34 @@ final class AppState {
         }
     }
 
+    func sendGHPollerConfig() {
+        let settings = GHPollerSettings.shared
+        guard !settings.inboxRepo.isEmpty || !settings.trustedGitHubUsers.isEmpty else { return }
+
+        var projectRepos: [GHProjectRepoWire] = []
+        if let ctx = modelContext,
+           let projects = try? ctx.fetch(FetchDescriptor<Project>()) {
+            for project in projects {
+                guard let repo = project.githubRepo, !repo.isEmpty else { continue }
+                var agentName: String? = nil
+                if let agentId = project.githubDefaultAgentId,
+                   let agent = try? ctx.fetch(FetchDescriptor<Agent>(predicate: #Predicate { $0.id == agentId })).first {
+                    agentName = agent.name
+                }
+                let trusted = project.githubTrustedUsers.isEmpty ? settings.trustedGitHubUsers : project.githubTrustedUsers
+                projectRepos.append(GHProjectRepoWire(repo: repo, defaultAgentName: agentName, trustedUsers: trusted))
+            }
+        }
+
+        sendToSidecar(.ghPollerConfig(
+            inboxRepo: settings.inboxRepo,
+            projectRepos: projectRepos,
+            trustedUsers: settings.trustedGitHubUsers,
+            intervalSeconds: settings.pollIntervalSeconds
+        ))
+        Log.appState.info("Sent GH poller config: inbox=\(settings.inboxRepo), projects=\(projectRepos.count)")
+    }
+
     private func registerAgentDefinitionsAwait() async {
         guard let ctx = modelContext else { return }
         let descriptor = FetchDescriptor<Agent>()
@@ -1636,6 +1664,7 @@ final class AppState {
             Task { await recoverSessions() }
             registerAgentDefinitions()
             registerConnections()
+            sendGHPollerConfig()
             if let ctx = modelContext {
                 Task { await sidecarManager?.pushConversationSync(modelContext: ctx, pushMessages: true) }
             }
@@ -1854,7 +1883,86 @@ final class AppState {
             handleScheduleDelete(scheduleId: scheduleId)
         case .scheduleTrigger(let scheduleId):
             handleScheduleTrigger(scheduleId: scheduleId)
+
+        case .ghIssueTriggered(let issueUrl, let issueNumber, let repo, let title, let conversationId, let sessionId, let agentName):
+            Log.github.info("gh.issue.triggered #\(issueNumber, privacy: .public) \(repo, privacy: .public) conv=\(conversationId, privacy: .public)")
+            handleGHIssueTriggered(issueUrl: issueUrl, issueNumber: issueNumber, repo: repo, title: title, conversationId: conversationId, sessionId: sessionId, agentName: agentName)
+
+        case .ghIssueComment(_, let commentBody, let author, let conversationId):
+            Log.github.info("gh.issue.comment from \(author, privacy: .public) conv=\(conversationId, privacy: .public)")
+            handleGHIssueComment(commentBody: commentBody, author: author, conversationId: conversationId)
+
+        case .ghIssueCreated(let issueUrl, let issueNumber, let repo, let conversationId):
+            Log.github.info("gh.issue.created #\(issueNumber, privacy: .public) \(repo, privacy: .public)")
+            handleGHIssueCreated(issueUrl: issueUrl, issueNumber: issueNumber, repo: repo, conversationId: conversationId)
         }
+    }
+
+    // MARK: - GitHub Issue Bridge Event Handlers
+
+    @MainActor
+    private func handleGHIssueTriggered(issueUrl: String, issueNumber: Int, repo: String, title: String, conversationId: String, sessionId: String, agentName: String) {
+        guard let ctx = modelContext,
+              let convUUID = UUID(uuidString: conversationId),
+              let sessUUID = UUID(uuidString: sessionId) else { return }
+
+        // Don't create duplicate if already exists
+        let existingDescriptor = FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == convUUID })
+        if (try? ctx.fetch(existingDescriptor).first) != nil { return }
+
+        // Look up agent by name
+        let agentDescriptor = FetchDescriptor<Agent>(predicate: #Predicate { $0.name == agentName })
+        guard let agent = (try? ctx.fetch(agentDescriptor).first) else {
+            Log.github.warning("gh.issue.triggered: agent '\(agentName, privacy: .public)' not found in SwiftData")
+            return
+        }
+
+        // Create Session record matching the sidecar's running session
+        let session = Session(agent: agent, mission: "GitHub Issue #\(issueNumber): \(title)", mode: .autonomous, workingDirectory: agent.defaultWorkingDirectory ?? "")
+        session.id = sessUUID
+
+        // Create Conversation
+        let conversation = Conversation(topic: "GH #\(issueNumber): \(title)", sessions: [session], projectId: nil, threadKind: .autonomous)
+        conversation.id = convUUID
+        conversation.githubIssueUrl = issueUrl
+        conversation.githubIssueNumber = issueNumber
+        conversation.githubIssueRepo = repo
+
+        ctx.insert(session)
+        ctx.insert(conversation)
+        try? ctx.save()
+
+        ChatNotificationManager.shared.notifyGHIssueTriggered(issueNumber: issueNumber, repo: repo, title: title)
+        Log.github.info("gh.issue.triggered: created conv=\(conversationId, privacy: .public) sess=\(sessionId, privacy: .public)")
+    }
+
+    private func handleGHIssueComment(commentBody: String, author: String, conversationId: String) {
+        guard let ctx = modelContext,
+              let uuid = UUID(uuidString: conversationId) else { return }
+        let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == uuid })
+        guard let convo = try? ctx.fetch(descriptor).first,
+              let session = convo.primarySession else {
+            Log.github.warning("gh.issue.comment: conversation or session not found for id=\(conversationId, privacy: .public)")
+            return
+        }
+        let messageText = "[\(author) via GitHub]: \(commentBody)"
+        sendToSidecar(.sessionMessage(sessionId: session.id.uuidString, text: messageText))
+    }
+
+    private func handleGHIssueCreated(issueUrl: String, issueNumber: Int, repo: String, conversationId: String?) {
+        guard let ctx = modelContext,
+              let cidStr = conversationId,
+              let uuid = UUID(uuidString: cidStr) else { return }
+        let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == uuid })
+        guard let convo = try? ctx.fetch(descriptor).first else {
+            Log.github.warning("gh.issue.created: conversation not found for id=\(cidStr, privacy: .public)")
+            return
+        }
+        convo.githubIssueUrl = issueUrl
+        convo.githubIssueNumber = issueNumber
+        convo.githubIssueRepo = repo
+        try? ctx.save()
+        Log.github.info("gh.issue.created: linked conv=\(cidStr, privacy: .public) to issue #\(issueNumber, privacy: .public) in \(repo, privacy: .public)")
     }
 
     // MARK: - Schedule Event Handlers

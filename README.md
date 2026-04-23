@@ -1,6 +1,6 @@
 # Odyssey
 
-A native macOS developer tool for orchestrating Claude AI agent sessions around **projects**. Each project owns its threads, tasks, schedules, and working context, while agents can still chat with users and with each other, share knowledge through a blackboard, collaborate on files through worktrees, and discover peers across the local network. Reusable agents, groups, skills, and integrations are managed through an intent-first library hub with `Run`, `Build`, and `Discover` modes.
+A native macOS developer tool for orchestrating Claude AI agent sessions around **projects**. Each project owns its threads, tasks, schedules, and working context, while agents can still chat with users and with each other, share knowledge through a blackboard, collaborate on files through worktrees, and discover peers across the local network. Reusable agents, groups, skills, and integrations are managed through an intent-first library hub with `Run`, `Build`, and `Discover` modes. **Remote access via GitHub Issues** — file an issue from your phone, the agent works it on your Mac, and results are posted back as comments.
 
 ![Odyssey](docs/welcome-screen.png)
 
@@ -107,6 +107,9 @@ Odyssey/
     │   ├── api-router.ts         # REST API router (tasks, future endpoints)
     │   ├── relay-client.ts       # Relay client for remote connections
     │   ├── webhook-manager.ts    # Webhook event delivery
+    │   ├── gh-poller.ts          # GitHub issue polling engine (inbox + project repos)
+    │   ├── gh-router.ts          # Issue routing (labels + @mentions → agent/group)
+    │   ├── gh-cli.ts             # Shared `gh` CLI wrapper
     │   ├── prompts/              # plan-mode.ts — plan mode system prompt
     │   ├── stores/
     │   │   ├── blackboard-store.ts   # In-memory + JSON disk persistence
@@ -119,8 +122,12 @@ Odyssey/
     │       ├── rich-display-tools.ts # render_content, show_progress, suggest_actions
     │       ├── chat-tools.ts         # peer_chat_start/reply/listen/close/invite, group_invite_agent
     │       ├── messaging-tools.ts    # peer_send/broadcast/receive/list/delegate
-    │       └── task-board-tools.ts   # task_board_list/create/claim/update
+    │       ├── task-board-tools.ts   # task_board_list/create/claim/update
+    │       └── github-tools.ts       # create_github_issue agent tool
     └── test/
+        ├── gh-poller.test.ts     # GHPoller unit tests (mock gh CLI)
+        ├── gh-router.test.ts     # GHRouter unit tests (mock gh CLI)
+        ├── gh-live.test.ts       # Live integration test (GH_LIVE_TEST=1 to run)
         ├── integration/
         │   ├── peerbus-tools.test.ts
         │   └── task-board-tools.test.ts
