@@ -3837,7 +3837,8 @@ struct ChatView: View {
             }
         }
 
-        guard !targetSessions.isEmpty || convo.isSharedRoom else {
+        let peerParticipants = (convo.participants ?? []).filter { $0.typeKind == "nostrPeer" }
+        guard !targetSessions.isEmpty || convo.isSharedRoom || !peerParticipants.isEmpty else {
             mentionErrorDetail = "No agent session to send to. Pick an agent or use New Session."
             showMentionError = true
             return
@@ -3898,7 +3899,30 @@ struct ChatView: View {
             }
         }
 
-        if targetSessions.isEmpty, convo.isSharedRoom {
+        // Fan out to all Nostr peer participants as kind-4 DMs
+        if !peerParticipants.isEmpty, let manager = appState.sidecarManager {
+            let convId = convo.id.uuidString
+            let senderName: String? = InstanceConfig.userDefaults.string(forKey: AppSettings.sharedRoomDisplayNameKey)
+                ?? Host.current().localizedName
+            for peerPart in peerParticipants {
+                guard let pubkeyHex = peerPart.typeParticipantId, !pubkeyHex.isEmpty else { continue }
+                let peerRelays: [String] = {
+                    let desc = FetchDescriptor<NostrPeer>(predicate: #Predicate { $0.pubkeyHex == pubkeyHex })
+                    return (try? modelContext.fetch(desc))?.first?.relays ?? []
+                }()
+                Task {
+                    try? await manager.send(.nostrDMSend(
+                        recipientPubkeyHex: pubkeyHex,
+                        recipientRelays: peerRelays,
+                        conversationId: convId,
+                        text: text,
+                        senderName: senderName
+                    ))
+                }
+            }
+        }
+
+        if targetSessions.isEmpty, convo.isSharedRoom || !peerParticipants.isEmpty {
             isProcessing = false
             isManagingWaveResponses = false
             return

@@ -260,6 +260,13 @@ enum ChatTranscriptExport {
                 iconName: "person.2.wave.2",
                 colorName: nil
             )
+        case .nostrPeer:
+            return ChatTranscriptSenderPresentation(
+                displayName: participant.displayName,
+                role: .user,
+                iconName: "globe",
+                colorName: nil
+            )
         }
     }
 

@@ -17,6 +17,8 @@ enum SidecarCommand: Sendable {
     case nostrRemovePeer(name: String)
     indirect case nostrInjectCommand(command: SidecarCommand)
     case nostrPeerAnnounce(pubkeyHex: String, relays: [String])
+    case nostrProfilePublish(displayName: String, agentNames: [String])
+    case nostrDMSend(recipientPubkeyHex: String, recipientRelays: [String], conversationId: String, text: String, senderName: String?)
     case generateAgent(requestId: String, prompt: String, availableSkills: [SkillCatalogEntry], availableMCPs: [MCPCatalogEntry], model: String? = nil)
     case generateGroup(requestId: String, prompt: String, availableAgents: [AgentCatalogEntry], model: String? = nil)
     case generateSkill(requestId: String, prompt: String, availableCategories: [String], availableMCPs: [MCPCatalogEntry], model: String? = nil)
@@ -118,6 +120,27 @@ enum SidecarCommand: Sendable {
             return try encoder.encode(
                 NostrPeerAnnounceWire(type: "nostr.peerAnnounce", pubkeyHex: pubkeyHex, relays: relays)
             )
+        case .nostrProfilePublish(let displayName, let agentNames):
+            return try encoder.encode(
+                NostrProfilePublishWire(type: "nostr.profile.publish", displayName: displayName, agentNames: agentNames)
+            )
+        case .nostrDMSend(let recipientPubkeyHex, let recipientRelays, let conversationId, let text, let senderName):
+            struct NostrDMSendWire: Encodable {
+                let type: String
+                let recipientPubkeyHex: String
+                let recipientRelays: [String]
+                let conversationId: String
+                let text: String
+                let senderName: String?
+            }
+            return try encoder.encode(NostrDMSendWire(
+                type: "nostr.dm.send",
+                recipientPubkeyHex: recipientPubkeyHex,
+                recipientRelays: recipientRelays,
+                conversationId: conversationId,
+                text: text,
+                senderName: senderName
+            ))
         case .nostrInjectCommand(let inner):
             let innerData = try inner.encodeToJSON()
             guard var innerObj = try JSONSerialization.jsonObject(with: innerData) as? [String: Any] else {
@@ -432,6 +455,12 @@ private struct NostrPeerAnnounceWire: Encodable {
     let relays: [String]
 }
 
+private struct NostrProfilePublishWire: Encodable {
+    let type: String
+    let displayName: String
+    let agentNames: [String]
+}
+
 private struct QuestionAnswerWire: Encodable {
     let type: String
     let sessionId: String
@@ -701,6 +730,8 @@ enum SidecarEvent: Sendable {
     case agentInvited(sessionId: String, invitedAgent: String, invitedBy: String)
     case iosPushRegistered(apnsToken: String, success: Bool, error: String?)
     case nostrStatus(connectedRelays: Int, totalRelays: Int)
+    case nostrDirectoryPeer(pubkeyHex: String, displayName: String, relays: [String], agents: [String], seenAt: String)
+    case nostrDMReceived(senderPubkeyHex: String, conversationId: String, text: String, senderName: String?)
     case agentQuestionRouting(sessionId: String, questionId: String, targetAgentName: String)
     case agentQuestionResolved(sessionId: String, questionId: String, answeredBy: String, isFallback: Bool, answer: String?)
     case conversationCleared(conversationId: String)
@@ -863,6 +894,12 @@ struct IncomingWireMessage: Codable, Sendable {
     let payload: String?
     let browserData: String?
     let scheduleId: String?
+    // Nostr directory peer fields
+    let pubkeyHex: String?
+    let displayName: String?
+    let relays: [String]?
+    let agents: [String]?
+    let seenAt: String?
 
     enum CodingKeys: String, CodingKey {
         case type, sessionId, conversationId, status, text, tool, input, output, result, cost
@@ -887,6 +924,7 @@ struct IncomingWireMessage: Codable, Sendable {
         case commandType, payload
         case browserData = "data"
         case scheduleId
+        case pubkeyHex, displayName, relays, agents, seenAt
     }
 
     func toEvent() -> SidecarEvent? {
@@ -1012,6 +1050,12 @@ struct IncomingWireMessage: Codable, Sendable {
             let connected = connectedRelays ?? 0
             let total = totalRelays ?? 0
             return .nostrStatus(connectedRelays: connected, totalRelays: total)
+        case "nostr.directory.peer":
+            guard let pk = pubkeyHex, let dn = displayName, let r = relays, let a = agents, let t = seenAt else { return nil }
+            return .nostrDirectoryPeer(pubkeyHex: pk, displayName: dn, relays: r, agents: a, seenAt: t)
+        case "nostr.dm.received":
+            guard let pk = pubkeyHex, let cid = conversationId, let t = text else { return nil }
+            return .nostrDMReceived(senderPubkeyHex: pk, conversationId: cid, text: t, senderName: displayName)
         case "agent.question.routing":
             guard let sid = sessionId, let qid = questionId, let target = targetAgentName else { return nil }
             return .agentQuestionRouting(sessionId: sid, questionId: qid, targetAgentName: target)

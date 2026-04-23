@@ -6,6 +6,7 @@ enum ParticipantType: Sendable, Hashable {
     case agentSession(sessionId: UUID)
     case remoteUser(userId: String, participantId: String, homeNodeId: String)
     case remoteAgent(participantId: String, homeNodeId: String, ownerUserId: String, agentName: String)
+    case nostrPeer(pubkeyHex: String)
 }
 
 enum ParticipantRole: String, Codable, Sendable {
@@ -58,6 +59,8 @@ final class Participant {
                     ownerUserId: typeUserId ?? "",
                     agentName: typeRemoteAgentName ?? displayName
                 )
+            case "nostrPeer":
+                return .nostrPeer(pubkeyHex: typeParticipantId ?? "")
             default:
                 return .user
             }
@@ -95,6 +98,14 @@ final class Participant {
                 typeUserId = ownerUserId
                 typeHomeNodeId = homeNodeId
                 typeRemoteAgentName = agentName
+                isLocalParticipant = false
+            case .nostrPeer(let pubkeyHex):
+                typeKind = "nostrPeer"
+                typeSessionId = nil
+                typeParticipantId = pubkeyHex
+                typeUserId = nil
+                typeHomeNodeId = nil
+                typeRemoteAgentName = nil
                 isLocalParticipant = false
             }
         }

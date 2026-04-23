@@ -39,12 +39,21 @@ export class NostrTransport {
   private peers = new Map<string, PeerEntry>()
   private broadcast: (event: SidecarEvent) => void
   private sub: { close: () => void } | null = null
+  private directorySub: { close: () => void } | null = null
   private seenEventIds = new Map<string, true>()
   private statusInterval: ReturnType<typeof setInterval> | null = null
   private lastConnectedCount = -1
+  private directoryEnabled = false
+  private agentNames: string[] = []
 
   constructor(broadcast: (event: SidecarEvent) => void) {
     this.broadcast = broadcast
+  }
+
+  /** Call before setIdentity() to enable directory publish + subscribe. */
+  configureDirectory(enabled: boolean, agentNames: string[]) {
+    this.directoryEnabled = enabled
+    this.agentNames = agentNames
   }
 
   setIdentity(privkeyHex: string, pubkeyHex: string, relays?: string[]) {
@@ -53,6 +62,11 @@ export class NostrTransport {
     this.pubkeyHex = pubkeyHex
     if (relays && relays.length > 0) this.relays = relays
     this.startSubscription()
+    if (this.directoryEnabled) {
+      this.startDirectorySubscription()
+      // Publish profile async — non-fatal if relays are not yet connected
+      this.publishProfile(pubkeyHex.slice(0, 12)).catch(() => {})
+    }
     // Emit initial status after a short delay to allow relay connections to establish
     setTimeout(() => this.emitRelayStatus(), 1000)
     // Clear any existing polling interval before starting a new one
@@ -102,12 +116,35 @@ export class NostrTransport {
     await Promise.all(this.pool.publish(allRelays, event))
   }
 
+  /** Send a DM to a specific pubkey+relays without requiring a named peer registry entry. */
+  async sendDM(recipientPubkeyHex: string, recipientRelays: string[], envelope: OdysseyP2PEnvelope): Promise<void> {
+    if (!this.privkeyBytes || !this.pubkeyHex) throw new Error('NostrTransport: identity not set')
+    const content = encryptMessage(JSON.stringify(envelope), this.privkeyBytes, recipientPubkeyHex)
+    const event = signNostrEvent(4, content, [['p', recipientPubkeyHex]], this.privkeyBytes)
+    const allRelays = [...new Set([...this.relays, ...recipientRelays])]
+    await Promise.all(this.pool.publish(allRelays, event))
+  }
+
+  /** Publish or re-publish this instance's kind-0 profile to the directory. */
+  async publishProfile(displayName: string, agentNames?: string[]): Promise<void> {
+    if (!this.privkeyBytes || !this.pubkeyHex) return
+    const names = agentNames ?? this.agentNames
+    const content = JSON.stringify({
+      name: displayName,
+      about: 'Odyssey',
+      odyssey: { v: 1, agents: names, relays: this.relays },
+    })
+    const event = signNostrEvent(0, content, [['t', 'odyssey']], this.privkeyBytes)
+    await Promise.all(this.pool.publish(this.relays, event))
+  }
+
   destroy() {
     if (this.statusInterval !== null) {
       clearInterval(this.statusInterval)
       this.statusInterval = null
     }
     this.sub?.close()
+    this.directorySub?.close()
     this.broadcast({ type: 'nostr.status', connectedRelays: 0, totalRelays: this.relays.length })
     this.pool.destroy()
   }
@@ -139,6 +176,40 @@ export class NostrTransport {
     )
   }
 
+  private startDirectorySubscription() {
+    this.directorySub?.close()
+    this.directorySub = this.pool.subscribeMany(
+      this.relays,
+      { kinds: [0], '#t': ['odyssey'] },
+      { onevent: (event: Event) => this.handleDirectoryEvent(event) },
+    )
+  }
+
+  private handleDirectoryEvent(event: Event) {
+    // Skip self
+    if (event.pubkey === this.pubkeyHex) return
+    if (!verifyNostrEvent(event)) return
+    let profile: { name?: string; odyssey?: { v?: number; agents?: string[]; relays?: string[] } }
+    try {
+      profile = JSON.parse(event.content)
+    } catch {
+      return
+    }
+    // Only process events that identify as Odyssey instances
+    if (!profile.odyssey) return
+    const displayName = profile.name ?? event.pubkey.slice(0, 16)
+    const agents: string[] = profile.odyssey.agents ?? []
+    const relays: string[] = profile.odyssey.relays ?? this.relays
+    this.broadcast({
+      type: 'nostr.directory.peer',
+      pubkeyHex: event.pubkey,
+      displayName,
+      relays,
+      agents,
+      seenAt: new Date().toISOString(),
+    })
+  }
+
   private handleIncomingEvent(event: Event) {
     if (!this.privkeyBytes) return
     // Dedup — bounded LRU-ish cap at 10,000 entries
@@ -149,10 +220,7 @@ export class NostrTransport {
     this.seenEventIds.set(event.id, true)
     // Signature check
     if (!verifyNostrEvent(event)) return
-    // Find the peer by pubkey
-    const peerEntry = [...this.peers.entries()].find(([, p]) => p.pubkeyHex === event.pubkey)
-    if (!peerEntry) return
-    const [peerName] = peerEntry
+    // Decrypt regardless of whether the sender is a registered peer
     let envelope: OdysseyP2PEnvelope
     try {
       const plaintext = decryptMessage(event.content, this.privkeyBytes, event.pubkey)
@@ -160,28 +228,53 @@ export class NostrTransport {
     } catch {
       return // malformed or wrong key — ignore
     }
-    this.dispatchEnvelope(peerName, envelope)
+    // Named peer lookup (for agent delegation channels)
+    const peerEntry = [...this.peers.entries()].find(([, p]) => p.pubkeyHex === event.pubkey)
+    const peerName = peerEntry?.[0] ?? null
+    this.dispatchEnvelope(event.pubkey, peerName, envelope)
   }
 
-  private dispatchEnvelope(peerName: string, envelope: OdysseyP2PEnvelope) {
+  private dispatchEnvelope(senderPubkeyHex: string, peerName: string | null, envelope: OdysseyP2PEnvelope) {
     switch (envelope.type) {
-      case 'peer.message':
-        this.broadcast({
-          type: 'peer.chat',
-          channelId: `nostr:${peerName}`,
-          from: envelope.from.peer,
-          message: typeof envelope.payload === 'string'
-            ? envelope.payload
-            : JSON.stringify(envelope.payload),
-        })
+      case 'peer.message': {
+        const rawPayload = envelope.payload
+        const payload = (typeof rawPayload === 'object' && rawPayload !== null)
+          ? rawPayload as Record<string, unknown>
+          : null
+        const conversationId = typeof payload?.conversationId === 'string' ? payload.conversationId : null
+        const text = typeof rawPayload === 'string'
+          ? rawPayload
+          : (typeof payload?.text === 'string' ? payload.text : JSON.stringify(rawPayload))
+        const senderName = typeof payload?.senderName === 'string' ? payload.senderName : undefined
+        if (conversationId) {
+          // User-to-user DM: route to a specific conversation
+          this.broadcast({
+            type: 'nostr.dm.received',
+            senderPubkeyHex,
+            conversationId,
+            text,
+            senderName,
+          })
+        } else if (peerName) {
+          // Legacy agent channel message
+          this.broadcast({
+            type: 'peer.chat',
+            channelId: `nostr:${peerName}`,
+            from: envelope.from.peer,
+            message: text,
+          })
+        }
         break
+      }
       case 'peer.task.delegate':
-        this.broadcast({
-          type: 'peer.delegate',
-          from: envelope.from.peer,
-          to: envelope.to.agent ?? 'default',
-          task: (envelope.payload as any).task ?? '',
-        })
+        if (peerName) {
+          this.broadcast({
+            type: 'peer.delegate',
+            from: envelope.from.peer,
+            to: envelope.to.agent ?? 'default',
+            task: (envelope.payload as any).task ?? '',
+          })
+        }
         break
       default:
         break

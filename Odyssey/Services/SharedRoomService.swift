@@ -459,7 +459,7 @@ final class SharedRoomService: ObservableObject {
                let agent = session.agent {
                 participant.displayName = agent.name
             }
-        case .remoteUser, .remoteAgent:
+        case .remoteUser, .remoteAgent, .nostrPeer:
             break
         }
 
@@ -504,6 +504,8 @@ final class SharedRoomService: ObservableObject {
             record["userId"] = ownerUserId as CKRecordValue
             record["homeNodeId"] = homeNodeId as CKRecordValue
             record["agentName"] = agentName as CKRecordValue
+        case .nostrPeer:
+            record["participantType"] = "nostrPeer" as CKRecordValue
         }
 
         _ = try await save(record: record)

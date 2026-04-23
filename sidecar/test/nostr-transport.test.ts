@@ -50,6 +50,15 @@ describe('NostrTransport peer management', () => {
       payload: {}, timestamp: new Date().toISOString(),
     })).rejects.toThrow('unknown peer nobody')
   })
+
+  it('throws sendDM when identity not set', async () => {
+    const { pubkeyHex } = generateNostrKeypair()
+    await expect(transport.sendDM(pubkeyHex, [], {
+      id: '3', type: 'peer.message',
+      from: { peer: 'alice' }, to: { peer: pubkeyHex },
+      payload: { conversationId: 'c1', text: 'hi' }, timestamp: new Date().toISOString(),
+    })).rejects.toThrow('identity not set')
+  })
 })
 
 describe('NostrTransport round-trip (two instances, no relay)', () => {
@@ -273,6 +282,95 @@ describe('NostrTransport negative paths', () => {
     bobTransport.simulateIncomingEvent(event)
 
     expect(received.length).toBe(0)
+  })
+
+  it('peer.message with conversationId: registered peer emits nostr.dm.received', () => {
+    const alice = generateNostrKeypair()
+    const bob = generateNostrKeypair()
+
+    const received: any[] = []
+    const bobTransport = new NostrTransport((event) => received.push(event))
+    bobTransport.setIdentity(bob.privkeyHex, bob.pubkeyHex, [])
+    bobTransport.addPeer('alice', alice.pubkeyHex, [])
+
+    const aliceTransport = new NostrTransport(() => {})
+    aliceTransport.setIdentity(alice.privkeyHex, alice.pubkeyHex, [])
+    aliceTransport.addPeer('bob', bob.pubkeyHex, [])
+
+    const envelope = {
+      id: 'dm-1', type: 'peer.message' as const,
+      from: { peer: 'alice' }, to: { peer: 'bob' },
+      payload: { conversationId: 'conv-uuid-123', text: 'hey bob!', senderName: 'Alice' },
+      timestamp: new Date().toISOString(),
+    }
+
+    const event = aliceTransport.buildEvent('bob', envelope)
+    bobTransport.simulateIncomingEvent(event)
+
+    expect(received).toHaveLength(1)
+    const dm = received[0] as any
+    expect(dm.type).toBe('nostr.dm.received')
+    expect(dm.senderPubkeyHex).toBe(alice.pubkeyHex)
+    expect(dm.conversationId).toBe('conv-uuid-123')
+    expect(dm.text).toBe('hey bob!')
+    expect(dm.senderName).toBe('Alice')
+  })
+
+  it('peer.message with conversationId from UNREGISTERED sender: emits nostr.dm.received', () => {
+    const alice = generateNostrKeypair()
+    const bob = generateNostrKeypair()
+
+    const received: any[] = []
+    const bobTransport = new NostrTransport((event) => received.push(event))
+    bobTransport.setIdentity(bob.privkeyHex, bob.pubkeyHex, [])
+    // Bob does NOT add alice as a named peer
+
+    const aliceTransport = new NostrTransport(() => {})
+    aliceTransport.setIdentity(alice.privkeyHex, alice.pubkeyHex, [])
+    aliceTransport.addPeer('bob', bob.pubkeyHex, [])
+
+    const envelope = {
+      id: 'dm-unregistered-1', type: 'peer.message' as const,
+      from: { peer: 'alice' }, to: { peer: 'bob' },
+      payload: { conversationId: 'conv-abc', text: 'hello from unregistered' },
+      timestamp: new Date().toISOString(),
+    }
+
+    const event = aliceTransport.buildEvent('bob', envelope)
+    bobTransport.simulateIncomingEvent(event)
+
+    expect(received).toHaveLength(1)
+    const dm = received[0] as any
+    expect(dm.type).toBe('nostr.dm.received')
+    expect(dm.senderPubkeyHex).toBe(alice.pubkeyHex)
+    expect(dm.conversationId).toBe('conv-abc')
+    expect(dm.text).toBe('hello from unregistered')
+  })
+
+  it('peer.message without conversationId from UNREGISTERED sender: no broadcast', () => {
+    const alice = generateNostrKeypair()
+    const bob = generateNostrKeypair()
+
+    const received: any[] = []
+    const bobTransport = new NostrTransport((event) => received.push(event))
+    bobTransport.setIdentity(bob.privkeyHex, bob.pubkeyHex, [])
+    // Bob does NOT add alice as a named peer
+
+    const aliceTransport = new NostrTransport(() => {})
+    aliceTransport.setIdentity(alice.privkeyHex, alice.pubkeyHex, [])
+    aliceTransport.addPeer('bob', bob.pubkeyHex, [])
+
+    const envelope = {
+      id: 'dm-no-conv', type: 'peer.message' as const,
+      from: { peer: 'alice' }, to: { peer: 'bob' },
+      payload: 'plain text, no conversationId',
+      timestamp: new Date().toISOString(),
+    }
+
+    const event = aliceTransport.buildEvent('bob', envelope)
+    bobTransport.simulateIncomingEvent(event)
+
+    expect(received).toHaveLength(0)
   })
 
   it('peer.task.delegate dispatch: broadcasts peer.delegate event with correct fields', () => {

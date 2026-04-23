@@ -139,6 +139,7 @@ struct SidebarView: View {
     @Query(sort: \Conversation.startedAt, order: .reverse) private var conversations: [Conversation]
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
+    @Query(sort: \NostrPeer.pairedAt, order: .reverse) private var nostrPeers: [NostrPeer]
     @Query(sort: \ScheduledMission.updatedAt, order: .reverse) private var schedules: [ScheduledMission]
     @Query(sort: \PromptTemplate.sortOrder) private var allTemplates: [PromptTemplate]
     @State private var expandedAgentIds: Set<UUID> = []
@@ -184,6 +185,7 @@ struct SidebarView: View {
     @State private var expandedProjectIds: Set<UUID> = []
     @AppStorage("sidebar.agentsExpanded") private var isAgentsSectionExpanded: Bool = true
     @AppStorage("sidebar.groupsExpanded") private var isGroupsSectionExpanded: Bool = true
+    @AppStorage("sidebar.peersExpanded") private var isPeersSectionExpanded: Bool = true
     @AppStorage("sidebar.pinnedExpanded") private var isPinnedSectionExpanded: Bool = true
     @AppStorage("sidebar.schedulesExpanded") private var isSchedulesSectionExpanded: Bool = true
     @AppStorage("sidebar.projectsExpanded") private var isProjectsSectionExpanded: Bool = true
@@ -441,6 +443,10 @@ struct SidebarView: View {
             agentsSection
 
             groupsSection
+
+            if !nostrPeers.isEmpty {
+                peersSection
+            }
 
             if sortedProjects.isEmpty {
                 emptyState
@@ -1398,6 +1404,94 @@ struct SidebarView: View {
             }
         }
         .stableXrayId("sidebar.groupsSection")
+    }
+
+    // MARK: - Peers Section
+
+    @ViewBuilder
+    private var peersSection: some View {
+        Section {
+            if isPeersSectionExpanded {
+                ForEach(nostrPeers) { peer in
+                    HStack(spacing: 8) {
+                        Image(systemName: "globe")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                            .frame(width: 16)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(peer.displayName)
+                                .font(.body)
+                                .lineLimit(1)
+                            if let seen = peer.lastSeenAt {
+                                Text(seen, style: .relative)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Button {
+                            startPeerChat(with: peer)
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .xrayId("sidebar.peerRow.newChat.\(peer.id.uuidString)")
+                        .accessibilityLabel("New chat with \(peer.displayName)")
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { selectOrCreatePeerChat(peer) }
+                    .xrayId("sidebar.peerRow.\(peer.id.uuidString)")
+                }
+            }
+        } header: {
+            HStack {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isPeersSectionExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: isPeersSectionExpanded ? "chevron.down" : "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text("Peers")
+                            .font(.headline.weight(.semibold))
+                    }
+                }
+                .buttonStyle(.plain)
+                Spacer()
+            }
+            .xrayId("sidebar.peersHeader")
+        }
+        .stableXrayId("sidebar.peersSection")
+    }
+
+    private func selectOrCreatePeerChat(_ peer: NostrPeer) {
+        let pubkeyHex = peer.pubkeyHex
+        if let existing = conversations.first(where: { conv in
+            !(conv.isArchived) &&
+            conv.participants?.contains { $0.typeKind == "nostrPeer" && $0.typeParticipantId == pubkeyHex } == true
+        }) {
+            windowState.selectedConversationId = existing.id
+        } else {
+            startPeerChat(with: peer)
+        }
+    }
+
+    private func startPeerChat(with peer: NostrPeer) {
+        let conversation = Conversation(topic: nil, sessions: [], projectId: nil, threadKind: .direct)
+        let userParticipant = Participant(type: .user, displayName: "You")
+        let peerParticipant = Participant(type: .nostrPeer(pubkeyHex: peer.pubkeyHex), displayName: peer.displayName)
+        userParticipant.conversation = conversation
+        peerParticipant.conversation = conversation
+        conversation.participants = [userParticipant, peerParticipant]
+        modelContext.insert(conversation)
+        windowState.selectedConversationId = conversation.id
+        Task { @MainActor in
+            try? modelContext.save()
+        }
     }
 
     // MARK: - Agents Section

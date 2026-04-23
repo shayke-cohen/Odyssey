@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Add one or more agents to an existing conversation (new `Session` + participant each).
+/// Add one or more agents or peers to an existing conversation (new `Session` + participant each).
 struct AddAgentsToChatSheet: View {
     enum FilterMode { case all, agentsOnly, groupsOnly }
 
@@ -14,10 +14,12 @@ struct AddAgentsToChatSheet: View {
     @Environment(WindowState.self) private var windowState: WindowState
     @Query(sort: \Agent.name) private var agents: [Agent]
     @Query(sort: \AgentGroup.sortOrder) private var groups: [AgentGroup]
+    @Query(sort: \NostrPeer.pairedAt, order: .reverse) private var nostrPeers: [NostrPeer]
     @Query private var allConversations: [Conversation]
 
     @State private var selectedIds: Set<UUID> = []
     @State private var selectedGroupIds: Set<UUID> = []
+    @State private var selectedPeerIds: Set<UUID> = []
 
     private var conversation: Conversation? {
         allConversations.first { $0.id == conversationId }
@@ -40,6 +42,20 @@ struct AddAgentsToChatSheet: View {
         }
     }
 
+    private var existingPeerPubkeys: Set<String> {
+        Set((conversation?.participants ?? [])
+            .filter { $0.typeKind == "nostrPeer" }
+            .compactMap { $0.typeParticipantId })
+    }
+
+    private var addablePeers: [NostrPeer] {
+        nostrPeers.filter { !existingPeerPubkeys.contains($0.pubkeyHex) }
+    }
+
+    private var hasSelection: Bool {
+        !selectedIds.isEmpty || !selectedGroupIds.isEmpty || !selectedPeerIds.isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(filter == .agentsOnly ? "Add agents" : filter == .groupsOnly ? "Add groups" : "Add agents or groups")
@@ -54,6 +70,33 @@ struct AddAgentsToChatSheet: View {
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
+                    if !addablePeers.isEmpty && filter == .all {
+                        Text("Peers")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.bottom, 2)
+
+                        ForEach(addablePeers) { peer in
+                            Toggle(isOn: Binding(
+                                get: { selectedPeerIds.contains(peer.id) },
+                                set: { on in
+                                    if on { selectedPeerIds.insert(peer.id) } else { selectedPeerIds.remove(peer.id) }
+                                }
+                            )) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "globe")
+                                        .foregroundStyle(.blue)
+                                    Text(peer.displayName)
+                                }
+                            }
+                            .xrayId("addAgents.peerToggle.\(peer.id.uuidString)")
+                        }
+
+                        if !addableGroups.isEmpty || !addableAgents.isEmpty {
+                            Divider().padding(.vertical, 4)
+                        }
+                    }
+
                     if !addableGroups.isEmpty && filter != .agentsOnly {
                         Text("Groups")
                             .font(.caption.weight(.semibold))
@@ -123,8 +166,8 @@ struct AddAgentsToChatSheet: View {
                 Spacer()
                 Button("Add") { addSelected() }
                     .buttonStyle(.borderedProminent)
-                    .disabled(selectedIds.isEmpty && selectedGroupIds.isEmpty)
-                    .help(selectedIds.isEmpty && selectedGroupIds.isEmpty ? "Select at least one agent to add." : "Add selected agents to the conversation.")
+                    .disabled(!hasSelection)
+                    .help(hasSelection ? "Add selected to the conversation." : "Select at least one agent or peer to add.")
                     .keyboardShortcut(.defaultAction)
                     .xrayId("addAgents.confirmButton")
             }
@@ -178,6 +221,16 @@ struct AddAgentsToChatSheet: View {
             }
 
             modelContext.insert(session)
+        }
+
+        for peer in nostrPeers where selectedPeerIds.contains(peer.id) {
+            let peerParticipant = Participant(
+                type: .nostrPeer(pubkeyHex: peer.pubkeyHex),
+                displayName: peer.displayName
+            )
+            peerParticipant.conversation = convo
+            convo.participants = (convo.participants ?? []) + [peerParticipant]
+            modelContext.insert(peerParticipant)
         }
 
         if (convo.sessions ?? []).count > 1 {

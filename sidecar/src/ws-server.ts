@@ -224,6 +224,12 @@ export class WsServer {
         this.ctx.nostrTransport.removePeer(command.name)
         logger.info("nostr", `Removed Nostr peer "${command.name}"`)
         break
+      case "nostr.profile.publish":
+        this.ctx.nostrTransport.publishProfile(command.displayName, command.agentNames).catch((err) => {
+          logger.warn("nostr", `profile.publish failed: ${err}`)
+        })
+        logger.info("nostr", `Publishing Nostr profile as "${command.displayName}" with ${command.agentNames.length} agents`)
+        break
       case "nostr.peerAnnounce":
         // Mac Swift sets its own identity on the transport at startup
         this.ctx.nostrTransport.setIdentity(
@@ -238,6 +244,27 @@ export class WsServer {
         // Swift NostrRelayManager decrypts a remote command and injects it here.
         // Re-dispatch the inner command as if it arrived locally.
         await this.handleCommand(command.command)
+        break
+
+      case "nostr.dm.send":
+        this.ctx.nostrTransport.sendDM(
+          command.recipientPubkeyHex,
+          command.recipientRelays,
+          {
+            id: crypto.randomUUID(),
+            type: 'peer.message',
+            from: { peer: process.env.ODYSSEY_NOSTR_PUBKEY_HEX ?? 'unknown' },
+            to: { peer: command.recipientPubkeyHex },
+            payload: {
+              conversationId: command.conversationId,
+              text: command.text,
+              senderName: command.senderName,
+            },
+            timestamp: new Date().toISOString(),
+          }
+        ).catch((err: Error) => {
+          logger.warn("nostr", `dm.send to ${command.recipientPubkeyHex.slice(0, 8)}… failed: ${err.message}`)
+        })
         break
 
       case "generate.agent":

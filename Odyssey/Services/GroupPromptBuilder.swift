@@ -367,6 +367,8 @@ enum GroupPromptBuilder {
             return p.displayName
         case .remoteAgent:
             return p.displayName
+        case .nostrPeer:
+            return p.displayName
         }
     }
 

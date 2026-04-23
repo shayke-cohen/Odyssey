@@ -24,6 +24,8 @@ export type SidecarCommand =
   | { type: "nostr.removePeer"; name: string }
   | { type: "nostr.injectCommand"; command: SidecarCommand }
   | { type: "nostr.peerAnnounce"; pubkeyHex: string; relays: string[] }
+  | { type: "nostr.profile.publish"; displayName: string; agentNames: string[] }
+  | { type: "nostr.dm.send"; recipientPubkeyHex: string; recipientRelays: string[]; conversationId: string; text: string; senderName?: string }
   | { type: "generate.agent"; requestId: string; prompt: string; availableSkills: SkillCatalogEntry[]; availableMCPs: MCPCatalogEntry[]; model?: string }
   | { type: "generate.group"; requestId: string; prompt: string; availableAgents: AgentCatalogEntry[]; model?: string }
   | { type: "generate.skill"; requestId: string; prompt: string; availableCategories: string[]; availableMCPs: MCPCatalogEntry[]; model?: string }
@@ -285,6 +287,8 @@ export type SidecarEvent =
   | { type: "connector.audit"; sessionId?: string; connectionId: string; provider: ConnectorProvider; action: string; outcome: string; summary: string }
   | { type: "ios.pushRegistered"; apnsToken: string; success: boolean; error?: string }
   | { type: "nostr.status"; connectedRelays: number; totalRelays: number }
+  | { type: "nostr.directory.peer"; pubkeyHex: string; displayName: string; relays: string[]; agents: string[]; seenAt: string }
+  | { type: "nostr.dm.received"; senderPubkeyHex: string; conversationId: string; text: string; senderName?: string }
   | { type: "conversation.cleared"; conversationId: string }
   | { type: "browser.navigate";        sessionId: string; url: string }
   | { type: "browser.click";           sessionId: string; selector: string }

@@ -6,19 +6,23 @@ struct PeerNetworkView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var p2p: P2PNetworkManager
     @Environment(AppState.self) private var appState
+    @Environment(WindowState.self) private var windowState: WindowState
 
     @Query(sort: \NostrPeer.pairedAt, order: .reverse) private var nostrPeers: [NostrPeer]
+    @Query(sort: \Agent.name) private var agents: [Agent]
 
     @State private var selectedPeerId: String?
-    @State private var remoteAgents: [WireAgentExport] = []
-    @State private var isLoadingList = false
-    @State private var listError: String?
-    @State private var importMessage: String?
-    @State private var importInFlight = false
+    @State private var showAddToChatSheet = false
 
     private var selectedPeer: DiscoveredLanPeer? {
         guard let selectedPeerId else { return nil }
         return p2p.peers.first { $0.id == selectedPeerId }
+    }
+
+    private var selectedNostrPeer: NostrPeer? {
+        guard let id = selectedPeerId, id.hasPrefix("nostr_") else { return nil }
+        guard let uuid = UUID(uuidString: String(id.dropFirst(6))) else { return nil }
+        return nostrPeers.first { $0.id == uuid }
     }
 
     var body: some View {
@@ -89,25 +93,25 @@ struct PeerNetworkView: View {
                 detailColumn
                     .frame(minWidth: 320)
             }
-            .frame(minHeight: 360)
+            .frame(minHeight: 220)
 
             Divider()
 
             HStack {
-                Button("Refresh browse") {
+                Button("Refresh") {
                     p2p.stop()
                     p2p.attach(modelContext: modelContext)
                     p2p.start()
                 }
                 .xrayId("peerNetwork.refreshButton")
                 Spacer()
-                Text("Advertising local agents for LAN import.")
+                Text("Connect to peers and chat across Odyssey instances.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
         }
-        .frame(width: 720, height: 520)
+        .frame(width: 720, height: 440)
         .onAppear {
             if !p2p.isRunning {
                 p2p.attach(modelContext: modelContext)
@@ -116,9 +120,11 @@ struct PeerNetworkView: View {
         }
     }
 
+    // MARK: - Peer List
+
     private var peerListColumn: some View {
         Group {
-            if p2p.peers.isEmpty && nostrPeers.isEmpty {
+            if p2p.peers.isEmpty && nostrPeers.isEmpty && appState.nostrDirectoryPeers.isEmpty && appState.nostrPublicKeyHex == nil {
                 ContentUnavailableView(
                     "No Peers Found",
                     systemImage: "wifi.exclamationmark",
@@ -185,98 +191,72 @@ struct PeerNetworkView: View {
                             }
                         }
                     }
+
+                    if appState.nostrPublicKeyHex != nil {
+                        Section("Internet Directory") {
+                            selfDirectoryRow
+
+                            ForEach(appState.nostrDirectoryPeers.filter { peer in
+                                peer.pubkeyHex != appState.nostrPublicKeyHex &&
+                                !nostrPeers.contains { $0.pubkeyHex == peer.pubkeyHex }
+                            }) { peer in
+                                HStack(spacing: 10) {
+                                    Image(systemName: "antenna.radiowaves.left.and.right")
+                                        .foregroundStyle(.purple)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(peer.displayName)
+                                            .font(.body)
+                                        if !peer.agents.isEmpty {
+                                            Text(peer.agents.joined(separator: ", "))
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(1)
+                                        }
+                                        Text(peer.pubkeyHex.prefix(16) + "…")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .monospaced()
+                                    }
+                                    Spacer()
+                                    Button("Connect") {
+                                        connectToDirectoryPeer(peer)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.small)
+                                    .xrayId("peerNetwork.directoryConnectButton.\(peer.pubkeyHex.prefix(8))")
+                                }
+                                .xrayId("peerNetwork.directoryPeerRow.\(peer.pubkeyHex.prefix(8))")
+                            }
+                        }
+                    }
                 }
                 .xrayId("peerNetwork.peerList")
             }
         }
-        .onChange(of: selectedPeerId) { _, newId in
-            if newId != nil {
-                remoteAgents = []
-                listError = nil
-                importMessage = nil
-            }
-        }
     }
+
+    // MARK: - Detail
 
     private var detailColumn: some View {
         Group {
             if let peer = selectedPeer {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text(peer.displayName)
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                            .xrayId("peerNetwork.detailTitle")
-                        Spacer()
-                        Label("Relay ready", systemImage: "arrow.left.arrow.right.circle")
-                            .font(.caption2)
-                            .foregroundStyle(.green)
-                            .xrayId("peerNetwork.relayStatus")
-                    }
-
-                    HStack {
-                        Button {
-                            Task { await loadAgents(from: peer) }
-                        } label: {
-                            if isLoadingList {
-                                ProgressView("Loading agents…")
-                                    .scaleEffect(0.7)
-                                    .progressViewStyle(.circular)
-                            } else {
-                                Text("Browse agents")
-                            }
-                        }
-                        .disabled(isLoadingList)
-                        .xrayId("peerNetwork.browseAgentsButton")
-                    }
-
-                    if let listError {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                            Text(friendlyMessage(for: listError))
-                                .font(.caption)
-                                .lineLimit(2)
-                            Spacer()
-                            Button("Try Again") {
-                                Task { await loadAgents(from: peer) }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                        }
-                        .padding(8)
-                        .background(Color.orange.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .xrayId("peerNetwork.listError")
-                    }
-
-                    if let importMessage {
-                        Text(importMessage)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .xrayId("peerNetwork.importMessage")
-                    }
-
-                    List(remoteAgents) { agent in
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(agent.name)
-                                    .font(.body)
-                                Text(AgentDefaults.label(for: agent.model))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Button("Import") {
-                                importAgent(agent, peerName: peer.displayName)
-                            }
-                            .disabled(importInFlight)
-                            .xrayId("peerNetwork.importButton.\(agent.id.uuidString)")
-                        }
-                    }
-                    .xrayId("peerNetwork.remoteAgentList")
-                }
-                .padding()
+                peerDetailView(
+                    nostrPeer: nil,
+                    name: peer.displayName,
+                    caption: "On your local network",
+                    agents: [],
+                    lastSeen: nil
+                )
+            } else if let peer = selectedNostrPeer {
+                let dirAgents = appState.nostrDirectoryPeers
+                    .first { $0.pubkeyHex == peer.pubkeyHex }?.agents ?? []
+                peerDetailView(
+                    nostrPeer: peer,
+                    name: peer.displayName,
+                    caption: String(peer.pubkeyHex.prefix(16)) + "…",
+                    agents: dirAgents,
+                    lastSeen: peer.lastSeenAt
+                )
             } else {
                 ContentUnavailableView(
                     "Select a Peer",
@@ -288,20 +268,104 @@ struct PeerNetworkView: View {
         }
     }
 
-    private func loadAgents(from peer: DiscoveredLanPeer) async {
-        isLoadingList = true
-        listError = nil
-        defer { isLoadingList = false }
-        do {
-            remoteAgents = try await p2p.fetchAgents(from: peer)
-            if remoteAgents.isEmpty {
-                listError = "No agents returned."
+    @ViewBuilder
+    private func peerDetailView(nostrPeer: NostrPeer?, name: String, caption: String, agents: [String], lastSeen: Date?) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(name)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .xrayId("peerNetwork.detailTitle")
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if let lastSeen {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Last seen")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(lastSeen, style: .relative)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Label("Online", systemImage: "checkmark.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                }
             }
-        } catch {
-            listError = error.localizedDescription
-            remoteAgents = []
+
+            if !agents.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Agents")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .textCase(.uppercase)
+                    Text(agents.joined(separator: " · "))
+                        .font(.callout)
+                }
+            }
+
+            Divider()
+
+            // Chat actions
+            Button {
+                if let peer = nostrPeer {
+                    startPeerChatAndDismiss(peer)
+                }
+            } label: {
+                Label("New Chat with \(name)", systemImage: "bubble.left.and.bubble.right.fill")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(nostrPeer == nil)
+            .xrayId("peerNetwork.newChatButton")
+
+            Button {
+                if nostrPeer != nil {
+                    showAddToChatSheet = true
+                }
+            } label: {
+                Label("Add to Existing Chat…", systemImage: "plus.bubble.fill")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.bordered)
+            .disabled(nostrPeer == nil || windowState.selectedConversationId == nil)
+            .xrayId("peerNetwork.addToChatButton")
+
+            Text("Messages route through the encrypted Nostr channel.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+
+            Spacer()
+        }
+        .padding()
+        .sheet(isPresented: $showAddToChatSheet) {
+            if let convId = windowState.selectedConversationId {
+                AddAgentsToChatSheet(conversationId: convId)
+            }
         }
     }
+
+    private func startPeerChatAndDismiss(_ peer: NostrPeer) {
+        let conversation = Conversation(topic: nil, sessions: [], projectId: nil, threadKind: .direct)
+        let userParticipant = Participant(type: .user, displayName: "You")
+        let peerParticipant = Participant(type: .nostrPeer(pubkeyHex: peer.pubkeyHex), displayName: peer.displayName)
+        userParticipant.conversation = conversation
+        peerParticipant.conversation = conversation
+        conversation.participants = [userParticipant, peerParticipant]
+        modelContext.insert(conversation)
+        windowState.selectedConversationId = conversation.id
+        Task { @MainActor in
+            try? modelContext.save()
+        }
+        dismiss()
+    }
+
+    // MARK: - Helpers
 
     private func friendlyMessage(for error: String) -> String {
         let prefixes = ["NSURLErrorDomain", "Error Domain=", "The operation couldn't be completed."]
@@ -316,24 +380,6 @@ struct PeerNetworkView: View {
             msg = String(msg.prefix(80)) + "…"
         }
         return msg
-    }
-
-    private func importAgent(_ w: WireAgentExport, peerName: String) {
-        importInFlight = true
-        importMessage = nil
-        defer { importInFlight = false }
-        do {
-            let result = try PeerAgentImporter.importFromWire(w, peerDisplayName: peerName, modelContext: modelContext)
-            var msg = "Imported \"\(result.agent.name)\"."
-            let missing = result.missingSkills + result.missingMCPs + [result.missingPermission].compactMap { $0 }
-            if !missing.isEmpty {
-                msg += " Missing locally: \(missing.joined(separator: ", "))."
-            }
-            importMessage = msg
-            p2p.refreshExportCache()
-        } catch {
-            importMessage = error.localizedDescription
-        }
     }
 
     private func removePeer(_ peer: NostrPeer) {
@@ -353,5 +399,75 @@ struct PeerNetworkView: View {
 
     private func nostrPeerTag(_ peerId: UUID) -> String {
         "nostr_\(peerId.uuidString)"
+    }
+
+    private var selfDirectoryRow: some View {
+        let relayConnected = appState.nostrRelayCount > 0
+        let displayName = InstanceConfig.userDefaults.string(forKey: AppSettings.sharedRoomDisplayNameKey)
+            ?? Host.current().localizedName
+            ?? "This Mac"
+        let agentNames = agents.map { $0.name }
+        let pubkeyPrefix = appState.nostrPublicKeyHex.map { String($0.prefix(16)) + "…" } ?? ""
+
+        return HStack(spacing: 10) {
+            Image(systemName: "person.crop.circle.fill")
+                .foregroundStyle(.blue)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 5) {
+                    Text(displayName)
+                        .font(.body)
+                    Text("You")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.18))
+                        .foregroundStyle(.blue)
+                        .clipShape(Capsule())
+                }
+                if !agentNames.isEmpty {
+                    Text(agentNames.joined(separator: ", "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Text(pubkeyPrefix)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospaced()
+            }
+            Spacer()
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(relayConnected ? Color.green : Color.orange)
+                    .frame(width: 6, height: 6)
+                Text(relayConnected ? "Registered" : "Registering…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .xrayId("peerNetwork.selfDirectoryRow")
+    }
+
+    private func connectToDirectoryPeer(_ peer: AppState.DirectoryPeer) {
+        if let existing = nostrPeers.first(where: { $0.pubkeyHex == peer.pubkeyHex }) {
+            existing.displayName = peer.displayName
+            existing.relays = peer.relays
+            existing.lastSeenAt = peer.seenAt
+        } else {
+            let nostrPeer = NostrPeer(
+                displayName: peer.displayName,
+                pubkeyHex: peer.pubkeyHex,
+                relays: peer.relays
+            )
+            modelContext.insert(nostrPeer)
+        }
+        Task {
+            try? await appState.sidecarManager?.send(.nostrAddPeer(
+                name: peer.displayName,
+                pubkeyHex: peer.pubkeyHex,
+                relays: peer.relays
+            ))
+        }
     }
 }

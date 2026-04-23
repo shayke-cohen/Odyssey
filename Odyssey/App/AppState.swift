@@ -77,6 +77,17 @@ final class AppState {
     var nostrRelayCount: Int = 0
     /// Total number of configured Nostr relays.
     var nostrRelayTotal: Int = 0
+    /// Odyssey instances discovered via the Nostr directory (in-memory, rebuilt on each launch).
+    var nostrDirectoryPeers: [DirectoryPeer] = []
+
+    struct DirectoryPeer: Identifiable, Sendable {
+        var id: String { pubkeyHex }
+        let pubkeyHex: String
+        let displayName: String
+        let relays: [String]
+        let agents: [String]
+        let seenAt: Date
+    }
     // launchError and autoSendText moved to WindowState (per-window)
 
     /// File-based config sync service (set by OdysseyApp on appear)
@@ -687,6 +698,14 @@ final class AppState {
         allocatedWsPort = wsPort
         allocatedHttpPort = httpPort
 
+        let agentNamesForDirectory: [String]
+        if let ctx = modelContext {
+            let descriptor = FetchDescriptor<Agent>()
+            agentNamesForDirectory = ((try? ctx.fetch(descriptor)) ?? []).map { $0.name }
+        } else {
+            agentNamesForDirectory = []
+        }
+
         let config = SidecarManager.Config(
             wsPort: wsPort,
             httpPort: httpPort,
@@ -696,7 +715,8 @@ final class AppState {
             sidecarPathOverride: sidecarPathOverride?.isEmpty == true ? nil : sidecarPathOverride,
             localAgentHostPathOverride: localAgentHostOverride?.isEmpty == true ? nil : localAgentHostOverride,
             mlxRunnerPathOverride: mlxRunnerOverride?.isEmpty == true ? nil : mlxRunnerOverride,
-            instanceName: InstanceConfig.name
+            instanceName: InstanceConfig.name,
+            agentNames: agentNamesForDirectory
         )
         let manager = SidecarManager(config: config)
         self.sidecarManager = manager
@@ -733,6 +753,23 @@ final class AppState {
         let relay = NostrEventRelay(sidecarManager: manager)
         nostrEventRelay = relay
         relay.start(privkeyHex: kp.privkeyHex, pubkeyHex: kp.pubkeyHex, relays: relays)
+        // Publish Nostr directory profile if enabled (default: enabled when key is absent)
+        let rawValue = InstanceConfig.userDefaults.object(forKey: AppSettings.nostrDirectoryEnabledKey)
+        let directoryEnabled = rawValue == nil ? true : InstanceConfig.userDefaults.bool(forKey: AppSettings.nostrDirectoryEnabledKey)
+        guard directoryEnabled else { return }
+        let displayName = InstanceConfig.userDefaults.string(forKey: AppSettings.sharedRoomDisplayNameKey)
+            ?? Host.current().localizedName
+            ?? "Odyssey"
+        let agentNames: [String]
+        if let ctx = modelContext {
+            let descriptor = FetchDescriptor<Agent>()
+            agentNames = ((try? ctx.fetch(descriptor)) ?? []).map { $0.name }
+        } else {
+            agentNames = []
+        }
+        Task {
+            try? await manager.send(.nostrProfilePublish(displayName: displayName, agentNames: agentNames))
+        }
     }
 
     func sendToSidecar(_ command: SidecarCommand) {
@@ -1514,10 +1551,57 @@ final class AppState {
         case .nostrStatus(let connected, let total):
             nostrRelayCount = connected
             nostrRelayTotal = total
-            // TODO(nostr-relay): When invite acceptance is implemented on the Mac side,
-            // call sidecarManager?.send(.nostrAddPeer(name:pubkeyHex:relays:)) after
-            // successfully verifying an accepted InvitePayload that contains nostrPubkey.
-            // The iOS side sends invites; the Mac side currently only generates them.
+
+        case .nostrDirectoryPeer(let pubkeyHex, let displayName, let relays, let agents, let seenAt):
+            let entry = DirectoryPeer(
+                pubkeyHex: pubkeyHex,
+                displayName: displayName,
+                relays: relays,
+                agents: agents,
+                seenAt: ISO8601DateFormatter().date(from: seenAt) ?? Date()
+            )
+            if let idx = nostrDirectoryPeers.firstIndex(where: { $0.pubkeyHex == pubkeyHex }) {
+                nostrDirectoryPeers[idx] = entry
+            } else {
+                nostrDirectoryPeers.append(entry)
+            }
+
+        case .nostrDMReceived(let senderPubkeyHex, let conversationId, let text, let senderName):
+            guard let ctx = modelContext else { break }
+            // Find the conversation by ID first, fall back to locating any conversation with this peer
+            let convUUID = UUID(uuidString: conversationId)
+            let allConvos = (try? ctx.fetch(FetchDescriptor<Conversation>())) ?? []
+            let targetConvo: Conversation? = allConvos.first { c in
+                if let uuid = convUUID, c.id == uuid { return true }
+                return (c.participants ?? []).contains {
+                    $0.typeKind == "nostrPeer" && $0.typeParticipantId == senderPubkeyHex
+                }
+            }
+            guard let convo = targetConvo else { break }
+            // Find or create the peer participant as message sender
+            var peerParticipant = (convo.participants ?? []).first {
+                $0.typeKind == "nostrPeer" && $0.typeParticipantId == senderPubkeyHex
+            }
+            if peerParticipant == nil {
+                let name = senderName ?? String(senderPubkeyHex.prefix(12))
+                let newParticipant = Participant(
+                    type: .nostrPeer(pubkeyHex: senderPubkeyHex),
+                    displayName: name
+                )
+                newParticipant.conversation = convo
+                convo.participants = (convo.participants ?? []) + [newParticipant]
+                ctx.insert(newParticipant)
+                peerParticipant = newParticipant
+            }
+            let msg = ConversationMessage(
+                senderParticipantId: peerParticipant?.id,
+                text: text,
+                type: .chat,
+                conversation: convo
+            )
+            convo.messages = (convo.messages ?? []) + [msg]
+            ctx.insert(msg)
+            try? ctx.save()
 
         case .agentQuestionRouting(let sessionId, let questionId, let targetAgentName):
             if let conversation = conversationForSession(sessionId: sessionId) {
