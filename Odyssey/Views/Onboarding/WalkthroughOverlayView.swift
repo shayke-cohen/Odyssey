@@ -76,6 +76,7 @@ private struct TooltipLayer: View {
                 .frame(width: arrowSize * 2, height: arrowSize)
                 .position(x: placement.arrowPos.x, y: placement.arrowPos.y)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.spring(duration: 0.35), value: targetFrame)
     }
 
