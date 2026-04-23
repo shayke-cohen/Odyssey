@@ -37,6 +37,10 @@ struct GitHubSettingsView: View {
         .sheet(isPresented: $showCreateInboxIssueSheet) {
             CreateGHIssueSheet(conversation: nil, project: nil)
         }
+        .task {
+            guard !settings.inboxRepo.isEmpty else { return }
+            await seedInboxReadme(repo: settings.inboxRepo)
+        }
     }
 
     // MARK: - Inbox Setup
@@ -262,6 +266,7 @@ struct GitHubSettingsView: View {
                 let repoName = "\(username)/odyssey-inbox"
                 try await runGhCLI(["repo", "create", repoName, "--private", "--confirm"])
                 try await seedInboxLabels(repo: repoName)
+                await seedInboxReadme(repo: repoName)
                 await MainActor.run {
                     settings.inboxRepo = repoName
                     isSettingUpInbox = false
@@ -319,6 +324,70 @@ struct GitHubSettingsView: View {
         for (name, color) in labels {
             _ = try? await runGhCLI(["label", "create", name, "--repo", repo, "--color", color, "--force"])
         }
+    }
+
+    private func seedInboxReadme(repo: String) async {
+        let exists = (try? await runGhCLI(["api", "repos/\(repo)/contents/README.md", "--jq", ".name"])) != nil
+        guard !exists else { return }
+
+        let readme = """
+        # Odyssey Inbox
+
+        This is your private Odyssey inbox. File issues here to trigger AI agent sessions on your Mac — the agent works them and posts results back as comments.
+
+        ## How It Works
+
+        1. **Create an issue** in this repository
+        2. **Add a routing label** (see below) to target a specific agent
+        3. **Odyssey picks it up** within the configured poll interval and starts a session
+        4. **Results are posted** back as issue comments, and the issue is labeled `odyssey:done`
+
+        ## Routing Labels
+
+        | Label | Effect |
+        |-------|--------|
+        | `odyssey:agent:{name}` | Route to a specific agent by name |
+        | `odyssey:group:{name}` | Route to an agent group |
+
+        ## Examples
+
+        **Ask the researcher agent to look something up:**
+        > Title: `Research the best approach for caching in Swift`
+        > Label: `odyssey:agent:researcher`
+
+        **Ask the coder agent to implement something:**
+        > Title: `Write a SwiftUI view for a settings screen`
+        > Label: `odyssey:agent:coder`
+
+        **Mention an agent directly (works without labels):**
+        > Body: `@coder please write unit tests for my AuthService`
+
+        ## Status Labels
+
+        Odyssey manages these automatically — don't set them manually:
+
+        | Label | Meaning |
+        |-------|---------|
+        | `odyssey:queued` | Picked up, not yet started |
+        | `odyssey:in-progress` | Agent is actively working |
+        | `odyssey:done` | Completed — see comments for results |
+        | `odyssey:failed` | Error — check comments for details |
+
+        ## Tips
+
+        - File issues from the **GitHub iPhone app** while on the go
+        - Include detailed context in the issue body for better results
+        - Closed issues are ignored by the poller
+        - Configure poll interval and trusted users in **Odyssey → Settings → GitHub**
+        """
+
+        let base64Content = Data(readme.utf8).base64EncodedString()
+        _ = try? await runGhCLI([
+            "api", "repos/\(repo)/contents/README.md",
+            "--method", "PUT",
+            "--field", "message=Add README with usage instructions",
+            "--field", "content=\(base64Content)"
+        ])
     }
 
     @discardableResult
