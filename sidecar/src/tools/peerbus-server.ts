@@ -5,6 +5,7 @@ import { createMessagingTools } from "./messaging-tools.js";
 import { createChatTools } from "./chat-tools.js";
 import { createWorkspaceTools } from "./workspace-tools.js";
 import { createConnectorTools } from "./connector-tools.js";
+import { createGitHubTools } from "./github-tools.js";
 import { createAskUserTool } from "./ask-user-tool.js";
 import { createAskAgentTool } from "./ask-agent-tool.js";
 import { createRichDisplayTools } from "./rich-display-tools.js";
@@ -60,6 +61,7 @@ export function createPeerBusToolDefinitions(
     ...createChatTools(ctx, callingSessionId),
     ...createWorkspaceTools(ctx, callingSessionId),
     ...createConnectorTools(ctx, callingSessionId),
+    ...createGitHubTools(ctx),
   ];
 
   if (includeAskUser) {

@@ -55,4 +55,7 @@ export interface ToolContext {
 
   /** Agent definitions registered from Swift for delegation lookup */
   agentDefinitions: Map<string, AgentConfig>;
+
+  /** GitHub poller configuration — set when Swift sends gh.poller.config */
+  ghPollerConfig?: { inboxRepo: string };
 }

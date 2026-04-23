@@ -545,6 +545,7 @@ export class WsServer {
       }
 
       case "gh.poller.config":
+        this.ctx.ghPollerConfig = { inboxRepo: command.inboxRepo };
         if (this.ghPoller && this.ghRouter) {
           this.ghPoller.start(
             {
