@@ -284,7 +284,7 @@ struct GitHubSettingsView: View {
     // MARK: - Shell helpers
 
     private func getGitHubUsername() async throws -> String {
-        let output = try await runGhCLI(["auth", "status", "--json", "user", "-q", ".user.login"])
+        let output = try await runGhCLI(["auth", "status", "--json", "user", "--jq", ".user.login"])
         return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
