@@ -1897,6 +1897,9 @@ final class AppState {
         case .ghIssueCreated(let issueUrl, let issueNumber, let repo, let conversationId):
             Log.github.info("gh.issue.created #\(issueNumber, privacy: .public) \(repo, privacy: .public)")
             handleGHIssueCreated(issueUrl: issueUrl, issueNumber: issueNumber, repo: repo, conversationId: conversationId)
+
+        case .ghIssueClosed(let repo, let number):
+            Log.github.info("gh.issue.closed #\(number, privacy: .public) \(repo, privacy: .public)")
         }
     }
 

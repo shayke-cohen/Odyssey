@@ -50,6 +50,7 @@ enum SidecarCommand: Sendable {
     case pairingHello(iosNpub: String, displayName: String)
     case ghIssueCreate(repo: String, title: String, body: String, labels: [String], conversationId: String?)
     case ghPollerConfig(inboxRepo: String, projectRepos: [GHProjectRepoWire], trustedUsers: [String], intervalSeconds: Int)
+    case ghIssueClose(repo: String, number: Int)
 
     func encodeToJSON() throws -> Data {
         let encoder = JSONEncoder()
@@ -280,6 +281,11 @@ enum SidecarCommand: Sendable {
             return try encoder.encode(
                 GHPollerConfigWire(type: "gh.poller.config", inboxRepo: inboxRepo, projectRepos: projectRepos, trustedUsers: trustedUsers, intervalSeconds: intervalSeconds)
             )
+        case .ghIssueClose(let repo, let number):
+            struct GHIssueCloseWire: Encodable {
+                let type: String; let repo: String; let number: Int
+            }
+            return try encoder.encode(GHIssueCloseWire(type: "gh.issue.close", repo: repo, number: number))
         }
     }
 }
@@ -793,6 +799,7 @@ enum SidecarEvent: Sendable {
     case ghIssueTriggered(issueUrl: String, issueNumber: Int, repo: String, title: String, conversationId: String, sessionId: String, agentName: String)
     case ghIssueComment(issueUrl: String, commentBody: String, author: String, conversationId: String)
     case ghIssueCreated(issueUrl: String, issueNumber: Int, repo: String, conversationId: String?)
+    case ghIssueClosed(repo: String, number: Int)
 }
 
 struct QuestionOption: Codable, Sendable, Identifiable {
@@ -1179,6 +1186,9 @@ struct IncomingWireMessage: Codable, Sendable {
         case "gh.issue.created":
             guard let url = issueUrl, let num = issueNumber, let r = issueRepo else { return nil }
             return .ghIssueCreated(issueUrl: url, issueNumber: num, repo: r, conversationId: conversationId)
+        case "gh.issue.closed":
+            guard let r = issueRepo, let num = issueNumber else { return nil }
+            return .ghIssueClosed(repo: r, number: num)
         default:
             return nil
         }

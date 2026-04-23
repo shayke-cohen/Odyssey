@@ -58,7 +58,8 @@ export type SidecarCommand =
   | { type: "pairing.hello"; iosNpub: string; displayName: string }
   | { type: "conversations.list" }
   | { type: "gh.issue.create"; repo: string; title: string; body: string; labels: string[]; conversationId?: string }
-  | { type: "gh.poller.config"; inboxRepo: string; projectRepos: GHProjectRepo[]; trustedUsers: string[]; intervalSeconds: number };
+  | { type: "gh.poller.config"; inboxRepo: string; projectRepos: GHProjectRepo[]; trustedUsers: string[]; intervalSeconds: number }
+  | { type: "gh.issue.close"; repo: string; number: number };
 
 export interface PeerAgentWire {
   name: string;
@@ -317,7 +318,8 @@ export type SidecarEvent =
   | { type: "schedule.trigger"; scheduleId: string }
   | { type: "gh.issue.triggered"; issueUrl: string; issueNumber: number; repo: string; title: string; conversationId: string; sessionId: string; agentName: string }
   | { type: "gh.issue.comment"; issueUrl: string; commentBody: string; author: string; conversationId: string }
-  | { type: "gh.issue.created"; issueUrl: string; issueNumber: number; repo: string; conversationId?: string };
+  | { type: "gh.issue.created"; issueUrl: string; issueNumber: number; repo: string; conversationId?: string }
+  | { type: "gh.issue.closed"; repo: string; number: number };
 
 export interface QuestionOption {
   label: string;
