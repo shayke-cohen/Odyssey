@@ -450,23 +450,6 @@ private struct ProjectWindowContent: View {
         .navigationTitle(windowState.map { "Odyssey — \($0.projectName)" } ?? (InstanceConfig.isDefault ? "Odyssey" : "Odyssey — \(InstanceConfig.name)"))
     }
 
-    private var hasExistingProjects: Bool {
-        let descriptor = FetchDescriptor<Project>()
-        return ((try? modelContainer.mainContext.fetch(descriptor)) ?? []).isEmpty == false
-    }
-
-    private func preferredProject() -> Project? {
-        let descriptor = FetchDescriptor<Project>()
-        let projects = (try? modelContainer.mainContext.fetch(descriptor)) ?? []
-        if let lastProjectDirectory {
-            let canonical = ProjectRecords.canonicalPath(for: lastProjectDirectory)
-            if let match = projects.first(where: { $0.canonicalRootPath == canonical }) {
-                return match
-            }
-        }
-        return projects.sorted(by: { $0.lastOpenedAt > $1.lastOpenedAt }).first
-    }
-
     private func initializeWindow(projectDirectory: String) {
         guard windowState == nil else { return }
 
