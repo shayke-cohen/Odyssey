@@ -1943,7 +1943,10 @@ final class AppState {
         if let existing = (try? ctx.fetch(existingByIssueDescriptor))?.first {
             existing.sessions = (existing.sessions ?? []) + [session]
             existing.githubIssueUrl = issueUrl
+            let agentParticipant = Participant(type: .agentSession(sessionId: sessUUID), displayName: agentName)
+            existing.participants = (existing.participants ?? []) + [agentParticipant]
             ctx.insert(session)
+            ctx.insert(agentParticipant)
             try? ctx.save()
             ghAutoFinalizeSessionIds.insert(sessionId)
             Log.github.info("gh.issue.triggered: attached session to existing conv \(existing.id) for issue #\(issueNumber, privacy: .public)")
@@ -1965,9 +1968,14 @@ final class AppState {
         )
         conversation.messages = [issueMsg]
 
+        // Add agent participant so flushStreamingContent can attribute the response
+        let agentParticipant = Participant(type: .agentSession(sessionId: sessUUID), displayName: agentName)
+        conversation.participants = [agentParticipant]
+
         ctx.insert(session)
         ctx.insert(conversation)
         ctx.insert(issueMsg)
+        ctx.insert(agentParticipant)
         try? ctx.save()
 
         // Track for auto-persist so the agent response is saved when the session completes
