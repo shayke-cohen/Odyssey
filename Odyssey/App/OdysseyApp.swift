@@ -155,7 +155,7 @@ struct OdysseyApp: App {
                 Button("Increase Text Size") {
                     increaseTextSize()
                 }
-                .keyboardShortcut("=", modifiers: .command)
+                .keyboardShortcut("+", modifiers: .command)
                 .disabled(!resolvedTextSize.canIncrease)
 
                 Button("Decrease Text Size") {
