@@ -3032,15 +3032,15 @@ private struct SectionTitleButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 5) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
                 if isHovered {
                     Image(systemName: "folder.open")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .transition(.opacity.combined(with: .scale(scale: 0.85)))
                 }
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
                 if badge > 0 {
                     Text("\(badge)")
                         .font(.caption2.weight(.bold))
