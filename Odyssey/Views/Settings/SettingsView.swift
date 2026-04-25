@@ -2,122 +2,139 @@ import SwiftUI
 import SwiftData
 
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case general
-    case github
+    // Personal
+    case appearance
+    case voice
+    case shortcuts
+    // AI Platform
     case models
+    case agentsGroups
+    case skillsMCPs
+    case templates
+    case permissions
+    // Integrations
+    case github
     case connectors
-    case chatDisplay
-    case quickActions
-    case configuration
-    case labs
+    case pairing
+    // System
     case advanced
-    case iosPairing
-    case federation
-    case acceptInvite
+    case devLabs
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .general: "General"
+        case .appearance: "Appearance"
+        case .voice: "Voice & Speech"
+        case .shortcuts: "Shortcuts"
         case .models: "Models"
-        case .connectors: "Connectors"
+        case .agentsGroups: "Agents & Groups"
+        case .skillsMCPs: "Skills & MCPs"
+        case .templates: "Templates"
+        case .permissions: "Permissions"
         case .github: "GitHub"
-        case .chatDisplay: "Chat Display"
-        case .quickActions: "Quick Actions"
-        case .configuration: "Configuration"
-        case .labs: "Labs"
+        case .connectors: "Connectors"
+        case .pairing: "Pairing"
         case .advanced: "Advanced"
-        case .iosPairing: "iOS Pairing"
-        case .federation: "Federation"
-        case .acceptInvite: "Accept Invite"
+        case .devLabs: "Developer & Labs"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .general: "Appearance, reading comfort, and quick actions"
-        case .models: "Cloud defaults and local model setup"
-        case .connectors: "OAuth setup, broker config, and tokens"
+        case .appearance: "Theme, text size, chat rendering, and runtime defaults"
+        case .voice: "Voice input, speech synthesis, and speaking rate"
+        case .shortcuts: "Customize the quick action chips in the chat bar"
+        case .models: "Cloud provider, default model, and local model setup"
+        case .agentsGroups: "Manage agents and agent groups"
+        case .skillsMCPs: "Manage skills and MCP servers"
+        case .templates: "Prompt templates for agents, groups, and projects"
+        case .permissions: "Allow and deny rule presets for agents"
         case .github: "Remote access via GitHub Issues"
-        case .chatDisplay: "Rendering and conversation chrome"
-        case .quickActions: "Customize the shortcut chips in the chat bar"
-        case .configuration: "Manage agents, groups, skills, MCPs, templates, and permissions"
-        case .labs: "Experimental and power-user feature flags"
-        case .advanced: "Sidecar connection, ports, paths, and diagnostics"
-        case .iosPairing: "QR code and device pairing for iOS access"
-        case .federation: "Matrix account and cross-user sharing"
-        case .acceptInvite: "Pair with another Mac via Nostr relay"
+        case .connectors: "OAuth apps, broker config, and integration tokens"
+        case .pairing: "iOS device pairing, Matrix account, and invite codes"
+        case .advanced: "Sidecar connection, ports, paths, and Nostr identity"
+        case .devLabs: "Feature flags, log level, and developer tools"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .general: "gearshape"
+        case .appearance: "paintbrush"
+        case .voice: "waveform"
+        case .shortcuts: "rectangle.grid.1x2"
         case .models: "cpu"
-        case .connectors: "link.badge.plus"
+        case .agentsGroups: "person.crop.circle"
+        case .skillsMCPs: "bolt"
+        case .templates: "text.document"
+        case .permissions: "lock.shield"
         case .github: "arrow.triangle.2.circlepath"
-        case .chatDisplay: "bubble.left.and.text.bubble.right"
-        case .quickActions: "rectangle.grid.1x2"
-        case .configuration: "gearshape.2"
-        case .labs: "flask"
+        case .connectors: "link.badge.plus"
+        case .pairing: "iphone.and.arrow.forward"
         case .advanced: "wrench.and.screwdriver"
-        case .iosPairing: "iphone.and.arrow.forward"
-        case .federation: "person.2.wave.2"
-        case .acceptInvite: "person.badge.plus"
+        case .devLabs: "flask"
         }
     }
 
     var xrayId: String {
         switch self {
-        case .general: "settings.tab.general"
+        case .appearance: "settings.tab.appearance"
+        case .voice: "settings.tab.voice"
+        case .shortcuts: "settings.tab.shortcuts"
         case .models: "settings.tab.models"
-        case .connectors: "settings.tab.connectors"
+        case .agentsGroups: "settings.tab.agentsGroups"
+        case .skillsMCPs: "settings.tab.skillsMCPs"
+        case .templates: "settings.tab.templates"
+        case .permissions: "settings.tab.permissions"
         case .github: "settings.tab.github"
-        case .chatDisplay: "settings.tab.chatDisplay"
-        case .quickActions: "settings.tab.quickActions"
-        case .configuration: "settings.tab.configuration"
-        case .labs: "settings.tab.labs"
+        case .connectors: "settings.tab.connectors"
+        case .pairing: "settings.tab.pairing"
         case .advanced: "settings.tab.advanced"
-        case .iosPairing: "settings.tab.iosPairing"
-        case .federation: "settings.tab.federation"
-        case .acceptInvite: "settings.tab.acceptInvite"
+        case .devLabs: "settings.tab.devLabs"
+        }
+    }
+
+    // Map ConfigSection to the new SettingsSection it lives in
+    static func section(for configSection: ConfigSection) -> SettingsSection {
+        switch configSection {
+        case .agents, .groups: return .agentsGroups
+        case .skills, .mcps: return .skillsMCPs
+        case .templates: return .templates
+        case .permissions: return .permissions
         }
     }
 }
 
+// MARK: - Sidebar groups
+
+private struct SettingsSidebarGroup {
+    let label: String
+    let sections: [SettingsSection]
+}
+
+private let settingsSidebarGroups: [SettingsSidebarGroup] = [
+    SettingsSidebarGroup(label: "Personal",      sections: [.appearance, .voice, .shortcuts]),
+    SettingsSidebarGroup(label: "AI Platform",   sections: [.models, .agentsGroups, .skillsMCPs, .templates, .permissions]),
+    SettingsSidebarGroup(label: "Integrations",  sections: [.github, .connectors, .pairing]),
+    SettingsSidebarGroup(label: "System",        sections: [.advanced, .devLabs]),
+]
+
 struct SettingsView: View {
     @State private var selectedSection: SettingsSection
     @StateObject private var modelsState = ModelsSettingsState()
-    @AppStorage(FeatureFlags.showAdvancedKey, store: AppSettings.store) private var masterFlag = false
-    @AppStorage(FeatureFlags.federationKey, store: AppSettings.store) private var federationFlag = false
 
     private let pendingConfigSection: ConfigSection?
     private let pendingConfigSlug: String?
     private let onBackToApp: (() -> Void)?
 
-    private var federationEnabled: Bool { FeatureFlags.isEnabled(FeatureFlags.federationKey) || (masterFlag && federationFlag) }
-
-    private var visibleSections: [SettingsSection] {
-        SettingsSection.allCases.filter { section in
-            switch section {
-            case .connectors, .iosPairing, .federation, .acceptInvite:
-                return federationEnabled
-            case .advanced:
-                return masterFlag
-            default:
-                return true
-            }
-        }
-    }
-
     init(
-        initialSection: SettingsSection = .general,
+        initialSection: SettingsSection = .appearance,
         pendingConfigSection: ConfigSection? = nil,
         pendingConfigSlug: String? = nil,
         onBackToApp: (() -> Void)? = nil
     ) {
-        _selectedSection = State(initialValue: pendingConfigSection != nil ? .configuration : initialSection)
+        let resolved = pendingConfigSection.map { SettingsSection.section(for: $0) } ?? initialSection
+        _selectedSection = State(initialValue: resolved)
         self.pendingConfigSection = pendingConfigSection
         self.pendingConfigSlug = pendingConfigSlug
         self.onBackToApp = onBackToApp
@@ -152,36 +169,45 @@ struct SettingsView: View {
                 .accessibilityLabel("Back to app")
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(visibleSections) { section in
-                    Button {
-                        selectedSection = section
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: section.systemImage)
-                                .font(.body.weight(.semibold))
-                                .frame(width: 20)
-                            Text(section.title)
-                                .font(.body.weight(.medium))
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(settingsSidebarGroups, id: \.label) { group in
+                    Text(group.label.uppercased())
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 2)
+
+                    ForEach(group.sections) { section in
+                        Button {
+                            selectedSection = section
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: section.systemImage)
+                                    .font(.body.weight(.semibold))
+                                    .frame(width: 20)
+                                Text(section.title)
+                                    .font(.body.weight(.medium))
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .foregroundStyle(selectedSection == section ? Color.primary : Color.secondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                selectedSection == section ? Color.primary.opacity(0.08) : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 10)
+                            )
                         }
-                        .foregroundStyle(selectedSection == section ? Color.primary : Color.secondary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 11)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            selectedSection == section ? Color.primary.opacity(0.08) : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 14)
-                        )
+                        .buttonStyle(.plain)
+                        .xrayId(section.xrayId)
+                        .stableXrayId("settings.section.\(section.rawValue)")
+                        .accessibilityLabel(section.title)
                     }
-                    .buttonStyle(.plain)
-                    .xrayId(section.xrayId)
-                    .stableXrayId("settings.section.\(section.rawValue)")
-                    .accessibilityLabel(section.title)
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 8)
 
             Spacer(minLength: 0)
         }
@@ -216,33 +242,38 @@ struct SettingsView: View {
     private var selectedSectionContent: some View {
         Group {
             switch selectedSection {
-            case .general:
-                GeneralSettingsTab()
+            case .appearance:
+                AppearanceSettingsTab()
+            case .voice:
+                VoiceSettingsTab()
+            case .shortcuts:
+                ShortcutsSettingsTab()
             case .models:
                 ModelsSettingsTab(state: modelsState)
-            case .connectors:
-                ConnectorsSettingsTab()
-            case .github:
-                GitHubSettingsView()
-            case .chatDisplay:
-                ChatDisplaySettingsTab()
-            case .quickActions:
-                QuickActionsSettingsView()
-            case .configuration:
-                ConfigurationSettingsTab(
-                    initialSection: pendingConfigSection,
+            case .agentsGroups:
+                AgentsGroupsSettingsTab(
+                    initialSection: pendingConfigSection.flatMap { [.agents, .groups].contains($0) ? $0 : nil },
                     initialSlug: pendingConfigSlug
                 )
-            case .labs:
-                LabsSettingsView()
+            case .skillsMCPs:
+                SkillsMCPsSettingsTab(
+                    initialSection: pendingConfigSection.flatMap { [.skills, .mcps].contains($0) ? $0 : nil },
+                    initialSlug: pendingConfigSlug
+                )
+            case .templates:
+                TemplatesSettingsTab()
+            case .permissions:
+                PermissionsSettingsTab()
+            case .github:
+                GitHubSettingsView()
+            case .connectors:
+                ConnectorsSettingsTab()
+            case .pairing:
+                PairingSettingsTab()
             case .advanced:
                 AdvancedSettingsTab()
-            case .iosPairing:
-                iOSPairingSettingsView()
-            case .federation:
-                MatrixAccountView()
-            case .acceptInvite:
-                AcceptInviteView()
+            case .devLabs:
+                DeveloperLabsSettingsTab()
             }
         }
     }
@@ -257,118 +288,6 @@ struct SettingsView: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-    }
-}
-
-// MARK: - General
-
-private struct GeneralSettingsTab: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var conversations: [Conversation]
-    @AppStorage(AppSettings.appearanceKey, store: AppSettings.store) private var appearance = AppAppearance.system.rawValue
-    @AppStorage(AppSettings.textSizeKey, store: AppSettings.store) private var textSize = AppSettings.defaultTextSize
-    @AppStorage(AppSettings.defaultMaxTurnsKey, store: AppSettings.store) private var defaultMaxTurns = AppSettings.defaultMaxTurns
-    @AppStorage(AppSettings.defaultMaxBudgetKey, store: AppSettings.store) private var defaultMaxBudget = AppSettings.defaultMaxBudget
-    @State private var showDeleteHistoryConfirmation = false
-
-    private var selectedAppearance: Binding<AppAppearance> {
-        Binding(
-            get: { AppAppearance(rawValue: appearance) ?? .system },
-            set: { appearance = $0.rawValue }
-        )
-    }
-
-    private var selectedTextSize: Binding<AppTextSize> {
-        Binding(
-            get: { AppTextSize(rawValue: textSize) ?? .standard },
-            set: { textSize = $0.rawValue }
-        )
-    }
-
-    var body: some View {
-        Form {
-            Section("Appearance") {
-                Picker("Appearance", selection: selectedAppearance) {
-                    ForEach(AppAppearance.allCases) { option in
-                        Text(option.label).tag(option)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .xrayId("settings.general.appearancePicker")
-
-                Picker("Text Size", selection: selectedTextSize) {
-                    ForEach(AppTextSize.allCases) { option in
-                        Text(option.label).tag(option)
-                    }
-                }
-                .xrayId("settings.general.textSizePicker")
-
-                Text("Use View > Increase Text Size or the shortcuts ⌘+ / ⌘- to adjust it anytime.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Runtime Defaults") {
-                Stepper("Default Max Turns: \(defaultMaxTurns)", value: $defaultMaxTurns, in: 1...200)
-                    .xrayId("settings.general.defaultMaxTurnsStepper")
-
-                HStack {
-                    Text("Default Max Budget")
-                    Spacer()
-                    TextField("$", value: $defaultMaxBudget, format: .number)
-                        .frame(width: 80)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.trailing)
-                        .xrayId("settings.general.defaultMaxBudgetField")
-                    Text(defaultMaxBudget == 0 ? "(unlimited)" : "")
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-            }
-
-            Section("Data") {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Chat History")
-                        Text("\(conversations.count) thread\(conversations.count == 1 ? "" : "s") across all agents, groups, and projects")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button("Delete All…", role: .destructive) {
-                        showDeleteHistoryConfirmation = true
-                    }
-                    .xrayId("settings.general.deleteAllHistoryButton")
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .settingsDetailLayout()
-        .confirmationDialog(
-            "Delete all chat history?",
-            isPresented: $showDeleteHistoryConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete All Threads", role: .destructive) {
-                deleteAllHistory()
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This permanently deletes all \(conversations.count) thread\(conversations.count == 1 ? "" : "s") and their messages from agents, groups, and projects. This cannot be undone.")
-        }
-    }
-
-    private func deleteAllHistory() {
-        for conversation in conversations {
-            for msg in (conversation.messages ?? []) {
-                for att in (msg.attachments ?? []) { modelContext.delete(att) }
-                modelContext.delete(msg)
-            }
-            for participant in (conversation.participants ?? []) { modelContext.delete(participant) }
-            for session in (conversation.sessions ?? []) { modelContext.delete(session) }
-            modelContext.delete(conversation)
-        }
-        try? modelContext.save()
     }
 }
 
@@ -492,6 +411,7 @@ private struct ModelsSettingsTab: View {
         let agentSuitability: String
         let recommended: Bool
         let isInstalled: Bool
+        let comingSoon: Bool
         let managedPath: String?
         let sourceURL: String?
     }
@@ -1218,6 +1138,7 @@ private struct ModelsSettingsTab: View {
                 agentSuitability: preset.agentSuitability,
                 recommended: preset.recommended,
                 isInstalled: resolvedInstalledModel != nil,
+                comingSoon: preset.comingSoon,
                 managedPath: resolvedInstalledModel?.managedPath ?? resolvedInstalledModel?.downloadDirectory,
                 sourceURL: resolvedInstalledModel?.sourceURL
             )
@@ -1235,6 +1156,7 @@ private struct ModelsSettingsTab: View {
             agentSuitability: "Unknown agent fit",
             recommended: false,
             isInstalled: resolvedInstalledModel != nil,
+            comingSoon: false,
             managedPath: resolvedInstalledModel?.managedPath ?? resolvedInstalledModel?.downloadDirectory,
             sourceURL: resolvedInstalledModel?.sourceURL
         )
@@ -1387,7 +1309,9 @@ private struct ModelsSettingsTab: View {
                     if descriptor.recommended {
                         libraryStatusBadge("Recommended", color: .accentColor)
                     }
-                    if descriptor.isInstalled {
+                    if descriptor.comingSoon {
+                        libraryStatusBadge("Coming Soon", color: .secondary)
+                    } else if descriptor.isInstalled {
                         libraryStatusBadge("Downloaded", color: .green)
                     }
                     if descriptor.defaultSelectionValue == defaultMLXModel {
@@ -1440,6 +1364,8 @@ private struct ModelsSettingsTab: View {
                 HStack(spacing: 8) {
                     if state.isInstalling(modelIdentifier: descriptor.modelIdentifier) {
                         libraryStatusBadge("Downloading", color: .accentColor)
+                    } else if descriptor.comingSoon {
+                        libraryStatusBadge("Coming Soon", color: .secondary)
                     } else if descriptor.isInstalled {
                         libraryStatusBadge("Ready", color: .green)
                     } else {
@@ -1451,6 +1377,11 @@ private struct ModelsSettingsTab: View {
                     downloadProgressSummary(installProgress)
                 } else if let smokeTestResult = state.smokeTestResults[descriptor.modelIdentifier] {
                     smokeTestResultView(smokeTestResult)
+                } else if descriptor.comingSoon {
+                    Text("Support for this model is coming soon to the Swift MLX runtime.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else if descriptor.isInstalled {
                     Text("Available in the managed library.")
                         .font(.caption)
@@ -1512,7 +1443,7 @@ private struct ModelsSettingsTab: View {
                         .foregroundStyle(.red)
                         .xrayId("settings.models.deleteInstalled.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
                     }
-                } else {
+                } else if !descriptor.comingSoon {
                     HStack(spacing: 8) {
                         Button(state.isInstalling(modelIdentifier: descriptor.modelIdentifier) ? "Downloading…" : "Download") {
                             installManagedModel(descriptor.modelIdentifier)
@@ -1539,7 +1470,7 @@ private struct ModelsSettingsTab: View {
                 Button("Delete \(descriptor.title)…", role: .destructive) {
                     state.deleteConfirmationModel = installedModel
                 }
-            } else if !descriptor.isInstalled {
+            } else if !descriptor.isInstalled && !descriptor.comingSoon {
                 Button("Download \(descriptor.title)") {
                     installManagedModel(descriptor.modelIdentifier)
                 }
@@ -2765,80 +2696,6 @@ private struct ConnectorEditorSheet: View {
         }
     }
 }
-
-// MARK: - Chat Display
-
-private struct ChatDisplaySettingsTab: View {
-    @AppStorage(AppSettings.renderAdmonitionsKey, store: AppSettings.store) private var renderAdmonitions = true
-    @AppStorage(AppSettings.renderDiffsKey, store: AppSettings.store) private var renderDiffs = true
-    @AppStorage(AppSettings.renderTerminalKey, store: AppSettings.store) private var renderTerminal = true
-    @AppStorage(AppSettings.renderMermaidKey, store: AppSettings.store) private var renderMermaid = true
-    @AppStorage(AppSettings.renderHTMLKey, store: AppSettings.store) private var renderHTML = true
-    @AppStorage(AppSettings.renderPDFKey, store: AppSettings.store) private var renderPDF = true
-    @AppStorage(AppSettings.showSessionSummaryKey, store: AppSettings.store) private var showSessionSummary = true
-    @AppStorage(AppSettings.showSuggestionChipsKey, store: AppSettings.store) private var showSuggestionChips = true
-
-    var body: some View {
-        Form {
-            Section("Rich Content") {
-                Toggle("Callout Cards", isOn: $renderAdmonitions)
-                    .xrayId("settings.chatDisplay.renderAdmonitions")
-                Text("Render > [!info], > [!warning], etc. as styled cards")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Toggle("Inline HTML", isOn: $renderHTML)
-                    .xrayId("settings.chatDisplay.renderHTML")
-                Text("Render HTML file cards inline via WebView")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Toggle("Mermaid Diagrams", isOn: $renderMermaid)
-                    .xrayId("settings.chatDisplay.renderMermaid")
-                Text("Render ```mermaid``` blocks as visual diagrams")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Toggle("Inline PDF", isOn: $renderPDF)
-                    .xrayId("settings.chatDisplay.renderPDF")
-                Text("Show PDF pages inline instead of file card icon")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Tool Output") {
-                Toggle("Inline Diffs", isOn: $renderDiffs)
-                    .xrayId("settings.chatDisplay.renderDiffs")
-                Text("Show file edits as colored diffs instead of raw JSON")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Toggle("Terminal Output", isOn: $renderTerminal)
-                    .xrayId("settings.chatDisplay.renderTerminal")
-                Text("Style bash/shell output with terminal appearance")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Session") {
-                Toggle("Session Summary Card", isOn: $showSessionSummary)
-                    .xrayId("settings.chatDisplay.showSessionSummary")
-                Text("Show cost, tokens, and files touched when a session completes")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Toggle("Suggestion Chips", isOn: $showSuggestionChips)
-                    .xrayId("settings.chatDisplay.showSuggestionChips")
-                Text("Show follow-up action chips after agent responses")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
-        .settingsDetailLayout()
-    }
-}
-
 
 extension View {
     func settingsDetailLayout(maxWidth: CGFloat = 1040) -> some View {

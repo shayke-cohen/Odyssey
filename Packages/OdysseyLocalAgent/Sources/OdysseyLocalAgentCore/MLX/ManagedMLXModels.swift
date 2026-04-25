@@ -10,6 +10,7 @@ public struct ManagedMLXModelPreset: Codable, Sendable, Equatable, Identifiable 
     public var bestFor: String
     public var agentSuitability: String
     public var recommended: Bool
+    public var comingSoon: Bool
 
     public init(
         modelIdentifier: String,
@@ -19,7 +20,8 @@ public struct ManagedMLXModelPreset: Codable, Sendable, Equatable, Identifiable 
         downloadSize: String = "",
         bestFor: String = "",
         agentSuitability: String = "",
-        recommended: Bool
+        recommended: Bool,
+        comingSoon: Bool = false
     ) {
         self.modelIdentifier = modelIdentifier
         self.label = label
@@ -29,6 +31,7 @@ public struct ManagedMLXModelPreset: Codable, Sendable, Equatable, Identifiable 
         self.bestFor = bestFor
         self.agentSuitability = agentSuitability
         self.recommended = recommended
+        self.comingSoon = comingSoon
     }
 }
 
@@ -304,22 +307,24 @@ public enum ManagedMLXModels {
             ManagedMLXModelPreset(
                 modelIdentifier: "mlx-community/gemma-4-26b-a4b-it-4bit",
                 label: "Gemma 4 26B MoE Instruct",
-                summary: "Google's sparse mixture-of-experts model — large capacity with only 4B active params per token.",
+                summary: "Google's sparse mixture-of-experts model — large capacity with only 4B active params per token. MoE support is coming soon to the Swift MLX runtime.",
                 parameterSize: "26B total / 4B active",
                 downloadSize: "~15.6 GB",
                 bestFor: "High-quality reasoning with the memory footprint of a 4B model.",
                 agentSuitability: "Strong for agents",
-                recommended: false
+                recommended: false,
+                comingSoon: true
             ),
             ManagedMLXModelPreset(
                 modelIdentifier: "mlx-community/gemma-4-31b-it-4bit",
                 label: "Gemma 4 31B Instruct",
-                summary: "Google's dense 31B flagship — best local quality for complex reasoning and long context on M2 Ultra / M3 Max+.",
+                summary: "Google's dense 31B flagship — best local quality for complex reasoning and long context. Full support is coming soon to the Swift MLX runtime.",
                 parameterSize: "31B params",
                 downloadSize: "~18.4 GB",
                 bestFor: "Complex reasoning, long-form tasks, and Macs with 32GB+ unified memory.",
                 agentSuitability: "Very strong for agents",
-                recommended: false
+                recommended: false,
+                comingSoon: true
             ),
         ]
     }
