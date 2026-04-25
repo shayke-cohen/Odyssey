@@ -375,6 +375,9 @@ private struct ProjectWindowContent: View {
                     MainWindowView()
                         .environment(ws)
                 }
+            } else {
+                // Invisible placeholder — ensures onAppear fires so WindowState can be created.
+                Color.clear
             }
         }
         .environment(appState)
