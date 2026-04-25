@@ -805,7 +805,7 @@ struct SidebarView: View {
 
     private var projectsHeader: some View {
         HStack(spacing: 4) {
-            SectionTitleButton(title: "Projects") {
+            SectionTitleButton(title: "Projects", isExpanded: isProjectsSectionExpanded) {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isProjectsSectionExpanded.toggle()
                 }
@@ -1583,7 +1583,7 @@ struct SidebarView: View {
             }
         } header: {
             HStack {
-                SectionTitleButton(title: "Groups") {
+                SectionTitleButton(title: "Groups", isExpanded: isGroupsSectionExpanded) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isGroupsSectionExpanded.toggle()
                     }
@@ -1649,7 +1649,7 @@ struct SidebarView: View {
             }
         } header: {
             HStack {
-                SectionTitleButton(title: "Peers") {
+                SectionTitleButton(title: "Peers", isExpanded: isPeersSectionExpanded) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isPeersSectionExpanded.toggle()
                     }
@@ -1691,7 +1691,7 @@ struct SidebarView: View {
 
     private var agentsSectionHeader: some View {
         HStack {
-            SectionTitleButton(title: "Agents") {
+            SectionTitleButton(title: "Agents", isExpanded: isAgentsSectionExpanded) {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isAgentsSectionExpanded.toggle()
                 }
@@ -1739,7 +1739,7 @@ struct SidebarView: View {
             }
         } header: {
             HStack {
-                SectionTitleButton(title: "Schedules") {
+                SectionTitleButton(title: "Schedules", isExpanded: isSchedulesSectionExpanded) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isSchedulesSectionExpanded.toggle()
                     }
@@ -1782,7 +1782,7 @@ struct SidebarView: View {
             }
         } header: {
             HStack {
-                SectionTitleButton(title: "GH Inbox", badge: ghUnhandledCount) {
+                SectionTitleButton(title: "GH Inbox", badge: ghUnhandledCount, isExpanded: isGHInboxExpanded) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isGHInboxExpanded.toggle()
                     }
@@ -2103,12 +2103,15 @@ struct SidebarView: View {
                     }
                 }
             } header: {
-                SectionTitleButton(title: "Pinned") {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isPinnedSectionExpanded.toggle()
+                HStack {
+                    SectionTitleButton(title: "Pinned", isExpanded: isPinnedSectionExpanded) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isPinnedSectionExpanded.toggle()
+                        }
                     }
+                    .accessibilityIdentifier("sidebar.pinnedSection.header")
+                    Spacer()
                 }
-                .accessibilityIdentifier("sidebar.pinnedSection.header")
             }
             .stableXrayId("sidebar.pinnedSection")
             .walkthroughAnchor(.sidebarPinned)
@@ -3026,21 +3029,18 @@ private struct ActiveSessionObserver: View {
 private struct SectionTitleButton: View {
     let title: String
     var badge: Int = 0
+    var isExpanded: Bool = true
     let action: () -> Void
-    @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                if isHovered {
-                    Image(systemName: "folder.open")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
-                }
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
                 if badge > 0 {
                     Text("\(badge)")
                         .font(.caption2.weight(.bold))
@@ -3053,8 +3053,7 @@ private struct SectionTitleButton: View {
             }
         }
         .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .animation(.easeInOut(duration: 0.15), value: isExpanded)
     }
 }
 
