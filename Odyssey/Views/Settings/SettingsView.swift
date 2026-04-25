@@ -1512,6 +1512,24 @@ private struct ModelsSettingsTab: View {
             .frame(width: widths.actions, alignment: .leading)
         }
         .padding(.top, isFirstRow ? 12 : 0)
+        .contextMenu {
+            if descriptor.isInstalled, let installedModel = installedModelLookup[descriptor.modelIdentifier] {
+                Button("Set as Default") {
+                    defaultMLXModel = descriptor.defaultSelectionValue
+                }
+                Divider()
+                Button("Delete \(descriptor.title)…", role: .destructive) {
+                    state.deleteConfirmationModel = installedModel
+                }
+            } else if !descriptor.isInstalled {
+                Button("Download \(descriptor.title)") {
+                    installManagedModel(descriptor.modelIdentifier)
+                }
+                Button("Set as Default") {
+                    defaultMLXModel = descriptor.modelIdentifier
+                }
+            }
+        }
         .xrayId(
             "\(descriptor.isInstalled ? "settings.models.installedCard" : "settings.models.presetCard").\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))"
         )
