@@ -16,6 +16,7 @@ struct ScheduleEditorView: View {
     let initialDraft: ScheduledMissionDraft
 
     @State private var draft: ScheduledMissionDraft
+    @State private var pickedProjectDirId: UUID? = nil
 
     init(schedule: ScheduledMission?, draft: ScheduledMissionDraft) {
         self.schedule = schedule
@@ -56,6 +57,14 @@ struct ScheduleEditorView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             draft = initialDraft
+            if draft.projectDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               draft.targetAgentId == nil,
+               draft.targetGroupId == nil,
+               let first = projects.first,
+               !first.rootPath.isEmpty {
+                pickedProjectDirId = first.id
+                draft.projectDirectory = first.rootPath
+            }
         }
         .onChange(of: draft.targetAgentId) { _, newId in
             guard draft.projectDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -203,6 +212,25 @@ struct ScheduleEditorView: View {
                             }
                             .stableXrayId("scheduleEditor.projectDirectoryBrowseButton")
                             .help("Pick a folder from Finder.")
+                        }
+
+                        if !projects.isEmpty {
+                            Picker("Project", selection: $pickedProjectDirId) {
+                                Text("None").tag(UUID?.none)
+                                ForEach(projects) { project in
+                                    Text(project.name).tag(UUID?.some(project.id))
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .stableXrayId("scheduleEditor.projectDirPicker")
+                            .help("Quickly fill the working directory from one of your projects.")
+                            .onChange(of: pickedProjectDirId) { _, newId in
+                                guard let id = newId,
+                                      let project = projects.first(where: { $0.id == id }),
+                                      !project.rootPath.isEmpty else { return }
+                                draft.projectDirectory = project.rootPath
+                            }
                         }
 
                         if draft.projectDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
