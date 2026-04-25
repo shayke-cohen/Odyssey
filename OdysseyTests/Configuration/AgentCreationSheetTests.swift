@@ -22,8 +22,8 @@ final class AgentCreationSheetTests: XCTestCase {
             .appendingPathComponent("odyssey-agent-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
-        defer { unsetenv("ODYSSEY_DATA_DIR") }
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
 
         var savedAgent: Agent? = nil
 
@@ -75,8 +75,8 @@ final class AgentCreationSheetTests: XCTestCase {
             .appendingPathComponent("odyssey-agent-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
-        defer { unsetenv("ODYSSEY_DATA_DIR") }
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
 
         // Insert an existing agent into SwiftData
         let existing = Agent(
@@ -134,8 +134,8 @@ final class AgentCreationSheetTests: XCTestCase {
             .appendingPathComponent("odyssey-agent-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
-        defer { unsetenv("ODYSSEY_DATA_DIR") }
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
 
         try performAgentSave(
             name: "Provider Test Agent",
@@ -181,8 +181,8 @@ final class AgentCreationSheetTests: XCTestCase {
             .appendingPathComponent("odyssey-agent-skill-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
-        defer { unsetenv("ODYSSEY_DATA_DIR") }
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
 
         // Insert two skills with known slugs
         let skill1 = Skill(name: "Code Review Style", skillDescription: "", category: "General", content: "")
@@ -230,8 +230,8 @@ final class AgentCreationSheetTests: XCTestCase {
             .appendingPathComponent("odyssey-agent-mcp-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
-        defer { unsetenv("ODYSSEY_DATA_DIR") }
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
 
         let mcp = MCPServer(name: "GitHub MCP", serverDescription: "GitHub tools", transport: .stdio(command: "gh", args: [], env: [:]))
         mcp.configSlug = "github-mcp"
@@ -272,8 +272,8 @@ final class AgentCreationSheetTests: XCTestCase {
             .appendingPathComponent("odyssey-agent-empty-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
-        defer { unsetenv("ODYSSEY_DATA_DIR") }
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
 
         try performAgentSave(
             name: "Plain Agent",
@@ -312,8 +312,8 @@ final class AgentCreationSheetTests: XCTestCase {
         let blockingFile = tempDir.appendingPathComponent("config")
         try "blocking".write(to: blockingFile, atomically: true, encoding: .utf8)
 
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
-        defer { unsetenv("ODYSSEY_DATA_DIR") }
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
 
         XCTAssertThrowsError(
             try performAgentSave(

@@ -1,137 +1,144 @@
 // OdysseyTests/InviteCodeTests.swift
-import CryptoKit
 import OdysseyCore
 import XCTest
 @testable import Odyssey
 
 final class InviteCodeTests: XCTestCase {
 
-    // MARK: - Helpers
+    // MARK: - InvitePayload v2 structure
 
-    private func makeSignedPayload(
-        exp: TimeInterval? = nil,
-        singleUse: Bool = true,
-        displayName: String = "Test Mac"
-    ) throws -> (payload: Odyssey.InvitePayload, privateKey: Curve25519.Signing.PrivateKey) {
-        let key = Curve25519.Signing.PrivateKey()
-        let pubKeyB64 = key.publicKey.rawRepresentation.base64EncodedString()
-
-        var payload = Odyssey.InvitePayload(
-            v: 1,
-            type: "device",
-            userPublicKey: pubKeyB64,
-            displayName: displayName,
-            tlsCertDER: Data([0x01, 0x02, 0x03]).base64EncodedString(),
-            wsToken: Data([0xAA, 0xBB]).base64EncodedString(),
-            wsPort: 9849,
-            hints: OdysseyCore.InviteHints(lan: "192.168.1.5", wan: "203.0.113.5:9849", turn: nil, relay: nil),
-            exp: exp ?? Date().addingTimeInterval(300).timeIntervalSince1970,
-            singleUse: singleUse,
-            sig: ""
+    func testDevicePayload_fields() {
+        let payload = InviteCodeGenerator.generateDevice(
+            instanceName: "My Mac",
+            lanHint: "192.168.1.5",
+            nostrPubkey: "abc123",
+            nostrRelays: ["wss://relay.damus.io"]
         )
-
-        let canonicalBytes = try InviteCodeGenerator.canonicalJSONWithoutSig(payload)
-        let sig = try key.signature(for: canonicalBytes)
-        payload.sig = sig.base64EncodedString()
-        return (payload, key)
+        XCTAssertEqual(payload.v, 2)
+        XCTAssertEqual(payload.type, "device")
+        XCTAssertEqual(payload.macNpub, "abc123")
+        XCTAssertEqual(payload.displayName, "My Mac")
+        XCTAssertEqual(payload.relays, ["wss://relay.damus.io"])
+        XCTAssertEqual(payload.lanHint, "192.168.1.5")
     }
 
-    // MARK: - Tests
+    func testDevicePayload_noLanHint() {
+        let payload = InviteCodeGenerator.generateDevice(
+            instanceName: "Headless",
+            lanHint: nil,
+            nostrPubkey: "npub1234",
+            nostrRelays: []
+        )
+        XCTAssertNil(payload.lanHint)
+        // Falls back to default relays when none provided
+        XCTAssertFalse(payload.relays.isEmpty)
+    }
 
-    func testDeviceInviteRoundTrip() throws {
-        let (payload, _) = try makeSignedPayload()
+    func testDevicePayload_defaultRelayFallback() {
+        let payload = InviteCodeGenerator.generateDevice(
+            instanceName: "X",
+            lanHint: nil,
+            nostrPubkey: "npub",
+            nostrRelays: []
+        )
+        XCTAssertTrue(payload.relays.allSatisfy { $0.hasPrefix("wss://") })
+    }
+
+    // MARK: - Encode / Decode round-trip
+
+    func testEncodeDecodeRoundTrip() throws {
+        let payload = InviteCodeGenerator.generateDevice(
+            instanceName: "Test Mac",
+            lanHint: "10.0.0.1",
+            nostrPubkey: "testpubkey",
+            nostrRelays: ["wss://relay.nostr.band"]
+        )
         let encoded = try InviteCodeGenerator.encode(payload)
         let decoded = try InviteCodeGenerator.decode(encoded)
-        XCTAssertNoThrow(try InviteCodeGenerator.verify(decoded))
-        XCTAssertEqual(decoded.v, 1)
-        XCTAssertEqual(decoded.type, "device")
-        XCTAssertEqual(decoded.wsPort, 9849)
-        XCTAssertEqual(decoded.hints.lan, "192.168.1.5")
-        XCTAssertEqual(decoded.hints.wan, "203.0.113.5:9849")
-        XCTAssertEqual(decoded.singleUse, true)
+
+        XCTAssertEqual(decoded.v, payload.v)
+        XCTAssertEqual(decoded.type, payload.type)
+        XCTAssertEqual(decoded.macNpub, payload.macNpub)
+        XCTAssertEqual(decoded.displayName, payload.displayName)
+        XCTAssertEqual(decoded.relays, payload.relays)
+        XCTAssertEqual(decoded.lanHint, payload.lanHint)
     }
 
-    func testExpiredInviteRejected() throws {
-        let (payload, _) = try makeSignedPayload(exp: Date().addingTimeInterval(-60).timeIntervalSince1970)
-        XCTAssertThrowsError(try InviteCodeGenerator.verify(payload)) { error in
-            XCTAssertEqual(error as? InviteCodeError, .expired)
-        }
+    func testDecode_invalidBase64_throws() {
+        XCTAssertThrowsError(try InviteCodeGenerator.decode("!!!not-valid-base64!!!"))
     }
 
-    func testTamperedInviteRejected() throws {
-        var (payload, _) = try makeSignedPayload()
-        // Replace displayName but keep the original sig — signature should fail.
-        payload = Odyssey.InvitePayload(
-            v: payload.v,
-            type: payload.type,
-            userPublicKey: payload.userPublicKey,
-            displayName: "EVIL HACKER",
-            tlsCertDER: payload.tlsCertDER,
-            wsToken: payload.wsToken,
-            wsPort: payload.wsPort,
-            hints: payload.hints,
-            exp: payload.exp,
-            singleUse: payload.singleUse,
-            sig: payload.sig
+    func testDecode_emptyString_throws() {
+        XCTAssertThrowsError(try InviteCodeGenerator.decode(""))
+    }
+
+    // MARK: - Verify
+
+    func testVerify_validPayload_doesNotThrow() {
+        let payload = InviteCodeGenerator.generateDevice(
+            instanceName: "Mac",
+            lanHint: nil,
+            nostrPubkey: "validpubkey",
+            nostrRelays: []
         )
-        XCTAssertThrowsError(try InviteCodeGenerator.verify(payload)) { error in
-            XCTAssertEqual(error as? InviteCodeError, .signatureVerificationFailed)
-        }
+        XCTAssertNoThrow(try InviteCodeGenerator.verify(payload))
     }
 
-    func testBase64UrlEncoding() {
+    func testVerify_emptyNpub_throws() {
+        let payload = InvitePayload(macNpub: "", displayName: "Mac", relays: [], lanHint: nil)
+        XCTAssertThrowsError(try InviteCodeGenerator.verify(payload))
+    }
+
+    func testVerify_emptyDisplayName_throws() {
+        let payload = InvitePayload(macNpub: "validkey", displayName: "", relays: [], lanHint: nil)
+        XCTAssertThrowsError(try InviteCodeGenerator.verify(payload))
+    }
+
+    // MARK: - Base64url encoding
+
+    func testBase64urlEncode_noStandardBase64Chars() {
         let data = Data([0xFB, 0xFF, 0xFE, 0xFD, 0xFC])
         let encoded = InviteCodeGenerator.base64urlEncode(data)
-        XCTAssertFalse(encoded.contains("+"))
-        XCTAssertFalse(encoded.contains("/"))
-        XCTAssertFalse(encoded.contains("="))
-        let decoded = InviteCodeGenerator.base64urlDecode(encoded)
-        XCTAssertEqual(decoded, data)
+        XCTAssertFalse(encoded.contains("+"), "base64url must replace + with -")
+        XCTAssertFalse(encoded.contains("/"), "base64url must replace / with _")
+        XCTAssertFalse(encoded.contains("="), "base64url must strip padding")
     }
 
-    func testBase64UrlRoundtripVariousLengths() {
+    func testBase64urlEncode_roundtripVariousLengths() throws {
         for length in [1, 2, 3, 4, 16, 31, 32, 33, 64, 100] {
-            var bytes = [UInt8](repeating: 0, count: length)
-            for i in 0..<length { bytes[i] = UInt8(i % 256) }
-            let data = Data(bytes)
+            let data = Data((0..<length).map { UInt8($0 % 256) })
             let encoded = InviteCodeGenerator.base64urlEncode(data)
-            XCTAssertEqual(
-                InviteCodeGenerator.base64urlDecode(encoded), data,
-                "Roundtrip failed for length \(length)"
-            )
+            // Decode by reversing the base64url transform
+            var padded = encoded
+                .replacingOccurrences(of: "-", with: "+")
+                .replacingOccurrences(of: "_", with: "/")
+            let rem = padded.count % 4
+            if rem != 0 { padded += String(repeating: "=", count: 4 - rem) }
+            XCTAssertEqual(Data(base64Encoded: padded), data,
+                           "base64url roundtrip failed for length \(length)")
         }
     }
 
-    func testQRCodeProducesValidImage() throws {
-        let (payload, _) = try makeSignedPayload()
-        let cgImage = InviteCodeGenerator.qrCode(for: payload, size: 300)
-        XCTAssertNotNil(cgImage, "qrCode(for:) must return a non-nil CGImage")
-        if let img = cgImage {
+    // MARK: - QR code
+
+    func testQRCode_producesValidImage() throws {
+        let payload = InviteCodeGenerator.generateDevice(
+            instanceName: "QR Test",
+            lanHint: nil,
+            nostrPubkey: "qrpubkey",
+            nostrRelays: []
+        )
+        let image = InviteCodeGenerator.qrCode(for: payload, size: 300)
+        XCTAssertNotNil(image, "qrCode(for:) must return a non-nil CGImage")
+        if let img = image {
             XCTAssertGreaterThan(img.width, 0)
             XCTAssertGreaterThan(img.height, 0)
         }
     }
 
-    func testCanonicalJSONExcludesSig() throws {
-        let (payload, _) = try makeSignedPayload()
-        let canonical = try InviteCodeGenerator.canonicalJSONWithoutSig(payload)
-        let dict = try JSONSerialization.jsonObject(with: canonical) as? [String: Any]
-        XCTAssertNotNil(dict)
-        XCTAssertNil(dict?["sig"])
-        XCTAssertNotNil(dict?["v"])
-        XCTAssertNotNil(dict?["userPublicKey"])
-    }
+    // MARK: - Deep link parsing
 
-    func testCanonicalJSONIsDeterministic() throws {
-        let (payload, _) = try makeSignedPayload()
-        let a = try InviteCodeGenerator.canonicalJSONWithoutSig(payload)
-        let b = try InviteCodeGenerator.canonicalJSONWithoutSig(payload)
-        XCTAssertEqual(a, b)
-    }
-
-    // MARK: - Deep Link Parsing
-
-    func testDeepLinkParsingConnectInvite() throws {
+    func testDeepLinkParsing_connectInvite() {
         let url = URL(string: "odyssey://connect?invite=abc123def456")!
         let intent = LaunchIntent.fromURL(url)
         XCTAssertNotNil(intent, "odyssey://connect?invite=... should produce a LaunchIntent")
@@ -144,25 +151,9 @@ final class InviteCodeTests: XCTestCase {
         }
     }
 
-    func testDeepLinkMissingInviteParamReturnsNil() {
+    func testDeepLinkParsing_missingInviteParam_returnsNil() {
         let url = URL(string: "odyssey://connect")!
         let intent = LaunchIntent.fromURL(url)
         XCTAssertNil(intent, "odyssey://connect without invite= should return nil")
-    }
-}
-
-// MARK: - InviteCodeError: Equatable
-
-extension InviteCodeError: Equatable {
-    public static func == (lhs: InviteCodeError, rhs: InviteCodeError) -> Bool {
-        switch (lhs, rhs) {
-        case (.identityUnavailable, .identityUnavailable): return true
-        case (.encodingFailed, .encodingFailed): return true
-        case (.signatureVerificationFailed, .signatureVerificationFailed): return true
-        case (.expired, .expired): return true
-        case (.certificateExportFailed, .certificateExportFailed): return true
-        case (.decodingFailed(let a), .decodingFailed(let b)): return a == b
-        default: return false
-        }
     }
 }

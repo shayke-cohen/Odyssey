@@ -739,91 +739,216 @@ The unified sheet now covers the former group-thread entry as well. `NewGroupThr
 
 ### 5.15 SettingsView
 
-**File:** `Views/Settings/SettingsView.swift`
+**File:** `Views/Settings/SettingsView.swift` + individual tab files under `Views/Settings/`
 **Access:** macOS Settings menu (Cmd+,).
 
-**Tab selection:**
+The Settings window uses a sidebar split-view with 13 always-visible tabs organised in 4 labelled groups.
+
+**Sidebar chrome:**
 
 | Control | Identifier | Selector |
 |---------|-----------|----------|
-| Tab view | `settings.tabView` | `@testId("settings.tabView")` |
-| General tab | `settings.tab.general` | `@testId("settings.tab.general")` |
-| Agents & Models tab | `settings.tab.agentsModels` | `@testId("settings.tab.agentsModels")` |
-| Connection tab | `settings.tab.connection` | `@testId("settings.tab.connection")` |
+| Tab view root | `settings.tabView` | `@testId("settings.tabView")` |
+| Sidebar list | `settings.sidebar` | `@testId("settings.sidebar")` |
+| Header area | `settings.header` | `@testId("settings.header")` |
+| Back button (iPad) | `settings.backButton` | `@testId("settings.backButton")` |
+| Detail pane | `settings.detailPane` | `@testId("settings.detailPane")` |
+
+**Sidebar tabs — Personal group:**
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Appearance tab | `settings.tab.appearance` | `@testId("settings.tab.appearance")` |
+| Voice & Speech tab | `settings.tab.voice` | `@testId("settings.tab.voice")` |
+| Shortcuts tab | `settings.tab.shortcuts` | `@testId("settings.tab.shortcuts")` |
+
+**Sidebar tabs — AI Platform group:**
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Models tab | `settings.tab.models` | `@testId("settings.tab.models")` |
+| Agents & Groups tab | `settings.tab.agentsGroups` | `@testId("settings.tab.agentsGroups")` |
+| Skills & MCPs tab | `settings.tab.skillsMCPs` | `@testId("settings.tab.skillsMCPs")` |
+| Templates tab | `settings.tab.templates` | `@testId("settings.tab.templates")` |
+| Permissions tab | `settings.tab.permissions` | `@testId("settings.tab.permissions")` |
+
+**Sidebar tabs — Integrations group:**
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| GitHub tab | `settings.tab.github` | `@testId("settings.tab.github")` |
 | Connectors tab | `settings.tab.connectors` | `@testId("settings.tab.connectors")` |
-| Chat Display tab | `settings.tab.chatDisplay` | `@testId("settings.tab.chatDisplay")` |
-| Developer tab | `settings.tab.developer` | `@testId("settings.tab.developer")` |
+| Pairing tab | `settings.tab.pairing` | `@testId("settings.tab.pairing")` |
 
-#### General Tab
-
-| Control | Identifier | Selector |
-|---------|-----------|----------|
-| Appearance picker | `settings.general.appearancePicker` | `@testId("settings.general.appearancePicker")` |
-| Text size picker | `settings.general.textSizePicker` | `@testId("settings.general.textSizePicker")` |
-| Quick action ordering toggle | `settings.general.quickActionUsageOrderToggle` | `@testId("settings.general.quickActionUsageOrderToggle")` |
-
-#### Agents & Models Tab
+**Sidebar tabs — System group:**
 
 | Control | Identifier | Selector |
 |---------|-----------|----------|
-| Default provider picker | `settings.agentsModels.defaultProviderPicker` | `@testId("settings.agentsModels.defaultProviderPicker")` |
-| Default Claude model picker | `settings.agentsModels.defaultClaudeModelPicker` | `@testId("settings.agentsModels.defaultClaudeModelPicker")` |
-| Default Codex model picker | `settings.agentsModels.defaultCodexModelPicker` | `@testId("settings.agentsModels.defaultCodexModelPicker")` |
-| Default Foundation model picker | `settings.agentsModels.defaultFoundationModelPicker` | `@testId("settings.agentsModels.defaultFoundationModelPicker")` |
-| Default MLX downloaded-model picker | `settings.agentsModels.defaultMLXModelPicker` | `@testId("settings.agentsModels.defaultMLXModelPicker")` |
-| Default MLX model field | `settings.agentsModels.defaultMLXModelField` | `@testId("settings.agentsModels.defaultMLXModelField")` |
-| Current MLX default summary | `settings.agentsModels.currentDefaultMLXModel` | `@testId("settings.agentsModels.currentDefaultMLXModel")` |
-| Default max turns stepper | `settings.agentsModels.defaultMaxTurnsStepper` | `@testId("settings.agentsModels.defaultMaxTurnsStepper")` |
-| Default max budget field | `settings.agentsModels.defaultMaxBudgetField` | `@testId("settings.agentsModels.defaultMaxBudgetField")` |
-| Local host status | `settings.agentsModels.localProviders.hostStatus` | `@testId("settings.agentsModels.localProviders.hostStatus")` |
-| Foundation status | `settings.agentsModels.localProviders.foundationStatus` | `@testId("settings.agentsModels.localProviders.foundationStatus")` |
-| MLX status | `settings.agentsModels.localProviders.mlxStatus` | `@testId("settings.agentsModels.localProviders.mlxStatus")` |
-| Managed MLX cache path | `settings.agentsModels.mlxDownloadDirectory` | `@testId("settings.agentsModels.mlxDownloadDirectory")` |
-| Install MLX runner | `settings.agentsModels.installMLXRunnerButton` | `@testId("settings.agentsModels.installMLXRunnerButton")` |
-| Open MLX cache | `settings.agentsModels.openMLXCacheButton` | `@testId("settings.agentsModels.openMLXCacheButton")` |
-| Preset card | `settings.agentsModels.presetCard.{modelId}` | `@testId("settings.agentsModels.presetCard.{modelId}")` |
-| Preset download button | `settings.agentsModels.downloadPreset.{modelId}` | `@testId("settings.agentsModels.downloadPreset.{modelId}")` |
-| Preset set default button | `settings.agentsModels.setDefaultPreset.{modelId}` | `@testId("settings.agentsModels.setDefaultPreset.{modelId}")` |
-| Custom MLX field | `settings.agentsModels.customMLXModelField` | `@testId("settings.agentsModels.customMLXModelField")` |
-| Custom MLX download button | `settings.agentsModels.installCustomMLXModelButton` | `@testId("settings.agentsModels.installCustomMLXModelButton")` |
-| Empty installed state | `settings.agentsModels.noInstalledModels` | `@testId("settings.agentsModels.noInstalledModels")` |
-| Installed model card | `settings.agentsModels.installedCard.{modelId}` | `@testId("settings.agentsModels.installedCard.{modelId}")` |
-| Installed set default button | `settings.agentsModels.setDefaultInstalled.{modelId}` | `@testId("settings.agentsModels.setDefaultInstalled.{modelId}")` |
-| Installed delete button | `settings.agentsModels.deleteInstalled.{modelId}` | `@testId("settings.agentsModels.deleteInstalled.{modelId}")` |
-| Catalog loading state | `settings.agentsModels.loadingCatalog` | `@testId("settings.agentsModels.loadingCatalog")` |
-| Catalog status message | `settings.agentsModels.catalogMessage` | `@testId("settings.agentsModels.catalogMessage")` |
+| Advanced tab | `settings.tab.advanced` | `@testId("settings.tab.advanced")` |
+| Developer & Labs tab | `settings.tab.devLabs` | `@testId("settings.tab.devLabs")` |
 
-#### Connection Tab
+#### Appearance Tab (`AppearanceSettingsTab.swift`)
 
 | Control | Identifier | Selector |
 |---------|-----------|----------|
-| Status URL | `settings.connection.statusURL` | `@testId("settings.connection.statusURL")` |
-| Status row | `settings.connection.statusRow` | `@testId("settings.connection.statusRow")` |
-| Auto-connect toggle | `settings.connection.autoConnectToggle` | `@testId("settings.connection.autoConnectToggle")` |
-| WS port field | `settings.connection.wsPortField` | `@testId("settings.connection.wsPortField")` |
-| HTTP port field | `settings.connection.httpPortField` | `@testId("settings.connection.httpPortField")` |
-| Reconnect button | `settings.connection.reconnectButton` | `@testId("settings.connection.reconnectButton")` |
-| Stop button | `settings.connection.stopButton` | `@testId("settings.connection.stopButton")` |
-| Connect button | `settings.connection.connectButton` | `@testId("settings.connection.connectButton")` |
+| Appearance picker | `settings.appearance.appearancePicker` | `@testId("settings.appearance.appearancePicker")` |
+| Text size picker | `settings.appearance.textSizePicker` | `@testId("settings.appearance.textSizePicker")` |
+| Default max turns stepper | `settings.appearance.defaultMaxTurnsStepper` | `@testId("settings.appearance.defaultMaxTurnsStepper")` |
+| Default max budget field | `settings.appearance.defaultMaxBudgetField` | `@testId("settings.appearance.defaultMaxBudgetField")` |
+| Render admonitions toggle | `settings.appearance.renderAdmonitions` | `@testId("settings.appearance.renderAdmonitions")` |
+| Render mermaid toggle | `settings.appearance.renderMermaid` | `@testId("settings.appearance.renderMermaid")` |
+| Render HTML toggle | `settings.appearance.renderHTML` | `@testId("settings.appearance.renderHTML")` |
+| Render PDF toggle | `settings.appearance.renderPDF` | `@testId("settings.appearance.renderPDF")` |
+| Render diffs toggle | `settings.appearance.renderDiffs` | `@testId("settings.appearance.renderDiffs")` |
+| Render terminal toggle | `settings.appearance.renderTerminal` | `@testId("settings.appearance.renderTerminal")` |
+| Session summary toggle | `settings.appearance.showSessionSummary` | `@testId("settings.appearance.showSessionSummary")` |
+| Suggestion chips toggle | `settings.appearance.showSuggestionChips` | `@testId("settings.appearance.showSuggestionChips")` |
+| Delete all history button | `settings.appearance.deleteAllHistoryButton` | `@testId("settings.appearance.deleteAllHistoryButton")` |
 
-#### Developer Tab
+#### Voice & Speech Tab (`VoiceSettingsTab.swift`)
 
 | Control | Identifier | Selector |
 |---------|-----------|----------|
-| Bun path field | `settings.developer.bunPathField` | `@testId("settings.developer.bunPathField")` |
-| Bun path browse | `settings.developer.bunPathBrowseButton` | `@testId("settings.developer.bunPathBrowseButton")` |
-| Sidecar path field | `settings.developer.sidecarPathField` | `@testId("settings.developer.sidecarPathField")` |
-| Sidecar path browse | `settings.developer.sidecarPathBrowseButton` | `@testId("settings.developer.sidecarPathBrowseButton")` |
-| Local host field | `settings.developer.localAgentHostField` | `@testId("settings.developer.localAgentHostField")` |
-| Local host browse | `settings.developer.localAgentHostBrowseButton` | `@testId("settings.developer.localAgentHostBrowseButton")` |
-| MLX runner field | `settings.developer.mlxRunnerField` | `@testId("settings.developer.mlxRunnerField")` |
-| MLX runner browse | `settings.developer.mlxRunnerBrowseButton` | `@testId("settings.developer.mlxRunnerBrowseButton")` |
-| Data directory field | `settings.developer.dataDirectoryField` | `@testId("settings.developer.dataDirectoryField")` |
-| Data directory browse | `settings.developer.dataDirectoryBrowseButton` | `@testId("settings.developer.dataDirectoryBrowseButton")` |
-| Log level picker | `settings.developer.logLevelPicker` | `@testId("settings.developer.logLevelPicker")` |
-| Legacy chat chrome toggle | `settings.developer.useLegacyChatChromeToggle` | `@testId("settings.developer.useLegacyChatChromeToggle")` |
-| Open data directory | `settings.developer.openDataDirectoryButton` | `@testId("settings.developer.openDataDirectoryButton")` |
-| Reset settings | `settings.developer.resetSettingsButton` | `@testId("settings.developer.resetSettingsButton")` |
+| Voice features enabled toggle | `settings.voice.featuresEnabledToggle` | `@testId("settings.voice.featuresEnabledToggle")` |
+| Voice picker | `settings.voice.voicePicker` | `@testId("settings.voice.voicePicker")` |
+| Auto-speak toggle | `settings.voice.autoSpeakToggle` | `@testId("settings.voice.autoSpeakToggle")` |
+| Speaking rate slider | `settings.voice.speakingRateSlider` | `@testId("settings.voice.speakingRateSlider")` |
+| Show speaker button toggle | `settings.voice.showSpeakerButtonToggle` | `@testId("settings.voice.showSpeakerButtonToggle")` |
+
+#### Shortcuts Tab (`ShortcutsSettingsTab.swift` → `QuickActionsSettingsView.swift`)
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Reset to defaults button | `settings.quickActions.resetButton` | `@testId("settings.quickActions.resetButton")` |
+| Add chip button | `settings.quickActions.addButton` | `@testId("settings.quickActions.addButton")` |
+| Usage-order toggle | `settings.quickActions.usageOrderToggle` | `@testId("settings.quickActions.usageOrderToggle")` |
+| Chip row (dynamic) | `settings.quickActions.row.{uuid}` | `@testId("settings.quickActions.row.{uuid}")` |
+| Edit chip button (dynamic) | `settings.quickActions.editButton.{uuid}` | `@testId("settings.quickActions.editButton.{uuid}")` |
+| Delete chip button (dynamic) | `settings.quickActions.deleteButton.{uuid}` | `@testId("settings.quickActions.deleteButton.{uuid}")` |
+| Drag handle (dynamic) | `settings.quickActions.dragHandle.{uuid}` | `@testId("settings.quickActions.dragHandle.{uuid}")` |
+
+#### Models Tab
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Default provider picker | `settings.models.defaultProviderPicker` | `@testId("settings.models.defaultProviderPicker")` |
+| Provider row (dynamic) | `settings.models.providerRow.{provider}` | `@testId("settings.models.providerRow.{provider}")` |
+| Claude model row picker | `settings.models.claudeModelRowPicker` | `@testId("settings.models.claudeModelRowPicker")` |
+| Codex model row picker | `settings.models.codexModelRowPicker` | `@testId("settings.models.codexModelRowPicker")` |
+| Foundation model row picker | `settings.models.foundationModelRowPicker` | `@testId("settings.models.foundationModelRowPicker")` |
+| MLX model row picker | `settings.models.mlxModelRowPicker` | `@testId("settings.models.mlxModelRowPicker")` |
+| MLX manage menu | `settings.models.mlxManageMenu` | `@testId("settings.models.mlxManageMenu")` |
+| Ollama enabled toggle | `settings.models.ollamaEnabledToggle` | `@testId("settings.models.ollamaEnabledToggle")` |
+| Ollama base URL field | `settings.models.ollamaBaseURLField` | `@testId("settings.models.ollamaBaseURLField")` |
+| Refresh Ollama button | `settings.models.refreshOllamaButton` | `@testId("settings.models.refreshOllamaButton")` |
+| Ollama models summary | `settings.models.ollamaModelsSummary` | `@testId("settings.models.ollamaModelsSummary")` |
+| MLX download directory | `settings.models.mlxDownloadDirectory` | `@testId("settings.models.mlxDownloadDirectory")` |
+| Install MLX runner button | `settings.models.installMLXRunnerButton` | `@testId("settings.models.installMLXRunnerButton")` |
+| Open MLX cache button | `settings.models.openMLXCacheButton` | `@testId("settings.models.openMLXCacheButton")` |
+| Open MLX models directory button | `settings.models.openMLXModelsDirectoryButton` | `@testId("settings.models.openMLXModelsDirectoryButton")` |
+| Custom MLX model field | `settings.models.customMLXModelField` | `@testId("settings.models.customMLXModelField")` |
+| Install custom MLX model button | `settings.models.installCustomMLXModelButton` | `@testId("settings.models.installCustomMLXModelButton")` |
+| Loading catalog state | `settings.models.loadingCatalog` | `@testId("settings.models.loadingCatalog")` |
+| Catalog message | `settings.models.catalogMessage` | `@testId("settings.models.catalogMessage")` |
+| Library table | `settings.models.libraryTable` | `@testId("settings.models.libraryTable")` |
+| Install progress card | `settings.models.installProgressCard` | `@testId("settings.models.installProgressCard")` |
+| Delete installed (inline, dynamic) | `settings.models.deleteInstalledInline.{modelId}` | `@testId("settings.models.deleteInstalledInline.{modelId}")` |
+| Download preset (inline, dynamic) | `settings.models.downloadPresetInline.{modelId}` | `@testId("settings.models.downloadPresetInline.{modelId}")` |
+| Set default installed (dynamic) | `settings.models.setDefaultInstalled.{modelId}` | `@testId("settings.models.setDefaultInstalled.{modelId}")` |
+| Smoke test installed (dynamic) | `settings.models.smokeTestInstalled.{modelId}` | `@testId("settings.models.smokeTestInstalled.{modelId}")` |
+| Reveal installed (dynamic) | `settings.models.revealInstalled.{modelId}` | `@testId("settings.models.revealInstalled.{modelId}")` |
+| Delete installed (dynamic) | `settings.models.deleteInstalled.{modelId}` | `@testId("settings.models.deleteInstalled.{modelId}")` |
+| Download preset (dynamic) | `settings.models.downloadPreset.{modelId}` | `@testId("settings.models.downloadPreset.{modelId}")` |
+| Set default preset (dynamic) | `settings.models.setDefaultPreset.{modelId}` | `@testId("settings.models.setDefaultPreset.{modelId}")` |
+
+#### Agents & Groups Tab (`AgentsGroupsSettingsTab.swift`)
+
+Uses the shared 3-pane `ConfigurationSettingsTab` restricted to the `.agents` and `.groups` sections.
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Root pane | `settings.configuration.root` | `@testId("settings.configuration.root")` |
+| Open config folder button | `settings.configuration.openConfigFolder` | `@testId("settings.configuration.openConfigFolder")` |
+| New item button | `settings.configuration.listNewButton` | `@testId("settings.configuration.listNewButton")` |
+| Empty detail placeholder | `settings.configuration.emptyDetail` | `@testId("settings.configuration.emptyDetail")` |
+| Detail pane | `settings.configuration.detail` | `@testId("settings.configuration.detail")` |
+| Hero header | `settings.configuration.heroHeader` | `@testId("settings.configuration.heroHeader")` |
+| Hero reveal button | `settings.configuration.heroRevealButton` | `@testId("settings.configuration.heroRevealButton")` |
+| Hero edit button | `settings.configuration.heroEditButton` | `@testId("settings.configuration.heroEditButton")` |
+| Hero duplicate button | `settings.configuration.heroDuplicateButton` | `@testId("settings.configuration.heroDuplicateButton")` |
+| Hero delete button | `settings.configuration.heroDeleteButton` | `@testId("settings.configuration.heroDeleteButton")` |
+| Resident badge | `settings.configuration.heroResidentBadge` | `@testId("settings.configuration.heroResidentBadge")` |
+
+#### Skills & MCPs Tab (`SkillsMCPsSettingsTab.swift`)
+
+Same 3-pane layout restricted to `.skills` and `.mcps` sections. Uses the same `settings.configuration.*` identifier set as Agents & Groups.
+
+#### Permissions Tab (`PermissionsSettingsTab.swift`)
+
+Same 3-pane layout restricted to `.permissions`. Uses the same `settings.configuration.*` identifier set.
+
+#### Pairing Tab (`PairingSettingsTab.swift`)
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Root scroll view | `settings.pairing.root` | `@testId("settings.pairing.root")` |
+| Accept invite code button | `settings.pairing.acceptInviteButton` | `@testId("settings.pairing.acceptInviteButton")` |
+
+**Accept Invite sheet (`AcceptInviteView.swift`):**
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Invite code editor | `settings.acceptInvite.textEditor` | `@testId("settings.acceptInvite.textEditor")` |
+| Submit button | `settings.acceptInvite.submitButton` | `@testId("settings.acceptInvite.submitButton")` |
+| Success message | `settings.acceptInvite.success` | `@testId("settings.acceptInvite.success")` |
+| Error message | `settings.acceptInvite.error` | `@testId("settings.acceptInvite.error")` |
+
+#### Advanced Tab
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Status URL | `settings.advanced.statusURL` | `@testId("settings.advanced.statusURL")` |
+| Status row | `settings.advanced.statusRow` | `@testId("settings.advanced.statusRow")` |
+| Auto-connect toggle | `settings.advanced.autoConnectToggle` | `@testId("settings.advanced.autoConnectToggle")` |
+| WS port field | `settings.advanced.wsPortField` | `@testId("settings.advanced.wsPortField")` |
+| HTTP port field | `settings.advanced.httpPortField` | `@testId("settings.advanced.httpPortField")` |
+| Nostr npub label | `settings.advanced.nostrNpubLabel` | `@testId("settings.advanced.nostrNpubLabel")` |
+| Copy npub button | `settings.advanced.nostrCopyNpubButton` | `@testId("settings.advanced.nostrCopyNpubButton")` |
+| Nostr relay 1 field | `settings.advanced.nostrRelay1Field` | `@testId("settings.advanced.nostrRelay1Field")` |
+| Nostr relay 2 field | `settings.advanced.nostrRelay2Field` | `@testId("settings.advanced.nostrRelay2Field")` |
+| Nostr directory toggle | `settings.advanced.nostrDirectoryToggle` | `@testId("settings.advanced.nostrDirectoryToggle")` |
+| Bun path field | `settings.advanced.bunPathField` | `@testId("settings.advanced.bunPathField")` |
+| Bun path browse button | `settings.advanced.bunPathBrowseButton` | `@testId("settings.advanced.bunPathBrowseButton")` |
+| Sidecar path field | `settings.advanced.sidecarPathField` | `@testId("settings.advanced.sidecarPathField")` |
+| Sidecar path browse button | `settings.advanced.sidecarPathBrowseButton` | `@testId("settings.advanced.sidecarPathBrowseButton")` |
+| Local agent host field | `settings.advanced.localAgentHostField` | `@testId("settings.advanced.localAgentHostField")` |
+| Local agent host browse button | `settings.advanced.localAgentHostBrowseButton` | `@testId("settings.advanced.localAgentHostBrowseButton")` |
+| MLX runner field | `settings.advanced.mlxRunnerField` | `@testId("settings.advanced.mlxRunnerField")` |
+| MLX runner browse button | `settings.advanced.mlxRunnerBrowseButton` | `@testId("settings.advanced.mlxRunnerBrowseButton")` |
+| Data directory field | `settings.advanced.dataDirectoryField` | `@testId("settings.advanced.dataDirectoryField")` |
+| Data directory browse button | `settings.advanced.dataDirectoryBrowseButton` | `@testId("settings.advanced.dataDirectoryBrowseButton")` |
+| Built-in config override policy picker | `settings.advanced.builtInConfigOverridePolicyPicker` | `@testId("settings.advanced.builtInConfigOverridePolicyPicker")` |
+| Open data directory button | `settings.advanced.openDataDirectoryButton` | `@testId("settings.advanced.openDataDirectoryButton")` |
+| Reset settings button | `settings.advanced.resetSettingsButton` | `@testId("settings.advanced.resetSettingsButton")` |
+| Reconnect button | `settings.advanced.reconnectButton` | `@testId("settings.advanced.reconnectButton")` |
+| Stop button | `settings.advanced.stopButton` | `@testId("settings.advanced.stopButton")` |
+| Connect button | `settings.advanced.connectButton` | `@testId("settings.advanced.connectButton")` |
+
+#### Developer & Labs Tab (`DeveloperLabsSettingsTab.swift`)
+
+| Control | Identifier | Selector |
+|---------|-----------|----------|
+| Form root | `settings.devLabs.form` | `@testId("settings.devLabs.form")` |
+| Log level picker | `settings.devLabs.logLevelPicker` | `@testId("settings.devLabs.logLevelPicker")` |
+| Peer network toggle | `settings.devLabs.toggle.peerNetwork` | `@testId("settings.devLabs.toggle.peerNetwork")` |
+| Workflows toggle | `settings.devLabs.toggle.workflows` | `@testId("settings.devLabs.toggle.workflows")` |
+| Auto-assemble toggle | `settings.devLabs.toggle.autoAssemble` | `@testId("settings.devLabs.toggle.autoAssemble")` |
+| Autonomous missions toggle | `settings.devLabs.toggle.autonomousMissions` | `@testId("settings.devLabs.toggle.autonomousMissions")` |
+| Federation toggle | `settings.devLabs.toggle.federation` | `@testId("settings.devLabs.toggle.federation")` |
+| Agent comms toggle | `settings.devLabs.toggle.agentComms` | `@testId("settings.devLabs.toggle.agentComms")` |
+| Debug logs toggle | `settings.devLabs.toggle.debugLogs` | `@testId("settings.devLabs.toggle.debugLogs")` |
+| Advanced agent config toggle | `settings.devLabs.toggle.advancedAgentConfig` | `@testId("settings.devLabs.toggle.advancedAgentConfig")` |
+| Dev mode toggle | `settings.devLabs.toggle.devMode` | `@testId("settings.devLabs.toggle.devMode")` |
 
 ---
 
@@ -1306,7 +1431,16 @@ All accessibility identifiers follow a consistent pattern:
 | AgentCommsView | `agentComms` |
 | CatalogBrowserView | `catalog` |
 | CatalogDetailView | `catalogDetail` |
-| SettingsView | `settings.{tab}` |
+| SettingsView (sidebar) | `settings.tab.*` |
+| SettingsView (appearance tab) | `settings.appearance.*` |
+| SettingsView (voice tab) | `settings.voice.*` |
+| SettingsView (shortcuts tab) | `settings.quickActions.*` |
+| SettingsView (models tab) | `settings.models.*` |
+| SettingsView (agents/groups/skills/mcps/permissions tabs) | `settings.configuration.*` |
+| SettingsView (pairing tab) | `settings.pairing.*` |
+| SettingsView (advanced tab) | `settings.advanced.*` |
+| SettingsView (developer & labs tab) | `settings.devLabs.*` |
+| SettingsView (connectors tab) | `settings.connectors.*` |
 | MCPLibraryView | `mcpLibrary` |
 | MCPEditorView | `mcpEditor` |
 | MCPCatalogSheet | `mcpCatalogSheet` |

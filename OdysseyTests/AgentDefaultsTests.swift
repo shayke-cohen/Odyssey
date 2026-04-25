@@ -673,9 +673,11 @@ final class AgentDefaultsTests: XCTestCase {
         XCTAssertFalse(config.allowedTools.contains("ask_user"))
     }
 
-    func testConfigSyncMigratesBuiltInCoderMCPDefaultsWithoutClobberingExistingMCPs() throws {
+    func testConfigSyncMigratesBuiltInCoderMCPDefaultsWithoutClobberingExistingMCPs() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
+        // ConfigFileManager.configDirectory reads ODYSSEY_CONFIG_DIR, not ODYSSEY_DATA_DIR.
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
         try ConfigFileManager.createDirectoryStructure()
         try ConfigFileManager.writeMCP(
             MCPConfigDTO(
@@ -839,6 +841,9 @@ final class AgentDefaultsTests: XCTestCase {
             try? FileManager.default.removeItem(at: tempDir)
         }
 
+        // performFullSync() dispatches Task { @MainActor } — sleep lets it complete.
+        try await Task.sleep(nanoseconds: 500_000_000)
+
         let coderFile = try XCTUnwrap(
             ConfigFileManager.readAllAgents().first(where: { $0.slug == "coder" })?.dto
         )
@@ -885,7 +890,8 @@ final class AgentDefaultsTests: XCTestCase {
 
     func testEnsureBundleMCPsPresentCopiesMissingOctocodeConfig() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
         try ConfigFileManager.createDirectoryStructure()
 
         let argusTarget = tempDir.appendingPathComponent("config/mcps/argus.json")
@@ -958,7 +964,8 @@ final class AgentDefaultsTests: XCTestCase {
 
     func testConfigSyncRemovesRetiredGitHubMCPConfigOnStart() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
         try ConfigFileManager.createDirectoryStructure()
         let gitHubTarget = tempDir.appendingPathComponent("config/mcps/github.json")
         try ConfigFileManager.writeMCP(
@@ -994,7 +1001,8 @@ final class AgentDefaultsTests: XCTestCase {
 
     func testConfigSyncOverwritesStaleBuiltInAgentAndSkillWhenAskPolicyIsAccepted() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
         try ConfigFileManager.createDirectoryStructure()
         try seedStaleProductManagerBuiltIns()
 
@@ -1030,7 +1038,8 @@ final class AgentDefaultsTests: XCTestCase {
 
     func testConfigSyncOverwritesStaleBuiltInAgentAndSkillWhenPolicyIsYes() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
         try ConfigFileManager.createDirectoryStructure()
         try ConfigFileManager.writeAgent(
             AgentConfigDTO(
@@ -1099,7 +1108,8 @@ final class AgentDefaultsTests: XCTestCase {
 
     func testConfigSyncPreservesStaleBuiltInAgentAndSkillWhenAskPolicyIsDeclined() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
         try ConfigFileManager.createDirectoryStructure()
         try seedStaleProductManagerBuiltIns()
 
@@ -1131,7 +1141,8 @@ final class AgentDefaultsTests: XCTestCase {
 
     func testConfigSyncPreservesStaleBuiltInAgentAndSkillWhenPolicyIsNo() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        setenv("ODYSSEY_DATA_DIR", tempDir.path, 1)
+        setenv("ODYSSEY_CONFIG_DIR", tempDir.appendingPathComponent("config").path, 1)
+        defer { unsetenv("ODYSSEY_CONFIG_DIR") }
         try ConfigFileManager.createDirectoryStructure()
         try ConfigFileManager.writeAgent(
             AgentConfigDTO(

@@ -1,25 +1,45 @@
 import XCTest
 @testable import Odyssey
 
+/// Tests for ConfigSection — the successor to the removed WorkshopTab.
+/// ConfigSection drives the 3-pane navigator inside AgentsGroupsSettingsTab,
+/// SkillsMCPsSettingsTab, and PermissionsSettingsTab.
 final class WorkshopViewTests: XCTestCase {
 
-    func testWorkshopTabCases() {
-        let tabs = WorkshopTab.allCases
-        XCTAssertEqual(tabs.count, 5)
-        XCTAssertEqual(tabs.map(\.rawValue), ["Agents", "Groups", "Skills", "MCPs", "Permissions"])
+    func testConfigSectionCases() {
+        let sections = ConfigSection.allCases
+        XCTAssertEqual(sections.count, 6)
+        XCTAssertEqual(sections.map(\.rawValue),
+                       ["agents", "groups", "skills", "mcps", "templates", "permissions"])
     }
 
-    func testWorkshopTabIcons() {
-        XCTAssertEqual(WorkshopTab.agents.icon, "cpu")
-        XCTAssertEqual(WorkshopTab.groups.icon, "person.3")
-        XCTAssertEqual(WorkshopTab.skills.icon, "book")
-        XCTAssertEqual(WorkshopTab.mcps.icon, "server.rack")
-        XCTAssertEqual(WorkshopTab.permissions.icon, "lock.shield")
+    func testConfigSectionIcons() {
+        XCTAssertEqual(ConfigSection.agents.icon, "person.crop.circle")
+        XCTAssertEqual(ConfigSection.groups.icon, "person.2")
+        XCTAssertEqual(ConfigSection.skills.icon, "bolt")
+        XCTAssertEqual(ConfigSection.mcps.icon, "hammer")
+        XCTAssertEqual(ConfigSection.templates.icon, "text.document")
+        XCTAssertEqual(ConfigSection.permissions.icon, "lock.shield")
     }
 
-    func testWorkshopTabIdentifiable() {
-        for tab in WorkshopTab.allCases {
-            XCTAssertEqual(tab.id, tab.rawValue)
+    func testConfigSectionIdentifiable() {
+        for section in ConfigSection.allCases {
+            XCTAssertEqual(section.id, section.rawValue)
         }
+    }
+
+    func testConfigSectionTitles() {
+        XCTAssertEqual(ConfigSection.agents.title, "Agents")
+        XCTAssertEqual(ConfigSection.groups.title, "Groups")
+        XCTAssertEqual(ConfigSection.skills.title, "Skills")
+        XCTAssertEqual(ConfigSection.mcps.title, "MCPs")
+        XCTAssertEqual(ConfigSection.templates.title, "Templates")
+        XCTAssertEqual(ConfigSection.permissions.title, "Permissions")
+    }
+
+    func testConfigSection_noVoiceCase() {
+        let allIds = ConfigSection.allCases.map(\.id)
+        XCTAssertFalse(allIds.contains("voice"),
+                       "ConfigSection.voice must not exist — Voice is a top-level SettingsSection")
     }
 }

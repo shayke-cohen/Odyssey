@@ -4,20 +4,18 @@ import XCTest
 final class SidebarBottomBarTests: XCTestCase {
 
     func testAllCasesCount() {
-        XCTAssertEqual(SidebarBottomBarItem.allCases.count, 5)
+        XCTAssertEqual(SidebarBottomBarItem.allCases.count, 4)
     }
 
     func testCaseOrder() {
         let cases = SidebarBottomBarItem.allCases
-        XCTAssertEqual(cases[0], .workshop)
-        XCTAssertEqual(cases[1], .schedules)
-        XCTAssertEqual(cases[2], .agents)
-        XCTAssertEqual(cases[3], .autoAssemble)
-        XCTAssertEqual(cases[4], .newSession)
+        XCTAssertEqual(cases[0], .schedules)
+        XCTAssertEqual(cases[1], .agents)
+        XCTAssertEqual(cases[2], .autoAssemble)
+        XCTAssertEqual(cases[3], .newSession)
     }
 
     func testRawValues() {
-        XCTAssertEqual(SidebarBottomBarItem.workshop.rawValue, "Workshop")
         XCTAssertEqual(SidebarBottomBarItem.schedules.rawValue, "Schedules")
         XCTAssertEqual(SidebarBottomBarItem.agents.rawValue, "Agents")
         XCTAssertEqual(SidebarBottomBarItem.autoAssemble.rawValue, "Auto-assemble")
@@ -25,7 +23,6 @@ final class SidebarBottomBarTests: XCTestCase {
     }
 
     func testIcons() {
-        XCTAssertEqual(SidebarBottomBarItem.workshop.icon, "wrench.and.screwdriver")
         XCTAssertEqual(SidebarBottomBarItem.schedules.icon, "clock.badge")
         XCTAssertEqual(SidebarBottomBarItem.agents.icon, "cpu")
         XCTAssertEqual(SidebarBottomBarItem.autoAssemble.icon, "wand.and.stars")
@@ -33,7 +30,6 @@ final class SidebarBottomBarTests: XCTestCase {
     }
 
     func testHelpText() {
-        XCTAssertEqual(SidebarBottomBarItem.workshop.helpText, "Entity workshop (⌘⇧W)")
         XCTAssertEqual(SidebarBottomBarItem.schedules.helpText, "Scheduled missions (⌘⇧S)")
         XCTAssertEqual(SidebarBottomBarItem.agents.helpText, "Agent library")
         XCTAssertEqual(SidebarBottomBarItem.autoAssemble.helpText, "Auto-assemble team")
@@ -41,7 +37,6 @@ final class SidebarBottomBarTests: XCTestCase {
     }
 
     func testXrayIds() {
-        XCTAssertEqual(SidebarBottomBarItem.workshop.xrayId, "sidebar.workshopButton")
         XCTAssertEqual(SidebarBottomBarItem.schedules.xrayId, "sidebar.schedulesButton")
         XCTAssertEqual(SidebarBottomBarItem.agents.xrayId, "sidebar.agentsButton")
         XCTAssertEqual(SidebarBottomBarItem.autoAssemble.xrayId, "sidebar.autoAssembleButton")
@@ -59,12 +54,9 @@ final class SidebarBottomBarTests: XCTestCase {
         XCTAssertEqual(Set(ids).count, ids.count, "xrayIds must be unique")
     }
 
-    // MARK: - Adaptive label behavior
-
-    func testHasTextLabel_threeItemsHaveText() {
+    func testHasTextLabel_twoItemsHaveText() {
         let withText = SidebarBottomBarItem.allCases.filter(\.hasTextLabel)
-        XCTAssertEqual(withText.count, 3)
-        XCTAssertTrue(withText.contains(.workshop))
+        XCTAssertEqual(withText.count, 2)
         XCTAssertTrue(withText.contains(.schedules))
         XCTAssertTrue(withText.contains(.agents))
     }
