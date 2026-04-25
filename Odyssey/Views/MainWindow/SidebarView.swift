@@ -260,6 +260,7 @@ struct SidebarView: View {
     private var ghIssues: [Conversation]
     @State private var expandedAgentIds: Set<UUID> = []
     @State private var expandedGroupIds: Set<UUID> = []
+    @State private var expandedScheduleIds: Set<UUID> = []
     @State private var expandedArchivedAgentIds: Set<UUID> = []
     @State private var expandedArchivedGroupIds: Set<UUID> = []
     @State private var showingAgentScheduleEditor = false
@@ -1737,8 +1738,23 @@ struct SidebarView: View {
         Section {
             if isSchedulesSectionExpanded {
                 ForEach(schedules) { schedule in
-                    globalScheduleRow(schedule)
-                    scheduleRunRows(schedule)
+                    let runs = allScheduleRuns.filter { $0.scheduleId == schedule.id }
+                    let isExpanded = Binding<Bool>(
+                        get: { expandedScheduleIds.contains(schedule.id) },
+                        set: { newVal in
+                            if newVal { expandedScheduleIds.insert(schedule.id) }
+                            else { expandedScheduleIds.remove(schedule.id) }
+                        }
+                    )
+                    if runs.isEmpty {
+                        globalScheduleRowLabel(schedule)
+                    } else {
+                        DisclosureGroup(isExpanded: isExpanded) {
+                            scheduleRunRows(schedule)
+                        } label: {
+                            globalScheduleRowLabel(schedule)
+                        }
+                    }
                 }
             }
         } header: {
@@ -1928,35 +1944,30 @@ struct SidebarView: View {
     }
 
     @ViewBuilder
-    private func globalScheduleRow(_ schedule: ScheduledMission) -> some View {
-        Button {
-            openGlobalScheduleEditor(schedule)
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "clock")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 14)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(schedule.name)
-                        .font(.callout)
-                        .lineLimit(1)
-                    Text(schedule.isEnabled
-                         ? (schedule.nextRunAt?.formatted(date: .omitted, time: .shortened) ?? "Not scheduled")
-                         : "Disabled")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                Spacer(minLength: 4)
-                if schedule.isEnabled {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
-                }
+    private func globalScheduleRowLabel(_ schedule: ScheduledMission) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "clock")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 14)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(schedule.name)
+                    .font(.callout)
+                    .lineLimit(1)
+                Text(schedule.isEnabled
+                     ? (schedule.nextRunAt?.formatted(date: .omitted, time: .shortened) ?? "Not scheduled")
+                     : "Disabled")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
-            .padding(.leading, 18)
+            Spacer(minLength: 4)
+            if schedule.isEnabled {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 6, height: 6)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.leading, 18)
         .stableXrayId("sidebar.globalScheduleRow.\(schedule.id.uuidString)")
         .contextMenu {
             Button { openGlobalScheduleEditor(schedule) } label: {
@@ -1997,7 +2008,7 @@ struct SidebarView: View {
     @ViewBuilder
     private func scheduleRunRows(_ schedule: ScheduledMission) -> some View {
         let runs = allScheduleRuns.filter { $0.scheduleId == schedule.id }.prefix(5)
-        ForEach(Array(runs)) { run in
+        ForEach(runs.map { $0 }) { run in
             let hasConvo = run.conversationId != nil
             Button {
                 if let convoId = run.conversationId {

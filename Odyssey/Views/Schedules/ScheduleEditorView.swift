@@ -57,6 +57,20 @@ struct ScheduleEditorView: View {
         .onAppear {
             draft = initialDraft
         }
+        .onChange(of: draft.targetAgentId) { _, newId in
+            guard draft.projectDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  let agentId = newId,
+                  let dir = agents.first(where: { $0.id == agentId })?.defaultWorkingDirectory,
+                  !dir.isEmpty else { return }
+            draft.projectDirectory = dir
+        }
+        .onChange(of: draft.targetGroupId) { _, newId in
+            guard draft.projectDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  let groupId = newId,
+                  let dir = groups.first(where: { $0.id == groupId })?.defaultWorkingDirectory,
+                  !dir.isEmpty else { return }
+            draft.projectDirectory = dir
+        }
     }
 
     private var header: some View {
