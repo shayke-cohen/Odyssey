@@ -125,7 +125,7 @@ struct MainWindowView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 600)
-        .background(WindowTitleSetter(projectName: windowState.projectName, chatTitle: windowState.chatTitle))
+        .background(WindowTitleSetter(projectName: windowState.projectName, chatTitle: windowState.chatTitle, isDefaultProject: windowState.isDefaultProject))
         .toolbar {
             if ws.activeRoute != .settings {
                 ToolbarItem(placement: .status) {
@@ -624,11 +624,11 @@ private struct SplitViewConfigurator: NSViewRepresentable {
 private struct WindowTitleSetter: NSViewRepresentable {
     let projectName: String
     let chatTitle: String?
+    var isDefaultProject: Bool = false
 
     private var computedTitle: String {
         guard let name = chatTitle, !name.isEmpty else { return projectName }
-        let isDefault = projectName == "Playground" || projectName == "No Project"
-        return isDefault ? name : "\(projectName) / \(name)"
+        return isDefaultProject ? name : "\(projectName) / \(name)"
     }
 
     func makeNSView(context: Context) -> NSView {

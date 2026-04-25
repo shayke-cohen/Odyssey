@@ -446,8 +446,15 @@ private struct ProjectWindowContent: View {
             windowState = ws
 
             // If an explicit directory was provided (CLI arg), open it straight away.
+            // Otherwise, if there's a launch intent without a working directory, execute it directly.
             if let dir = effectiveDirectory {
                 initializeWindow(projectDirectory: dir)
+            } else if let intent = launchIntent {
+                let ctx = modelContainer.mainContext
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(800))
+                    appState.executeLaunchIntent(intent, modelContext: ctx, windowState: ws)
+                }
             }
         }
         .onOpenURL { url in

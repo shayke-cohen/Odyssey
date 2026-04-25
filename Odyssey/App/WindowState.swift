@@ -263,7 +263,7 @@ final class WindowState {
     var chatTitle: String? = nil
 
     var isDefaultProject: Bool {
-        projectName == "Playground" || projectName == "No Project"
+        selectedProjectId == nil
     }
     /// Fire-and-forget signal: SidebarView observes this via onChange, expands the owning
     /// agent/group tree, then nils it out. Note: if the same UUID is set twice in a row
