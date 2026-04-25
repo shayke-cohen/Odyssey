@@ -1451,11 +1451,29 @@ private struct ModelsSettingsTab: View {
                     downloadProgressSummary(installProgress)
                 } else if let smokeTestResult = state.smokeTestResults[descriptor.modelIdentifier] {
                     smokeTestResultView(smokeTestResult)
-                } else {
-                    Text(descriptor.isInstalled ? "Available in the managed library." : "Available to download.")
+                } else if descriptor.isInstalled {
+                    Text("Available in the managed library.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    Button(state.deletingModelId == descriptor.id ? "Deleting…" : "Delete") {
+                        if let installedModel = installedModelLookup[descriptor.modelIdentifier] {
+                            state.deleteConfirmationModel = installedModel
+                        }
+                    }
+                    .disabled(state.deletingModelId != nil)
+                    .foregroundStyle(.red)
+                    .xrayId("settings.models.deleteInstalledInline.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
+                } else {
+                    Text("Available to download.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(state.isInstalling(modelIdentifier: descriptor.modelIdentifier) ? "Downloading…" : "Download") {
+                        installManagedModel(descriptor.modelIdentifier)
+                    }
+                    .disabled(state.isInstalling(modelIdentifier: descriptor.modelIdentifier))
+                    .xrayId("settings.models.downloadPresetInline.\(descriptor.modelIdentifier.replacingOccurrences(of: "/", with: "-"))")
                 }
             }
             .frame(width: widths.status, alignment: .leading)
