@@ -1967,7 +1967,6 @@ struct SidebarView: View {
                     .frame(width: 6, height: 6)
             }
         }
-        .padding(.leading, 18)
         .stableXrayId("sidebar.globalScheduleRow.\(schedule.id.uuidString)")
         .contextMenu {
             Button { openGlobalScheduleEditor(schedule) } label: {
@@ -2032,7 +2031,7 @@ struct SidebarView: View {
                     }
                     Spacer(minLength: 4)
                 }
-                .padding(.leading, 32)
+                .padding(.leading, 18)
                 .opacity(hasConvo ? 1.0 : 0.6)
             }
             .buttonStyle(.plain)
