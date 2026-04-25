@@ -1873,11 +1873,12 @@ struct SidebarView: View {
             }
             .disabled(conv.githubIssueUrl == nil)
 
-            // 2. Run Now
+            // 2. Run / Resume / Run Again depending on session state
+            let runLabel: String = isPaused ? "Resume" : (session?.status == .completed ? "Run Again" : "Run Now")
             Button {
                 appState.ghIssueRunNow(conv)
             } label: {
-                Label("Run Now", systemImage: "play.fill")
+                Label(runLabel, systemImage: isPaused ? "play.circle" : "play.fill")
             }
             .disabled(isRunning)
 
