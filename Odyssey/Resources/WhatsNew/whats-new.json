@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.5.13",
+    "date": "2026-04-25",
+    "highlights": [
+      "GitHub Inbox — triage and resolve GitHub issues with AI agents directly from the sidebar",
+      "Nostr P2P DM routing — connect to other Odyssey instances over the decentralized Nostr network",
+      "Schedule run history — foldable recent runs inline under each schedule, with project-aware working dir",
+      "Gemma 4 model family — 4B, 26B MoE, and 31B MLX variants with inline Download/Delete controls",
+      "Sidebar and settings polish — cleaner headers, simplified thread rows, B1 settings redesign"
+    ]
+  },
+  {
     "version": "0.5.12",
     "date": "2026-04-22",
     "highlights": [

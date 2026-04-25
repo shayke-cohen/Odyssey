@@ -233,6 +233,7 @@
 		BD045AD0591CB0421BDB3530 /* Participant.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABC674EDD3F47999BEA9FAE /* Participant.swift */; };
 		BD6B9E6A00EBCE70148DBA29 /* OdysseyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9B339B45BF1075DFDFD04C47 /* OdysseyCore */; };
 		BD79AC381C559F8B01DFC0CF /* AutoAssembleSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E8D12553E2B55D63FE8835A /* AutoAssembleSheet.swift */; };
+		BD85C2491DB0A1911A34D271 /* SettingsTabsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1BDFED4EA57541D23A830A /* SettingsTabsTests.swift */; };
 		BF0FC6E56BB42381E1BE02C4 /* FileExplorerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3230CC7D10A04D7F16841F79 /* FileExplorerView.swift */; };
 		BF5AA126482FAE86C2D68DDD /* SkillCreationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B0E22E44DF18FDEFEE6E36C /* SkillCreationSheet.swift */; };
 		BFD29E858CE515DD4400DC7D /* TerminalOutputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F25E50586F2AB1558EC46B /* TerminalOutputView.swift */; };
@@ -364,6 +365,7 @@
 		09BBCCE77E17BBEBF3F42885 /* DeveloperLabsSettingsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperLabsSettingsTab.swift; sourceTree = "<group>"; };
 		0A35177758E37FD646639BFB /* AgentActivityBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentActivityBar.swift; sourceTree = "<group>"; };
 		0D8E75514A5D69D0835F8862 /* VoiceModeOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceModeOverlay.swift; sourceTree = "<group>"; };
+		0F1BDFED4EA57541D23A830A /* SettingsTabsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTabsTests.swift; sourceTree = "<group>"; };
 		0F1EAC857ED65AD9DEEC35C5 /* DelegationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelegationTests.swift; sourceTree = "<group>"; };
 		10259A67B64D5CC275791AD4 /* AppStateIdleDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateIdleDetectionTests.swift; sourceTree = "<group>"; };
 		10E66DBCD1DC9CCFE067172E /* ScheduleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleDetailView.swift; sourceTree = "<group>"; };
@@ -1277,6 +1279,7 @@
 				7A3E6F09CE62E2D34C3D9DFC /* ScheduledMissionSupportTests.swift */,
 				3C4A253344C11D2521E88D0C /* ScheduleEngineTests.swift */,
 				50772C4077BF40542C2672AF /* ScheduleRunCoordinatorTests.swift */,
+				0F1BDFED4EA57541D23A830A /* SettingsTabsTests.swift */,
 				6CBE6D508B750D68D5F8FF29 /* SharedRoomLocalBackendTests.swift */,
 				DA0BC3E6DC20B8963BCDD635 /* SharedRoomModelTests.swift */,
 				FC342BE05684AEC297BF0A8D /* SidebarBottomBarTests.swift */,
@@ -1613,6 +1616,7 @@
 				4D46A4C992284F9E5D18516A /* ScheduleEngineTests.swift in Sources */,
 				C5263057246CFD534E574D67 /* ScheduleRunCoordinatorTests.swift in Sources */,
 				A4103512FAE40A9117941D32 /* ScheduledMissionSupportTests.swift in Sources */,
+				BD85C2491DB0A1911A34D271 /* SettingsTabsTests.swift in Sources */,
 				A284BB4C3D93501475943CB2 /* SharedRoomLocalBackendTests.swift in Sources */,
 				34715526FCCF55256574533E /* SharedRoomModelTests.swift in Sources */,
 				4EC445FDAB7E78871383215B /* SidebarBottomBarTests.swift in Sources */,
@@ -2105,7 +2109,7 @@
 				CODE_SIGN_ENTITLEMENTS = Odyssey/Resources/Odyssey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = S3GLW74Y8N;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -2117,7 +2121,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.5.12;
+				MARKETING_VERSION = 0.5.13;
 				PRODUCT_BUNDLE_IDENTIFIER = com.shaycohen.odyssey;
 				PRODUCT_NAME = Odyssey;
 				SDKROOT = macosx;
@@ -2172,7 +2176,7 @@
 				CODE_SIGN_ENTITLEMENTS = Odyssey/Resources/Odyssey.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = S3GLW74Y8N;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -2184,7 +2188,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.5.12;
+				MARKETING_VERSION = 0.5.13;
 				PRODUCT_BUNDLE_IDENTIFIER = com.shaycohen.odyssey;
 				PRODUCT_NAME = Odyssey;
 				SDKROOT = macosx;
