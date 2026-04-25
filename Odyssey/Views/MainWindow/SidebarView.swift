@@ -808,16 +808,26 @@ struct SidebarView: View {
                     isProjectsSectionExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: isProjectsSectionExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text("Projects")
-                        .font(.headline.weight(.semibold))
-                }
+                Text("Projects")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             Spacer()
+            if isProjectsSectionExpanded {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isProjectsSectionExpanded = false
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Collapse projects")
+                .xrayId("sidebar.projectsHeader.collapse")
+            }
             Button {
                 showingSortPopover.toggle()
             } label: {
@@ -1590,13 +1600,9 @@ struct SidebarView: View {
                         isGroupsSectionExpanded.toggle()
                     }
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: isGroupsSectionExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text("Groups")
-                            .font(.headline.weight(.semibold))
-                    }
+                    Text("Groups")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 Spacer()
@@ -1664,13 +1670,9 @@ struct SidebarView: View {
                         isPeersSectionExpanded.toggle()
                     }
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: isPeersSectionExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text("Peers")
-                            .font(.headline.weight(.semibold))
-                    }
+                    Text("Peers")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 Spacer()
@@ -1715,13 +1717,9 @@ struct SidebarView: View {
                     isAgentsSectionExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: isAgentsSectionExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text("Agents")
-                        .font(.headline.weight(.semibold))
-                }
+                Text("Agents")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             Spacer()
@@ -1755,13 +1753,9 @@ struct SidebarView: View {
                         isSchedulesSectionExpanded.toggle()
                     }
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: isSchedulesSectionExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text("Schedules")
-                            .font(.headline.weight(.semibold))
-                    }
+                    Text("Schedules")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
@@ -2101,13 +2095,9 @@ struct SidebarView: View {
                         isPinnedSectionExpanded.toggle()
                     }
                 } label: {
-                    HStack(spacing: 3) {
-                        Text("Pinned")
-                            .font(.headline.weight(.semibold))
-                        Image(systemName: isPinnedSectionExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("Pinned")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("sidebar.pinnedSection.header")
