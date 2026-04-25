@@ -805,16 +805,11 @@ struct SidebarView: View {
 
     private var projectsHeader: some View {
         HStack(spacing: 4) {
-            Button {
+            SectionTitleButton(title: "Projects") {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isProjectsSectionExpanded.toggle()
                 }
-            } label: {
-                Text("Projects")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
             Spacer()
             if isProjectsSectionExpanded {
                 Button {
@@ -1588,16 +1583,11 @@ struct SidebarView: View {
             }
         } header: {
             HStack {
-                Button {
+                SectionTitleButton(title: "Groups") {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isGroupsSectionExpanded.toggle()
                     }
-                } label: {
-                    Text("Groups")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
                 Spacer()
                 Button {
                     showGroupCreation = true
@@ -1659,16 +1649,11 @@ struct SidebarView: View {
             }
         } header: {
             HStack {
-                Button {
+                SectionTitleButton(title: "Peers") {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isPeersSectionExpanded.toggle()
                     }
-                } label: {
-                    Text("Peers")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
                 Spacer()
             }
             .xrayId("sidebar.peersHeader")
@@ -1706,16 +1691,11 @@ struct SidebarView: View {
 
     private var agentsSectionHeader: some View {
         HStack {
-            Button {
+            SectionTitleButton(title: "Agents") {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isAgentsSectionExpanded.toggle()
                 }
-            } label: {
-                Text("Agents")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
             Spacer()
             Button {
                 showAgentCreation = true
@@ -1759,16 +1739,11 @@ struct SidebarView: View {
             }
         } header: {
             HStack {
-                Button {
+                SectionTitleButton(title: "Schedules") {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isSchedulesSectionExpanded.toggle()
                     }
-                } label: {
-                    Text("Schedules")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
                 .contextMenu {
                     Button { createNewGlobalSchedule() } label: {
                         Label("New Schedule", systemImage: "plus")
@@ -1807,27 +1782,11 @@ struct SidebarView: View {
             }
         } header: {
             HStack {
-                Button {
+                SectionTitleButton(title: "GH Inbox", badge: ghUnhandledCount) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isGHInboxExpanded.toggle()
                     }
-                } label: {
-                    HStack(spacing: 5) {
-                        Text("GH Inbox")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        if ghUnhandledCount > 0 {
-                            Text("\(ghUnhandledCount)")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1)
-                                .background(Color.red)
-                                .clipShape(Capsule())
-                        }
-                    }
                 }
-                .buttonStyle(.plain)
                 .accessibilityIdentifier("sidebar.ghInboxSection.header")
                 Spacer()
                 Button {
@@ -2144,16 +2103,11 @@ struct SidebarView: View {
                     }
                 }
             } header: {
-                Button {
+                SectionTitleButton(title: "Pinned") {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isPinnedSectionExpanded.toggle()
                     }
-                } label: {
-                    Text("Pinned")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
                 .accessibilityIdentifier("sidebar.pinnedSection.header")
             }
             .stableXrayId("sidebar.pinnedSection")
@@ -3066,6 +3020,41 @@ private struct ActiveSessionObserver: View {
         }
         if agentIds != activeAgentIds { activeAgentIds = agentIds }
         if groupIds != activeGroupIds { activeGroupIds = groupIds }
+    }
+}
+
+private struct SectionTitleButton: View {
+    let title: String
+    var badge: Int = 0
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                if isHovered {
+                    Image(systemName: "folder.open")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                }
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                if badge > 0 {
+                    Text("\(badge)")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Color.red)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
     }
 }
 
