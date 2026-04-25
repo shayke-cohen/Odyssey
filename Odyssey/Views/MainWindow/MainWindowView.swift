@@ -270,13 +270,9 @@ struct MainWindowView: View {
                     .environment(walkthroughManager)
             }
         }
-        .onChange(of: fteShown) { _, shown in
-            if shown, !walkthroughShown {
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(600))
-                    walkthroughManager.start()
-                }
-            }
+        .onChange(of: fteShown) { _, _ in
+            // walkthrough disabled
+            _ = walkthroughShown
         }
     }
 
