@@ -27,17 +27,31 @@ export class MessageStore {
   }
 
   drain(sessionId: string, since?: string): PeerMessage[] {
-    const inbox = this.inboxes.get(sessionId) ?? [];
+    const inbox = this.inboxes.get(sessionId);
+    if (!inbox || inbox.length === 0) return [];
+
+    let messages: PeerMessage[];
     if (!since) {
-      const messages = inbox.filter((m) => !m.read);
-      for (const m of messages) m.read = true;
-      return messages;
+      messages = inbox.filter((m) => !m.read);
+    } else {
+      const sinceTime = new Date(since).getTime();
+      messages = inbox.filter(
+        (m) => !m.read && new Date(m.timestamp).getTime() > sinceTime,
+      );
     }
-    const sinceTime = new Date(since).getTime();
-    const messages = inbox.filter(
-      (m) => !m.read && new Date(m.timestamp).getTime() > sinceTime,
-    );
     for (const m of messages) m.read = true;
+
+    // Compact: drop everything that's now read. Without this the inbox grew
+    // unboundedly across long autonomous sessions and every drain/peek
+    // walked the full history (O(n²) over a session). Unread messages that
+    // were skipped by the `since` filter stay so a later unfiltered drain
+    // can still pick them up.
+    const remaining = inbox.filter((m) => !m.read);
+    if (remaining.length === 0) {
+      this.inboxes.delete(sessionId);
+    } else {
+      this.inboxes.set(sessionId, remaining);
+    }
     return messages;
   }
 

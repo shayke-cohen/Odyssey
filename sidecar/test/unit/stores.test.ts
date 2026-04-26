@@ -322,6 +322,46 @@ describe("MessageStore", () => {
     expect(store.peek("inbox-a")).toBe(0);
   });
 
+  // Inbox was append-only with read messages never removed. Long-running
+  // autonomous group sessions accumulated thousands of read messages per
+  // inbox; every drain/peek then walked the full history.
+  // Regression test: 1000 push/drain cycles must stay near-linear, not
+  // quadratic-from-walking-unbounded-history.
+  test("drain compacts read messages so push/drain cycles stay linear", () => {
+    // Without compaction this is O(n²): cycle i walks all i previously-read
+    // messages to find the single unread one. 50_000 cycles × ~half-history
+    // average ≈ 1.25B ops → seconds. With compaction the inbox stays at
+    // size 1, so cycles cost is linear in n.
+    const cycles = 50_000;
+    const start = Date.now();
+    for (let i = 0; i < cycles; i++) {
+      store.push("inbox-a", makeMsg({ to: "inbox-a", text: `m${i}` }));
+      const drained = store.drain("inbox-a");
+      expect(drained).toHaveLength(1);
+    }
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(1500);
+  });
+
+  test("drain with since filter keeps unread skipped messages alive", () => {
+    const oldTime = new Date(Date.now() - 60_000).toISOString();
+    const newTime = new Date().toISOString();
+    store.push("inbox-a", makeMsg({ to: "inbox-a", text: "old", timestamp: oldTime }));
+    store.push("inbox-a", makeMsg({ to: "inbox-a", text: "new", timestamp: newTime }));
+
+    // Filtered drain only returns the new message.
+    const cutoff = new Date(Date.now() - 30_000).toISOString();
+    const filtered = store.drain("inbox-a", cutoff);
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].text).toBe("new");
+
+    // The old message should still be retrievable via an unfiltered drain
+    // (compaction must not delete unread messages, only read ones).
+    const remainder = store.drain("inbox-a");
+    expect(remainder).toHaveLength(1);
+    expect(remainder[0].text).toBe("old");
+  });
+
   test("pushToAll broadcasts to all except sender", () => {
     const msg = {
       id: "broadcast-1",
