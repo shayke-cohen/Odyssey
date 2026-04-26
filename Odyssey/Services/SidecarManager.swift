@@ -182,6 +182,9 @@ final class SidecarManager: NSObject, ObservableObject, Sendable {
         process.environment?["ODYSSEY_LOG_LEVEL"] = logLevel
         process.environment?["CLAUDESTUDIO_LOG_LEVEL"] = logLevel
 
+        // Watchdog: lets the sidecar exit cleanly if this app is force-quit / crashes.
+        process.environment?["ODYSSEY_PARENT_PID"] = "\(ProcessInfo.processInfo.processIdentifier)"
+
         // Inject WS bearer token
         if let token = try? IdentityManager.shared.wsToken(for: config.instanceName) {
             process.environment?["ODYSSEY_WS_TOKEN"] = token

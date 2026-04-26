@@ -7,18 +7,18 @@ struct MarkdownContent: View {
     var onOpenLocalReference: ((String) -> Void)? = nil
     @AppStorage(AppSettings.renderAdmonitionsKey, store: AppSettings.store) private var renderAdmonitions = true
     @Environment(\.appTextScale) private var appTextScale
+    @State private var cachedRenderedText: String? = nil
     @State private var cachedAdmonitionBlocks: [AdmonitionParser.Block]? = nil
 
-    private var renderedText: String {
-        LocalFileReferenceLinkifier.linkify(text)
-    }
-
     var body: some View {
+        // Fall back to raw text only for the first render before .onAppear fires;
+        // afterwards we always render the cached, linkified text.
+        let displayText = cachedRenderedText ?? text
         Group {
             if renderAdmonitions, let blocks = cachedAdmonitionBlocks, !blocks.isEmpty {
                 admonitionAwareContent(blocks: blocks)
             } else {
-                Markdown(renderedText)
+                Markdown(displayText)
                     .markdownTheme(.odyssey(scale: appTextScale))
                     .textSelection(.enabled)
                     .xrayId("markdownContent")
@@ -27,14 +27,16 @@ struct MarkdownContent: View {
         .environment(\.openURL, OpenURLAction { url in
             handleOpenURL(url)
         })
-        .onAppear { recomputeBlocks() }
-        .onChange(of: text) { _, _ in recomputeBlocks() }
-        .onChange(of: renderAdmonitions) { _, _ in recomputeBlocks() }
+        .onAppear { recompute() }
+        .onChange(of: text) { _, _ in recompute() }
+        .onChange(of: renderAdmonitions) { _, _ in recompute() }
     }
 
-    private func recomputeBlocks() {
+    private func recompute() {
+        let rendered = LocalFileReferenceLinkifier.linkify(text)
+        cachedRenderedText = rendered
         cachedAdmonitionBlocks = renderAdmonitions
-            ? AdmonitionParser.extractBlocks(from: renderedText)
+            ? AdmonitionParser.extractBlocks(from: rendered)
             : nil
     }
 

@@ -115,6 +115,52 @@ final class AppStateStreamingTests: XCTestCase {
         }
     }
 
+    // MARK: - Fix 3: thinkingText accumulation (parity with streamingText)
+
+    func testThinkingText_accumulatesTokensCorrectly() {
+        let sid = makeSessionId()
+        let tokens = ["I'm ", "thinking ", "about ", "this..."]
+
+        for token in tokens {
+            appState.handleEventForTesting(.streamThinking(sessionId: sid, text: token))
+        }
+
+        XCTAssertEqual(appState.thinkingText[sid], "I'm thinking about this...")
+    }
+
+    func testThinkingText_independentSessions_doNotBleed() {
+        let sid1 = makeSessionId()
+        let sid2 = makeSessionId()
+
+        appState.handleEventForTesting(.streamThinking(sessionId: sid1, text: "thought1"))
+        appState.handleEventForTesting(.streamThinking(sessionId: sid2, text: "thought2"))
+
+        XCTAssertEqual(appState.thinkingText[sid1], "thought1")
+        XCTAssertEqual(appState.thinkingText[sid2], "thought2")
+    }
+
+    /// Regression guard for O(n²) string accumulation. With the buggy
+    /// `current + text` pattern, accumulating ~20k thinking tokens copies
+    /// ~200M bytes and easily exceeds 500ms. With in-place `append` it is
+    /// linear and completes in well under 100ms.
+    func testThinkingText_largeAccumulation_isLinear() {
+        let sid = makeSessionId()
+        let tokenCount = 20_000
+
+        let start = ContinuousClock().now
+        for _ in 0..<tokenCount {
+            appState.handleEventForTesting(.streamThinking(sessionId: sid, text: "x"))
+        }
+        let elapsed = ContinuousClock().now - start
+
+        XCTAssertEqual(appState.thinkingText[sid]?.count, tokenCount)
+        XCTAssertLessThan(
+            elapsed,
+            .milliseconds(500),
+            "Accumulating \(tokenCount) thinking tokens took \(elapsed); >500ms suggests O(n²) string concat regression"
+        )
+    }
+
     // MARK: - Cleanup on result
 
     func testStreamingBuffer_clearedAfterSessionResult() {

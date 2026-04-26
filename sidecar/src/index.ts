@@ -19,6 +19,7 @@ import { WebhookManager } from "./webhook-manager.js";
 import { logger, setLogLevel } from "./logger.js";
 import { GHPoller } from "./gh-poller.js";
 import { GHRouter } from "./gh-router.js";
+import { startParentWatchdog } from "./utils/parent-watchdog.js";
 import type { ToolContext } from "./tools/tool-context.js";
 import type { AgentConfig, ApiContext, SidecarEvent } from "./types.js";
 
@@ -152,12 +153,34 @@ logger.info("sidecar", "Ready", {
   dataDir: DATA_DIR,
 });
 
+// Watchdog: when Swift app crashes/force-quits, exit so we don't orphan and
+// hold onto the WebSocket port. Activates only when ODYSSEY_PARENT_PID is set
+// by the launcher; standalone runs (tests, dev) skip the watchdog.
+const parentPidEnv = process.env.ODYSSEY_PARENT_PID;
+if (parentPidEnv) {
+  const parentPid = parseInt(parentPidEnv, 10);
+  if (!isNaN(parentPid) && parentPid > 0) {
+    startParentWatchdog({
+      parentPid,
+      onParentDead: () => {
+        logger.warn("sidecar", `Parent process ${parentPid} no longer exists; shutting down`);
+        try { blackboard.flushSync(); } catch { /* best-effort */ }
+        try { taskBoard.flushSync(); } catch { /* best-effort */ }
+        process.exit(0);
+      },
+    });
+    logger.info("sidecar", `Parent watchdog enabled (parent PID ${parentPid})`);
+  }
+}
+
 process.on("SIGINT", () => {
   logger.info("sidecar", "Shutting down (SIGINT)");
   ghPoller.stop();
   sseManager.close();
   wsServer.close();
   httpServer.close();
+  blackboard.flushSync();
+  taskBoard.flushSync();
   process.exit(0);
 });
 
@@ -166,6 +189,8 @@ process.on("SIGTERM", () => {
   sseManager.close();
   wsServer.close();
   httpServer.close();
+  blackboard.flushSync();
+  taskBoard.flushSync();
   process.exit(0);
 });
 

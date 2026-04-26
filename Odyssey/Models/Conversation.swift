@@ -144,10 +144,10 @@ final class Conversation {
     @Relationship(deleteRule: .nullify, inverse: \Session.conversations)
     var sessions: [Session]? = nil
 
-    @Relationship(deleteRule: .nullify, inverse: \Participant.conversation)
+    @Relationship(deleteRule: .cascade, inverse: \Participant.conversation)
     var participants: [Participant]? = nil
 
-    @Relationship(deleteRule: .nullify, inverse: \ConversationMessage.conversation)
+    @Relationship(deleteRule: .cascade, inverse: \ConversationMessage.conversation)
     var messages: [ConversationMessage]? = nil
 
     init(

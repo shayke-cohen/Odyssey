@@ -2,13 +2,18 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import type { TaskWire } from "../types.js";
+import { logger } from "../logger.js";
 
 type ChangeListener = (task: TaskWire) => void;
+
+const PERSIST_DEBOUNCE_MS = 50;
 
 export class TaskBoardStore {
   private tasks = new Map<string, TaskWire>();
   private listeners: ChangeListener[] = [];
   private persistPath: string;
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  private persistCalls = 0;
 
   constructor(scope?: string) {
     const baseDir = process.env.ODYSSEY_DATA_DIR ?? process.env.CLAUDESTUDIO_DATA_DIR ?? join(homedir(), ".odyssey");
@@ -39,7 +44,7 @@ export class TaskBoardStore {
       completedAt: task.completedAt,
     };
     this.tasks.set(entry.id, entry);
-    this.persistToDisk();
+    this.schedulePersist();
     this.notifyListeners(entry);
     return entry;
   }
@@ -71,7 +76,7 @@ export class TaskBoardStore {
     }
 
     this.tasks.set(taskId, updated);
-    this.persistToDisk();
+    this.schedulePersist();
     this.notifyListeners(updated);
     return updated;
   }
@@ -90,7 +95,7 @@ export class TaskBoardStore {
       startedAt: now,
     };
     this.tasks.set(taskId, claimed);
-    this.persistToDisk();
+    this.schedulePersist();
     this.notifyListeners(claimed);
     return claimed;
   }
@@ -120,6 +125,20 @@ export class TaskBoardStore {
     };
   }
 
+  /** Force any pending debounced persist to flush immediately. Call on shutdown. */
+  flushSync(): void {
+    if (this.persistTimer !== null) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+      this.persistNow();
+    }
+  }
+
+  /** For tests: count of actual disk-write attempts (debounced or flushed). */
+  get _persistCallCount(): number {
+    return this.persistCalls;
+  }
+
   private notifyListeners(task: TaskWire): void {
     for (const listener of this.listeners) {
       listener(task);
@@ -134,20 +153,29 @@ export class TaskBoardStore {
           this.tasks.set(key, task);
         }
       }
-    } catch {
-      // Start fresh if file is corrupted
+    } catch (err) {
+      logger.error("taskboard", `Failed to load ${this.persistPath}: ${err}. Starting empty.`);
     }
   }
 
-  private persistToDisk(): void {
+  private schedulePersist(): void {
+    if (this.persistTimer !== null) return;
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      this.persistNow();
+    }, PERSIST_DEBOUNCE_MS);
+  }
+
+  private persistNow(): void {
+    this.persistCalls++;
     try {
       const obj: Record<string, TaskWire> = {};
       for (const [key, task] of this.tasks) {
         obj[key] = task;
       }
       writeFileSync(this.persistPath, JSON.stringify(obj, null, 2));
-    } catch {
-      // Non-fatal
+    } catch (err) {
+      logger.error("taskboard", `Failed to persist ${this.persistPath}: ${err}`);
     }
   }
 }

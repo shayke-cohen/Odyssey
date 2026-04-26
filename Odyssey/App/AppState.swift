@@ -1295,9 +1295,21 @@ final class AppState {
         Task { await sidecarManager?.pushMessageAppend(conversationId: convId, message: msg) }
     }
 
+    /// If the previous event for this session was a turn completion (.result or .error),
+    /// the next streaming token starts a new turn — clear stale buffers so they don't
+    /// concatenate across turns.
+    private func resetStreamingBuffersIfNewTurn(sessionId: String) {
+        guard lastSessionEvent[sessionId] != nil else { return }
+        streamingText.removeValue(forKey: sessionId)
+        streamingTokens.removeValue(forKey: sessionId)
+        thinkingText.removeValue(forKey: sessionId)
+        lastSessionEvent.removeValue(forKey: sessionId)
+    }
+
     private func handleEvent(_ event: SidecarEvent) {
         switch event {
         case .streamToken(let sessionId, let text):
+            resetStreamingBuffersIfNewTurn(sessionId: sessionId)
             streamingTokens[sessionId, default: []].append(text)
             // Append directly instead of O(n) re-join on every token
             if streamingText[sessionId] != nil {
@@ -1321,8 +1333,12 @@ final class AppState {
             }
 
         case .streamThinking(let sessionId, let text):
-            let current = thinkingText[sessionId] ?? ""
-            thinkingText[sessionId] = current + text
+            resetStreamingBuffersIfNewTurn(sessionId: sessionId)
+            if thinkingText[sessionId] != nil {
+                thinkingText[sessionId]!.append(text)
+            } else {
+                thinkingText[sessionId] = text
+            }
             if let uuid = ensureActiveSessionInfo(sessionId: sessionId) {
                 activeSessions[uuid]?.isStreaming = true
             }

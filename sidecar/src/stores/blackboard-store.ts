@@ -1,14 +1,19 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import type { BlackboardEntry } from "../types.js";
+import { logger } from "../logger.js";
 
 type ChangeListener = (entry: BlackboardEntry) => void;
+
+const PERSIST_DEBOUNCE_MS = 50;
 
 export class BlackboardStore {
   private entries = new Map<string, BlackboardEntry>();
   private listeners: { pattern: string; callback: ChangeListener }[] = [];
   private persistPath: string;
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  private persistCalls = 0;
 
   constructor(scope?: string) {
     const baseDir = process.env.ODYSSEY_DATA_DIR ?? process.env.CLAUDESTUDIO_DATA_DIR ?? join(homedir(), ".odyssey");
@@ -30,7 +35,7 @@ export class BlackboardStore {
       updatedAt: now,
     };
     this.entries.set(key, entry);
-    this.persistToDisk();
+    this.schedulePersist();
     this.notifyListeners(entry);
     return entry;
   }
@@ -65,6 +70,20 @@ export class BlackboardStore {
     };
   }
 
+  /** Force any pending debounced persist to flush immediately. Call on shutdown. */
+  flushSync(): void {
+    if (this.persistTimer !== null) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+      this.persistNow();
+    }
+  }
+
+  /** For tests: count of actual disk-write attempts (debounced or flushed). */
+  get _persistCallCount(): number {
+    return this.persistCalls;
+  }
+
   private notifyListeners(entry: BlackboardEntry): void {
     for (const listener of this.listeners) {
       const regex = new RegExp(
@@ -77,27 +96,56 @@ export class BlackboardStore {
   }
 
   private loadFromDisk(): void {
+    if (!existsSync(this.persistPath)) return;
+    let raw: string;
     try {
-      if (existsSync(this.persistPath)) {
-        const data = JSON.parse(readFileSync(this.persistPath, "utf-8")) as Record<string, BlackboardEntry>;
-        for (const [key, entry] of Object.entries(data)) {
-          this.entries.set(key, entry);
-        }
+      raw = readFileSync(this.persistPath, "utf-8");
+    } catch (err) {
+      logger.error("blackboard", `Failed to read ${this.persistPath}: ${err}`);
+      return;
+    }
+    try {
+      const data = JSON.parse(raw) as Record<string, BlackboardEntry>;
+      for (const [key, entry] of Object.entries(data)) {
+        this.entries.set(key, entry);
       }
-    } catch {
-      // Start fresh if file is corrupted
+    } catch (err) {
+      // Corrupt JSON. Quarantine the file and continue empty so the operator
+      // can recover (instead of silently losing state on every restart).
+      const corruptPath = `${this.persistPath}.corrupt.${Date.now()}`;
+      try {
+        renameSync(this.persistPath, corruptPath);
+        logger.error(
+          "blackboard",
+          `Corrupt blackboard at ${this.persistPath}: ${err}. Quarantined to ${corruptPath}; starting empty.`,
+        );
+      } catch (renameErr) {
+        logger.error(
+          "blackboard",
+          `Corrupt blackboard at ${this.persistPath}: ${err}. Failed to quarantine: ${renameErr}`,
+        );
+      }
     }
   }
 
-  private persistToDisk(): void {
+  private schedulePersist(): void {
+    if (this.persistTimer !== null) return;
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      this.persistNow();
+    }, PERSIST_DEBOUNCE_MS);
+  }
+
+  private persistNow(): void {
+    this.persistCalls++;
     try {
       const obj: Record<string, BlackboardEntry> = {};
       for (const [key, entry] of this.entries) {
         obj[key] = entry;
       }
       writeFileSync(this.persistPath, JSON.stringify(obj, null, 2));
-    } catch {
-      // Non-fatal
+    } catch (err) {
+      logger.error("blackboard", `Failed to persist ${this.persistPath}: ${err}`);
     }
   }
 }

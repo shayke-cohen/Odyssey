@@ -108,6 +108,51 @@ describe("BlackboardStore", () => {
 
     expect(received).toEqual(["a"]);
   });
+
+  // ── Debounced disk persistence ──
+  // 100 rapid writes should coalesce into a small number of disk writes,
+  // not one per write.
+  test("rapid writes coalesce into a small number of disk persists", async () => {
+    for (let i = 0; i < 100; i++) {
+      bb.write(`k${i}`, `v${i}`, "agent");
+    }
+    bb.flushSync();
+
+    expect(bb._persistCallCount).toBeLessThanOrEqual(3);
+    expect(bb.keys()).toHaveLength(100);
+  });
+
+  test("flushSync writes the latest state to disk", async () => {
+    const scope = `flush-test-${Date.now()}-${Math.random()}`;
+    const bb1 = new BlackboardStore(scope);
+    bb1.write("important", "value", "agent");
+    bb1.flushSync();
+
+    // A new store with the same scope should read what bb1 just wrote.
+    const bb2 = new BlackboardStore(scope);
+    expect(bb2.read("important")?.value).toBe("value");
+  });
+
+  // ── Corrupt-file handling ──
+  test("loadFromDisk renames corrupt file and starts empty", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const os = await import("os");
+    const baseDir = process.env.ODYSSEY_DATA_DIR ?? path.join(os.homedir(), ".odyssey");
+    const dir = path.join(baseDir, "blackboard");
+    fs.mkdirSync(dir, { recursive: true });
+
+    const scope = `corrupt-test-${Date.now()}-${Math.random()}`;
+    const file = path.join(dir, `${scope}.json`);
+    fs.writeFileSync(file, "{this is not valid json");
+
+    const bb = new BlackboardStore(scope);
+    expect(bb.keys()).toHaveLength(0);
+
+    // The corrupt file should be quarantined alongside.
+    const siblings = fs.readdirSync(dir).filter((f) => f.startsWith(`${scope}.json.corrupt.`));
+    expect(siblings.length).toBeGreaterThanOrEqual(1);
+  });
 });
 
 // ─── SessionRegistry ────────────────────────────────────────────────
