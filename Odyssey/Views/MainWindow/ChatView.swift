@@ -294,12 +294,20 @@ struct ChatView: View {
     @FocusState private var topicFieldFocused: Bool
     @FocusState private var missionFieldFocused: Bool
 
-    // Unfiltered queries for chip display. Acceptable for typical catalog sizes (< a few hundred items).
-    // If performance becomes an issue, filter by agent.extraMCPServerIds at query time.
-    @Query private var allMCPs: [MCPServer]
-    @Query private var allGroups: [AgentGroup]
-    @Query private var allAgents: [Agent]
-    @Query private var allTemplates: [PromptTemplate]
+    // Catalog data, loaded on demand via `loadCatalogsIfNeeded()` instead of
+    // `@Query`. SwiftUI evaluates `@Query` synchronously at view mount, and
+    // ChatView is re-mounted on every conversation switch (the parent uses
+    // `.id(conversation.id)`). Four eager full-table SwiftData fetches at
+    // mount time blocked the input field from being interactive for
+    // ~50–150 ms after navigating to a new chat. Loading them via a `.task`
+    // lets the composer paint and accept keyboard focus on the next runloop
+    // tick; the catalogs (used only for menus, mention autocomplete, MCP
+    // chips, and template pickers) fill in shortly after.
+    @State private var allMCPs: [MCPServer] = []
+    @State private var allGroups: [AgentGroup] = []
+    @State private var allAgents: [Agent] = []
+    @State private var allTemplates: [PromptTemplate] = []
+    @State private var didLoadCatalogs = false
 
     /// Distance from the bottom (in points) past which we consider the user
     /// to have "left" the live stream. Kept small on purpose — at 30 fps
@@ -677,6 +685,12 @@ struct ChatView: View {
             activeInputArea
         }
         .task {
+            // Defer catalog fetches until after the composer is on screen and
+            // first-responder-eligible, so navigating to a new chat doesn't
+            // stall on four full-table SwiftData fetches before the user can
+            // start typing.
+            await Task.yield()
+            loadCatalogsIfNeeded()
             try? await Task.sleep(for: .milliseconds(300))
             checkForPendingResponse()
         }
@@ -3261,6 +3275,21 @@ struct ChatView: View {
     }
 
     // MARK: - Auto-Send from Launch Intent
+
+    /// Populate the catalog @State arrays via FetchDescriptors. Called once
+    /// per ChatView mount from a `.task`, so the SQLite work happens after
+    /// the composer is on screen and ready for keyboard input rather than
+    /// blocking the initial mount. Idempotent — guarded by
+    /// `didLoadCatalogs` because `.task` may re-run if its `id:` changes.
+    private func loadCatalogsIfNeeded() {
+        guard !didLoadCatalogs else { return }
+        didLoadCatalogs = true
+        allAgents = (try? modelContext.fetch(FetchDescriptor<Agent>())) ?? []
+        allGroups = (try? modelContext.fetch(FetchDescriptor<AgentGroup>())) ?? []
+        allMCPs = (try? modelContext.fetch(FetchDescriptor<MCPServer>())) ?? []
+        allTemplates = (try? modelContext.fetch(FetchDescriptor<PromptTemplate>())) ?? []
+        cachedMentionCandidates = ChatSendRouting.prepareMentionCandidates(agents: allAgents)
+    }
 
     private func consumeAutoSendText() {
         guard let text = windowState.autoSendText else { return }
