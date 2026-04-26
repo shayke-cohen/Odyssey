@@ -251,6 +251,11 @@ final class AppState {
         case blackboardUpdate(key: String, value: String, writtenBy: String)
     }
 
+    /// Bounds the in-memory comms-event history. The Agent Comms view filters
+    /// this array per render; without a cap it grew unboundedly across long
+    /// sessions and made the comms timeline progressively slower.
+    static let commsEventsHistoryCap = 1_000
+
     private static let fileModifyingTools: Set<String> = [
         "write", "edit", "multiedit", "multi_edit", "create", "mv", "cp",
         "writefile", "createfile", "renamefile", "deletefile"
@@ -1306,6 +1311,17 @@ final class AppState {
         lastSessionEvent.removeValue(forKey: sessionId)
     }
 
+    /// Append to the comms-event timeline, dropping the oldest entries once we
+    /// exceed `commsEventsHistoryCap`. Without this the array grew unboundedly
+    /// and the AgentCommsView re-filters it on every body render.
+    private func appendCommsEvent(_ kind: CommsEventKind) {
+        commsEvents.append(CommsEvent(timestamp: Date(), kind: kind))
+        let overflow = commsEvents.count - Self.commsEventsHistoryCap
+        if overflow > 0 {
+            commsEvents.removeFirst(overflow)
+        }
+    }
+
     private func handleEvent(_ event: SidecarEvent) {
         switch event {
         case .streamToken(let sessionId, let text):
@@ -1439,24 +1455,15 @@ final class AppState {
             cleanupWorktreeIfNeeded(sessionId: sessionId)
 
         case .peerChat(let sessionId, let channelId, let from, let message):
-            commsEvents.append(CommsEvent(
-                timestamp: Date(),
-                kind: .chat(channelId: channelId, from: from, message: message)
-            ))
+            appendCommsEvent(.chat(channelId: channelId, from: from, message: message))
             persistPeerChatMessage(sessionId: sessionId, channelId: channelId, from: from, message: message)
 
         case .peerDelegate(let sessionId, let from, let to, let task):
-            commsEvents.append(CommsEvent(
-                timestamp: Date(),
-                kind: .delegation(from: from, to: to, task: task)
-            ))
+            appendCommsEvent(.delegation(from: from, to: to, task: task))
             persistDelegationEvent(sessionId: sessionId, from: from, to: to, task: task)
 
         case .blackboardUpdate(let sessionId, let key, let value, let writtenBy):
-            commsEvents.append(CommsEvent(
-                timestamp: Date(),
-                kind: .blackboardUpdate(key: key, value: value, writtenBy: writtenBy)
-            ))
+            appendCommsEvent(.blackboardUpdate(key: key, value: value, writtenBy: writtenBy))
             persistBlackboardUpdate(sessionId: sessionId, key: key, value: value, writtenBy: writtenBy)
 
         case .sessionForked(let parentSessionId, let childSessionId):

@@ -44,6 +44,36 @@ final class AppStateEventTests: XCTestCase {
 
     // MARK: - EH: Event Handling
 
+    /// commsEvents was append-only with no cap; long-running sessions accumulated
+    /// thousands of entries and the AgentCommsView re-filtered the whole array on
+    /// every body render. Cap to a reasonable history window and drop the oldest.
+    func testCommsEvents_cappedAtMaxHistory() {
+        let sid = makeSessionWithConversation()
+        let cap = AppState.commsEventsHistoryCap
+        let overshoot = cap + 200
+
+        for i in 0..<overshoot {
+            appState.handleEventForTesting(.peerChat(
+                sessionId: sid, channelId: "ch", from: "Agent\(i)", message: "msg\(i)"
+            ))
+        }
+
+        XCTAssertEqual(appState.commsEvents.count, cap, "Should cap at \(cap)")
+        // Oldest dropped, newest retained.
+        if case .chat(_, let firstFrom, _) = appState.commsEvents.first?.kind {
+            XCTAssertEqual(firstFrom, "Agent\(overshoot - cap)",
+                           "First entry should be the oldest *kept* event")
+        } else {
+            XCTFail("First retained event should be a .chat")
+        }
+        if case .chat(_, let lastFrom, _) = appState.commsEvents.last?.kind {
+            XCTAssertEqual(lastFrom, "Agent\(overshoot - 1)",
+                           "Last entry should be the most recent event")
+        } else {
+            XCTFail("Last retained event should be a .chat")
+        }
+    }
+
     func testEH1_peerChatEvent_appendsCommsAndPersists() {
         let sid = makeSessionWithConversation()
         appState.handleEventForTesting(.peerChat(sessionId: sid, channelId: "ch-1", from: "AgentA", message: "hello"))
