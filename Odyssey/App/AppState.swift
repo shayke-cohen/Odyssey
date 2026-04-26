@@ -1321,18 +1321,39 @@ final class AppState {
         lastSessionEvent.removeValue(forKey: sessionId)
     }
 
-    /// Schedules the 60 fps flush timer if it isn't already running.
+    /// Schedules the flush timer if it isn't already running. The rate adapts
+    /// to the size of the *currently visible* streaming text so SwiftUI's List
+    /// row-height re-measure cost stays bounded:
+    ///
+    ///   - <500 chars:   60 fps (smooth feel for short replies)
+    ///   - <2000 chars:  30 fps
+    ///   - ≥2000 chars:  15 fps (long messages — Text layout is O(N) per pass)
+    ///
     /// Registered in `.common` mode so flushes still fire while NSScrollView
     /// is in eventTracking mode (active scroll). Without `.common` the chat
     /// streaming text appears frozen any time the user is dragging the
     /// sidebar — and the buffered tokens then flood in once scrolling stops.
     private func scheduleStreamTokenFlush() {
         guard streamTokenFlushTimer == nil else { return }
-        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: false) { [weak self] _ in
+        let interval = adaptiveFlushInterval()
+        let timer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
             self?.flushAllStreamTokenBuffers()
         }
         RunLoop.main.add(timer, forMode: .common)
         streamTokenFlushTimer = timer
+    }
+
+    /// Pick a flush interval based on the longest text we'd be re-rendering.
+    /// At 60 fps, a 5 000-char auto-sizing `Text` inside a SwiftUI List forces
+    /// CoreText to lay out the entire string on every frame; throttling keeps
+    /// per-frame cost roughly constant regardless of total response length.
+    private func adaptiveFlushInterval() -> TimeInterval {
+        var longest = 0
+        for text in streamingText.values where text.count > longest { longest = text.count }
+        for text in thinkingText.values where text.count > longest { longest = text.count }
+        if longest >= 2_000 { return 1.0 / 15.0 }
+        if longest >= 500 { return 1.0 / 30.0 }
+        return 1.0 / 60.0
     }
 
     /// Timer callback: write all buffered streaming + thinking tokens to their

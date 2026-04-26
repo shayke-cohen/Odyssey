@@ -518,16 +518,6 @@ struct ChatView: View {
         return session.agent?.name ?? AgentDefaults.displayName(forProvider: session.provider)
     }
 
-    private func streamingAppearance(for sidecarKey: String) -> AgentAppearance? {
-        guard let convo = conversation, (convo.sessions ?? []).count > 1,
-              let sessionId = UUID(uuidString: sidecarKey),
-              let session = (convo.sessions ?? []).first(where: { $0.id == sessionId }),
-              let agent = session.agent else {
-            return nil
-        }
-        return AgentAppearance(color: Color.fromAgentColor(agent.color), icon: agent.icon)
-    }
-
     private func setGroupRoutingMode(_ mode: GroupRoutingMode) {
         conversation?.routingMode = mode
         try? modelContext.save()
@@ -2941,122 +2931,6 @@ struct ChatView: View {
         }
     }
 
-    // MARK: - Streaming Bubble
-
-    @ViewBuilder
-    private var streamingBubble: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(activeStreamingSessionOrder, id: \.self) { sidecarKey in
-                streamingBubble(for: sidecarKey)
-                    .id("streaming-\(sidecarKey)")
-            }
-        }
-        .xrayId("chat.streamingBubble")
-    }
-
-    @ViewBuilder
-    private func streamingBubble(for sidecarKey: String) -> some View {
-        let appearance = streamingAppearance(for: sidecarKey)
-        let thinking = appState.thinkingText[sidecarKey]
-        let text = appState.streamingText[sidecarKey]
-
-        HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    Image(systemName: appearance?.icon ?? "cpu")
-                        .font(caption2Font)
-                        .foregroundStyle(appearance?.color ?? .purple)
-                    Text(streamingDisplayName(for: sidecarKey))
-                        .font(captionFont)
-                        .foregroundStyle(appearance?.color ?? .secondary)
-                    if let state = appState.sessionActivity[sidecarKey] {
-                        Text(state.displayLabel)
-                            .font(caption2Font)
-                            .foregroundStyle(state.displayColor.opacity(0.8))
-                    }
-                }
-
-                if let thinking, !thinking.isEmpty {
-                    streamingThinkingSection(thinking, sidecarKey: sidecarKey)
-                }
-
-                if let text, !text.isEmpty {
-                    // Use plain Text while streaming — MarkdownContent re-parses the
-                    // entire string on every token (O(n) per token = O(n²) total).
-                    // Final messages use MarkdownContent after commit.
-                    Text(text)
-                        .font(.body)
-                        .textSelection(.enabled)
-                } else if thinking?.isEmpty != false {
-                    StreamingIndicator()
-                }
-            }
-            .padding(.horizontal, appearance != nil ? 10 : 0)
-            .padding(.vertical, appearance != nil ? 6 : 0)
-            .background(appearance.map { $0.color.opacity(0.08) } ?? Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: appearance != nil ? 12 : 0))
-
-            Spacer(minLength: 60)
-        }
-    }
-
-    @ViewBuilder
-    private func streamingThinkingSection(_ thinking: String, sidecarKey: String) -> some View {
-        let isExpanded = expandedStreamingThinkingSessionKeys.contains(sidecarKey)
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    if isExpanded {
-                        expandedStreamingThinkingSessionKeys.remove(sidecarKey)
-                    } else {
-                        expandedStreamingThinkingSessionKeys.insert(sidecarKey)
-                    }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "brain")
-                        .font(caption2Font)
-                        .foregroundStyle(.indigo)
-                    Text("Thinking...")
-                        .font(captionFont)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.indigo)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                        .font(caption2Font)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-            }
-            .buttonStyle(.plain)
-            .xrayId("chat.streamingThinkingToggle.\(sidecarKey)")
-            .accessibilityLabel(isExpanded ? "Collapse thinking" : "Expand thinking")
-
-            if isExpanded {
-                Divider()
-                ScrollView {
-                    Text(thinking)
-                        .font(captionFont)
-                        .foregroundStyle(.secondary)
-                        .italic()
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                }
-                .frame(maxHeight: 200)
-            }
-        }
-        .background(.indigo.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(.indigo.opacity(0.15), lineWidth: 0.5)
-        )
-    }
-
     // MARK: - Session Summary Helpers
 
     private var sessionsForSummary: [AppState.SessionInfo] {
@@ -5283,7 +5157,7 @@ private struct ChatStreamingObserver: View {
     let conversation: Conversation?
     var onCheckCompletion: (([String: AppState.SessionEventKind]) -> Void)?
 
-    @State private var debounceTask: Task<Void, Never>?
+    @State private var pendingRestore: DispatchWorkItem?
 
     var body: some View {
         Color.clear.frame(width: 0, height: 0)
@@ -5306,15 +5180,21 @@ private struct ChatStreamingObserver: View {
                 onCheckCompletion?(events)
             }
             .onAppear { restoreNow() }
+            .onDisappear {
+                pendingRestore?.cancel()
+                pendingRestore = nil
+            }
     }
 
+    /// Coalesce restore() calls with a 50 ms trailing debounce. Uses a
+    /// DispatchWorkItem rather than a `Task { try? await Task.sleep(...) }` —
+    /// at 60 fps this hot path used to allocate a fresh `Task` per token,
+    /// which is real overhead even when the body of the Task is cancelled.
     private func scheduleRestore() {
-        debounceTask?.cancel()
-        debounceTask = Task {
-            try? await Task.sleep(for: .milliseconds(50))
-            guard !Task.isCancelled else { return }
-            restoreNow()
-        }
+        pendingRestore?.cancel()
+        let work = DispatchWorkItem { [self] in restoreNow() }
+        pendingRestore = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.050, execute: work)
     }
 
     private func restoreNow() {
