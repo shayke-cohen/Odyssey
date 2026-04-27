@@ -1444,6 +1444,35 @@ final class AppState {
         }
     }
 
+    /// Compact label for the highest-traffic `SidecarEvent` arms, used by
+    /// `Log.perf` so stall warnings show *which* arm of the handleEvent
+    /// switch was slow. Less common arms collapse to "other" — that's fine,
+    /// the heartbeat will still fire and we can add specifics if needed.
+    private func eventKind(_ event: SidecarEvent) -> String {
+        switch event {
+        case .streamToken:       return "streamToken"
+        case .streamThinking:    return "streamThinking"
+        case .streamToolCall:    return "streamToolCall"
+        case .streamToolResult:  return "streamToolResult"
+        case .streamImage:       return "streamImage"
+        case .streamFileCard:    return "streamFileCard"
+        case .streamRichContent: return "streamRichContent"
+        case .streamProgress:    return "streamProgress"
+        case .streamSuggestions: return "streamSuggestions"
+        case .sessionResult:     return "sessionResult"
+        case .sessionError:      return "sessionError"
+        case .sessionForked:     return "sessionForked"
+        case .sessionReused:     return "sessionReused"
+        case .planComplete:      return "planComplete"
+        case .peerChat:          return "peerChat"
+        case .peerDelegate:      return "peerDelegate"
+        case .blackboardUpdate:  return "blackboardUpdate"
+        case .conversationInviteAgent: return "conversationInviteAgent"
+        case .disconnected:      return "disconnected"
+        default:                 return "other"
+        }
+    }
+
     /// Append to the comms-event timeline, dropping the oldest entries once we
     /// exceed `commsEventsHistoryCap`. Without this the array grew unboundedly
     /// and the AgentCommsView re-filters it on every body render.
@@ -1456,6 +1485,19 @@ final class AppState {
     }
 
     private func handleEvent(_ event: SidecarEvent) {
+        // Generic outer timer — catches any slow handler regardless of which
+        // event arm runs. Use a high threshold so we only see stalls that
+        // matter on the user's run loop. The targeted defer-based timers
+        // inside specific arms (`sessionResult`, etc.) keep their own
+        // tighter thresholds for breakdown reporting.
+        let _eventStart = ContinuousClock.now
+        defer {
+            let elapsed = ContinuousClock.now - _eventStart
+            if elapsed > .milliseconds(150) {
+                let kind = self.eventKind(event)
+                Log.perf.warning("handleEvent slow: \(elapsed, privacy: .public) (event=\(kind, privacy: .public))")
+            }
+        }
         switch event {
         case .streamToken(let sessionId, let text):
             resetStreamingBuffersIfNewTurn(sessionId: sessionId)
