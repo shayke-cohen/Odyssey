@@ -754,15 +754,23 @@ struct SidebarView: View {
     }
 
     private func rebuildConversationIndex() {
-        let descriptor = FetchDescriptor<Session>(sortBy: [SortDescriptor(\.startedAt, order: .reverse)])
-        guard let sessions = try? modelContext.fetch(descriptor) else { return }
+        let start = ContinuousClock.now
+        // Walk *conversations → sessions* instead of fetching every Session
+        // row. The store can accumulate tens of thousands of orphan sessions
+        // (one user had 12,676 versus 292 conversations) — a `FetchDescriptor
+        // <Session>` round-tripped 1.4 s of synchronous SwiftData work on the
+        // main thread, locking up scroll on every save. The conversations
+        // @Query is already in memory, so we rebuild the index from the side
+        // we care about.
         var index: [UUID: UUID] = [:]
         var sessionAgentMap: [UUID: UUID] = [:]
-        for session in sessions {
-            guard let agentId = session.agent?.id else { continue }
-            sessionAgentMap[session.id] = agentId
-            for convo in (session.conversations ?? []) {
+        var convoLinkCount = 0
+        for convo in conversations {
+            for session in (convo.sessions ?? []) {
+                guard let agentId = session.agent?.id else { continue }
+                sessionAgentMap[session.id] = agentId
                 index[convo.id] = agentId
+                convoLinkCount += 1
             }
         }
         conversationToAgentIndex = index
@@ -772,9 +780,20 @@ struct SidebarView: View {
         rebuildAgentCaches()
         rebuildGroupCaches()
         rebuildConversationTreeCaches()
+        let totalElapsed = ContinuousClock.now - start
+        if totalElapsed > .milliseconds(50) {
+            Log.perf.warning("rebuildConversationIndex: \(totalElapsed, privacy: .public) (convoLinks=\(convoLinkCount), conversations=\(self.conversations.count))")
+        }
     }
 
     private func rebuildConversationTreeCaches() {
+        let _treeStart = ContinuousClock.now
+        defer {
+            let elapsed = ContinuousClock.now - _treeStart
+            if elapsed > .milliseconds(50) {
+                Log.perf.warning("rebuildConversationTreeCaches: \(elapsed, privacy: .public) (conversations=\(self.conversations.count))")
+            }
+        }
         var liveByProject: [UUID: [Conversation]] = [:]
         var archivedByProject: [UUID: [Conversation]] = [:]
         var forks: [UUID: [Conversation]] = [:]

@@ -854,9 +854,14 @@ struct ChatView: View {
                 try? await sharedRoomService.refreshConversation(conversation)
             }
         }
-        .onChange(of: conversation?.messages?.count) { _, _ in
+        .onChange(of: conversation?.messages?.count) { _, newCount in
+            let start = ContinuousClock.now
             cachedSortedMessages = (conversation?.messages ?? []).sorted { $0.timestamp < $1.timestamp }
             rebuildDisplayMessages()
+            let elapsed = ContinuousClock.now - start
+            if elapsed > .milliseconds(20) {
+                Log.perf.warning("onChange messages.count: \(elapsed, privacy: .public) (count=\(newCount ?? 0))")
+            }
         }
         .onChange(of: enabledPeerCategories) { _, _ in
             rebuildDisplayMessages()
@@ -3717,6 +3722,13 @@ struct ChatView: View {
     // MARK: - Send Message
 
     private func sendMessage() {
+        let _sendStart = ContinuousClock.now
+        defer {
+            let elapsed = ContinuousClock.now - _sendStart
+            if elapsed > .milliseconds(50) {
+                Log.perf.warning("sendMessage end-to-end: \(elapsed, privacy: .public)")
+            }
+        }
         let rawInput = inputText
         let text = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let attachments = pendingAttachments
