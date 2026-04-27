@@ -297,8 +297,30 @@ Still listed as future or incomplete in the docs:
 
 1. Update `Odyssey/App/LaunchIntent.swift`.
 2. Update URL parsing in the same file.
-3. Carry the new field through `LaunchIntent`.
+3. Carry the new field through `LaunchIntent` (or add a `LaunchMode` case).
 4. Handle it in `AppState.executeLaunchIntent()`.
+5. Update the table in "Launching the app for tests" below so the next agent finds it.
+
+### Launching the app for tests
+
+Every test/scripted scenario can avoid driving the GUI by using one of these entry points. The app accepts both CLI flags (only honoured when launched from a fresh process) and `odyssey://` URLs (also work to retarget an already-running app via `open -a Odyssey.app "<url>"`).
+
+| Goal | URL | CLI |
+| --- | --- | --- |
+| New freeform chat (auto-send a prompt) | `odyssey://chat?prompt=...` | `--chat --prompt "..."` |
+| New chat with a named agent | `odyssey://agent/Coder?prompt=...&workdir=/path&autonomous=true` | `--agent Coder --prompt "..." --workdir /path --autonomous` |
+| New chat with a named group | `odyssey://group/Dev%20Team?autonomous=true` | `--group "Dev Team" --autonomous` |
+| **Open an existing conversation** | `odyssey://chat?conversation=<UUID>&prompt=...` | `--conversation <UUID> --prompt "..."` |
+| **Open the conversation containing a session** | `odyssey://chat?session=<UUID>&prompt=...` | `--session <UUID> --prompt "..."` |
+| Run a saved schedule | `odyssey://schedule/<UUID>?occurrence=2026-03-27T06:00:00Z` | `--schedule <UUID> --occurrence ...` |
+
+The `?conversation` / `?session` (and matching `--conversation` / `--session`) forms are the testing affordance: they navigate to an existing thread instead of creating a new one. Combine with the `MockRuntime` `STREAM:<chars>:<rate>` magic prefix in the prompt to drive a sustained mock stream without spending Claude credits, e.g.:
+
+```sh
+open -a /path/to/Debug/Odyssey.app "odyssey://chat?conversation=$UUID&prompt=STREAM:4000:12"
+```
+
+Use `open -a` with a URL when launching a fresh DEBUG build — `WindowGroup(for: String.self)` does not auto-open a window without a document, so plain `open Odyssey.app` can leave you with a running process and zero windows. The grammar lives in `Odyssey/App/LaunchIntent.swift`; legacy `claudestudio://` and `claudpeer://` schemes still work for back-compat.
 
 ### Add a task board capability
 

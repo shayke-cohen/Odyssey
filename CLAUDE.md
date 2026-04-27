@@ -114,7 +114,7 @@ Core entities (all in `Odyssey/Models/`):
 - Resizable chat/inspector split with persistent divider
 - Conversation archive/unarchive
 - Multi-instance support (`InstanceConfig`, `--instance` flag)
-- Launch parameters (`LaunchIntent`, `--chat`/`--agent`/`--group`/`--prompt`/`--workdir`/`--autonomous`) and `odyssey://` URL scheme
+- Launch parameters (`LaunchIntent`, `--chat`/`--agent`/`--group`/`--conversation`/`--session`/`--prompt`/`--workdir`/`--autonomous`) and `odyssey://` URL scheme — see "Launching the app for testing" below
 - Group peer fan-out (`GroupPeerFanOutContext`, budget limiter, deduplication)
 - P2P LAN networking (Bonjour discovery, `PeerCatalogServer`, `PeerAgentImporter`, `PeerNetworkView`)
 - Full accessibility coverage (347+ identifiers)
@@ -261,6 +261,27 @@ Run the appropriate check before reporting any task complete.
 - `showAddAgentsToChatSheet: true` → opens AddAgentsToChatSheet
 - `sidecarStatusOverrideForTesting: "connected"` → simulates connected state
 
+**Launching the app for testing** — every entry point in `LaunchIntent` (CLI flag and `odyssey://` URL) lets an agent jump straight into a chat without driving the GUI:
+
+| Goal | URL form | CLI form |
+| --- | --- | --- |
+| New freeform chat | `odyssey://chat?prompt=...` | `--chat --prompt "..."` |
+| New chat with named agent | `odyssey://agent/Coder?prompt=...&workdir=/path` | `--agent Coder --prompt "..." --workdir /path` |
+| New chat with named group | `odyssey://group/Dev%20Team?autonomous=true` | `--group "Dev Team" --autonomous` |
+| **Open existing conversation** | `odyssey://chat?conversation=<UUID>&prompt=...` | `--conversation <UUID> --prompt "..."` |
+| **Open conversation containing a session** | `odyssey://chat?session=<UUID>&prompt=...` | `--session <UUID> --prompt "..."` |
+| Run a saved schedule | `odyssey://schedule/<UUID>?occurrence=...` | `--schedule <UUID> --occurrence ...` |
+
+The `?conversation` / `?session` forms (and their CLI equivalents) are the primary affordance for **automated repro tests** — they navigate to an existing thread instead of spawning a new one, so a perf or regression script can target a specific conversation by its UUID and optionally auto-send a prompt. Pair with the `MockRuntime`'s `STREAM:<chars>:<rate>` magic prefix in the prompt to drive a sustained mock stream without burning Claude credits. See `Odyssey/App/LaunchIntent.swift` for the full grammar; the `odyssey` scheme also accepts the legacy `claudestudio://` and `claudpeer://` schemes for back-compat.
+
+Launch a fresh DEBUG app from the CLI:
+
+```sh
+open -a /Users/.../Build/Products/Debug/Odyssey.app "odyssey://chat?conversation=<UUID>&prompt=hello"
+```
+
+`open -a` with a URL forces the app to create a window and execute the intent — `open Odyssey.app` alone may not, because `WindowGroup(for: String.self)` waits for a document.
+
 **Sidecar debug after a failed smoke:**
 
 ```sh
@@ -295,8 +316,9 @@ curl localhost:9850/api/v1/debug/state
 
 1. Add the flag to `LaunchIntent.fromCommandLine()` in `Odyssey/App/LaunchIntent.swift`
 2. Add the URL query parameter to `LaunchIntent.fromURL()` in the same file
-3. Add any new fields to the `LaunchIntent` struct
+3. Add any new fields to the `LaunchIntent` struct (or a new `LaunchMode` case)
 4. Handle the new field in `AppState.executeLaunchIntent()` in `Odyssey/App/AppState.swift`
+5. **Update the table in "Launching the app for testing" above** so future agents discover it
 
 ### Launch parameter flow
 

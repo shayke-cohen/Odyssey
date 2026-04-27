@@ -76,4 +76,82 @@ final class LaunchIntentTests: XCTestCase {
             XCTFail("Expected room join launch mode")
         }
     }
+
+    // MARK: - existingConversation / existingSession (testing affordance)
+
+    func testParsesExistingConversationURL() {
+        let convoId = "B07C0411-E1F1-4B6E-9276-2A1F4D3E5C6A"
+        let url = URL(string: "odyssey://chat?conversation=\(convoId)&prompt=hello")!
+        guard let intent = LaunchIntent.fromURL(url) else {
+            return XCTFail("Expected launch intent")
+        }
+        switch intent.mode {
+        case .existingConversation(let id):
+            XCTAssertEqual(id.uuidString, convoId)
+        default:
+            XCTFail("Expected existingConversation launch mode, got \(intent.mode)")
+        }
+        XCTAssertEqual(intent.prompt, "hello")
+    }
+
+    func testParsesExistingSessionURL() {
+        let sessionId = "1A2B3C4D-5E6F-7890-ABCD-EF1234567890"
+        let url = URL(string: "odyssey://chat?session=\(sessionId)")!
+        guard let intent = LaunchIntent.fromURL(url) else {
+            return XCTFail("Expected launch intent")
+        }
+        switch intent.mode {
+        case .existingSession(let id):
+            XCTAssertEqual(id.uuidString, sessionId)
+        default:
+            XCTFail("Expected existingSession launch mode, got \(intent.mode)")
+        }
+    }
+
+    func testExistingConversationCLIFlag() {
+        let convoId = "B07C0411-E1F1-4B6E-9276-2A1F4D3E5C6A"
+        let intent = LaunchIntent.fromArguments([
+            "Odyssey", "--conversation", convoId, "--prompt", "STREAM:1000:12"
+        ])
+        guard let intent else {
+            return XCTFail("Expected launch intent")
+        }
+        switch intent.mode {
+        case .existingConversation(let id):
+            XCTAssertEqual(id.uuidString, convoId)
+        default:
+            XCTFail("Expected existingConversation launch mode")
+        }
+        XCTAssertEqual(intent.prompt, "STREAM:1000:12")
+    }
+
+    func testExistingSessionCLIFlag() {
+        let sessionId = "1A2B3C4D-5E6F-7890-ABCD-EF1234567890"
+        let intent = LaunchIntent.fromArguments([
+            "Odyssey", "--session", sessionId
+        ])
+        guard let intent else {
+            return XCTFail("Expected launch intent")
+        }
+        switch intent.mode {
+        case .existingSession(let id):
+            XCTAssertEqual(id.uuidString, sessionId)
+        default:
+            XCTFail("Expected existingSession launch mode")
+        }
+    }
+
+    func testInvalidConversationUUIDFallsThroughToChat() {
+        // A malformed UUID in the query should not crash; `chat://` without
+        // a valid conversation/session ID just opens a fresh chat.
+        let url = URL(string: "odyssey://chat?conversation=not-a-uuid&prompt=hi")!
+        guard let intent = LaunchIntent.fromURL(url) else {
+            return XCTFail("Expected launch intent")
+        }
+        if case .chat = intent.mode {
+            // expected
+        } else {
+            XCTFail("Expected fallback to .chat, got \(intent.mode)")
+        }
+    }
 }

@@ -463,6 +463,36 @@ final class AppState {
             Task { @MainActor in
                 await handleConnectInvite(encoded: encoded, windowState: windowState)
             }
+
+        case .existingConversation(let id):
+            let descriptor = FetchDescriptor<Conversation>(predicate: #Predicate { $0.id == id })
+            guard let convo = try? modelContext.fetch(descriptor).first else {
+                windowState.launchError = "Conversation not found: \(id.uuidString)"
+                return
+            }
+            windowState.selectedConversationId = convo.id
+            if intent.prompt != nil {
+                windowState.autoSendText = intent.prompt
+            }
+
+        case .existingSession(let sessionId):
+            // Look up the session, then route to the conversation that
+            // contains it. SwiftData's relationship makes this O(1) once the
+            // row is fetched. If the session has no conversation (orphaned)
+            // we surface a clear error rather than silently doing nothing.
+            let descriptor = FetchDescriptor<Session>(predicate: #Predicate { $0.id == sessionId })
+            guard let session = try? modelContext.fetch(descriptor).first else {
+                windowState.launchError = "Session not found: \(sessionId.uuidString)"
+                return
+            }
+            guard let convo = (session.conversations ?? []).first else {
+                windowState.launchError = "Session \(sessionId.uuidString) has no conversation"
+                return
+            }
+            windowState.selectedConversationId = convo.id
+            if intent.prompt != nil {
+                windowState.autoSendText = intent.prompt
+            }
         }
     }
 

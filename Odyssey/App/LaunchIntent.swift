@@ -8,6 +8,13 @@ enum LaunchMode: Sendable, Equatable {
     case schedule(id: UUID)
     case roomJoin(payload: SharedRoomService.JoinPayload)
     case connectInvite(payload: String)
+    /// Open an existing conversation by UUID. If a `prompt` is also provided,
+    /// it is auto-sent into that conversation once the chat view mounts.
+    case existingConversation(id: UUID)
+    /// Open the conversation that contains a specific session. Useful when
+    /// the test harness only knows the session id (e.g. it just spawned one
+    /// via the sidecar REST API).
+    case existingSession(id: UUID)
 }
 
 /// A parsed launch intent from CLI args or an app URL.
@@ -29,6 +36,8 @@ struct LaunchIntent: Sendable {
     /// - `--chat` — freeform chat
     /// - `--agent <name>` — session with a named agent
     /// - `--group <name>` — group chat with a named group
+    /// - `--conversation <uuid>` — open an existing conversation (testing)
+    /// - `--session <uuid>` — open the conversation containing this session (testing)
     /// - `--prompt <text>` — initial message to auto-send
     /// - `--workdir <path>` — override working directory
     /// - `--autonomous` — start in autonomous mode
@@ -63,6 +72,16 @@ struct LaunchIntent: Sendable {
                 i += 1
                 guard i < args.count else { break }
                 mode = .group(name: args[i])
+
+            case "--conversation":
+                i += 1
+                guard i < args.count, let id = UUID(uuidString: args[i]) else { break }
+                mode = .existingConversation(id: id)
+
+            case "--session":
+                i += 1
+                guard i < args.count, let id = UUID(uuidString: args[i]) else { break }
+                mode = .existingSession(id: id)
 
             case "--prompt":
                 i += 1
@@ -132,6 +151,8 @@ struct LaunchIntent: Sendable {
     ///
     /// Supported formats:
     /// - `odyssey://chat?prompt=...`
+    /// - `odyssey://chat?conversation=<UUID>&prompt=...` — open existing conversation (testing)
+    /// - `odyssey://chat?session=<UUID>&prompt=...` — open conversation containing this session (testing)
     /// - `odyssey://agent/Coder?prompt=...&workdir=/path&autonomous=true`
     /// - `odyssey://group/Dev%20Team?autonomous=true`
     /// - `odyssey://schedule/2F0D95B8-1D90-49B4-9C7B-6DAB4F9386A8?occurrence=2026-03-27T06:00:00Z`
@@ -155,7 +176,17 @@ struct LaunchIntent: Sendable {
         let mode: LaunchMode
         switch host {
         case "chat":
-            mode = .chat
+            // Testing affordance: ?conversation=<UUID> or ?session=<UUID>
+            // routes to an existing thread instead of creating a new one.
+            if let convoString = queryValue("conversation"),
+               let convoId = UUID(uuidString: convoString) {
+                mode = .existingConversation(id: convoId)
+            } else if let sessionString = queryValue("session"),
+                      let sessionId = UUID(uuidString: sessionString) {
+                mode = .existingSession(id: sessionId)
+            } else {
+                mode = .chat
+            }
         case "agent":
             guard !pathName.isEmpty else { return nil }
             mode = .agent(name: pathName)
